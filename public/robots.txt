@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /mi-programa
+Disallow: /estado
+
+Sitemap: https://iridescent-paprenjak-8c3360.netlify.app/sitemap.xml

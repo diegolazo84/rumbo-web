@@ -1,0 +1,64 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# La plataforma original (chatgpt.site) sigue siendo el producto durante el piloto:
+# postulación, programa, panel del equipo y comunidad viven allí, con una sola
+# bandeja de postulaciones. Netlify reenvía la query string automáticamente.
+# Si cambia el dominio de la plataforma, actualizar aquí y en src/data/rumbo.ts.
+
+[[redirects]]
+  from = "/postular"
+  to = "https://rumbo-acompanamiento-diego.diegolazo84.chatgpt.site/postular"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/contacto"
+  to = "https://rumbo-acompanamiento-diego.diegolazo84.chatgpt.site/contacto"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/mi-programa"
+  to = "https://rumbo-acompanamiento-diego.diegolazo84.chatgpt.site/mi-programa"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/app"
+  to = "https://rumbo-acompanamiento-diego.diegolazo84.chatgpt.site/mi-programa"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/comunidad"
+  to = "https://rumbo-acompanamiento-diego.diegolazo84.chatgpt.site/comunidad"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/estado"
+  to = "https://rumbo-acompanamiento-diego.diegolazo84.chatgpt.site/estado"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/privacidad-piloto"
+  to = "/privacidad"
+  status = 301
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "DENY"
