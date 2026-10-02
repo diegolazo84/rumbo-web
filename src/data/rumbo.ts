@@ -4,8 +4,8 @@
 
 export const PLATAFORMA = "https://rumbo-acompanamiento-diego.diegolazo84.chatgpt.site";
 
-// Rutas que viven en la plataforma original. netlify.toml además redirige
-// las mismas rutas en este dominio, para enlaces antiguos o escritos a mano.
+// Rutas que viven en la plataforma original. scripts/postbuild.mjs además genera
+// reenvíos con las mismas rutas en este dominio, para enlaces escritos a mano.
 export const rutas = {
   postular: `${PLATAFORMA}/postular`,
   contacto: `${PLATAFORMA}/contacto`,
