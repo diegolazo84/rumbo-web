@@ -24,7 +24,7 @@ export default function Footer() {
         <nav aria-label="Ayuda">
           <h2>Ayuda</h2>
           <a href={rutas.contacto}>Contacto</a>
-          <Link to="/privacidad">Privacidad</Link>
+          <Link to="/privacidad/">Privacidad</Link>
           <a href={rutas.comunidad}>Comunidad</a>
         </nav>
       </div>

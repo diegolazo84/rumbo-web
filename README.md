@@ -22,9 +22,22 @@ plataforma original.
 
 ```bash
 npm install
-npm run dev      # servidor local
-npm run build    # comprobación de tipos y compilación a dist/
+npm run dev        # servidor local (sin prerender)
+npm run build      # tipos + compilación + prerender de cada página en dist/
+npx playwright install chromium   # una vez, para las pruebas
+npm test           # prueba de humo, enlaces, reenvíos, 404, imagen social y accesibilidad (axe)
+npm run imagenes   # regenera public/og/rumbo-1200x630.png y los íconos (se versionan)
 ```
+
+Para probar como en GitHub Pages: `BASE_PATH=/rumbo-web/ SITE_URL=https://diegolazo84.github.io/rumbo-web npm run build && npm test`.
+
+### Cómo se arma cada página
+
+- `src/data/paginas.ts` declara cada página (ruta, título, descripción). `src/App.tsx` exige su vista.
+- `npm run build` compila la app, compila `src/entry-server.tsx` para Node y `scripts/postbuild.mjs` escribe un HTML
+  completo por página (contenido, `<title>`, descripción, canonical, Open Graph, CSP), además de `404.html`, los reenvíos,
+  `robots.txt` y `sitemap.xml`. En el navegador, `src/main.tsx` hidrata ese HTML.
+- Las tipografías vienen de `@fontsource-variable` (sin Google Fonts).
 
 ## Publicación
 
@@ -32,8 +45,10 @@ Cada cambio en `main` se publica solo con GitHub Actions (`.github/workflows/pub
 `dist/` es una web estática normal: funciona igual en cualquier otro hosting si algún día se cambia.
 
 - Dirección gratuita: `https://diegolazo84.github.io/rumbo-web/`.
-- Dominio propio: configurarlo en Settings → Pages y definir en Settings → Secrets and variables → Actions →
-  Variables `BASE_PATH=/` y `SITE_URL=https://tudominio.cl`.
+- Dominio propio: configurarlo en Settings → Pages (con publicación por Actions no se usa archivo `CNAME`) y definir en
+  Settings → Secrets and variables → Actions → Variables `BASE_PATH=/` y `SITE_URL=https://tudominio.cl`.
+- Cada publicación pasa antes por tipos, compilación y pruebas; después se repiten las pruebas `@produccion` contra el
+  sitio publicado.
 
 No hay secretos en este repositorio.
 

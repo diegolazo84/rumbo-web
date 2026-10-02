@@ -37,7 +37,7 @@ const bloques = [
   {
     titulo: "Dónde se guardan",
     texto:
-      "Esta portada se publica en GitHub Pages (GitHub) y carga sus tipografías desde Google Fonts. La postulación, tu programa y tus fotos se guardan en la plataforma de Rumbo, alojada en Cloudflare, y el acceso a tu espacio usa el inicio de sesión de ChatGPT (OpenAI). Estos proveedores pueden tener servidores fuera de Chile. Esta portada no usa cookies de seguimiento.",
+      "Esta portada se publica en GitHub Pages (GitHub) y sirve sus tipografías desde el mismo sitio: no carga recursos de terceros. La postulación, tu programa y tus fotos se guardan en la plataforma de Rumbo, alojada en Cloudflare, y el acceso a tu espacio usa el inicio de sesión de ChatGPT (OpenAI). Estos proveedores pueden tener servidores fuera de Chile. Esta portada no usa cookies de seguimiento.",
   },
   {
     titulo: "Cuánto tiempo los conservamos",

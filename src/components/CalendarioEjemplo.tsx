@@ -63,7 +63,7 @@ export default function CalendarioEjemplo() {
     });
 
   return (
-    <div className="calendario" aria-label="Ejemplo de semana en Rumbo">
+    <div className="calendario" role="group" aria-label="Ejemplo de semana en Rumbo">
       <div className="calendario-cabecera">
         <div>
           <p className="calendario-semana">Semana 2 de 4 · Ejemplo</p>
