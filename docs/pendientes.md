@@ -93,7 +93,7 @@ perfiles), y la compilación con `LANZAMIENTO=1` los exige.
 
 | Dato | Para qué | Estado |
 |---|---|---|
-| `responsable` | Identificar al proveedor y al responsable de los datos (fila legal, Privacidad §1, Condiciones §1). Persona natural: nombre y comuna; el RUT solo si la revisión legal lo pide | **falta · bloquea la difusión** |
+| `responsable` | Identificar al proveedor y al responsable de los datos (fila legal, Privacidad §1, Condiciones §1). Persona natural: nombre y comuna; el RUT solo si la revisión legal lo pide | cargado (Diego Alfonso Muñoz Abeleida, Providencia) |
 | `correo` | Contacto de privacidad y consultas; aparece en el pie y en los reenvíos | **falta · bloquea la difusión** |
 | `ayuda.verificadoEl` (e `incluir1455`) | Día en que se verificaron los números de ayuda | **falta · bloquea la difusión** |
 | `plazoPrimeraRespuesta` y `respondemosTodas` | «2 días hábiles», a todas las solicitudes | cargado |
@@ -116,7 +116,7 @@ Estos textos ya están redactados fuera del repositorio y **no** se publican tod
   por ciclo y en qué plazo) y el aviso por correo cuando una revisión esté lista.
 - **Cuando el cobro desde fuera de Chile esté probado:** el precio en dólares de cada plan y el
   medio de pago.
-- **Cuando se fije la fecha de inicio del primer grupo y las condiciones estén revisadas:** el
+- **Descartado por Diego (2 de octubre de 2026):** precio especial de piloto. Si se retoma, cuando se fije la fecha de inicio del primer grupo y las condiciones estén revisadas: el
   precio del primer ciclo del piloto.
 - **Después de la revisión legal:** la política de pausa, término y devolución (`politicaTermino`)
   y la línea de devolución que la resume.
