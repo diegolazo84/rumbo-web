@@ -49,7 +49,7 @@ jobs:
         run: npm run lighthouse
       - name: Guardar evidencia si falla
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: evidencia
           path: |
@@ -112,7 +112,7 @@ jobs:
         run: npm test
       - name: Guardar evidencia si falla
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: evidencia-produccion
           path: test-results/
