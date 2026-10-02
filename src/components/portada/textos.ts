@@ -40,7 +40,7 @@ export function bajadaPlanes(op: Operacion = operacion) {
   return rayas(
     op.preciosConImpuestos
       ? "Precios del piloto en pesos chilenos, impuestos incluidos: es el valor total de cada ciclo de 4 semanas, sin renovación automática. Postular no tiene costo ni te compromete; antes de cualquier cobro acordamos contigo el día de tu revisión, la fecha de inicio y el medio de pago. Hoy no hay pagos en línea."
-      : "Precios de referencia del piloto, en pesos chilenos. Postular no tiene costo ni te compromete. Si avanzamos, acordamos contigo el día de tu revisión, la fecha de inicio y el precio final —con impuestos incluidos— antes de cualquier cobro. Hoy no hay pagos en línea.",
+      : "Precios de referencia del piloto, en pesos chilenos. Postular no tiene costo ni te compromete. Si avanzamos, acordamos contigo el día de tu revisión, la fecha de inicio y el medio de pago antes de cualquier cobro. Hoy no hay pagos en línea.",
   );
 }
 

@@ -519,6 +519,7 @@ h1 em, h2 em { font-style: italic; font-weight: 500; color: var(--terracota); }
   min-block-size: 56px;
   border-radius: var(--r-s);
   font: 600 var(--t-base)/1.4 var(--sans);
+  text-wrap: balance;
   cursor: pointer;
 }
 .acordeon summary::-webkit-details-marker { display: none; }
@@ -891,6 +892,8 @@ html:not(.hidratado) .menu-boton { visibility: hidden; }
 @media (min-width: 1024px) { .plan { padding: 32px; } }
 .plan > .etiqueta { align-self: flex-start; }
 .plan-para { color: var(--tinta-suave); }
+/* Mismo alto para «para quién» en las dos tarjetas: así la primera línea y el bloque de «Incluye» empiezan a la misma altura. */
+@media (min-width: 600px) { .plan-para { min-block-size: 3lh; } }
 .plan-precio { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; }
 .precio {
   font: 600 var(--t-precio)/1 var(--serif);
@@ -900,7 +903,7 @@ html:not(.hidratado) .menu-boton { visibility: hidden; }
 }
 .plan-periodo, .plan-nota, .plan-semana { font-size: var(--t-xs); font-weight: 500; line-height: 1.45; color: var(--tinta-suave); }
 .plan hr { margin-block: 4px; }
-/* La última línea baja con el botón: así el bloque de «Incluye» empieza a la misma altura en los dos planes. */
+/* La última línea baja con el botón: así la línea inferior y los botones quedan a la misma altura en los dos planes. */
 .plan > hr:last-of-type { margin-block-start: auto; }
 .panel-planes-columnas { display: grid; gap: 24px; }
 @media (min-width: 600px) { .panel-planes-columnas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

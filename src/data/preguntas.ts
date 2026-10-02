@@ -105,7 +105,7 @@ const fabricas: Fabrica[] = [
       grupo: "precio",
       pregunta: "¿Me van a cobrar al postular?",
       respuesta: [
-        `No. Postular es gratis y no es una compra ni una reserva. Los precios publicados ${precios}; antes de cualquier cobro acordamos contigo el plan, la fecha de inicio y el precio final.${tope} Hoy no hay pagos en línea.`,
+        `No. Postular es gratis y no es una compra ni una reserva. Los precios publicados ${precios}; antes de cualquier cobro acordamos contigo el plan, la fecha de inicio y el medio de pago, y te informamos el precio final.${tope} Hoy no hay pagos en línea.`,
       ],
     };
   },
@@ -119,7 +119,7 @@ const fabricas: Fabrica[] = [
             formaDePago: op.formaDePago,
             documentoTributario: op.documentoTributario,
           })
-        : "Lo acordamos contigo antes de empezar, junto con el precio final. Hoy no hay pagos en línea.",
+        : "Lo acordamos contigo antes de empezar, y antes de cualquier cobro te informamos el precio final. Hoy no hay pagos en línea.",
     ],
   }),
   (op) => ({

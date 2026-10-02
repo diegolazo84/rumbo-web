@@ -81,7 +81,7 @@ export const operacion = {
   correo: null as string | null, // bloquea el lanzamiento público
   acompanante: null as null | { nombre: string; rol: string; bio: string; foto?: string }, // foto: archivo en public/, p. ej. «acompanante.jpg» (la portada le antepone la base)
   // Decisión del 2 de octubre de 2026: se responde a todas las solicitudes, también a quien no avanza.
-  plazoPrimeraRespuesta: "2 días hábiles" as string | null, // bloquea el lanzamiento público
+  plazoPrimeraRespuesta: "2\u00a0días hábiles" as string | null, // bloquea el lanzamiento público
   respondemosTodas: true,
   // Sin uso en las preguntas ni en Condiciones: las revisiones tienen un texto fijo por plan
   // (TEXTO_REVISIONES). Privacidad los usa si algún día se cargan.
