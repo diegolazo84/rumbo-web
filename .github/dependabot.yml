@@ -1,0 +1,15 @@
+# Actualizaciones mensuales (especificación 6.6): dependencias de npm agrupadas en un
+# solo PR y las acciones de GitHub. Cada PR pasa por el job `verificar` antes de unirse.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      npm:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

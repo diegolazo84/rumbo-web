@@ -1,0 +1,53 @@
+name: Vigilar la plataforma
+
+# Todos los botones de la web llevan a la plataforma de Rumbo (ChatGPT Sites, en beta).
+# Si deja de responder, este workflow abre un issue con la etiqueta «plataforma»; si ya hay
+# uno abierto, lo comenta; cuando vuelve a responder, lo comenta y lo cierra (6.10).
+# GitHub desactiva los cron de repositorios públicos sin actividad durante 60 días:
+# para reactivarlo, Actions → «Vigilar la plataforma» → «Enable workflow».
+on:
+  schedule:
+    - cron: "17 11 * * *" # alrededor de las 8 de la mañana en Chile
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  vigilar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Revisar /postular, /contacto y /estado
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PLATAFORMA: ${{ vars.PLATAFORMA || 'https://rumbo-acompanamiento-diego.diegolazo84.chatgpt.site' }}
+        run: |
+          fallas=""
+          for ruta in /postular /contacto /estado; do
+            codigo=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 --retry 2 --retry-all-errors "$PLATAFORMA$ruta" || true)
+            echo "$ruta → ${codigo:-sin respuesta}"
+            if [ "$codigo" != "200" ]; then
+              fallas="${fallas}- \`${ruta}\` respondió \`${codigo:-sin respuesta}\`"$'\n'
+            fi
+          done
+
+          abierto=$(gh issue list --label plataforma --state open --limit 1 --json number --jq '.[0].number // empty')
+
+          if [ -n "$fallas" ]; then
+            cuerpo="Revisión del $(TZ=America/Santiago date '+%d-%m-%Y %H:%M') (hora de Chile) en ${PLATAFORMA}:"$'\n\n'"${fallas}"$'\n'"Detalle: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            if [ -n "$abierto" ]; then
+              gh issue comment "$abierto" --body "$cuerpo"
+            else
+              gh label create plataforma --color B85A2E --description "Avisos de vigilar-plataforma.yml" 2>/dev/null || true
+              gh issue create --title "La plataforma no responde" --label plataforma --body "$cuerpo"
+            fi
+            exit 1
+          fi
+
+          if [ -n "$abierto" ]; then
+            gh issue comment "$abierto" --body "Responde de nuevo."
+            gh issue close "$abierto"
+          fi

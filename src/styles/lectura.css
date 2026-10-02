@@ -1,0 +1,80 @@
+/* Páginas de lectura: Privacidad, Condiciones, Ayuda y 404.
+   Solo tokens de styles.css: cero hex, tamaños de texto, radios o sombras nuevos. */
+
+.lectura { padding-block: clamp(2.5rem, 1.5rem + 4vw, 5rem) var(--seccion-y); }
+.lectura .encabezado > .bajada { max-inline-size: none; }
+.lectura-cuerpo > * + * { margin-block-start: var(--bloque); }
+
+/* Secciones numeradas (Pasos lectura): aire entre párrafos y, en móvil, columna del número
+   más angosta para que el texto no quede en una tira. */
+.pasos--lectura .paso-cuerpo > * + * { margin-block-start: var(--e-3); }
+.pasos--lectura .paso-cuerpo > .paso-titulo + * { margin-block-start: var(--e-2); }
+.pasos--lectura strong { color: var(--tinta); }
+@media (max-width: 599.98px) {
+  .pasos--lectura > li { grid-template-columns: 40px minmax(0, 1fr); gap: 12px; }
+}
+
+/* Listas de texto corrido dentro de una sección (list-style se hereda de .pasos: se repone). */
+.lectura-lista { list-style: disc; display: grid; gap: var(--e-2); padding-inline-start: 1.25em; }
+.lectura-lista--numerada { list-style: decimal; padding-inline-start: 1.5em; }
+.lectura-lista > li { padding-inline-start: var(--e-1); }
+.lectura-lista > li::marker { color: var(--terracota-texto); font-variant-numeric: tabular-nums; }
+.paso-cuerpo .lista-check { color: var(--tinta); }
+
+/* Condiciones §4: un bloque por plan, con subtítulos sobrios dentro de la sección. */
+.lectura-plan > * + * { margin-block-start: var(--e-2); }
+.pasos--lectura .paso-cuerpo > .paso-titulo + .lectura-plan { margin-block-start: var(--e-4); }
+.paso-cuerpo > .lectura-plan + .lectura-plan { margin-block-start: var(--e-5); }
+.lectura-plan h3 { font: 600 var(--t-base)/1.4 var(--sans); letter-spacing: 0; color: var(--tinta); }
+
+/* Condiciones §10: líneas de ayuda dentro de un aviso, sin viñetas. */
+.aviso .lineas-ayuda { list-style: none; padding: 0; display: grid; gap: var(--e-2); }
+
+/* Cierre: nota legal, enlaces y acciones finales. */
+.lectura-cierre {
+  display: grid;
+  justify-items: start;
+  gap: var(--e-4);
+  padding-block-start: var(--e-6);
+  border-block-start: 1px solid var(--linea);
+}
+.lectura-cierre > .acciones { margin-block-start: var(--e-2); }
+/* Un botón terciario que abre la fila (Imprimir o guardar) alinea su texto con el de la página.
+   En móvil los demás botones ocupan el 100 %, así que todo terciario abre su propia fila. */
+.lectura .acciones > .boton--terciario:first-child { margin-inline-start: -8px; }
+@media (max-width: 479.98px) { .lectura .acciones > .boton--terciario { margin-inline-start: -8px; } }
+
+/* Imprimir: solo funciona con JS. Antes de hidratar ocupa su lugar sin verse, para que
+   la página no se mueva cuando aparece. */
+html:not(.hidratado) .boton-imprimir { visibility: hidden; }
+
+/* Lectura centrada (Ayuda, 404). */
+.lectura--centrada .encabezado,
+.lectura--centrada .lectura-cierre { text-align: center; }
+.lectura--centrada .lectura-cierre { justify-items: center; }
+.lectura--centrada .encabezado > .ojo,
+.lectura--centrada .encabezado > .acciones { justify-content: center; }
+.lectura--centrada .encabezado > h1,
+.lectura--centrada .encabezado > .bajada { margin-inline: auto; }
+
+/* 404: la ruta de puntos termina en «?» sobre el H1. */
+.ruta-puntos--404 { inline-size: min(100%, 22rem); block-size: auto; margin: 0 auto var(--e-5); }
+
+/* Ayuda inmediata: tarjetas de recurso en una columna. El número va arriba (order),
+   aunque en el DOM el nombre va primero. */
+.recursos { list-style: none; display: grid; gap: 16px; text-align: start; }
+.recurso-numero {
+  order: -1;
+  font: 500 var(--t-h2)/1.1 var(--serif);
+  font-variant-numeric: tabular-nums;
+  color: var(--bosque);
+}
+a.recurso-numero { display: inline-flex; align-items: center; align-self: flex-start; min-block-size: 44px; text-decoration: none; }
+.recurso-nombre { font: 600 var(--t-h3)/1.25 var(--serif); letter-spacing: -0.005em; }
+
+@media print {
+  .lectura { padding-block: 0; }
+  .lectura-cierre { border: 0; padding: 0; }
+  .paso-titulo { break-after: avoid; }
+  .recurso, .lectura-plan { break-inside: avoid; }
+}

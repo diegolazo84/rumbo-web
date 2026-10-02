@@ -1,0 +1,200 @@
+/* Portada: estilos propios de src/pages/Home.tsx y src/components/portada/ (5.2).
+   Solo tokens de styles.css: cero hex, tamaños de texto, radios o sombras nuevos.
+   Orden: capítulos 1 a 6 y, al final, los recortes en móvil de la aceptación 19. */
+
+/* ========================================================================
+   Capítulo 1: Promesa (papel con cuadrícula de agenda, 2.7)
+   ======================================================================== */
+.portada {
+  position: relative;
+  isolation: isolate;
+  padding-block: clamp(2.5rem, 1.5rem + 4vw, 5rem) var(--seccion-y);
+}
+.portada::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(to right, rgb(29 38 33 / .045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(29 38 33 / .045) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(60% 70% at 75% 45%, black, transparent 70%);
+  pointer-events: none;
+}
+
+/* En móvil y tableta: primero el texto y después el calendario. */
+.portada-grilla { display: grid; row-gap: var(--bloque); }
+.portada-texto { display: flex; flex-direction: column; align-items: flex-start; }
+.portada-texto > .h1--display,
+.portada-texto > .bajada { margin-block-start: var(--e-5); }
+.portada-foco {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: var(--e-2);
+  margin-block-start: var(--e-4);
+  max-inline-size: var(--medida);
+  font-size: var(--t-s);
+  line-height: 1.55;
+  color: var(--tinta-suave);
+}
+.portada-foco .icono { margin-block-start: 4px; }
+/* Ancho completo: por debajo de 480 px los botones se apilan al 100 %. */
+.portada-texto > .acciones { align-self: stretch; margin-block-start: var(--e-6); }
+.portada-salida { margin-block-start: var(--e-3); }
+.portada-confianza { margin-block-start: var(--e-4); }
+.portada-ruta { display: none; }
+
+/* Desde 1024 px: texto a la izquierda, calendario a la derecha y la ruta de puntos
+   bajo el texto, entrando en la separación hacia el calendario. */
+@media (min-width: 1024px) {
+  .portada-grilla {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    grid-template-rows: auto 1fr;
+    column-gap: var(--e-8);
+    row-gap: 0;
+  }
+  .portada-texto { grid-column: 1; grid-row: 1; padding-block-start: var(--e-4); }
+  .portada-grilla > .calendario { grid-column: 2; grid-row: 1 / -1; align-self: start; }
+  .portada-ruta {
+    display: block;
+    grid-column: 1;
+    grid-row: 2;
+    align-self: end;
+    inline-size: calc(100% + var(--e-7));
+    max-inline-size: none;
+    block-size: auto;
+    margin-block-start: var(--e-6);
+    opacity: 0.6;
+  }
+}
+
+/* Entre 1024 y 1279 px el H1 no cabe en 3 líneas en su columna y dejaría «posible.»
+   sola (aceptación 20): la insignia y el H1 ocupan las dos columnas, y el resto del
+   texto queda a la izquierda del calendario. */
+@media (min-width: 1024px) and (max-width: 1279.98px) {
+  .portada-grilla { grid-template-rows: repeat(7, auto) 1fr; }
+  .portada-texto { display: contents; }
+  .portada-texto > * { grid-column: 1; }
+  .portada-texto > .etiqueta { grid-row: 1; grid-column: 1 / -1; justify-self: start; }
+  .portada-texto > .h1--display { grid-row: 2; grid-column: 1 / -1; }
+  .portada-texto > .bajada { grid-row: 3; }
+  .portada-foco { grid-row: 4; }
+  .portada-texto > .acciones { grid-row: 5; }
+  .portada-salida { grid-row: 6; }
+  .portada-confianza { grid-row: 7; }
+  .portada-grilla > .calendario { grid-row: 3 / -1; margin-block-start: var(--e-5); }
+  .portada-ruta { grid-row: 8; }
+}
+
+/* ========================================================================
+   Capítulo 2: Para quién (papel hondo)
+   ======================================================================== */
+.mas-adelante { display: grid; gap: var(--e-5); }
+.mas-adelante-cabeza { max-inline-size: var(--medida); }
+.mas-adelante-cabeza > h3 { margin-block-end: var(--e-3); }
+.mas-adelante-cabeza > p:last-child { color: var(--tinta-suave); }
+.mas-adelante-aviso {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: var(--e-2);
+  font-size: var(--t-s);
+  line-height: 1.55;
+  color: var(--tinta);
+  max-inline-size: var(--medida);
+}
+.mas-adelante-aviso .icono { margin-block-start: 4px; }
+.mas-adelante-nota { max-inline-size: var(--medida); }
+.aviso-salud { margin-block-start: var(--bloque); }
+
+/* ========================================================================
+   Capítulo 3: Método (bosque)
+   ======================================================================== */
+.metodo { display: grid; gap: var(--bloque); }
+.esperar-titulo { margin-block-end: var(--bloque); }
+/* Móvil: icono a la izquierda. Desde 600 px: icono arriba, en 2 y luego 4 columnas. */
+.esperar-lista { list-style: none; display: grid; gap: var(--e-5); }
+.esperar-lista li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-content: start;
+  column-gap: var(--e-3);
+  row-gap: var(--e-1);
+  font-size: var(--t-s);
+  line-height: 1.55;
+  color: var(--sobre-oscuro-suave);
+}
+.esperar-lista .icono { grid-row: span 2; color: var(--ambar); }
+.esperar-lista h4 { color: var(--papel); }
+@media (min-width: 600px) {
+  .esperar-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--e-6) var(--e-5); }
+  .esperar-lista li { grid-template-columns: minmax(0, 1fr); row-gap: var(--e-2); }
+  .esperar-lista .icono { grid-row: auto; margin-block-end: var(--e-1); }
+}
+@media (min-width: 1024px) {
+  .esperar-lista { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* «Quién te acompaña» (solo con operacion.acompanante). */
+.acompanante { margin-block-start: var(--bloque); }
+.acompanante h3 { color: var(--papel); }
+.acompanante--foto { grid-template-columns: 96px minmax(0, 1fr); gap: var(--e-5); align-items: center; }
+.acompanante-foto { inline-size: 96px; block-size: 96px; border-radius: var(--r-full); object-fit: cover; }
+
+/* ========================================================================
+   Capítulo 4: Dentro de Rumbo (papel)
+   ======================================================================== */
+.que-recibes-nota { margin-block-start: var(--e-4); max-inline-size: var(--medida); }
+.comunidad { display: grid; gap: var(--bloque); }
+.comunidad-texto { display: grid; gap: var(--e-5); align-content: start; }
+.comunidad-texto .encabezado { margin-block-end: 0; }
+.comunidad-intro { margin-block-start: var(--e-4); max-inline-size: var(--medida); }
+/* Tableta: medida de lectura para el texto y el ranking al ancho del calendario. */
+@media (min-width: 600px) and (max-width: 1023.98px) {
+  .comunidad-texto { max-inline-size: var(--medida); }
+  .comunidad-ranking { max-inline-size: 640px; }
+}
+/* Desde 1024 px: texto en 6 columnas y ranking en 5, desplazado 1 columna. */
+@media (min-width: 1024px) {
+  .comunidad { grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--e-5); align-items: start; }
+  .comunidad-texto { grid-column: 1 / span 6; }
+  .comunidad-ranking { grid-column: 8 / span 5; }
+}
+
+/* ========================================================================
+   Capítulo 5: Decidir (papel hondo)
+   ======================================================================== */
+.planes-ayuda { margin-block-start: var(--e-5); max-inline-size: var(--medida); font-size: var(--t-s); line-height: 1.55; }
+.preguntas-contacto { display: grid; justify-items: start; gap: var(--e-1); margin-block-start: var(--e-5); }
+.preguntas { display: grid; gap: var(--bloque); }
+.preguntas-grupo > h3 { margin-block-end: var(--e-3); }
+
+/* ========================================================================
+   Capítulo 6: Cierre (bosque, centrado)
+   ======================================================================== */
+.cierre .encabezado { margin-block-end: 0; }
+.cierre-salida { margin-block-start: var(--e-3); }
+.cierre .lista-check--en-linea { margin-block-start: var(--e-4); }
+
+/* ========================================================================
+   Recortes en móvil (aceptación 19), en el orden de la especificación:
+   1. aire de «¿Es para ti?»; 2. filas «Más adelante» más bajas; 3. ranking más compacto.
+   ======================================================================== */
+@media (max-width: 599.98px) {
+  #para-quien .encaje { gap: var(--e-4); padding: var(--e-5) var(--e-4); }
+  #para-quien .encaje-columnas { gap: var(--e-5); }
+  #para-quien .encaje h4 { margin-block-end: var(--e-2); }
+  #para-quien .encaje .lista-check { row-gap: var(--e-2); }
+
+  /* El mosaico sube a la fila de etiquetas y el texto usa todo el ancho de la fila. */
+  .fila-futura { gap: var(--e-2) var(--e-3); align-items: center; }
+  .fila-futura-cuerpo { display: contents; }
+  .fila-futura-cuerpo > :not(.fila-futura-etiquetas) { grid-column: 1 / -1; }
+
+  .comunidad-ranking .ranking-tarjeta { gap: var(--e-3); }
+
+  /* Aire que no fija la especificación. */
+  .portada-texto > .h1--display,
+  .portada-texto > .bajada { margin-block-start: var(--e-4); }
+  .mas-adelante { gap: var(--e-4); }
+}

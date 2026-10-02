@@ -1,0 +1,17 @@
+{
+  "name": "Rumbo · Ordena lo que importa. Avanza con apoyo.",
+  "short_name": "Rumbo",
+  "description": "Planificación personal con acompañamiento humano. Piloto en preparación en Santiago de Chile.",
+  "lang": "es-CL",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "browser",
+  "background_color": "#F5EFE4",
+  "theme_color": "#F5EFE4",
+  "icons": [
+    { "src": "icons/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
