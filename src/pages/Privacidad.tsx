@@ -1,3 +1,5 @@
+import { Encabezado, Pasos } from "../components/Bloques";
+import { SeAbrePlataforma } from "../components/Enlaces";
 import { rutas } from "../data/rumbo";
 
 // Versión del piloto. Pendiente de revisión legal antes de abrir el piloto
@@ -10,7 +12,7 @@ const bloques = [
     texto: (
       <>
         Rumbo es un proyecto piloto gestionado desde Santiago de Chile. Para cualquier consulta sobre tus datos,
-        escríbenos desde la <a href={rutas.contacto}>página de contacto</a>.
+        escríbenos desde la <a href={rutas.contacto}>página de contacto<SeAbrePlataforma /></a>.
       </>
     ),
   },
@@ -54,33 +56,31 @@ const bloques = [
     texto: (
       <>
         Puedes pedir acceder, corregir o eliminar tus datos, u oponerte a su uso, escribiéndonos desde la{" "}
-        <a href={rutas.contacto}>página de contacto</a>, conforme a la Ley N.º 19.628 sobre protección de la vida
+        <a href={rutas.contacto}>página de contacto<SeAbrePlataforma /></a>, conforme a la Ley N.º 19.628 sobre protección de la vida
         privada. También puedes retirar tu postulación desde el enlace privado que recibes al enviarla.
       </>
     ),
   },
 ];
 
+// Página a medio migrar: el texto definitivo (5.3) se escribe al completar las páginas de lectura.
 export default function Privacidad() {
   return (
-    <section className="seccion contenedor angosto legal">
-      <p className="ojo">Privacidad</p>
-      <h1>Cuidamos lo que nos cuentas.</h1>
-      <p className="suave">
-        Versión del piloto, {VERSION}. La actualizaremos a medida que el servicio crezca. El aviso detallado de la
-        plataforma está en <a href={rutas.privacidadPlataforma}>privacidad del piloto</a>.
-      </p>
-      <ol className="legal-lista">
-        {bloques.map((b, i) => (
-          <li key={b.titulo}>
-            <span className="paso-numero">{String(i + 1).padStart(2, "0")}</span>
-            <div>
-              <h2>{b.titulo}</h2>
-              <p>{b.texto}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
-    </section>
+    <div className="lectura">
+      <div className="contenedor contenedor--lectura lectura-cuerpo">
+        <Encabezado
+          ojo="Privacidad"
+          titulo="Cuidamos lo que nos cuentas."
+          nivel={1}
+          bajada={
+            <>
+              Versión del piloto, {VERSION}. La actualizaremos a medida que el servicio crezca. El aviso detallado de
+              la plataforma está en <a href={rutas.privacidadPlataforma}>privacidad del piloto<SeAbrePlataforma /></a>.
+            </>
+          }
+        />
+        <Pasos lectura nivelTitulo="h2" pasos={bloques.map((b) => ({ titulo: b.titulo, contenido: <p>{b.texto}</p> }))} />
+      </div>
+    </div>
   );
 }

@@ -1,0 +1,26 @@
+/* Páginas de lectura: Privacidad, Condiciones, Ayuda y 404.
+   Solo tokens de styles.css: cero hex, tamaños de texto, radios o sombras nuevos. */
+
+.lectura { padding-block: clamp(2.5rem, 1.5rem + 4vw, 5rem) var(--seccion-y); }
+.lectura .encabezado > .bajada { max-inline-size: none; }
+.lectura-cuerpo > * + * { margin-block-start: var(--bloque); }
+
+/* Lectura centrada (Ayuda, 404). */
+.lectura--centrada .encabezado { text-align: center; }
+.lectura--centrada .encabezado > .ojo,
+.lectura--centrada .encabezado > .acciones { justify-content: center; }
+.lectura--centrada .encabezado > h1,
+.lectura--centrada .encabezado > .bajada { margin-inline: auto; }
+
+/* 404: la ruta de puntos termina en «?» sobre el H1. */
+.ruta-puntos--404 { inline-size: min(100%, 22rem); block-size: auto; margin: 0 auto var(--e-5); }
+
+/* Ayuda inmediata: tarjetas de recurso en una columna. */
+.recursos { list-style: none; display: grid; gap: 16px; text-align: start; }
+.recurso-numero {
+  font: 500 var(--t-h2)/1.1 var(--serif);
+  font-variant-numeric: tabular-nums;
+  color: var(--bosque);
+}
+a.recurso-numero { display: inline-flex; align-items: center; align-self: flex-start; min-block-size: 44px; text-decoration: none; }
+.recurso-nombre { font: 600 var(--t-h3)/1.25 var(--serif); letter-spacing: -0.005em; }

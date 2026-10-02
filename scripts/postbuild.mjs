@@ -61,9 +61,10 @@ function csp(scriptsExtra = []) {
 
 const imagenSocial = `${SITE_URL}/${IMAGEN_SOCIAL.ruta}`;
 
-function cabeza({ titulo, descripcion, canonical, indexable, extra = "" }) {
+function cabeza({ titulo, descripcion, ogDescripcion, canonical, indexable, extra = "" }) {
   const t = esc(titulo);
   const d = esc(descripcion);
+  const og = esc(ogDescripcion ?? descripcion);
   return [
     `<meta http-equiv="Content-Security-Policy" content="${csp()}" />`,
     `<title>${t}</title>`,
@@ -77,7 +78,7 @@ function cabeza({ titulo, descripcion, canonical, indexable, extra = "" }) {
     `<meta property="og:type" content="website" />`,
     `<meta property="og:locale" content="es_CL" />`,
     `<meta property="og:title" content="${t}" />`,
-    `<meta property="og:description" content="${d}" />`,
+    `<meta property="og:description" content="${og}" />`,
     canonical ? `<meta property="og:url" content="${canonical}" />` : "",
     `<meta property="og:image" content="${imagenSocial}" />`,
     `<meta property="og:image:type" content="image/png" />`,
@@ -140,6 +141,7 @@ for (const p of paginas) {
     cabeza({
       titulo: p.titulo,
       descripcion: p.descripcion,
+      ogDescripcion: p.ogDescripcion,
       canonical,
       indexable: true,
       extra: p.id === "inicio" ? jsonLd() : "",

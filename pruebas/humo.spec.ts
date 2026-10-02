@@ -5,7 +5,19 @@ import { gzipSync } from "node:zlib";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { IMAGEN_SOCIAL, paginas } from "../src/data/paginas";
-import { PLATAFORMA } from "../src/data/rumbo";
+import { PLATAFORMA, TEXTO_PLATAFORMA, ayuda, operacion } from "../src/data/rumbo";
+
+// Destinos externos permitidos (sección 4 de la especificación).
+const RUTAS_PLATAFORMA = ["/postular", "/contacto", "/mi-programa", "/comunidad", "/privacidad-piloto"];
+const TELEFONOS = ["tel:131", "tel:6003607777", "tel:1412", ...(ayuda.incluir1455 ? ["tel:1455"] : [])];
+const AREAS_PERMITIDAS = [
+  "emprendimiento",
+  "organizacion",
+  "bienestar",
+  "alimentacion",
+  "movimiento",
+  ...[operacion.paramEstudio, operacion.paramCambios].filter((v): v is string => !!v),
+];
 
 const SITE_URL = (process.env.SITE_URL ?? process.env.URL_PRUEBA ?? "https://diegolazo84.github.io/rumbo-web").replace(
   /\/$/,
@@ -47,7 +59,12 @@ for (const p of paginas) {
       const page = await ctx.newPage();
       await page.goto(relativa(p.ruta));
       await expect(page.locator("h1")).toBeVisible();
-      await expect(page.locator("footer")).toContainText("no ofrece atención de emergencias");
+      await expect(page.locator("footer")).toContainText("Rumbo no es un servicio de salud ni de urgencias.");
+      // Nada queda oculto a la espera de JS.
+      const ocultos = await page
+        .locator("main *")
+        .evaluateAll((els) => els.filter((e) => getComputedStyle(e).opacity === "0").length);
+      expect(ocultos).toBe(0);
       await ctx.close();
     });
 
@@ -59,21 +76,58 @@ for (const p of paginas) {
       expect(errores).toEqual([]);
     });
 
-    test("enlaces internos responden 200 sin redirección y externos van a la plataforma", async ({
+    test("enlaces internos responden 200 sin redirección y externos van a destinos permitidos", async ({
       page,
       request,
     }) => {
       await page.goto(relativa(p.ruta));
-      const hrefs = await page.locator("a[href]").evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
+      const enlaces = await page.locator("a[href]").evaluateAll((as) =>
+        as.map((a) => ({
+          href: (a as HTMLAnchorElement).href,
+          evento: a.getAttribute("data-umami-event"),
+          ubicacion: a.getAttribute("data-umami-event-ubicacion"),
+          texto: a.textContent ?? "",
+        })),
+      );
       const origen = new URL(page.url()).origin;
-      for (const href of new Set(hrefs)) {
-        const url = new URL(href);
-        if (url.origin === origen) {
+      const ubicaciones: string[] = [];
+      for (const e of enlaces) {
+        const url = new URL(e.href);
+        if (url.protocol === "tel:") {
+          expect(TELEFONOS, `teléfono inesperado: ${e.href}`).toContain(e.href);
+        } else if (url.protocol === "mailto:") {
+          expect(e.href, "correo inesperado").toBe(`mailto:${operacion.correo}`);
+        } else if (url.origin === origen) {
           const r = await request.get(url.pathname + url.search, { maxRedirects: 0 });
-          expect(r.status(), `enlace roto o con redirección: ${href}`).toBe(200);
+          expect(r.status(), `enlace roto o con redirección: ${e.href}`).toBe(200);
         } else {
-          expect(href.startsWith(PLATAFORMA + "/"), `enlace externo inesperado: ${href}`).toBe(true);
+          expect(url.origin, `enlace externo inesperado: ${e.href}`).toBe(PLATAFORMA);
+          expect(RUTAS_PLATAFORMA, `ruta de la plataforma no permitida: ${e.href}`).toContain(url.pathname);
+          expect(e.texto, `sin aviso de salida: ${e.href}`).toContain(TEXTO_PLATAFORMA);
+          if (url.pathname === "/postular") {
+            for (const [clave, valor] of url.searchParams) {
+              if (clave === "area") expect(AREAS_PERMITIDAS).toContain(valor);
+              else if (clave === "apoyo") expect(["coach", "cercano"]).toContain(valor);
+              else throw new Error(`parámetro no permitido: ${e.href}`);
+            }
+            expect(e.evento, `postular sin analítica: ${e.href}`).toBe("postular");
+            expect(e.ubicacion, `postular sin ubicación: ${e.href}`).toBeTruthy();
+            ubicaciones.push(e.ubicacion!);
+          }
         }
+      }
+      expect(new Set(ubicaciones).size, "ubicaciones de postular repetidas").toBe(ubicaciones.length);
+    });
+
+    test("sin desborde horizontal de 320 a 1440 px", async ({ page }) => {
+      for (const ancho of [320, 390, 768, 1024, 1440]) {
+        await page.setViewportSize({ width: ancho, height: 900 });
+        await page.goto(relativa(p.ruta));
+        const { sw, cw } = await page.evaluate(() => ({
+          sw: document.documentElement.scrollWidth,
+          cw: document.documentElement.clientWidth,
+        }));
+        expect(sw, `desborde a ${ancho} px`).toBe(cw);
       }
     });
 
@@ -88,10 +142,11 @@ for (const p of paginas) {
   });
 }
 
-test("accesibilidad con estados abiertos: menú, detalles y acción marcada", async ({ page, isMobile }) => {
+test("accesibilidad con estados abiertos: menú, detalles y acciones marcadas", async ({ page, isMobile }) => {
   await page.goto("./");
   if (isMobile) await page.getByRole("button", { name: "Menú" }).click();
   await page.getByLabel(/Reservar 2 bloques de trabajo/).check();
+  await page.getByLabel(/Cerrar el día: 3 cosas que hiciste/).check();
   await page.locator("details").evaluateAll((ds) => ds.forEach((d) => ((d as HTMLDetailsElement).open = true)));
   const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
   expect(r.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
@@ -99,20 +154,46 @@ test("accesibilidad con estados abiertos: menú, detalles y acción marcada", as
 
 test("el calendario de ejemplo es interactivo tras hidratar", async ({ page }) => {
   await page.goto("./");
-  const nivel = page.locator(".calendario-nivel span");
-  await expect(nivel).toHaveText("9 créditos");
+  const creditos = page.locator(".calendario-creditos");
+  const anuncio = page.locator('.calendario [aria-live="polite"]');
+  await expect(creditos).toHaveText("9 créditos");
+  await expect(page.locator(".calendario")).not.toContainText("Día completo");
   await page.getByLabel(/Reservar 2 bloques de trabajo/).check();
   // 1 por la acción + 2 por día completo (martes tiene una sola acción).
-  await expect(nivel).toHaveText("12 créditos");
+  await expect(creditos).toHaveText("12 créditos");
+  await expect(page.locator(".calendario")).toContainText("Día completo · +2");
+  await expect(anuncio).toHaveText("12 créditos. Nivel 2, Impulso.");
 });
 
-test("menú móvil abre y cierra", async ({ page, isMobile }) => {
+test("menú móvil: abre, Escape, toque fuera y Tab fuera lo cierran", async ({ page, isMobile }) => {
   test.skip(!isMobile, "solo en móvil");
   await page.goto("./");
   const boton = page.getByRole("button", { name: "Menú" });
+  const panel = page.locator("#menu-movil");
+
   await boton.click();
+  await expect(boton).toHaveAttribute("aria-expanded", "true");
   await expect(page.getByRole("navigation", { name: "Principal" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Cerrar" })).toHaveAttribute("aria-expanded", "true");
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await expect(boton).toBeFocused();
+
+  await boton.click();
+  await page.mouse.click(200, 800);
+  await expect(panel).toBeHidden();
+
+  await boton.click();
+  await panel.getByRole("link", { name: /Mi espacio/ }).focus();
+  await page.keyboard.press("Tab");
+  await expect(panel).toBeHidden();
+  await expect(boton).toHaveAttribute("aria-expanded", "false");
+});
+
+test("la cabecera de Ayuda inmediata no lleva enlace a postular", async ({ page }) => {
+  await page.goto("ayuda/");
+  await expect(page.locator('header a[href*="/postular"]')).toHaveCount(0);
+  await page.goto("./");
+  await expect(page.locator('header a[href*="/postular"]')).toHaveCount(1);
 });
 
 test("404: estado 404, noindex y página propia", PROD, async ({ page, request }) => {
@@ -120,10 +201,17 @@ test("404: estado 404, noindex y página propia", PROD, async ({ page, request }
   expect(r.status()).toBe(404);
   const html = await r.text();
   expect(html).toContain('<meta name="robots" content="noindex" />');
-  expect(html).toContain("Esta página no existe.");
+  expect(html).toContain("No encontramos esta");
   const errores = vigilarConsola(page);
   await page.goto("otra/ruta/inexistente");
-  await expect(page.locator("h1")).toHaveText("Esta página no existe.");
+  await expect(page.locator("h1")).toHaveText("No encontramos esta página.");
+  // El aviso de crisis también está en la 404, y el pie llega al fondo.
+  await expect(page.locator("footer")).toContainText("*4141");
+  const { pie, alto } = await page.evaluate(() => ({
+    pie: document.querySelector("footer")!.getBoundingClientRect().bottom + scrollY,
+    alto: Math.max(innerHeight, document.documentElement.scrollHeight),
+  }));
+  expect(pie).toBeGreaterThanOrEqual(alto - 1);
   await page.getByRole("link", { name: "Volver al inicio" }).click();
   await expect(page.locator("h1")).toContainText("semana posible");
   // El único error aceptable es el propio estado 404 del documento.
@@ -187,9 +275,9 @@ test("presupuesto de peso (dist/)", async () => {
   const js = assets.filter((f) => f.endsWith(".js")).reduce((t, f) => t + gz(f), 0);
   const css = assets.filter((f) => f.endsWith(".css")).reduce((t, f) => t + gz(f), 0);
   expect(js, "JS comprimido").toBeLessThan(110 * 1024);
-  expect(css, "CSS comprimido").toBeLessThan(10 * 1024);
+  expect(css, "CSS comprimido").toBeLessThan(12 * 1024);
   const html = readFileSync("dist/index.html");
-  expect(html.length, "HTML de la portada").toBeLessThan(60 * 1024);
+  expect(html.length, "HTML de la portada").toBeLessThan(70 * 1024);
   const precargas = [...html.toString().matchAll(/rel="preload" href="[^"]*\/assets\/([^"]+)"/g)].map((m) => m[1]);
   const pesoPrecargas = precargas.reduce((t, f) => t + readFileSync(`dist/assets/${f}`).length, 0);
   expect(pesoPrecargas, "fuentes precargadas").toBeLessThan(200 * 1024);

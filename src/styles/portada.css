@@ -1,0 +1,49 @@
+/* Portada: estilos propios de src/pages/Home.tsx (capítulos 1 a 6).
+   Solo tokens de styles.css: cero hex, tamaños de texto, radios o sombras nuevos. */
+
+/* Capítulo 1: papel con cuadrícula de agenda (2.7), solo en .portada::before. */
+.portada {
+  position: relative;
+  isolation: isolate;
+  padding-block: clamp(2.5rem, 1.5rem + 4vw, 5rem) var(--seccion-y);
+}
+.portada::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(to right, rgb(29 38 33 / .045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(29 38 33 / .045) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(60% 70% at 75% 45%, black, transparent 70%);
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------------------
+   Base provisional (fundación): solo ritmo vertical para que la portada a
+   medio migrar se lea bien. La maquetación de cada capítulo (grilla del
+   capítulo 1, «Lo que puedes esperar», progreso y comunidad, preguntas,
+   cierre) se define aquí al completar la portada.
+   ------------------------------------------------------------------------ */
+.portada-texto { display: grid; gap: 16px; justify-items: start; margin-block-end: var(--bloque); }
+.portada-foco { display: flex; gap: 8px; align-items: baseline; font-size: var(--t-s); color: var(--tinta-suave); }
+.mas-adelante { display: grid; gap: 16px; margin-block-end: var(--bloque); }
+.mas-adelante-aviso { display: flex; gap: 8px; align-items: baseline; font-size: var(--t-s); }
+.metodo { display: grid; gap: var(--bloque); }
+.esperar-titulo { margin-block-end: var(--bloque); color: var(--papel); }
+.esperar { list-style: none; display: grid; gap: 32px 24px; }
+.esperar li { display: grid; gap: 8px; align-content: start; color: var(--sobre-oscuro-suave); font-size: var(--t-s); }
+.esperar .icono { color: var(--ambar); }
+.esperar h4 { color: var(--papel); }
+.nota-bajo { margin-block-start: 16px; }
+.comunidad { display: grid; gap: var(--bloque); }
+.comunidad-texto { display: grid; gap: 24px; align-content: start; }
+.comunidad-texto .encabezado { margin-block-end: 0; }
+.comunidad-intro { margin-block-start: 16px; max-inline-size: var(--medida); }
+.planes-ayuda { margin-block-start: 24px; font-size: var(--t-s); }
+.preguntas { display: grid; gap: var(--bloque); }
+.preguntas-grupo h3 { margin-block-end: 8px; }
+.cierre .microcopia { margin-block-start: 16px; }
+.cierre .lista-check--en-linea { margin-block-start: 16px; }
+.aviso-salud { margin-block-start: var(--bloque); }

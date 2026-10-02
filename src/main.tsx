@@ -6,7 +6,10 @@ import { BASENAME } from "./base";
 import "@fontsource-variable/fraunces/opsz.css";
 import "@fontsource-variable/fraunces/opsz-italic.css";
 import "@fontsource-variable/instrument-sans/wght.css";
+// Tokens, base y componentes compartidos; después, lo propio de cada tipo de página.
 import "./styles.css";
+import "./styles/portada.css";
+import "./styles/lectura.css";
 
 const raiz = document.getElementById("root")!;
 const app = (
@@ -28,3 +31,6 @@ if (raiz.firstElementChild) {
 } else {
   createRoot(raiz).render(app);
 }
+// Activa los efectos que dependen de JS (revelado, menú). Ningún script en línea oculta
+// contenido: si el bundle no carga, esta clase nunca aparece y todo queda visible.
+document.documentElement.classList.add("hidratado");
