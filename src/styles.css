@@ -182,8 +182,6 @@ a { color: var(--bosque); text-decoration-thickness: 1px; text-underline-offset:
     margin-block-end: 0;
   }
   .partido > .partido-contenido { grid-column: 6 / -1; }
-  .partido--4 > .encabezado--partido { grid-column: 1 / span 4; }
-  .partido--4 > .partido-contenido { grid-column: 5 / -1; }
 }
 
 /* ========================================================================
@@ -984,3 +982,5 @@ html:not(.hidratado) .menu-boton { visibility: hidden; }
 
 /* Al final, para ganar a las variantes de etiqueta. */
 .nowrap { white-space: nowrap; }
+/* Solo desde 600 px: en móvil el texto corta donde quepa, para no dejar una palabra sola. */
+@media (min-width: 600px) { .nowrap-amplio { white-space: nowrap; } }

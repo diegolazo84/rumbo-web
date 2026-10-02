@@ -20,6 +20,10 @@ export const rutas = {
 export const LEMA = "Ordena lo que importa. Avanza con apoyo.";
 export const ESTADO_PILOTO = "Piloto en preparación · Santiago de Chile";
 
+// Analítica (Umami) activa: solo si la compilación trae VITE_UMAMI_WEBSITE_ID en el entorno
+// (no en un .env: postbuild.mjs solo lee process.env y el texto debe coincidir con el script).
+export const ANALITICA_ACTIVA = Boolean(import.meta.env?.VITE_UMAMI_WEBSITE_ID); // «?.»: las pruebas importan este archivo fuera de Vite
+
 // Texto oculto que lleva todo enlace que sale a la plataforma.
 export const TEXTO_PLATAFORMA = "(se abre en la plataforma de Rumbo)";
 
@@ -63,7 +67,7 @@ export type EstadoId = keyof typeof estados;
 export const operacion = {
   responsable: null as null | { nombre: string; rut?: string; comuna: string }, // bloquea el lanzamiento público
   correo: null as string | null, // bloquea el lanzamiento público
-  acompanante: null as null | { nombre: string; rol: string; bio: string; foto?: string },
+  acompanante: null as null | { nombre: string; rol: string; bio: string; foto?: string }, // foto: archivo en public/, p. ej. «acompanante.jpg» (la portada le antepone la base)
   plazoPrimeraRespuesta: null as string | null, // formato: «5 días hábiles»; bloquea el lanzamiento público
   respondemosTodas: false, // recomendado true para el lanzamiento: responder también a quien no avanza (8.3)
   canalRevisiones: null as string | null, // formato: «videollamada»

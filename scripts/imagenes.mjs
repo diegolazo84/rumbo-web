@@ -17,19 +17,24 @@ const FRAUNCES = archivoFuente("@fontsource-variable/fraunces", "fraunces-latin-
 const FRAUNCES_I = archivoFuente("@fontsource-variable/fraunces", "fraunces-latin-opsz-italic.woff2");
 const INSTRUMENT = archivoFuente("@fontsource-variable/instrument-sans", "instrument-sans-latin-wght-normal.woff2");
 
-// Mismos valores que src/styles.css y src/data/rumbo.ts.
+// Mismos valores que src/styles.css y src/data/rumbo.ts (tokens 2.1).
 const C = {
   papel: "#f5efe4",
-  papel2: "#ede4d4",
-  blanco: "#fffdf8",
+  superficie: "#fffdf8",
+  linea: "#ddd2bf",
+  lineaFuerte: "#887b69",
   tinta: "#1d2621",
   tintaSuave: "#4d5a52",
-  verde: "#1f4636",
-  calido: "#b85a2e",
+  bosque: "#1f4636",
+  terracota: "#b85a2e",
+  terracotaTexto: "#9a4522",
+  ambar: "#f0b48f",
   proyecto: "#158b83",
   orden: "#3973c5",
   bienestar: "#b77b16",
 };
+const LEMA = "Ordena lo que importa. Avanza con apoyo.";
+const ESTADO_PILOTO = "Piloto en preparación · Santiago de Chile";
 
 const fuentes = `
 @font-face { font-family: F; src: url(${FRAUNCES}) format("woff2"); font-weight: 100 900; }
@@ -38,53 +43,74 @@ const fuentes = `
 * { box-sizing: border-box; margin: 0; }
 body { -webkit-font-smoothing: antialiased; }`;
 
+// Ruta de puntos (2.7): la misma curva y las mismas paradas que src/components/RutaPuntos.tsx.
+const rutaPuntos = `<svg class="ruta" viewBox="0 0 600 200" fill="none" aria-hidden="true">
+  <path d="M8 160 C140 160 160 40 300 60 S470 170 592 40" stroke="${C.lineaFuerte}" stroke-opacity=".5"
+    stroke-width="1.5" stroke-linecap="round" stroke-dasharray="0.1 10" />
+  <circle cx="8" cy="160" r="4" fill="${C.proyecto}" />
+  <circle cx="300" cy="60" r="4" fill="${C.orden}" />
+  <circle cx="470" cy="150" r="4" fill="${C.bienestar}" />
+  <circle cx="592" cy="40" r="5" stroke="${C.terracota}" stroke-width="1.5" />
+</svg>`;
+
 const accion = (color, titulo, detalle) => `
   <div class="accion" style="--c:${color}"><span class="caja"></span><div><b>${titulo}</b><small>${detalle}</small></div></div>`;
 
+// Imagen para redes (6.4): papel con cuadrícula de agenda, logo, H1, lema, etiqueta en contorno,
+// tarjeta de ejemplo con tres acciones y la ruta de puntos. Sin cifras, testimonios ni personas.
 const og = `<!doctype html><html lang="es-CL"><head><meta charset="utf-8"><style>${fuentes}
-body { width: 1200px; height: 630px; background: ${C.papel}; color: ${C.tinta}; font-family: S; display: grid;
-  grid-template-columns: 1fr 430px; gap: 56px; padding: 64px 72px; align-items: center; overflow: hidden; }
-.logo { font-family: F; font-weight: 600; font-size: 44px; color: ${C.verde}; letter-spacing: -0.01em; }
-.logo span { color: ${C.calido}; }
-h1 { font-family: F; font-weight: 600; font-size: 68px; line-height: 1.04; letter-spacing: -0.02em; margin: 34px 0 22px; }
-h1 em { color: ${C.calido}; font-weight: 500; }
-p { font-size: 25px; line-height: 1.35; color: ${C.tintaSuave}; max-width: 30em; }
-.insignia { display: inline-block; margin-top: 26px; background: #e2eadf; color: ${C.verde}; font-weight: 600;
-  font-size: 20px; padding: 8px 18px; border-radius: 999px; }
-.tarjeta { background: ${C.blanco}; border: 1px solid #ddd2bf; border-radius: 26px; padding: 26px;
-  box-shadow: 0 30px 60px -36px rgba(31,70,54,.5); display: grid; gap: 12px; }
-.tarjeta h2 { font-family: S; font-size: 15px; letter-spacing: .1em; text-transform: uppercase; color: ${C.tintaSuave}; }
-.accion { display: flex; gap: 12px; align-items: flex-start; padding: 13px 14px; border-radius: 12px;
-  background: color-mix(in srgb, var(--c) 10%, white); border-left: 5px solid var(--c); }
-.caja { width: 20px; height: 20px; border-radius: 5px; border: 2px solid var(--c); flex: none; margin-top: 2px; }
-.accion b { display: block; font-size: 19px; font-weight: 600; line-height: 1.25; }
+body { position: relative; width: 1200px; height: 630px; background: ${C.papel}; color: ${C.tinta};
+  font-family: S; display: grid; grid-template-columns: 1fr 430px; gap: 56px; padding: 60px 72px;
+  align-items: center; overflow: hidden; }
+/* Cuadrícula de agenda, igual que .portada::before */
+body::before { content: ""; position: absolute; inset: 0;
+  background-image: linear-gradient(to right, rgb(29 38 33 / .045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(29 38 33 / .045) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(60% 70% at 75% 45%, black, transparent 70%); }
+.ruta { position: absolute; left: 24px; bottom: -36px; width: 660px; opacity: .6; }
+.texto, .tarjeta { position: relative; }
+.logo { font-family: F; font-weight: 600; font-size: 44px; line-height: 1; color: ${C.bosque}; letter-spacing: -0.01em; }
+.logo span { color: ${C.terracota}; }
+h1 { font-family: F; font-weight: 500; font-size: 58px; line-height: 1.06; letter-spacing: -0.025em; margin: 30px 0 18px; text-wrap: balance; }
+h1 em { color: ${C.terracota}; }
+.lema { font-family: F; font-style: italic; font-weight: 500; font-size: 27px; line-height: 1.45; color: ${C.tintaSuave}; }
+.insignia { display: inline-block; margin-top: 28px; border: 1.5px solid ${C.lineaFuerte}; color: ${C.tinta};
+  font-weight: 600; font-size: 20px; padding: 9px 18px; border-radius: 999px; }
+.tarjeta { background: ${C.superficie}; border: 1px solid ${C.linea}; border-radius: 24px; padding: 24px;
+  box-shadow: 0 28px 64px -32px rgb(31 70 54 / .45); display: grid; gap: 12px; }
+.ejemplo { justify-self: start; border: 1.5px dashed ${C.terracotaTexto}; color: ${C.terracotaTexto};
+  font-weight: 600; font-size: 16px; letter-spacing: .01em; padding: 6px 14px; border-radius: 999px; }
+.accion { display: flex; gap: 12px; align-items: flex-start; padding: 13px 14px; border-radius: 10px;
+  background: color-mix(in srgb, var(--c) 12%, ${C.superficie}); box-shadow: inset 3px 0 0 var(--c); }
+.caja { width: 20px; height: 20px; border-radius: 5px; border: 1.5px solid var(--c); flex: none; margin-top: 3px; }
+.accion b { display: block; font-family: S; font-size: 19px; font-weight: 600; line-height: 1.25; }
 .accion small { font-size: 15px; color: ${C.tintaSuave}; }
-.nota { background: #f3e0d2; border-radius: 12px; padding: 12px 14px; font-size: 16px; line-height: 1.35; }
 </style></head><body>
-<div>
+${rutaPuntos}
+<div class="texto">
   <div class="logo">rumbo<span>.</span></div>
   <h1>Tu meta, convertida en una <em>semana posible.</em></h1>
-  <p>Un calendario de acciones concretas y una persona que revisa tu avance contigo.</p>
-  <span class="insignia">Piloto en preparación · Santiago de Chile</span>
+  <p class="lema">${LEMA}</p>
+  <span class="insignia">${ESTADO_PILOTO}</span>
 </div>
-<div class="tarjeta" aria-hidden="true">
-  <h2>Ejemplo de semana</h2>
-  ${accion(C.proyecto, "Conversar con un posible cliente", "Miércoles 18:00 · 45 min")}
-  ${accion(C.orden, "Reservar 2 bloques de trabajo", "Martes 09:00 · 20 min")}
-  ${accion(C.bienestar, "Cerrar el día: 3 cosas que hiciste", "Lunes 21:00 · 10 min")}
-  <div class="nota">«Ajustemos la próxima semana a lo que sí funcionó.»</div>
+<div class="tarjeta">
+  <span class="ejemplo">Ejemplo</span>
+  ${accion(C.proyecto, "Conversar con un posible cliente", "Miércoles 18:00 · 45 min · Proyecto")}
+  ${accion(C.orden, "Reservar 2 bloques de trabajo", "Martes 09:00 · 20 min · Organización")}
+  ${accion(C.bienestar, "Cerrar el día: 3 cosas que hiciste", "Lunes 21:00 · 10 min · Bienestar")}
 </div>
 </body></html>`;
 
-// Ícono: «r» en Fraunces sobre verde, punto cálido. relleno = margen para íconos maskable.
+// Ícono: «r» en Fraunces sobre bosque, punto ámbar (decisión D9). relleno = margen para íconos maskable.
 const icono = (lado, { relleno = 0, redondeo = true } = {}) => `<!doctype html><html><head><meta charset="utf-8"><style>${fuentes}
-html, body { width: ${lado}px; height: ${lado}px; background: ${redondeo ? "transparent" : C.verde}; }
-.i { width: 100%; height: 100%; background: ${C.verde}; border-radius: ${redondeo ? "22%" : "0"};
+html, body { width: ${lado}px; height: ${lado}px; background: ${redondeo ? "transparent" : C.bosque}; }
+.i { width: 100%; height: 100%; background: ${C.bosque}; border-radius: ${redondeo ? "22%" : "0"};
   position: relative; display: grid; place-items: center; }
 .r { font-family: F; font-weight: 600; color: ${C.papel}; font-size: ${lado * (1 - relleno * 2) * 0.78}px;
   line-height: 1; transform: translate(-${lado * 0.05}px, -${lado * 0.06}px); font-variation-settings: "opsz" 72; }
 .p { position: absolute; width: ${lado * (1 - relleno * 2) * 0.13}px; height: ${lado * (1 - relleno * 2) * 0.13}px;
-  border-radius: 50%; background: #d9822b; left: ${lado * (0.5 + (1 - relleno * 2) * 0.155)}px; top: ${lado * (0.5 + (1 - relleno * 2) * 0.13)}px; }
+  border-radius: 50%; background: ${C.ambar}; left: ${lado * (0.5 + (1 - relleno * 2) * 0.155)}px; top: ${lado * (0.5 + (1 - relleno * 2) * 0.13)}px; }
 </style></head><body><div class="i"><span class="r">r</span><span class="p"></span></div></body></html>`;
 
 // ICO con un PNG embebido (formato aceptado por todos los navegadores actuales).

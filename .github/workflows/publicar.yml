@@ -1,5 +1,7 @@
 name: Publicar web
 
+# verificar → publicar → comprobar-produccion (especificación 6.10).
+# En un PR solo corre `verificar`; en main además se publica y se prueba el sitio publicado.
 on:
   push:
     branches: [main]
@@ -14,33 +16,47 @@ env:
   # BASE_PATH=/ y SITE_URL=https://tudominio.cl
   BASE_PATH: ${{ vars.BASE_PATH || '/rumbo-web/' }}
   SITE_URL: ${{ vars.SITE_URL || 'https://diegolazo84.github.io/rumbo-web' }}
+  # Vacía = sin analítica. Con el identificador de Umami se carga el script y se amplía la CSP.
+  VITE_UMAMI_WEBSITE_ID: ${{ vars.UMAMI_WEBSITE_ID }}
+  # Vacía = sin puerta de lanzamiento. Con 1, la compilación exige los datos de la sección 8.
+  LANZAMIENTO: ${{ vars.LANZAMIENTO }}
+  # Opcional: meta de verificación de Google Search Console.
+  GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
 
 jobs:
   verificar:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
+      # Año del pie: se fija una sola vez, igual para la compilación del cliente y la del prerender.
+      - name: Fijar el año de compilación
+        run: echo "ANIO_COMPILACION=$(TZ=America/Santiago date +%Y)" >> "$GITHUB_ENV"
       - run: npm ci
       - name: Tipos
         run: npm run check
-      - name: Compilar y prerenderizar
+      - name: Compilar, prerenderizar y revisar marcadores
         run: npm run build
-      - name: Instalar Chromium de Playwright
-        run: npx playwright install --with-deps chromium
-      - name: Prueba de humo, enlaces, reenvíos y accesibilidad
+      - name: Instalar Chromium y WebKit de Playwright
+        run: npx playwright install --with-deps chromium webkit
+      - name: Pruebas (humo, contraste, marcadores, accesibilidad)
         run: npm test
+      - name: Lighthouse
+        run: npm run lighthouse
       - name: Guardar evidencia si falla
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: resultados-pruebas
-          path: test-results/
+          name: evidencia
+          path: |
+            test-results/
+            lighthouse/
           retention-days: 7
+          if-no-files-found: ignore
       - name: Empaquetar para Pages
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v5
@@ -68,7 +84,7 @@ jobs:
   comprobar-produccion:
     needs: publicar
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -76,8 +92,29 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
+      # La caché de Pages tarda unos 10 minutos: se espera a que la portada sirva esta versión.
+      - name: Esperar la versión nueva en producción
+        run: |
+          url="${SITE_URL%/}/"
+          for intento in $(seq 1 45); do
+            if curl -sS --max-time 20 "$url" | grep -q "<meta name=\"rumbo-version\" content=\"${GITHUB_SHA}\""; then
+              echo "Producción sirve ${GITHUB_SHA}."
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "::error::A los 15 minutos ${url} todavía no sirve la versión ${GITHUB_SHA} (meta rumbo-version)."
+          exit 1
       - name: Pruebas @produccion contra el sitio publicado
         env:
           URL_PRUEBA: ${{ vars.SITE_URL || 'https://diegolazo84.github.io/rumbo-web' }}
         run: npm test
+      - name: Guardar evidencia si falla
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: evidencia-produccion
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
