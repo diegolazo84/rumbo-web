@@ -43,7 +43,7 @@ const fabricas: Fabrica[] = [
     pregunta: "¿En qué se diferencia Rumbo de una app de hábitos o de mi propio calendario?",
     respuesta: [
       rayas(
-        "En que no tienes que armar el programa tú. El equipo prepara tu programa —acciones con horario o flexibles, duración e instrucciones— y lo publica en tu espacio. Puedes pedir ajustes, y cada semana una persona revisa contigo qué funcionó.",
+        "En que no tienes que armar el programa tú. Preparamos tu programa —acciones con horario o flexibles, duración e instrucciones— y lo publicamos en tu espacio. Puedes pedir ajustes, y cada semana una persona revisa contigo qué funcionó.",
       ),
     ],
   }),
@@ -74,7 +74,7 @@ const fabricas: Fabrica[] = [
             rol: op.acompanante.rol,
             bio: op.acompanante.bio,
           }) + ROL_COACH
-        : "Una persona del equipo de Rumbo, que prepara tu programa y revisa tu semana contigo. La conocerás antes de empezar. " +
+        : "Una persona de Rumbo, que prepara tu programa y revisa tu semana contigo. La conocerás antes de empezar. " +
           ROL_COACH,
     ],
   }),

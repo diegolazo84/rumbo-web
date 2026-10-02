@@ -168,7 +168,7 @@ const secciones: Paso[] = [
           items={[
             "Tu solicitud se consulta con un enlace privado que solo tú recibes.",
             "Tu espacio requiere iniciar sesión.",
-            "Las fotos solo las ven tú y las personas del equipo autorizadas para revisarlas. Nunca se publican.",
+            "Las fotos solo las ves tú y quien te acompaña en Rumbo, que las revisa. Nunca se publican.",
             "El ranking muestra solo alias y créditos, nunca tu correo, tus fotos, tu calendario ni tus metas.",
             "Las publicaciones del foro se revisan antes de mostrarse.",
             "Nunca te pediremos contraseñas.",

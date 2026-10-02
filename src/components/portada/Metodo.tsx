@@ -22,7 +22,7 @@ const pasos = [
   {
     titulo: "Recibes tu programa",
     contenido: rayas(
-      "El equipo diseña tu calendario —acciones con horario o flexibles, duración e instrucciones— y lo publica en Mi espacio. Marcas lo que haces y ves tu progreso.",
+      "Diseñamos tu calendario —acciones con horario o flexibles, duración e instrucciones— y lo publicamos en Mi espacio. Marcas lo que haces y ves tu progreso.",
     ),
   },
   {
@@ -43,7 +43,7 @@ const esperar: { icono: NombreIcono; titulo: string; texto: string }[] = [
     titulo: "Una persona lee cada solicitud.",
     texto: operacion.respondemosTodas
       ? "Sin filtros automáticos. Si en esta etapa no podemos acompañarte, te lo diremos."
-      : "Sin filtros automáticos: la decisión siempre la toma alguien del equipo.",
+      : "Sin filtros automáticos: la decisión siempre la toma una persona.",
   },
   {
     icono: "info",
@@ -54,7 +54,7 @@ const esperar: { icono: NombreIcono; titulo: string; texto: string }[] = [
     icono: "lock",
     titulo: "Lo tuyo es privado.",
     texto:
-      "Tu calendario y tus fotos solo los ven tú y las personas del equipo de Rumbo autorizadas para acompañarte. La comunidad es opcional y solo muestra tu alias.",
+      "Tu calendario y tus fotos solo los ves tú y quien te acompaña en Rumbo. La comunidad es opcional y solo muestra tu alias.",
   },
 ];
 

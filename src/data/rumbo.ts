@@ -454,7 +454,7 @@ export const reglasCreditosTextos = (r = reglasCreditos) => [
   t("+{porAccion} crédito por cada acción y +{bonoDiaCompleto} extra cuando completas todas las acciones programadas del día.", r),
   t("Con {diasRachaMedia} días completos seguidos, ese bono sube a +{bonoRacha3}; con {diasRachaLarga}, a +{bonoRacha7}. Si la racha se corta, vuelve a +{bonoDiaCompleto}.", r),
   "Un día sin acciones programadas no corta la racha.",
-  "Las acciones con foto son privadas y suman solo cuando el equipo las aprueba.",
+  "Las acciones con foto son privadas y suman solo cuando quien te acompaña las aprueba.",
   "El foro y el ranking son opcionales y solo muestran tu alias. Las publicaciones se revisan antes de mostrarse, y puedes borrar lo tuyo o retirarte cuando quieras.",
 ];
 

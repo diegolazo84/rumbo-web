@@ -7,7 +7,7 @@ export const NOTA_SALIDA = "El formulario se abre en la plataforma de Rumbo, en 
 
 // Paso 2 del método: según plazo de primera respuesta y si se responde a todas las solicitudes.
 export function textoRevision(op: Operacion = operacion) {
-  const base = "Una persona del equipo la lee; no es una selección automática ni una venta. ";
+  const base = "Una persona la lee; no es una selección automática ni una venta. ";
   const plazo = op.plazoPrimeraRespuesta;
   if (!plazo)
     return (
