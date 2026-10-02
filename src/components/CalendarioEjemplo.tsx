@@ -156,9 +156,18 @@ export default function CalendarioEjemplo() {
                   <span className="accion-hora">{a.hora ?? "Flexible"}</span>
                   <span className="accion-texto">
                     <span className="accion-titulo">{a.titulo}</span>
+                    {/* El corte de línea cae antes de «·», nunca después: «· categoría» y «· Hecha» van juntos. */}
                     <span className="accion-detalle">
-                      {a.duracion} · <span className="accion-cat">{categorias[a.categoria].nombre}</span>
-                      {marcada && " · Hecha"}
+                      {a.duracion}{" "}
+                      <span className="nowrap">
+                        · <span className="accion-cat">{categorias[a.categoria].nombre}</span>
+                      </span>
+                      {marcada && (
+                        <>
+                          {" "}
+                          <span className="nowrap">· Hecha</span>
+                        </>
+                      )}
                     </span>
                   </span>
                   <input type="checkbox" checked={marcada} onChange={() => alternar(a.id)} />

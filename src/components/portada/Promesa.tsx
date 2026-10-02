@@ -1,5 +1,6 @@
 // Capítulo 1: Promesa (5.2). Papel con cuadrícula de agenda; texto y calendario de
 // ejemplo, en dos columnas desde 1024 px. Sin revelado al desplazar: es el primer pantallazo.
+import { rayas } from "../../data/rumbo";
 import { ListaCheck } from "../Bloques";
 import CalendarioEjemplo from "../CalendarioEjemplo";
 import { Boton, BotonPostular } from "../Enlaces";
@@ -18,9 +19,9 @@ export default function Promesa() {
             Tu meta, convertida en una <em>semana posible.</em>
           </h1>
           <p className="bajada">
-            Rumbo es planificación personal con acompañamiento humano. Nos cuentas qué quieres lograr y cuánto tiempo
-            tienes de verdad; te entregamos un calendario listo —qué hacer, cuándo y cómo— y una persona lo revisa
-            contigo cada semana.
+            {rayas(
+              "Rumbo es planificación personal con acompañamiento humano. Nos cuentas qué quieres lograr y cuánto tiempo tienes de verdad; te entregamos un calendario listo —qué hacer, cuándo y cómo— y una persona lo revisa contigo cada semana.",
+            )}
           </p>
           <p className="portada-foco">
             <Icono nombre="compass" tamaño={16} />

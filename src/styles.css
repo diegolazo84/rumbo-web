@@ -183,11 +183,17 @@ a { color: var(--bosque); text-decoration-thickness: 1px; text-underline-offset:
   }
   .partido > .partido-contenido { grid-column: 6 / -1; }
 }
+/* Entre 1024 y 1199 px, 5 columnas dejan el H2 del método en tres líneas cortas: se le da una más. */
+@media (min-width: 1024px) and (max-width: 1199.98px) {
+  .partido > .encabezado--partido { grid-column: 1 / span 6; }
+  .partido > .partido-contenido { grid-column: 7 / -1; }
+}
 
 /* ========================================================================
    4. Tipografía (2.3)
    ======================================================================== */
-h1, h2, h3 { font-family: var(--serif); text-wrap: balance; }
+h1, h2, h3 { font-family: var(--serif); }
+h1, h2, h3, h4 { text-wrap: balance; }
 h1 { font-size: var(--t-titulo); font-weight: 500; line-height: 1.08; letter-spacing: -0.02em; }
 .h1--display { font-size: var(--t-display); line-height: 1.04; letter-spacing: -0.025em; }
 h2 { font-size: var(--t-h2); font-weight: 500; line-height: 1.1; letter-spacing: -0.015em; }
@@ -201,6 +207,9 @@ h1 em, h2 em { font-style: italic; font-weight: 500; color: var(--terracota); }
 
 /* Voz: frase de cada área, lema del pie, cita del coach. */
 .voz { font-family: var(--serif); font-size: var(--t-voz); font-style: italic; font-weight: 500; line-height: 1.45; }
+
+/* Titular de dos oraciones: la segunda empieza en su propia línea. */
+.frase { display: block; }
 
 .bajada { font-size: var(--t-lead); line-height: 1.5; color: var(--tinta-suave); max-inline-size: var(--medida); }
 .capitulo--oscuro .bajada { color: var(--sobre-oscuro-suave); }
@@ -285,10 +294,13 @@ h1 em, h2 em { font-style: italic; font-weight: 500; color: var(--terracota); }
   block-size: auto;
   min-block-size: 48px;
   padding-block: 12px;
+  text-wrap: balance;
 }
 
 .acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-@media (max-width: 479.98px) { .acciones > .boton { inline-size: 100%; } }
+/* En móvil los botones con borde o relleno se apilan al 100 %; el terciario (solo texto) no:
+   centrado en una caja ancha quedaría desalineado del texto. */
+@media (max-width: 479.98px) { .acciones > .boton:not(.boton--terciario) { inline-size: 100%; } }
 
 /* 3.2 Enlace con flecha y enlace utilitario ----------------------------- */
 .enlace-flecha {
@@ -489,6 +501,7 @@ h1 em, h2 em { font-style: italic; font-weight: 500; color: var(--terracota); }
 .aviso-titulo { font-weight: 600; }
 .aviso-cuerpo > * + * { margin-block-start: 8px; }
 .aviso-cuerpo ul { padding-inline-start: 1.25em; }
+.aviso-cuerpo li::marker { color: var(--terracota-texto); }
 :where(.capitulo--hondo) .aviso { background: var(--superficie); }
 :where(.capitulo--oscuro, .pie) .aviso { background: var(--superficie-oscura); color: var(--sobre-oscuro); }
 :where(.capitulo--oscuro, .pie) .aviso-icono, :where(.capitulo--oscuro, .pie) .aviso-titulo { color: var(--ambar); }
@@ -577,7 +590,8 @@ h1 em, h2 em { font-style: italic; font-weight: 500; color: var(--terracota); }
 .cabecera-nav ul { list-style: none; display: flex; align-items: center; gap: 4px; }
 .cabecera-nav .enlace-util { padding-inline: 8px; }
 .cabecera-separador { inline-size: 1px; block-size: 20px; margin-inline: 8px; background: var(--linea); }
-.cabecera-espacio { margin-inline-end: 12px; }
+/* El aire entre «Mi espacio» y el CTA lo pone el CTA: sin CTA (Ayuda), «Mi espacio» llega al borde. */
+@media (min-width: 1024px) { .cabecera-cta { margin-inline-start: 12px; } }
 
 .menu-boton {
   display: inline-flex;
@@ -773,7 +787,7 @@ html:not(.hidratado) .menu-boton { visibility: hidden; }
 }
 .accion-hora { font-size: var(--t-xs); font-weight: 500; line-height: 1.45; font-variant-numeric: tabular-nums; color: var(--tinta-suave); }
 .accion-texto { display: grid; gap: 2px; min-inline-size: 0; }
-.accion-titulo { font-size: var(--t-s); font-weight: 600; line-height: 1.3; color: var(--tinta); }
+.accion-titulo { font-size: var(--t-s); font-weight: 600; line-height: 1.3; color: var(--tinta); text-wrap: balance; }
 .accion-detalle { font-size: var(--t-xs); font-weight: 500; line-height: 1.45; color: var(--tinta-suave); }
 .accion-cat { color: var(--cat-texto); }
 .accion-cat::before {
@@ -867,6 +881,7 @@ html:not(.hidratado) .menu-boton { visibility: hidden; }
   color: var(--tinta);
 }
 .niveles li > :last-child { color: var(--tinta-suave); }
+.niveles li:last-child { border-block-end: 0; }
 
 /* 3.15 Planes ------------------------------------------------------------- */
 .planes { display: grid; gap: 16px; max-inline-size: var(--ancho-medio); }
@@ -883,9 +898,10 @@ html:not(.hidratado) .menu-boton { visibility: hidden; }
   font-variant-numeric: tabular-nums lining-nums;
   color: var(--bosque);
 }
-.plan-periodo, .plan-nota { font-size: var(--t-xs); font-weight: 500; line-height: 1.45; color: var(--tinta-suave); }
+.plan-periodo, .plan-nota, .plan-semana { font-size: var(--t-xs); font-weight: 500; line-height: 1.45; color: var(--tinta-suave); }
 .plan hr { margin-block: 4px; }
-.plan .boton { margin-block-start: auto; }
+/* La última línea baja con el botón: así el bloque de «Incluye» empieza a la misma altura en los dos planes. */
+.plan > hr:last-of-type { margin-block-start: auto; }
 .panel-planes-columnas { display: grid; gap: 24px; }
 @media (min-width: 600px) { .panel-planes-columnas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .panel-planes h3 { margin-block-end: 12px; }
@@ -912,13 +928,15 @@ html:not(.hidratado) .menu-boton { visibility: hidden; }
 .encaje-columnas { display: grid; gap: 24px; }
 @media (min-width: 600px) { .encaje-columnas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .encaje h4 { margin-block-end: 12px; }
-.encaje-cierre { font-size: var(--t-s); line-height: 1.55; }
+.encaje-cierre { font-size: var(--t-s); line-height: 1.55; max-inline-size: var(--medida); }
 
 /* 3.18 Transparencia ------------------------------------------------------ */
 .transparencia { display: grid; gap: 16px; }
 @media (min-width: 600px) { .transparencia { gap: 24px; } }
 @media (min-width: 1024px) { .transparencia { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .transparencia .etiqueta { align-self: flex-start; }
+/* En tres columnas, los títulos reservan dos líneas: las listas empiezan a la misma altura. */
+@media (min-width: 1024px) { .transparencia h3 { min-block-size: 2lh; } }
 
 /* ========================================================================
    6. Revelado al desplazar (2.5): solo con movimiento y tras hidratar

@@ -169,7 +169,7 @@ function jsonLd() {
         logo: `${SITE_URL}/icons/icono-512.png`,
         slogan: LEMA,
         description:
-          "Planificación personal con acompañamiento humano. Piloto en preparación en Santiago de Chile.",
+          "Planificación personal con acompañamiento humano. Piloto en preparación, en línea y en español, desde Santiago de Chile.",
       },
       {
         "@type": "WebSite",
@@ -279,7 +279,7 @@ ${ESTILO_REENVIO}
 <p>${esc(texto.llevamos)}</p>
 <p>${esc(texto.explicacion)}</p>
 <p><a class="boton" href="${esc(url)}">${esc(texto.enlace)}</a></p>
-${correo ? `<p>¿No carga? Escríbenos a <a href="mailto:${esc(correo)}">${esc(correo)}</a>.</p>\n` : ""}</main>
+${texto.nota ? `<p>${esc(texto.nota)}</p>\n` : ""}${correo ? `<p>¿No carga? Escríbenos a <a href="mailto:${esc(correo)}">${esc(correo)}</a>.</p>\n` : ""}</main>
 </body>
 </html>
 `;

@@ -39,6 +39,10 @@
   border-block-start: 1px solid var(--linea);
 }
 .lectura-cierre > .acciones { margin-block-start: var(--e-2); }
+/* Un botón terciario que abre la fila (Imprimir o guardar) alinea su texto con el de la página.
+   En móvil los demás botones ocupan el 100 %, así que todo terciario abre su propia fila. */
+.lectura .acciones > .boton--terciario:first-child { margin-inline-start: -8px; }
+@media (max-width: 479.98px) { .lectura .acciones > .boton--terciario { margin-inline-start: -8px; } }
 
 /* Imprimir: solo funciona con JS. Antes de hidratar ocupa su lugar sin verse, para que
    la página no se mueva cuando aparece. */

@@ -33,7 +33,14 @@ export default function DentroDeRumbo() {
         <hr className="separador" />
         <div id="comunidad" className="comunidad">
           <div className="comunidad-texto" data-revelar="">
-            <Encabezado ojo="Progreso y comunidad" titulo="Cada paso cuenta. Tú decides cuáles compartes.">
+            <Encabezado
+              ojo="Progreso y comunidad"
+              titulo={
+                <>
+                  Cada paso cuenta. <span className="frase">Tú decides cuáles compartes.</span>
+                </>
+              }
+            >
               <p className="comunidad-intro">
                 Cada acción que registras suma créditos, y completar un día programado suma más. Así subes de nivel a tu
                 ritmo. <strong>Los créditos muestran tu avance: no son dinero, no se canjean y no miden tu valor.</strong>

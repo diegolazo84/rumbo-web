@@ -8,11 +8,12 @@ import {
   PaginaLectura,
   identificacion,
 } from "../components/lectura/Lectura";
-import { ANALITICA_ACTIVA as ANALITICA, operacion as op, rutas, t } from "../data/rumbo";
+import { VERSION_PUBLICADA } from "../data/paginas";
+import { ANALITICA_ACTIVA as ANALITICA, SANTIAGO, operacion as op, rayas, rutas, t } from "../data/rumbo";
 
-// Política de privacidad (5.3). `fecha` es literal: el día en que se publica esta versión,
-// escrito en el mismo commit que la publica (nunca un marcador).
-const VERSION_PRIVACIDAD = { numero: "1.0", fecha: "2 de octubre de 2026" };
+// Política de privacidad (5.3). La fecha es la de la versión publicada (VERSION_PUBLICADA en
+// paginas.ts), literal y escrita en el mismo commit que la publica (nunca un marcador).
+const VERSION_PRIVACIDAD = { numero: "1.0", fecha: VERSION_PUBLICADA.texto };
 
 const ELIMINAR =
   "Puedes pedirnos que los eliminemos en cualquier momento, y lo haremos, salvo lo que la ley nos obligue a conservar, como los documentos tributarios.";
@@ -35,9 +36,8 @@ const secciones: Paso[] = [
       </p>
     ) : (
       <p>
-        Rumbo es un proyecto piloto operado desde Santiago de Chile. Mientras completamos su identificación formal
-        como responsable, puedes hacer cualquier consulta o ejercer tus derechos desde la <EnlaceContacto />,
-        indicando el correo con el que postulaste, si ya lo hiciste.
+        {`Rumbo es un proyecto piloto operado desde ${SANTIAGO}. Mientras completamos su identificación formal como responsable, puedes hacer cualquier consulta o ejercer tus derechos desde la `}
+        <EnlaceContacto />, indicando el correo con el que postulaste, si ya lo hiciste.
       </p>
     ),
   },
@@ -45,7 +45,7 @@ const secciones: Paso[] = [
     titulo: "Qué datos tratamos y de dónde vienen",
     contenido: (
       <>
-        <p>Todos los datos los obtenemos directamente de ti. Rumbo es solo para personas mayores de 18 años.</p>
+        <p>Todos los datos los obtenemos directamente de ti. Rumbo es solo para personas de 18 años o más.</p>
         <ListaLectura
           items={[
             <>
@@ -72,13 +72,14 @@ const secciones: Paso[] = [
               en el foro.
             </>,
             <>
-              <strong>En las revisiones y respuestas breves:</strong> Tomamos notas breves para ajustar tu programa.{" "}
+              <strong>En la conversación inicial y en las revisiones:</strong> Tomamos notas breves para ajustar tu
+              programa.{" "}
               {op.canalRevisiones && op.canalRespuestas
                 ? t("Se hacen por {canalRevisiones} y {canalRespuestas}.", {
                     canalRevisiones: op.canalRevisiones,
                     canalRespuestas: op.canalRespuestas,
                   })
-                : "Se hacen por un canal externo a la plataforma que acordamos contigo antes de empezar; antes de usarlo te diremos cuál es y qué proveedor lo presta."}
+                : "Las revisiones escritas quedan en Mi espacio. La conversación inicial y las videollamadas de Acompañamiento cercano se hacen por un servicio de videollamadas externo a la plataforma; antes de usarlo te diremos cuál es y qué proveedor lo presta."}
             </>,
           ]}
         />
@@ -88,8 +89,9 @@ const secciones: Paso[] = [
   },
   {
     titulo: "Datos de salud",
-    contenido:
+    contenido: rayas(
       "La ley considera sensibles los datos de salud y exige tu consentimiento expreso para tratarlos. El piloto se enfoca en proyectos, estudio y organización, y no los necesita: no pedimos diagnósticos, antecedentes clínicos, fotos de tu cuerpo, fotos íntimas ni documentos médicos. Si decides compartir algo relacionado con tu salud —por ejemplo, una indicación de tu nutricionista— o lo mencionas en una conversación, te pediremos autorización expresa y por separado antes de registrarlo o usarlo, solo para adaptar tu programa. Puedes retirar esa autorización cuando quieras, y dejaremos de usar esa información.",
+    ),
   },
   {
     titulo: "Para qué usamos tus datos",
@@ -125,10 +127,12 @@ const secciones: Paso[] = [
           items={puntuar([
             "GitHub (Estados Unidos), que aloja esta web",
             // Cloudflare solo se nombra cuando Diego confirme la infraestructura de ChatGPT Sites (8.11).
-            op.alojamientoVerificado
-              ? "OpenAI (Estados Unidos), que provee la plataforma de Rumbo mediante ChatGPT Sites —donde están tu solicitud, tu programa y tus fotos— y el inicio de sesión con ChatGPT. OpenAI usa a su vez proveedores de infraestructura, como Cloudflare, en Estados Unidos u otros países"
-              : "OpenAI (Estados Unidos), que provee la plataforma de Rumbo mediante ChatGPT Sites —donde están tu solicitud, tu programa y tus fotos— y el inicio de sesión con ChatGPT, y los proveedores de infraestructura que OpenAI utiliza",
-            "el proveedor del canal que acordemos para las revisiones, que te informaremos antes de usarlo",
+            rayas(
+              op.alojamientoVerificado
+                ? "OpenAI (Estados Unidos), que provee la plataforma de Rumbo mediante ChatGPT Sites —donde están tu solicitud, tu programa y tus fotos— y el inicio de sesión con ChatGPT. OpenAI usa a su vez proveedores de infraestructura, como Cloudflare, en Estados Unidos u otros países"
+                : "OpenAI (Estados Unidos), que provee la plataforma de Rumbo mediante ChatGPT Sites —donde están tu solicitud, tu programa y tus fotos— y el inicio de sesión con ChatGPT, y los proveedores de infraestructura que OpenAI utiliza",
+            ),
+            "el servicio de videollamadas que usemos para la conversación inicial y las revisiones de Acompañamiento cercano, que te informaremos antes de usarlo",
             ...(ANALITICA ? ["Umami (Estados Unidos o Unión Europea), para estadísticas sin cookies"] : []),
           ])}
         />
@@ -215,7 +219,7 @@ const secciones: Paso[] = [
   {
     titulo: "Personas menores de edad",
     contenido:
-      "Rumbo es solo para mayores de 18 años. Si nos enteramos de que una persona menor de edad postuló, eliminaremos sus datos.",
+      "Rumbo es solo para personas de 18 años o más. Si nos enteramos de que una persona menor de edad postuló, eliminaremos sus datos.",
   },
   {
     titulo: "Cambios a esta política",

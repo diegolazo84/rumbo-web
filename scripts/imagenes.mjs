@@ -34,7 +34,8 @@ const C = {
   bienestar: "#b77b16",
 };
 const LEMA = "Ordena lo que importa. Avanza con apoyo.";
-const ESTADO_PILOTO = "Piloto en preparación · Santiago de Chile";
+// Forma larga de ESTADO_PILOTO (rumbo.ts): en la imagen para redes cabe completa.
+const ESTADO_PILOTO = "Piloto en preparación · En línea y en español";
 
 const fuentes = `
 @font-face { font-family: F; src: url(${FRAUNCES}) format("woff2"); font-weight: 100 900; }
@@ -57,7 +58,8 @@ const accion = (color, titulo, detalle) => `
   <div class="accion" style="--c:${color}"><span class="caja"></span><div><b>${titulo}</b><small>${detalle}</small></div></div>`;
 
 // Imagen para redes (6.4): papel con cuadrícula de agenda, logo, H1, lema, etiqueta en contorno,
-// tarjeta de ejemplo con tres acciones y la ruta de puntos. Sin cifras, testimonios ni personas.
+// tarjeta de ejemplo con tres acciones en orden de días (lunes, martes, miércoles) y la ruta de
+// puntos. Sin precios, testimonios ni personas.
 const og = `<!doctype html><html lang="es-CL"><head><meta charset="utf-8"><style>${fuentes}
 body { position: relative; width: 1200px; height: 630px; background: ${C.papel}; color: ${C.tinta};
   font-family: S; display: grid; grid-template-columns: 1fr 430px; gap: 56px; padding: 60px 72px;
@@ -96,9 +98,9 @@ ${rutaPuntos}
 </div>
 <div class="tarjeta">
   <span class="ejemplo">Ejemplo</span>
-  ${accion(C.proyecto, "Conversar con un posible cliente", "Miércoles 18:00 · 45 min · Proyecto")}
-  ${accion(C.orden, "Reservar 2 bloques de trabajo", "Martes 09:00 · 20 min · Organización")}
   ${accion(C.bienestar, "Cerrar el día: 3 cosas que hiciste", "Lunes 21:00 · 10 min · Bienestar")}
+  ${accion(C.orden, "Reservar 2 bloques de trabajo", "Martes 09:00 · 20 min · Organización")}
+  ${accion(C.proyecto, "Conversar con un posible cliente", "Miércoles 18:00 · 45 min · Proyecto")}
 </div>
 </body></html>`;
 

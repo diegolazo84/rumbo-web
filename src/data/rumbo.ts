@@ -18,7 +18,12 @@ export const rutas = {
 } as const;
 
 export const LEMA = "Ordena lo que importa. Avanza con apoyo.";
-export const ESTADO_PILOTO = "Piloto en preparación · Santiago de Chile";
+// Insignia de la portada: cabe en una línea a 320 px (199 de 246 px útiles). «Piloto en
+// preparación · En línea y en español» mide 283 px y se partía en dos líneas hasta los 374 px;
+// «en español» lo dicen «¿Es para ti?», las preguntas y Condiciones §2. Dónde se opera va aparte, con SANTIAGO.
+export const ESTADO_PILOTO = "Piloto en preparación · En línea";
+// «Santiago de Chile» con espacios duros: nunca se parte al final de una línea.
+export const SANTIAGO = "Santiago\u00a0de\u00a0Chile";
 
 // Analítica (Umami) activa: solo si la compilación trae VITE_UMAMI_WEBSITE_ID en el entorno
 // (no en un .env: postbuild.mjs solo lee process.env y el texto debe coincidir con el script).
@@ -26,6 +31,13 @@ export const ANALITICA_ACTIVA = Boolean(import.meta.env?.VITE_UMAMI_WEBSITE_ID);
 
 // Texto oculto que lleva todo enlace que sale a la plataforma.
 export const TEXTO_PLATAFORMA = "(se abre en la plataforma de Rumbo)";
+
+// Rayas de inciso («programa —acciones…— y lo publica»): U+2060 (unión de palabras) pega
+// cada raya a su palabra, para que ninguna quede sola al final o al comienzo de una línea.
+// Se usa en todo texto con incisos, en datos y en componentes.
+export const UNION = "\u2060";
+export const rayas = (texto: string) =>
+  texto.replace(/—(?=\S)/g, `—${UNION}`).replace(/(?<=\S)—/g, `${UNION}—`);
 
 // Arma un texto condicional y falla si queda una llave {…} sin reemplazar:
 // nunca se publica un marcador.
@@ -68,23 +80,34 @@ export const operacion = {
   responsable: null as null | { nombre: string; rut?: string; comuna: string }, // bloquea el lanzamiento público
   correo: null as string | null, // bloquea el lanzamiento público
   acompanante: null as null | { nombre: string; rol: string; bio: string; foto?: string }, // foto: archivo en public/, p. ej. «acompanante.jpg» (la portada le antepone la base)
-  plazoPrimeraRespuesta: null as string | null, // formato: «5 días hábiles»; bloquea el lanzamiento público
-  respondemosTodas: false, // recomendado true para el lanzamiento: responder también a quien no avanza (8.3)
-  canalRevisiones: null as string | null, // formato: «videollamada»
-  canalRespuestas: null as string | null, // formato: «correo»
-  plazoRespuestas: null as string | null, // formato: «un día hábil, de lunes a viernes»
+  // Decisión del 2 de octubre de 2026: se responde a todas las solicitudes, también a quien no avanza.
+  plazoPrimeraRespuesta: "2 días hábiles" as string | null, // bloquea el lanzamiento público
+  respondemosTodas: true,
+  // Sin uso en las preguntas ni en Condiciones: las revisiones tienen un texto fijo por plan
+  // (TEXTO_REVISIONES). Privacidad los usa si algún día se cargan.
+  canalRevisiones: null as string | null,
+  canalRespuestas: null as string | null,
+  plazoRespuestas: null as string | null,
   formaDePago: null as string | null, // formato: «Por transferencia, una vez aceptadas las condiciones»
   documentoTributario: null as string | null, // formato: «una boleta de honorarios»
-  preciosConImpuestos: false, // true cuando $49.900 y $89.900 sean el total con impuestos
-  topePrecio: false, // true si Diego se compromete a que el precio final con impuestos no supera el publicado
+  preciosConImpuestos: false, // true cuando el contador confirme que $64.000 y $100.000 son el total con impuestos
+  topePrecio: true, // compromiso: en Chile, el precio final con impuestos no supera el publicado
   // (el lanzamiento público exige preciosConImpuestos o topePrecio)
+  // Con mayúscula inicial. Condiciones §11 y la pregunta «¿Puedo pausar o retirarme?» la muestran
+  // tras «Si ya empezaste un ciclo:» y la pasan a minúscula (trasDosPuntos en preguntas.ts).
   politicaTermino: null as string | null,
   conservacion: null as null | { tipo: string; plazo: string }[],
-  cobertura: null as null | { encaje: string; respuesta: string },
-  // bloquea el lanzamiento público. encaje: ítem de «Es para ti si…», sin punto final, p. ej. «vives en Chile y puedes conversar en línea».
-  // respuesta: respuesta de la pregunta 11, p. ej. «Sí, si vives en Chile: todo el acompañamiento es en línea. Por ahora no recibimos solicitudes desde fuera de Chile.»
+  // Desde dónde se puede participar (bloquea el lanzamiento público). encaje: ítem de «Es para ti si…»,
+  // sin punto final. respuesta: pregunta «¿Puedo participar…?». condiciones: Condiciones §2, en tono de condición.
+  cobertura: {
+    encaje: "hablas español y puedes conectarte en línea, desde Chile o desde otro país",
+    respuesta:
+      "Sí, en línea y en español, desde la mayoría de los países. Para entrar a Mi espacio necesitas una cuenta de ChatGPT, que no está disponible en algunos países, como Venezuela o Cuba; en ese caso hoy no podemos acompañarte. Fuera de Chile se paga en dólares. Las videollamadas son en franjas fijas de hora de Chile y los plazos se cuentan en días hábiles de Chile.",
+    condiciones:
+      "Se participa en línea y en español, desde Chile o desde la mayoría de los países. Mi espacio requiere una cuenta de ChatGPT, que no está disponible en algunos países, como Venezuela o Cuba: desde ellos hoy no podemos acompañarte. Fuera de Chile el pago es en dólares. Las videollamadas se agendan en franjas fijas de hora de Chile, y todos los plazos se cuentan en días hábiles de Chile, de lunes a viernes, sin contar sus feriados.",
+  } as null | { encaje: string; respuesta: string; condiciones: string },
   alojamientoVerificado: false, // true cuando Diego confirme qué infraestructura usa ChatGPT Sites (Privacidad §6)
-  tamanoPrimerGrupo: null as number | null,
+  tamanoPrimerGrupo: 5 as number | null,
   preseleccionVerificada: false, // ?area= y ?apoyo= preseleccionan el formulario (probado)
   paramEstudio: null as string | null, // valor de ?area= para «Estudio y aprendizaje»
   paramCambios: null as string | null, // valor de ?area= para «Cambios y relaciones»
@@ -112,13 +135,15 @@ export const recursosAyuda = (a = ayuda): RecursoAyuda[] => [
     numero: "131",
     tel: "tel:131",
     nombre: "SAMU, emergencias médicas",
-    descripcion: "Si tu vida o la de otra persona corre peligro. También puedes acudir a la urgencia más cercana.",
+    descripcion: "Llama si tu vida o la de otra persona corre peligro. También puedes acudir a la urgencia más cercana.",
   },
   {
     numero: "600 360 7777",
     tel: "tel:6003607777",
     nombre: "Salud Responde",
-    descripcion: "Ministerio de Salud. Orientación en salud, también en salud mental. Gratis, las 24 horas.",
+    // No es gratuita: tiene el costo de una llamada local, desde teléfonos fijos y celulares.
+    descripcion:
+      "Ministerio de Salud. Orientación en salud, también en salud mental, las 24 horas. Desde teléfonos fijos y celulares, con costo de llamada local.",
   },
   {
     numero: "1412",
@@ -177,16 +202,16 @@ export const enMiEspacio = [
   "Tu programa calendarizado, con vistas de día, semana y mes",
   "Acciones con color por área, con horario o flexibles, duración e instrucciones",
   "Registro de lo que haces, progreso por meta, créditos y niveles",
-  "Revisión semanal escrita: tu registro, la respuesta de tu coach y el siguiente foco",
+  // «Registro semanal» es lo que escribe la persona; «revisión semanal», lo que hace su coach (docs/coherencia.md).
+  "Registro semanal escrito: lo que anotas, la respuesta de tu coach y el siguiente foco",
   "Solicitud de ajustes cuando tu semana cambia",
   "Acciones con foto privada, en Acompañamiento cercano y si se acuerdan",
   "Comunidad opcional: foro moderado y ranking por alias",
 ];
 export const seAcuerdaContigo = [
-  "El canal y el plazo de las respuestas breves",
-  "El día y la hora de tus revisiones semanales",
+  "El día de tu revisión semanal, de lunes a viernes, y, en Acompañamiento cercano, la hora de tu videollamada (en hora de Chile)",
   "La duración del programa según tu meta: 4, 8 o 12 semanas. En el piloto empezamos con un ciclo de 4 semanas; continuar se acuerda al cerrarlo.",
-  "El precio final y la forma de pago",
+  "La fecha de inicio y el medio de pago",
 ];
 
 // ---------------------------------------------------------------------------
@@ -331,15 +356,17 @@ export const microcopiaFormulario = (opcion: string, op: Operacion = operacion) 
   op.preseleccionVerificada ? null : `En el formulario, elige “${opcion}”.`;
 
 // ---------------------------------------------------------------------------
-// Planes: precios de referencia del piloto (hipótesis por validar, no tarifas cerradas).
+// Planes: precios propuestos por ciclo de 4 semanas (propuesta del 2-10-2026; hipótesis por validar en el piloto).
+// rotulo, param, cta, ubicacion y opcionFormulario deben coincidir con la plataforma (docs/coherencia.md).
 
 export type Plan = {
   id: "acompanamiento" | "cercano";
   rotulo: string; // etiqueta --nota, igual que en la plataforma
   nombre: string;
   paraQuien: string;
-  precio: string;
+  precio: string; // total del ciclo: es la cifra principal (Ley N.º 19.496, art. 30)
   periodo: string;
+  porSemana: string; // equivalencia en letra chica, bajo la nota de precio; nunca como cifra principal
   param: "coach" | "cercano"; // ?apoyo=
   incluye: string[]; // solo lo propio de cada plan; lo común está en planesIncluyen
   cta: string;
@@ -352,14 +379,15 @@ export const planes: Plan[] = [
     id: "acompanamiento",
     rotulo: "Seguimiento semanal",
     nombre: "Con acompañamiento",
-    paraQuien: "Para quien quiere un programa preparado y una revisión breve cada semana.",
-    precio: "$49.900",
+    paraQuien: "Para quien prefiere avanzar con autonomía y por escrito: tu programa listo y una revisión escrita cada semana.",
+    precio: "$64.000",
     periodo: "CLP / ciclo de 4 semanas",
+    porSemana: "Equivale a $16.000 por semana",
     param: "coach",
     incluye: [
-      "Conversación inicial de 30 minutos",
-      "4 revisiones semanales de 10 minutos",
-      "Hasta 2 respuestas breves en el ciclo, con canal y plazo acordados antes de empezar",
+      "Conversación inicial de 30 minutos por videollamada",
+      "Revisión escrita cada semana en Mi espacio, en el día que acordamos: qué funcionó, qué ajustamos y tu foco de la semana",
+      "Si no alcanzaste a escribir tu registro, revisamos lo que marcaste en el calendario",
     ],
     cta: "Postular con acompañamiento",
     ubicacion: "plan-acompanamiento",
@@ -369,14 +397,15 @@ export const planes: Plan[] = [
     id: "cercano",
     rotulo: "Más espacio para ajustar",
     nombre: "Acompañamiento cercano",
-    paraQuien: "Para quien necesita más tiempo de conversación y seguimiento.",
-    precio: "$89.900",
+    paraQuien: "Para quien prefiere conversarlo: tu programa listo y una videollamada cada semana para ajustarlo juntos.",
+    precio: "$100.000",
     periodo: "CLP / ciclo de 4 semanas",
+    porSemana: "Equivale a $25.000 por semana",
     param: "cercano",
     incluye: [
-      "Conversación inicial de 45 minutos",
-      "4 revisiones semanales de 20 minutos",
-      "Hasta 4 respuestas breves en el ciclo, con canal y plazo acordados antes de empezar",
+      "Conversación inicial de 45 minutos por videollamada",
+      "Videollamada de 20 minutos cada semana, en un día y hora fijos en hora de Chile, con resumen escrito en Mi espacio",
+      "Si tu semana se desarma, la reordenamos dentro de 1 día hábil (hasta 2 veces por ciclo)",
       "Hasta una acción semanal con foto privada, si se acuerda",
     ],
     cta: "Postular con acompañamiento cercano",
@@ -387,17 +416,24 @@ export const planes: Plan[] = [
 
 // Lo que incluyen los dos planes (panel «Los dos planes» y Condiciones §4).
 export const planesIncluyen = [
-  "Programa calendarizado preparado por el equipo",
+  "Programa calendarizado preparado para ti",
   "Mi espacio con calendario, instrucciones y progreso",
   "Créditos y niveles por las acciones que registras",
   "Solicitud de ajustes desde tu espacio",
 ];
 
+// Cómo son las revisiones en cada plan (pregunta «¿Cómo son las revisiones semanales?» y
+// Condiciones §5). Texto fijo: los dos planes no comparten canal ni plazo.
+export const TEXTO_REVISIONES =
+  "En Con acompañamiento, la revisión es escrita y se hace el día de la semana que acordamos, de lunes a viernes: qué funcionó, qué ajustamos y tu foco de la semana. Si no alcanzaste a escribir tu registro, revisamos lo que marcaste en el calendario. En Acompañamiento cercano, conversamos 20 minutos por videollamada, fuera de la plataforma, en un día y hora fijos en hora de Chile, y te dejamos un resumen escrito en Mi espacio. Si cambia el horario de verano en Chile o en tu país, te confirmamos la hora en tu zona. Contamos días hábiles de lunes a viernes, sin feriados de Chile. No hay chat ni respuesta inmediata.";
+
+// Compromiso de precio (operacion.topePrecio). Rige en Chile: fuera de Chile se paga en dólares.
+export const TEXTO_TOPE = "En Chile, el precio final, con impuestos incluidos, no será mayor que el publicado.";
+
 // Nota bajo cada precio (5.2-5a).
 export function notaPrecio(op: Operacion = operacion): string {
   if (op.preciosConImpuestos) return "Impuestos incluidos";
-  if (op.topePrecio)
-    return "Precio de referencia del piloto. El precio final, con impuestos incluidos, no será mayor que el publicado.";
+  if (op.topePrecio) return `Precio de referencia del piloto. ${TEXTO_TOPE}`;
   return "Precio de referencia del piloto";
 }
 

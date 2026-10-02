@@ -101,8 +101,10 @@
   font-size: var(--t-s);
   line-height: 1.55;
   color: var(--tinta);
+  max-inline-size: var(--medida);
 }
 .mas-adelante-aviso .icono { margin-block-start: 4px; }
+.mas-adelante-nota { max-inline-size: var(--medida); }
 .aviso-salud { margin-block-start: var(--bloque); }
 
 /* ========================================================================
@@ -142,7 +144,7 @@
 /* ========================================================================
    Capítulo 4: Dentro de Rumbo (papel)
    ======================================================================== */
-.que-recibes-nota { margin-block-start: var(--e-4); }
+.que-recibes-nota { margin-block-start: var(--e-4); max-inline-size: var(--medida); }
 .comunidad { display: grid; gap: var(--bloque); }
 .comunidad-texto { display: grid; gap: var(--e-5); align-content: start; }
 .comunidad-texto .encabezado { margin-block-end: 0; }
@@ -162,7 +164,7 @@
 /* ========================================================================
    Capítulo 5: Decidir (papel hondo)
    ======================================================================== */
-.planes-ayuda { margin-block-start: var(--e-5); max-inline-size: var(--ancho-medio); font-size: var(--t-s); line-height: 1.55; }
+.planes-ayuda { margin-block-start: var(--e-5); max-inline-size: var(--medida); font-size: var(--t-s); line-height: 1.55; }
 .preguntas-contacto { display: grid; justify-items: start; gap: var(--e-1); margin-block-start: var(--e-5); }
 .preguntas { display: grid; gap: var(--bloque); }
 .preguntas-grupo > h3 { margin-block-end: var(--e-3); }

@@ -1,7 +1,7 @@
 // Preguntas frecuentes de la portada (5.2-5b) como datos. Cada respuesta depende de
 // `operacion`: preguntasVisibles() omite las que necesitan un dato que aún no existe.
 // La portada y las pruebas usan esta función; el número de preguntas no se escribe a mano.
-import { operacion, t, type Operacion } from "./rumbo";
+import { TEXTO_REVISIONES, TEXTO_TOPE, operacion, rayas, t, type Operacion } from "./rumbo";
 
 // Un trozo de respuesta: texto o enlace. Así las respuestas siguen siendo datos (sin JSX).
 export type Segmento =
@@ -28,6 +28,10 @@ export type Pregunta = {
 // Una pregunta por función: null = no se publica con los datos actuales.
 type Fabrica = (op: Operacion) => Pregunta | null;
 
+// Tras «…: » la política de término sigue en minúscula («Si ya empezaste un ciclo: si sientes…»);
+// sola, en Condiciones §11, conserva su mayúscula inicial.
+export const trasDosPuntos = (texto: string) => texto.charAt(0).toLocaleLowerCase("es") + texto.slice(1);
+
 const ROL_COACH =
   "Su rol es ayudarte a organizar, revisar y ajustar tu programa; no es atención psicológica, nutricional ni médica.";
 
@@ -38,7 +42,9 @@ const fabricas: Fabrica[] = [
     grupo: "servicio",
     pregunta: "¿En qué se diferencia Rumbo de una app de hábitos o de mi propio calendario?",
     respuesta: [
-      "En que no tienes que armar el programa tú. El equipo prepara tu programa —acciones con horario o flexibles, duración e instrucciones— y lo publica en tu espacio. Puedes pedir ajustes, y cada semana una persona revisa contigo qué funcionó.",
+      rayas(
+        "En que no tienes que armar el programa tú. El equipo prepara tu programa —acciones con horario o flexibles, duración e instrucciones— y lo publica en tu espacio. Puedes pedir ajustes, y cada semana una persona revisa contigo qué funcionó.",
+      ),
     ],
   }),
   () => ({
@@ -46,7 +52,7 @@ const fabricas: Fabrica[] = [
     grupo: "servicio",
     pregunta: "¿Y si no tengo una meta clara?",
     respuesta: [
-      "No hace falta tenerla. Cuéntanos lo que te inquieta y en la conversación inicial la definimos contigo.",
+      "No hace falta tenerla. Cuéntanos lo que te inquieta: antes de acordar nada la conversamos contigo, y en la conversación inicial terminamos de definirla.",
     ],
   }),
   () => ({
@@ -72,18 +78,12 @@ const fabricas: Fabrica[] = [
           ROL_COACH,
     ],
   }),
-  (op) => ({
+  // Texto fijo por plan (propuesta de precios 7.1); el mismo de Condiciones §5.
+  () => ({
     id: "servicio-revisiones",
     grupo: "servicio",
-    pregunta: "¿Cómo son las revisiones y las respuestas entre semanas?",
-    respuesta: [
-      op.canalRevisiones && op.canalRespuestas && op.plazoRespuestas
-        ? t(
-            "Las revisiones semanales son por {canalRevisiones}, en el horario que acordemos. Las respuestas breves llegan por {canalRespuestas} dentro de {plazoRespuestas}. La plataforma no tiene chat ni videollamadas, y no hay respuesta inmediata.",
-            { canalRevisiones: op.canalRevisiones, canalRespuestas: op.canalRespuestas, plazoRespuestas: op.plazoRespuestas },
-          )
-        : "Se coordinan con el equipo fuera de la plataforma, por el canal que acordemos antes de empezar. La plataforma no tiene chat ni videollamadas, y no hay respuesta inmediata.",
-    ],
+    pregunta: "¿Cómo son las revisiones semanales?",
+    respuesta: [TEXTO_REVISIONES],
   }),
   () => ({
     id: "servicio-no-cumplo",
@@ -99,16 +99,13 @@ const fabricas: Fabrica[] = [
     const precios = op.preciosConImpuestos
       ? "son el valor total del ciclo, con impuestos incluidos"
       : "son de referencia para el piloto";
-    const tope =
-      !op.preciosConImpuestos && op.topePrecio
-        ? " El precio final, con impuestos incluidos, no será mayor que el publicado."
-        : "";
+    const tope = !op.preciosConImpuestos && op.topePrecio ? ` ${TEXTO_TOPE}` : "";
     return {
       id: "precio-postular",
       grupo: "precio",
       pregunta: "¿Me van a cobrar al postular?",
       respuesta: [
-        `No. Postular es gratis y no es una compra ni una reserva. Los precios publicados ${precios}; antes de cualquier cobro acordamos contigo el alcance, el canal, los plazos y el precio final.${tope} Hoy no hay pagos en línea.`,
+        `No. Postular es gratis y no es una compra ni una reserva. Los precios publicados ${precios}; antes de cualquier cobro acordamos contigo el plan, la fecha de inicio y el precio final.${tope} Hoy no hay pagos en línea.`,
       ],
     };
   },
@@ -132,7 +129,7 @@ const fabricas: Fabrica[] = [
     respuesta: op.politicaTermino
       ? [
           "Antes de empezar, sí, cuando quieras: retiras tu solicitud con tu enlace privado, sin costo. ",
-          t("Si ya empezaste un ciclo: {politicaTermino}", { politicaTermino: op.politicaTermino }),
+          t("Si ya empezaste un ciclo: {politicaTermino}", { politicaTermino: trasDosPuntos(op.politicaTermino) }),
         ]
       : [
           "Antes de empezar, sí, cuando quieras: retiras tu solicitud con tu enlace privado, sin costo. Si ya empezaste un ciclo, las condiciones de pausa, término y devolución se acuerdan contigo antes de cualquier pago y quedan en las ",
@@ -145,7 +142,7 @@ const fabricas: Fabrica[] = [
     grupo: "precio",
     pregunta: "¿Qué plan me conviene?",
     respuesta: [
-      "Con acompañamiento, si buscas un programa preparado y una revisión breve cada semana. Acompañamiento cercano, si necesitas más tiempo de conversación y seguimiento. Si no lo tienes claro, postula sin elegir plan y lo vemos contigo.",
+      "Con acompañamiento, si prefieres escribir, tienes horarios variables o vives en otro huso horario: revisamos tu semana por escrito. Acompañamiento cercano, si prefieres conversarlo o tus semanas cambian mucho: hablamos 20 minutos cada semana por videollamada. Ninguno de los dos es atención de salud. Si no lo tienes claro, postula sin elegir plan y lo vemos contigo.",
     ],
   }),
   (op) =>
@@ -153,7 +150,7 @@ const fabricas: Fabrica[] = [
       ? {
           id: "precio-cobertura",
           grupo: "precio",
-          pregunta: "¿Puedo participar si no vivo en Santiago?",
+          pregunta: "¿Puedo participar si no vivo en Santiago o en Chile?",
           respuesta: [op.cobertura.respuesta],
         }
       : null,
@@ -164,7 +161,9 @@ const fabricas: Fabrica[] = [
     grupo: "cuenta",
     pregunta: "¿Necesito una cuenta?",
     respuesta: [
-      "Para postular, no. Si avanzamos, tu programa se publica en Mi espacio, que se abre en la plataforma de Rumbo —otra dirección web— y pide iniciar sesión con una cuenta de ChatGPT. Si no tienes una, puedes crearla gratis. Hoy no hay otra forma de entrar a Mi espacio: si prefieres no crearla, dínoslo antes de acordar nada.",
+      rayas(
+        "Para postular, no. Si avanzamos, tu programa se publica en Mi espacio, que se abre en la plataforma de Rumbo —otra dirección web— y pide iniciar sesión con una cuenta de ChatGPT. Si no tienes una, puedes crearla gratis. Hoy no hay otra forma de entrar a Mi espacio: si prefieres no crearla, dínoslo antes de acordar nada.",
+      ),
     ],
   }),
   () => ({
@@ -192,7 +191,7 @@ const fabricas: Fabrica[] = [
     grupo: "salud",
     pregunta: "¿Hay atención inmediata o inteligencia artificial?",
     respuesta: [
-      "No. Las respuestas son humanas y llegan por el canal y en el plazo que acordemos antes de empezar. La guía con inteligencia artificial está en preparación y no es parte del servicio; cuando exista, ninguna propuesta cambiará tu calendario sin tu confirmación.",
+      "No. Las revisiones las hace una persona, en días hábiles, y no hay chat ni respuesta inmediata. La guía con inteligencia artificial está en preparación y no es parte del servicio; cuando exista, ninguna propuesta cambiará tu calendario sin tu confirmación.",
     ],
   }),
   () => ({

@@ -25,7 +25,7 @@ export default function Encaje() {
             Ayuda inmediata
           </Link>
         </strong>{" "}
-        encontrarás a quién llamar en Chile, gratis y a cualquier hora.
+        encontrarás a quién llamar en Chile, a cualquier hora.
       </p>
     </div>
   );

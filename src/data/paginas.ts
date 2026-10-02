@@ -3,6 +3,11 @@
 // navegar. Una página nueva se agrega aquí y en App.tsx (TypeScript exige ambas).
 import { LEMA } from "./rumbo";
 
+// Fecha de la versión publicada: la usan las bajadas de Privacidad y Condiciones («vigente
+// desde el…») y el sitemap. Es literal y se cambia a mano en el mismo commit que publica una
+// versión nueva (nunca un marcador). Una página que cambie después lleva su propia fecha.
+export const VERSION_PUBLICADA = { iso: "2026-10-02", texto: "2 de octubre de 2026" } as const;
+
 export type PaginaId = "inicio" | "privacidad" | "condiciones" | "ayuda";
 
 export type Pagina = {
@@ -23,10 +28,10 @@ export const paginas: Pagina[] = [
     ruta: "/",
     titulo: `Rumbo · ${LEMA}`,
     descripcion:
-      "Tu meta, convertida en una semana posible: un calendario de acciones concretas y una persona que lo revisa contigo. Piloto en preparación en Santiago.",
+      "Tu meta, convertida en una semana posible: un calendario de acciones y una persona que lo revisa contigo. Piloto en preparación, en línea y en español.",
     ogDescripcion:
-      "Planificación personal con acompañamiento humano. Tu meta, convertida en una semana posible. Piloto en preparación en Santiago de Chile.",
-    revisada: "2026-10-02",
+      "Planificación personal con acompañamiento humano. Tu meta, convertida en una semana posible. Piloto en preparación, en línea y en español.",
+    revisada: VERSION_PUBLICADA.iso,
   },
   {
     id: "privacidad",
@@ -34,7 +39,7 @@ export const paginas: Pagina[] = [
     titulo: "Privacidad · Rumbo",
     descripcion:
       "Qué datos pide Rumbo durante el piloto, para qué los usa, dónde se guardan, cuánto tiempo los conserva y cómo ejercer tus derechos.",
-    revisada: "2026-10-02",
+    revisada: VERSION_PUBLICADA.iso,
   },
   {
     id: "condiciones",
@@ -42,7 +47,7 @@ export const paginas: Pagina[] = [
     titulo: "Condiciones del piloto · Rumbo",
     descripcion:
       "Cómo se postula al piloto de Rumbo, qué incluye y qué no incluye cada plan, precios de referencia y qué se acuerda contigo antes de empezar.",
-    revisada: "2026-10-02",
+    revisada: VERSION_PUBLICADA.iso,
   },
   {
     id: "ayuda",
@@ -50,7 +55,7 @@ export const paginas: Pagina[] = [
     titulo: "Ayuda inmediata · Rumbo",
     descripcion:
       "Rumbo no es un servicio de urgencias. Si necesitas ayuda ahora en Chile: *4141 (prevención del suicidio), 131 (SAMU) y Salud Responde 600 360 7777.",
-    revisada: "2026-10-02",
+    revisada: VERSION_PUBLICADA.iso,
   },
 ];
 

@@ -4,7 +4,8 @@ import { FilaFutura, TarjetaCamino } from "../Areas";
 import { Aviso, Encabezado } from "../Bloques";
 import Encaje from "../Encaje";
 import Icono from "../Icono";
-import { areasMasAdelante, areasPiloto } from "../../data/rumbo";
+import { areasMasAdelante, areasPiloto, rayas } from "../../data/rumbo";
+import { avisoMasAdelante } from "./textos";
 
 export default function ParaQuien() {
   return (
@@ -13,7 +14,12 @@ export default function ParaQuien() {
         <Encabezado
           revelar
           ojo="Para quién"
-          titulo="Sabes lo que quieres cambiar. Lo difícil es sostenerlo."
+          titulo={
+            // Dos oraciones: la segunda empieza en su propia línea (.frase).
+            <>
+              Sabes lo que quieres cambiar. <span className="frase">Lo difícil es sostenerlo.</span>
+            </>
+          }
           bajada="Muchas personas tienen clara la intención, pero les cuesta aterrizarla, ordenar prioridades y mantener el ritmo de una semana a otra. Otras todavía no tienen una meta clara. En los dos casos no tienes que armar el programa por tu cuenta ni volverte especialista en planificación: te lo entregamos hecho y te acompañamos a sostenerlo."
         />
         {/* Párrafo con estilo h3 y no encabezado: así las tarjetas son h3. */}
@@ -33,25 +39,23 @@ export default function ParaQuien() {
         <div className="mas-adelante">
           <div className="mas-adelante-cabeza" data-revelar="">
             <p className="ojo">Más adelante</p>
-            <h3>Áreas que abriremos con apoyo profesional.</h3>
+            <h3>Áreas que queremos abrir con apoyo profesional.</h3>
             <p>
-              Las abriremos cuando contemos con el apoyo profesional que requieren, y siempre como complemento —nunca
-              como reemplazo— de tu psicólogo, nutricionista, médico o entrenador. Todavía no tienen fecha.
+              {rayas(
+                "Las abriremos cuando contemos con el apoyo profesional que requieren, y siempre como complemento —nunca como reemplazo— de tu psicólogo, nutricionista, médico o entrenador. Todavía no tienen fecha.",
+              )}
             </p>
           </div>
           <p className="mas-adelante-aviso">
             <Icono nombre="lock" tamaño={16} />
-            <span>
-              Si dejas tu interés, no incluyas diagnósticos ni detalles de salud: basta con el área. No te contactaremos
-              por estas áreas hasta que se abran.
-            </span>
+            <span>{avisoMasAdelante()}</span>
           </p>
           <div className="filas-futuras" data-revelar="">
             {areasMasAdelante.map((a) => (
               <FilaFutura key={a.id} area={a} />
             ))}
           </div>
-          <p className="microcopia">
+          <p className="microcopia mas-adelante-nota">
             Dejar tu interés usa el mismo formulario para postular. Usaremos tu solicitud para avisarte si abrimos esa
             área, y puedes retirarla cuando quieras con tu enlace privado.
           </p>

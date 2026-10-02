@@ -1,6 +1,6 @@
 // Textos de la portada (5.2) que se repiten entre capítulos o que cambian según
 // `operacion`. Con los datos actuales se publica siempre la versión «sin dato».
-import { operacion, t, type Operacion } from "../../data/rumbo";
+import { operacion, rayas, t, type Operacion } from "../../data/rumbo";
 
 // Nota bajo los CTA de los capítulos 1 y 6.
 export const NOTA_SALIDA = "El formulario se abre en la plataforma de Rumbo, en otra dirección web.";
@@ -34,9 +34,25 @@ export function bajadaCierre(op: Operacion = operacion) {
   return base + t("te escribe dentro de {plazo} si podemos acompañarte en esta etapa del piloto.", { plazo });
 }
 
-// Bajada de los planes (5a): cambia cuando los precios ya incluyen impuestos.
+// Bajada de los planes (5a): cambia cuando los precios ya incluyen impuestos. Lo que se
+// acuerda antes de empezar es lo de seAcuerdaContigo (rumbo.ts): día de revisión, fecha y pago.
 export function bajadaPlanes(op: Operacion = operacion) {
-  return op.preciosConImpuestos
-    ? "Precios del piloto en pesos chilenos, impuestos incluidos: es el valor total de cada ciclo de 4 semanas, sin renovación automática. Postular no tiene costo ni te compromete; antes de cualquier cobro acordamos contigo el alcance, el canal y los plazos. Hoy no hay pagos en línea."
-    : "Precios de referencia del piloto, en pesos chilenos. Postular no tiene costo ni te compromete. Si avanzamos, acordamos contigo el alcance, el canal, los plazos y el precio final —con impuestos incluidos— antes de cualquier cobro. Hoy no hay pagos en línea.";
+  return rayas(
+    op.preciosConImpuestos
+      ? "Precios del piloto en pesos chilenos, impuestos incluidos: es el valor total de cada ciclo de 4 semanas, sin renovación automática. Postular no tiene costo ni te compromete; antes de cualquier cobro acordamos contigo el día de tu revisión, la fecha de inicio y el medio de pago. Hoy no hay pagos en línea."
+      : "Precios de referencia del piloto, en pesos chilenos. Postular no tiene costo ni te compromete. Si avanzamos, acordamos contigo el día de tu revisión, la fecha de inicio y el precio final —con impuestos incluidos— antes de cualquier cobro. Hoy no hay pagos en línea.",
+  );
+}
+
+// Aviso de «Más adelante» (capítulo 2): quien deja su interés también recibe la primera
+// respuesta cuando se responde a todas las solicitudes.
+export function avisoMasAdelante(op: Operacion = operacion) {
+  const base = "Si dejas tu interés, no incluyas diagnósticos ni detalles de salud: basta con el área. ";
+  const plazo = op.plazoPrimeraRespuesta;
+  if (!plazo || !op.respondemosTodas) return base + "No te contactaremos por estas áreas hasta que se abran.";
+  return (
+    base +
+    t("Como a toda solicitud, te respondemos dentro de {plazo}. ", { plazo }) +
+    "Fuera de esa primera respuesta, no te contactaremos por estas áreas hasta que se abran."
+  );
 }

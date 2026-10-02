@@ -1,7 +1,7 @@
 // Capítulo 3: Método (5.2). Bosque: los cinco pasos, lo que puedes esperar del piloto y,
 // solo si existe operacion.acompanante, quién te acompaña.
 import { BASENAME } from "../../base";
-import { operacion, t } from "../../data/rumbo";
+import { operacion, rayas, t } from "../../data/rumbo";
 import { Aviso, Encabezado, Pasos } from "../Bloques";
 import { BotonPostular } from "../Enlaces";
 import Icono, { type NombreIcono } from "../Icono";
@@ -21,13 +21,14 @@ const pasos = [
   },
   {
     titulo: "Recibes tu programa",
-    contenido:
+    contenido: rayas(
       "El equipo diseña tu calendario —acciones con horario o flexibles, duración e instrucciones— y lo publica en Mi espacio. Marcas lo que haces y ves tu progreso.",
+    ),
   },
   {
     titulo: "Revisamos cada semana",
     contenido:
-      "Tu coach revisa contigo qué funcionó. Si algo no se cumplió, buscamos la dificultad y ajustamos la carga. Al cerrar el ciclo decidimos juntos si continuar, reformular o terminar.",
+      "Tu coach revisa contigo qué funcionó, por escrito o en una videollamada, según tu plan. Si algo no se cumplió, buscamos la dificultad y ajustamos la carga. Al cerrar el ciclo decidimos juntos si continuar, reformular o terminar.",
   },
 ];
 
@@ -47,7 +48,7 @@ const esperar: { icono: NombreIcono; titulo: string; texto: string }[] = [
   {
     icono: "info",
     titulo: "Nada se cobra sin acuerdo.",
-    texto: "El alcance, el canal, los plazos y el precio quedan claros antes de empezar.",
+    texto: "El plan, el precio y las condiciones quedan claros antes de empezar.",
   },
   {
     icono: "lock",

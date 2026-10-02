@@ -10,7 +10,12 @@ import {
   PaginaLectura,
   identificacion,
 } from "../components/lectura/Lectura";
+import { VERSION_PUBLICADA } from "../data/paginas";
+import { trasDosPuntos } from "../data/preguntas";
 import {
+  SANTIAGO,
+  TEXTO_REVISIONES,
+  TEXTO_TOPE,
   ayuda,
   noEsParaTi,
   noIncluyeEn,
@@ -22,9 +27,9 @@ import {
   t,
 } from "../data/rumbo";
 
-// Condiciones del piloto (5.4), imprimibles. `fecha` es literal: el día en que se publica
-// esta versión, escrito en el mismo commit que la publica (nunca un marcador).
-const VERSION_CONDICIONES = { numero: "1.0", fecha: "2 de octubre de 2026" };
+// Condiciones del piloto (5.4), imprimibles. La fecha es la de la versión publicada
+// (VERSION_PUBLICADA en paginas.ts), literal y escrita en el mismo commit que la publica.
+const VERSION_CONDICIONES = { numero: "1.0", fecha: VERSION_PUBLICADA.texto };
 
 const ACEPTACION =
   "La aceptación depende de que el piloto pueda ayudarte con tu meta y de nuestra capacidad en esta etapa.";
@@ -34,17 +39,6 @@ const revision = !plazo
   : op.respondemosTodas
     ? t("Una persona revisa cada solicitud y te responde dentro de {plazo}, también si en esta etapa no podemos acompañarte.", { plazo })
     : t("Una persona revisa cada solicitud y, si el piloto puede acompañarte, te escribe dentro de {plazo}.", { plazo });
-
-const RESPUESTA_BREVE =
-  "Una respuesta breve es un mensaje sobre tu programa entre una revisión y otra. No hay atención inmediata ni disponibilidad permanente.";
-const { canalRevisiones, canalRespuestas, plazoRespuestas } = op;
-const revisiones =
-  canalRevisiones && canalRespuestas && plazoRespuestas
-    ? t(
-        "Las revisiones semanales son por {canalRevisiones}, en el horario que acordemos. Las respuestas breves llegan por {canalRespuestas} dentro de {plazoRespuestas}.",
-        { canalRevisiones, canalRespuestas, plazoRespuestas },
-      )
-    : "Las revisiones semanales y las respuestas breves se coordinan fuera de la plataforma, por el canal y en el horario que acordemos contigo antes de empezar.";
 
 const SIN_RENOVACION =
   "No hay cobros adicionales a los acordados ni renovación automática: cada ciclo nuevo requiere un nuevo acuerdo.";
@@ -56,8 +50,16 @@ const precio =
         { formaDePago, documentoTributario },
       )} ${SIN_RENOVACION}`
     : `Los precios están en pesos chilenos y son de referencia para el piloto. Antes de cualquier cobro te informamos el precio final, con impuestos incluidos, y la forma de pago.${
-        op.topePrecio ? " El precio final, con impuestos incluidos, no será mayor que el publicado." : ""
+        op.topePrecio ? ` ${TEXTO_TOPE}` : ""
+      }${
+        op.cobertura ? " Fuera de Chile el pago es en dólares, por el monto que te informamos antes de cualquier cobro." : ""
       } ${SIN_RENOVACION} Hoy no hay pagos en línea.`;
+
+// Urgencias (propuesta de precios 7.1): antes y después de las líneas de ayuda.
+const URGENCIAS =
+  "Rumbo no es un servicio de urgencias ni de salud. Si estás en riesgo o piensas en hacerte daño, en Chile llama al *4141 desde un celular (gratuito, 24 horas); fuera de Chile, al número de emergencias de tu país.";
+const SENALES_DE_RIESGO =
+  "Si en una revisión aparecen señales de riesgo, te lo diremos, te daremos esos contactos y pausaremos sin costo.";
 
 const secciones: Paso[] = [
   {
@@ -65,10 +67,7 @@ const secciones: Paso[] = [
     contenido: (
       <>
         <p>
-          Rumbo es un servicio de planificación personal con acompañamiento humano: convertimos una meta en un
-          programa calendarizado, con acciones concretas, y lo revisamos contigo. Este es un piloto en preparación en
-          Santiago de Chile, con un grupo pequeño de personas adultas y en ciclos de 4 semanas, para aprender y
-          mejorar el servicio.
+          {`Rumbo es un servicio de planificación personal con acompañamiento humano: convertimos una meta en un programa calendarizado, con acciones concretas, y lo revisamos contigo. Este es un piloto en preparación, en línea y en español, que se opera desde ${SANTIAGO}, con un grupo pequeño de personas adultas y en ciclos de 4 semanas, para aprender y mejorar el servicio.`}
         </p>
         {op.responsable && (
           <p>
@@ -93,7 +92,7 @@ const secciones: Paso[] = [
           En esta etapa nos enfocamos en proyectos y emprendimiento, estudio y aprendizaje, y organización y hábitos.
           Bienestar y autoestima, cambios y relaciones, alimentación y movimiento todavía no están abiertos.
         </p>
-        {op.cobertura && <p>{op.cobertura.respuesta}</p>}
+        {op.cobertura && <p>{op.cobertura.condiciones}</p>}
         <p>Rumbo todavía no es adecuado si…</p>
         <ListaCheck tipo="no-incluye" items={puntuar(noEsParaTi)} />
         <p>
@@ -125,7 +124,7 @@ const secciones: Paso[] = [
           <div key={p.id} className="lectura-plan">
             <h3>{p.nombre}</h3>
             <p>
-              <strong className="tabular">{p.precio}</strong> {p.periodo}
+              <strong className="tabular">{p.precio}</strong> {p.periodo}. {p.porSemana}.
             </p>
             <h4>Incluye</h4>
             <ListaCheck items={p.incluye} />
@@ -139,8 +138,9 @@ const secciones: Paso[] = [
     ),
   },
   {
-    titulo: "Cómo funcionan las revisiones y las respuestas",
-    contenido: `${revisiones} ${RESPUESTA_BREVE}`,
+    // El mismo texto de la pregunta «¿Cómo son las revisiones semanales?».
+    titulo: "Cómo funcionan las revisiones",
+    contenido: TEXTO_REVISIONES,
   },
   {
     titulo: "Qué no incluye",
@@ -193,13 +193,10 @@ const secciones: Paso[] = [
     titulo: "Seguridad y situaciones de crisis",
     contenido: (
       <>
-        <p>Rumbo no es un servicio de urgencias.</p>
+        <p>{URGENCIAS}</p>
         {/* Las cuatro líneas de 5.4 §10, con los textos de Ayuda inmediata (sin el 1455). */}
         <LineasAyuda recursos={recursosAyuda({ ...ayuda, incluir1455: false })} />
-        <p>
-          Si durante el acompañamiento notamos señales de que tu seguridad está en riesgo, te daremos estos recursos y
-          podremos pausar tu programa para priorizar tu cuidado.
-        </p>
+        <p>{SENALES_DE_RIESGO}</p>
       </>
     ),
   },
@@ -209,8 +206,9 @@ const secciones: Paso[] = [
       <>
         <p>Antes de aceptar el acuerdo puedes desistir sin costo y retirar tu solicitud con tu enlace privado.</p>
         <p>
-          {op.politicaTermino ??
-            "Las condiciones de pausa, término anticipado y devolución se acuerdan contigo antes de cualquier pago y respetan siempre los derechos que te da la ley chilena."}
+          {op.politicaTermino
+            ? t("Si ya empezaste un ciclo: {politicaTermino}", { politicaTermino: trasDosPuntos(op.politicaTermino) })
+            : "Las condiciones de pausa, término anticipado y devolución se acuerdan contigo antes de cualquier pago y respetan siempre los derechos que te da la ley chilena."}
         </p>
         <p>
           Si durante el ciclo vemos que tu meta necesita atención profesional que Rumbo no presta, te lo diremos y

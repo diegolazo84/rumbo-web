@@ -1,9 +1,30 @@
 # Pendientes
 
-Estado al 2 de octubre de 2026. «Implementado» = está en este repositorio;
-«verificado» = comprobado en un navegador o en producción.
+Estado al 2 de octubre de 2026 (tarde), con las decisiones de Diego del mismo día.
+«Implementado» = está en este repositorio; «verificado» = comprobado en un navegador o en producción.
 
 Este repositorio es público: aquí no van datos personales ni documentos internos.
+
+## Decisiones del 2 de octubre de 2026 (aplicadas)
+
+- **Rumbo opera como persona natural** (no hay empresa). Mientras no se publiquen el nombre y el
+  correo, la web sigue diciendo que el piloto se opera desde Santiago de Chile y que la
+  identificación formal está en curso.
+- **Cobertura:** se participa en línea y en español, desde Chile o desde la mayoría de los
+  países. Mi espacio pide una cuenta de ChatGPT, que no está disponible en algunos países (por
+  ejemplo, Venezuela o Cuba). Fuera de Chile se paga en dólares; las videollamadas son en franjas de
+  hora de Chile y los plazos se cuentan en días hábiles de Chile. Está en «¿Es para ti?», en la
+  pregunta «¿Puedo participar si no vivo en Santiago o en Chile?» y en Condiciones §2. La insignia
+  de la portada dice «Piloto en preparación · En línea» (la forma larga, «… · En línea y en
+  español», no cabe en una línea por debajo de 375 px); «desde Santiago de Chile» queda donde se
+  dice quién opera.
+- **Primera respuesta en 2 días hábiles, a todas las solicitudes**, también a quien no avanza y a
+  quien deja su interés en un área de «Más adelante».
+- **Planes y precios:** «Con acompañamiento» $64.000 y «Acompañamiento cercano» $100.000 por ciclo
+  de 4 semanas, con la equivalencia por semana en letra chica. La diferencia entre planes es escrito
+  o conversado (revisión escrita semanal en Mi espacio, o videollamada semanal de 20 minutos). En
+  Chile, el precio final con impuestos no será mayor que el publicado. Primer grupo de 5 personas.
+- **Quién acompaña:** sin dato por ahora; la sección no aparece.
 
 ## Implementado
 
@@ -40,8 +61,15 @@ Este repositorio es público: aquí no van datos personales ni documentos intern
   390 y 320 px con las tipografías reales, sin desbordes, y `forced-colors` en el emulador de
   Chromium (barras, acciones del calendario y etiquetas visibles). Dos títulos dejan una palabra
   sola en su línea en pantallas angostas, porque con la escala de tamaños no caben en una:
-  «Condiciones / del piloto.» a 390 px o menos (el H1 mide 364 px y el ancho útil es 358) y el H1
-  de la portada a 320 px.
+  «Condiciones / del piloto.» a 390 px o menos (el H1 mide 364 px y el ancho útil es 358; se
+  acepta como excepción) y el H1 de la portada a 320 px.
+- **Correcciones del panel de revisión** (2 de octubre de 2026, revisadas a 390 y 1440 px): Salud
+  Responde ya no figura como gratuita (tiene costo de llamada local); fecha de versión única
+  (`VERSION_PUBLICADA` en `src/data/paginas.ts`); rayas de inciso unidas a su palabra; cortes de
+  línea antes de «·» en el calendario; títulos de dos oraciones con la segunda en su propia línea;
+  alineación de planes, tarjetas de «Qué recibes» y botones terciarios; medida de lectura en las
+  notas sueltas; el reenvío de `/estado/` explica que el botón no lleva el enlace privado
+  completo, y la imagen para redes muestra los días en orden.
 
 ## Sin verificar
 
@@ -65,28 +93,66 @@ perfiles), y la compilación con `LANZAMIENTO=1` los exige.
 
 | Dato | Para qué | Estado |
 |---|---|---|
-| `responsable` | Identificar al proveedor y al responsable de los datos (fila legal, Privacidad §1, Condiciones §1) | **bloquea la difusión** |
-| `correo` | Contacto de privacidad y consultas; aparece en el pie y en los reenvíos | **bloquea la difusión** |
-| `plazoPrimeraRespuesta` y `respondemosTodas` | Decir en cuánto se responde, también a quien no avanza | **bloquea la difusión** |
-| `cobertura` | Desde dónde se puede participar («Es para ti si…», pregunta 11, Condiciones §2) | **bloquea la difusión** |
-| `preciosConImpuestos` o `topePrecio` | El precio informado debe incluir los impuestos | **bloquea la difusión** |
-| `ayuda.verificadoEl` (e `incluir1455`) | Día en que se verificaron los números de ayuda | **bloquea la difusión** |
-| `canalRevisiones`, `canalRespuestas`, `plazoRespuestas` | Cómo y cuándo son las revisiones y las respuestas breves | bloquea el primer cobro |
-| `formaDePago`, `documentoTributario` | Cómo se paga y qué documento se entrega | bloquea el primer cobro |
-| `politicaTermino` | Pausa, término anticipado y devolución | bloquea el primer cobro |
-| `acompanante` | Quién acompaña: nombre, rol y biografía real | opcional, pero es la señal de confianza más fuerte |
+| `responsable` | Identificar al proveedor y al responsable de los datos (fila legal, Privacidad §1, Condiciones §1). Persona natural: nombre y comuna; el RUT solo si la revisión legal lo pide | **falta · bloquea la difusión** |
+| `correo` | Contacto de privacidad y consultas; aparece en el pie y en los reenvíos | **falta · bloquea la difusión** |
+| `ayuda.verificadoEl` (e `incluir1455`) | Día en que se verificaron los números de ayuda | **falta · bloquea la difusión** |
+| `plazoPrimeraRespuesta` y `respondemosTodas` | «2 días hábiles», a todas las solicitudes | cargado |
+| `cobertura` | Desde dónde se puede participar («Es para ti si…», pregunta de cobertura, Condiciones §2) | cargado |
+| `topePrecio` | En Chile, el precio final con impuestos no supera el publicado | cargado |
+| `tamanoPrimerGrupo` | 5 personas | cargado |
+| `formaDePago`, `documentoTributario` | Cómo se paga y qué documento se entrega | falta · bloquea el primer cobro |
+| `politicaTermino` | Pausa, término anticipado y devolución (se muestra tras «Si ya empezaste un ciclo:») | falta · bloquea el primer cobro |
+| `preciosConImpuestos` | Cuando se confirme el régimen tributario, la nota pasa a «Impuestos incluidos» | falta |
+| `acompanante` | Quién acompaña: nombre, rol y biografía real | sin dato por ahora (decisión del 2 de octubre): la sección no aparece |
 | `conservacion` | Plazos de conservación de datos (Privacidad §8) | opcional |
 | `alojamientoVerificado` | Confirmar con OpenAI dónde se alojan los datos de la plataforma (Privacidad §6) | opcional |
-| `tamanoPrimerGrupo` | Tamaño real del primer grupo (dato real, no falsa escasez) | opcional |
+| `canalRevisiones`, `canalRespuestas`, `plazoRespuestas` | Ya no hacen falta: las revisiones tienen un texto fijo por plan | sin uso |
+
+### Se publica cuando se cumpla su condición
+
+Estos textos ya están redactados fuera del repositorio y **no** se publican todavía:
+
+- **Cuando exista el correo de Rumbo:** las respuestas breves por correo en cada plan (cuántas
+  por ciclo y en qué plazo) y el aviso por correo cuando una revisión esté lista.
+- **Cuando el cobro desde fuera de Chile esté probado:** el precio en dólares de cada plan y el
+  medio de pago.
+- **Cuando se fije la fecha de inicio del primer grupo y las condiciones estén revisadas:** el
+  precio del primer ciclo del piloto.
+- **Después de la revisión legal:** la política de pausa, término y devolución (`politicaTermino`)
+  y la línea de devolución que la resume.
+- **Después del piloto:** el precio reducido a solicitud.
 
 ### Plantilla de respuesta para quien no avanza
 
-Se recomienda `respondemosTodas = true` y responder a mano, por correo:
+La web promete responder a todas las solicitudes dentro de 2 días hábiles (de lunes a viernes,
+sin feriados de Chile), también a quien no avanza y a quien deja su interés en un área de «Más
+adelante». Se responde a mano, por correo:
 
 > Hola, {nombre}: gracias por contarnos tu meta. En esta primera etapa el piloto acompaña a un
 > grupo pequeño de personas y no podremos acompañarte ahora. Si abrimos una nueva etapa, lo
 > publicaremos en la web de Rumbo. Puedes retirar tu solicitud cuando quieras con tu enlace
-> privado. Un saludo, el equipo de Rumbo.
+> privado. Un saludo, Rumbo.
+
+Para quien deja su interés en un área de «Más adelante», la misma respuesta, diciendo que esa
+área todavía no tiene fecha: la web promete no volver a escribirle por esa área hasta que se abra.
+
+## Altura de la portada en móvil (aceptación 19): meta ajustada
+
+La especificación pedía que a 390 px la portada midiera menos de 12.000 px y que `#planes`
+empezara antes del 66 % de la página. Solo las líneas del texto final ocupan unos 12.000 px a ese
+ancho, y ya se aplicaron los tres recortes previstos (aire de «¿Es para ti?», filas «Más
+adelante» más bajas y ranking compacto). Plegar «Más adelante» o acortar textos escondería
+información sobre qué áreas no están abiertas y por qué, a cambio de pocos píxeles. Por eso la
+meta se ajustó a lo medido, con margen:
+
+- Con el texto anterior (18.945 px, `#planes` al 67,7 %) la meta quedó en **19.200 px y `#planes`
+  antes del 68,5 %**.
+- Los planes, la cobertura y la primera respuesta del 2 de octubre agregaron unos 640 px: la
+  portada mide **19.584 px** y `#planes` empieza al **66,1 %** (mejor que antes, porque lo nuevo
+  está sobre todo en los planes y las preguntas). La prueba quedó en **19.800 px** y 68,5 %.
+
+`pruebas/humo.spec.ts` falla si la portada pasa de esos valores. Si vuelve a crecer, hay que
+recortar texto antes de subir la meta.
 
 ## Revisión legal y normativa
 
@@ -97,7 +163,8 @@ Se recomienda `respondemosTodas = true` y responder a mano, por correo:
 - **Ley N.º 19.496** (consumidor): identificación del proveedor, precio con impuestos incluidos
   (art. 30) y condiciones disponibles antes del acuerdo a distancia (art. 12 A).
 - Falta la revisión legal de Privacidad y de las Condiciones del piloto, incluido el derecho a
-  retracto.
+  retracto y, si se aceptan participantes de la Unión Europea, las reglas de consumo y de datos
+  personales que les aplican.
 - Falta el consentimiento expreso para datos de salud en el formulario de la plataforma.
 
 ## Alojamiento de la plataforma
@@ -136,17 +203,12 @@ confirme, se pone `alojamientoVerificado = true` y el texto cambia solo.
 - Confirmar con OpenAI dónde y con qué proveedores se alojan los datos.
 - Opcional: alinear los nombres de las opciones de área con los de la web, para poder retirar las
   microcopias «En el formulario, elige “…”».
+- Revisar los textos de los planes: si alguno dice «revisiones de 10 minutos», cambiarlo por
+  «revisión escrita semanal», y si muestra precios, poner $64.000 y $100.000. Los rótulos y las
+  opciones del formulario no cambian.
 
 ## Decisiones pendientes
 
-- **Altura de la portada en móvil (aceptación 19 de la especificación):** a 390 px la portada mide
-  unos 18.900 px y `#planes` empieza al 67,7 % de la página; la meta era menos de 12.000 px y
-  antes del 66 %. Solo las líneas del texto final ocupan unos 12.000 px a ese ancho, así que la
-  meta no se alcanza sin quitar o plegar texto. Ya se aplicaron los tres recortes previstos (aire
-  de «¿Es para ti?», filas «Más adelante» más bajas y ranking compacto). Opciones: ajustar la meta
-  a lo medido; plegar «Más adelante» en móvil dentro de un `<details>` (deja `#planes` cerca del
-  65 %), o acortar textos. Mientras tanto, la prueba de `pruebas/humo.spec.ts` informa la medida y
-  falla si la portada crece más.
 - **Dominio propio .cl** y alojamiento definitivo (recomendado antes de campañas pagadas).
 - **Dar de baja el sitio antiguo de Netlify** o dejar en él una sola página `noindex` que enlace a
   la nueva dirección: hoy sigue publicado con ofertas que contradicen esta web. **Bloquea el

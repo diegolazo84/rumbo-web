@@ -16,6 +16,7 @@ export function TarjetaPlan({ plan }: { plan: Plan }) {
         <span className="precio">{plan.precio}</span> <span className="plan-periodo">{plan.periodo}</span>
       </p>
       <p className="plan-nota">{notaPrecio(operacion)}</p>
+      <p className="plan-semana">{plan.porSemana}</p>
       <hr />
       <ListaCheck items={plan.incluye} />
       <hr />

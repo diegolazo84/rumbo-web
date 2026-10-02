@@ -5,7 +5,8 @@ export const PLATAFORMA = "https://rumbo-acompanamiento-diego.diegolazo84.chatgp
 
 const OTRA_DIRECCION = "La plataforma está en otra dirección web.";
 
-// rutas: carpetas de esta web · destino: ruta en la plataforma · nombre: {destino} del texto.
+// rutas: carpetas de esta web · destino: ruta en la plataforma · nombre: {destino} del texto ·
+// nota (opcional): párrafo bajo el botón, que se lee también sin JavaScript.
 export const REENVIOS = [
   { rutas: ["postular"], destino: "/postular", nombre: "el formulario para postular", explicacion: OTRA_DIRECCION },
   { rutas: ["contacto"], destino: "/contacto", nombre: "el formulario de contacto", explicacion: OTRA_DIRECCION },
@@ -22,7 +23,14 @@ export const REENVIOS = [
     explicacion:
       "La comunidad está en la plataforma de Rumbo, en otra dirección web; es solo para participantes y pide iniciar sesión.",
   },
-  { rutas: ["estado"], destino: "/estado", nombre: "el estado de tu solicitud", explicacion: OTRA_DIRECCION },
+  {
+    rutas: ["estado"],
+    destino: "/estado",
+    nombre: "el estado de tu solicitud",
+    explicacion: OTRA_DIRECCION,
+    // El botón (y el reenvío sin JavaScript) no conserva el #token del enlace privado.
+    nota: "Si no se abre, vuelve a usar el enlace privado completo que guardaste: este botón no lo incluye.",
+  },
   {
     rutas: ["privacidad-piloto"],
     destino: "/privacidad-piloto",
@@ -41,6 +49,7 @@ export function textosReenvio(r) {
     llevamos: `Te llevamos ${aDestino(r.nombre)}, en la plataforma de Rumbo.`,
     explicacion: `${r.explicacion} Si no pasa nada en unos segundos, usa este enlace:`,
     enlace: `Abrir ${r.nombre}`,
+    nota: r.nota ?? null,
   };
 }
 
