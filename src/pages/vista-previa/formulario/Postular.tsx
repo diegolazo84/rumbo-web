@@ -635,7 +635,7 @@ export default function Postular({ estado = "solicitud" }: PropsPantalla) {
             <BloqueNumerado numero={2} total={3} titulo={POSTULAR.bloques[1].titulo} bajada={POSTULAR.bloques[1].bajada}>
               {desdePlanes && (
                 <p className="vf-etiquetas">
-                  <Etiqueta variante="nota">{POSTULAR.apoyo.elegisteDesdePlanes(desdePlanes)}</Etiqueta>
+                  <Etiqueta variante="nota" className="vf-etiqueta-larga">{POSTULAR.apoyo.elegisteDesdePlanes(desdePlanes)}</Etiqueta>
                 </p>
               )}
               <div className="vf-apoyo">

@@ -196,3 +196,6 @@
 .vf-nota-cierre blockquote { margin: 0; font-size: var(--t-s); line-height: 1.55; }
 /* Enlace suelto en su propia línea: objetivo de 44 px (2.5.8). */
 .vf-enlace-alto { display: inline-flex; align-items: center; min-block-size: 44px; }
+
+/* Etiqueta con una frase completa («Elegiste desde Planes: …»): puede ocupar dos líneas a 320 px. */
+.etiqueta.vf-etiqueta-larga { max-inline-size: 100%; block-size: auto; min-block-size: 26px; padding-block: 4px; border-radius: var(--r-m); line-height: 1.3; white-space: normal; }

@@ -16,7 +16,7 @@ import { BASENAME } from "../../../base";
 import { DIAS, diaMes, fechaLarga, miles, mayuscula, type Iso } from "../../../lib/fechas";
 import { BotonCopiar, Cabeza, Datos, Desplegable, EtiquetaArea, R, Seccion, conId, nombreArea, useParametro, venceTexto } from "./comun";
 import { HOY, sinPrimeraRespuesta, solicitudPorId, type Solicitud } from "./ejemplo";
-import { PLANTILLAS, plantillaPorId } from "./plantillas";
+import { CAMPO_POR_COMPLETAR, PLANTILLAS, plantillaPorId } from "../../../data/plantillas";
 import { textoApoyo } from "./Solicitudes";
 import { ESTADO_PERSONA, ESTADO_SOLICITUD, FICHA_SOLICITUD as F, SOLICITUDES, T_PANEL, nombreCoach } from "./textos";
 
@@ -127,9 +127,20 @@ function Contenido({ s }: { s: Solicitud }) {
             </CampoSelect>
             <div className="pa-plantilla" aria-label={plantillaPorId(plantilla).nombre} role="group">
               {cuerpo.split("\n\n").map((p, i) => (
-                <p key={i}>{p}</p>
+                <p key={i}>
+                  {p.split(CAMPO_POR_COMPLETAR).map((parte, j) =>
+                    j % 2 ? (
+                      <mark key={j} className="pa-por-completar">
+                        {parte}
+                      </mark>
+                    ) : (
+                      parte
+                    ),
+                  )}
+                </p>
               ))}
             </div>
+            {CAMPO_POR_COMPLETAR.test(cuerpo) && <p className="microcopia">{F.responder.porCompletar}</p>}
             <div className="acciones">
               <BotonCopiar texto={cuerpo} etiqueta={F.responder.copiar} />
               <a href={mailto} className="boton boton--secundario">

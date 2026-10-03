@@ -1,9 +1,8 @@
 // Plantillas que Diego envía a mano desde el correo de Rumbo (especificación de la plataforma
-// 3.16). El panel las copia con los datos ya puestos (5.4). La especificación las ubica en
-// src/data/plantillas.ts (etapa 0); este grupo no puede crear archivos fuera de su carpeta, así
-// que viven aquí hasta mudarse. Texto final, tal cual.
+// 3.16). El panel las copia con los datos ya puestos (5.4). Texto final, tal cual.
 // - Lo que solo Diego sabe al escribir (resumen, horarios, pregunta) queda entre corchetes en
-//   minúscula, sin llaves: el guardián de marcadores rechaza cualquier llave publicada.
+//   minúscula, sin llaves: el guardián de marcadores rechaza cualquier llave publicada. El panel
+//   los resalta como campos por completar (CAMPO_POR_COMPLETAR).
 // - «Aviso de traslado» no está: es solo para quienes postularon en ChatGPT (etapa 5).
 
 export type DatosPlantilla = {
@@ -65,5 +64,8 @@ export const PLANTILLAS: Plantilla[] = [
       `Hola, ${d.nombre}: tu espacio en Rumbo está listo. Entra en ${d.enlaceEntrar} con este correo: te enviaremos un código de 6 dígitos para entrar, sin contraseña. Revisa también spam o promociones. Tu programa parte el lunes ${d.fecha ?? "[fecha]"}. Un saludo, ${d.quienAcompana}, Rumbo.`,
   },
 ];
+
+// Un campo por completar: «[resumen en una línea]», «[horarios]», «[pregunta]», «[tu nombre]».
+export const CAMPO_POR_COMPLETAR = /(\[[^\]\n]{1,40}\])/;
 
 export const plantillaPorId = (id: string) => PLANTILLAS.find((p) => p.id === id) ?? PLANTILLAS[0];

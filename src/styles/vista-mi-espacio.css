@@ -418,51 +418,6 @@
 .me-cuenta dd { margin: 0; overflow-wrap: anywhere; }
 .me-cuenta dd:first-of-type { font-weight: 500; }
 
-/* Interruptor: casilla nativa con role="switch", pista 44×26 px dentro de una fila de 44 px. */
-.me-interruptor { display: grid; gap: var(--e-2); }
-.me-interruptor__fila {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--e-4);
-  min-block-size: 44px;
-  cursor: pointer;
-}
-.me-interruptor__texto { font-weight: 500; }
-.me-interruptor__control {
-  appearance: none;
-  flex: none;
-  position: relative;
-  inline-size: 48px;
-  block-size: 28px;
-  margin: 0;
-  border: 1.5px solid var(--linea-fuerte);
-  border-radius: var(--r-full);
-  background: var(--superficie);
-  cursor: pointer;
-  transition: background-color var(--dur-2) var(--curva), border-color var(--dur-2) var(--curva);
-}
-.me-interruptor__control::before {
-  content: "";
-  position: absolute;
-  inset-block-start: 50%;
-  inset-inline-start: 3px;
-  inline-size: 20px;
-  block-size: 20px;
-  border-radius: 50%;
-  background: var(--linea-fuerte);
-  transform: translateY(-50%);
-  transition: transform var(--dur-2) var(--curva), background-color var(--dur-2) var(--curva);
-}
-.me-interruptor__control:checked { border-color: var(--bosque); background: var(--bosque); }
-.me-interruptor__control:checked::before { background: var(--superficie); transform: translate(19px, -50%); }
-.me-interruptor__control:focus-visible { outline: var(--foco-ancho) solid var(--foco-color); outline-offset: var(--foco-offset); }
-@media (forced-colors: active) {
-  .me-interruptor__control { border-color: ButtonText; }
-  .me-interruptor__control::before { background: ButtonText; }
-  .me-interruptor__control:checked { background: Highlight; border-color: Highlight; }
-  .me-interruptor__control:checked::before { background: HighlightText; }
-}
 
 .me-datos-acciones { display: grid; gap: var(--e-3); justify-items: start; }
 .me-datos-acciones__item { display: grid; gap: var(--e-2); justify-items: start; margin-block-end: var(--e-2); }

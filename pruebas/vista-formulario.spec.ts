@@ -5,6 +5,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { CONTACTO, CORREO, NOMBRE, POSTULAR, RETIRAR, ACEPTAR_ACUERDO, validarPostular } from "../src/data/formularios";
+import { POSTULANTE } from "../src/data/ejemplo-app";
 
 const ETIQUETAS_AXE = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const hidratar = (page: Page) => page.waitForFunction(() => document.documentElement.classList.contains("hidratado"));
@@ -133,9 +134,9 @@ test("postular: el error de red conserva lo escrito y el reintento termina envia
   await expect(page.getByRole("alert")).toContainText("No pudimos enviar tu solicitud.");
   await page.getByRole("button", { name: "Intentar de nuevo" }).click();
   await expect(page.getByRole("alert")).toContainText("Si sigue fallando");
-  await expect(page.locator("#nombre")).toHaveValue("Camila");
+  await expect(page.locator("#nombre")).toHaveValue(POSTULANTE.nombre);
   await page.getByRole("button", { name: "Intentar de nuevo" }).click();
-  await expect(page.locator("main h1")).toHaveText("Recibimos tu solicitud, Camila.");
+  await expect(page.locator("main h1")).toHaveText(`Recibimos tu solicitud, ${POSTULANTE.nombre}.`);
 });
 
 test("estado: retirar pide confirmación en un diálogo que Escape cierra", async ({ page }) => {

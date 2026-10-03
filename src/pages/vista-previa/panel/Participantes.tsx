@@ -1,11 +1,11 @@
 // Vista previa · panel, Participantes (plataforma 5.5): nombre, plan, «Semana {2} de {4}»,
-// próxima revisión y estado del ciclo. Vacío: «Todavía no hay participantes…» (variante).
-import { useState } from "react";
+// próxima revisión y estado del ciclo. Estados (registro.ts): lista y vacio («Todavía no hay
+// participantes…»).
 import { Link } from "react-router-dom";
 import Etiqueta from "../../../components/Etiqueta";
 import { diaCorto } from "../../../lib/fechas";
 import type { PropsPantalla } from "../registro";
-import { Cabeza, R, Variantes, conId, planDe } from "./comun";
+import { Cabeza, R, conId, planDe } from "./comun";
 import { participantes, type FichaParticipante } from "./ejemplo";
 import { PARTICIPANTES as P, T_PANEL } from "./textos";
 
@@ -15,13 +15,11 @@ export function EtiquetaCiclo({ estado }: { estado: FichaParticipante["estadoCic
 
 export const semanaTexto = (p: FichaParticipante) => (p.semana ? T_PANEL.semanaDe(p.semana, p.semanas) : "—");
 
-export default function Participantes(_: PropsPantalla) {
-  const [variante, setVariante] = useState("lista");
-  const lista = variante === "vacio" ? [] : participantes;
+export default function Participantes({ estado }: PropsPantalla) {
+  const lista = estado === "vacio" ? [] : participantes;
   return (
     <div className="pa-pantalla">
       <Cabeza ojo={P.ojo} titulo={P.titulo} />
-      <Variantes opciones={P.variantes} valor={variante} onCambio={setVariante} />
       {lista.length ? (
         <ul className="pa-filas">
           {lista.map((p) => (

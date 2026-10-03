@@ -3,7 +3,7 @@
 // explicación si la hay. «Aprobar» suma el crédito; «No aprobar» exige nota (con plantillas) y
 // no resta nada. Texto fijo de privacidad + «Eliminar archivo ahora». Vacío: «No hay fotos por
 // revisar.» Funciona a 360 px. En la vista previa no hay fotos reales: la miniatura es un
-// recuadro punteado.
+// recuadro punteado. Estados (registro.ts): cola y vacio.
 import { useState } from "react";
 import Etiqueta from "../../../components/Etiqueta";
 import { Icono } from "../../../components/app";
@@ -11,17 +11,15 @@ import { CampoArea, GrupoOpciones, Opcion } from "../../../components/form";
 import { LIMITES } from "../../../data/formularios";
 import { fechaLarga, mayuscula } from "../../../lib/fechas";
 import type { PropsPantalla } from "../registro";
-import { Cabeza, Variantes } from "./comun";
+import { Cabeza } from "./comun";
 import { evidencias, type Evidencia } from "./ejemplo";
 import { FOTOS, T_PANEL } from "./textos";
 
-export default function Fotos(_: PropsPantalla) {
-  const [variante, setVariante] = useState("cola");
-  const lista = variante === "vacio" ? [] : evidencias;
+export default function Fotos({ estado }: PropsPantalla) {
+  const lista = estado === "vacio" ? [] : evidencias;
   return (
     <div className="pa-pantalla">
       <Cabeza ojo={FOTOS.ojo} titulo={FOTOS.titulo} />
-      <Variantes opciones={FOTOS.variantes} valor={variante} onCambio={setVariante} />
       <div className="aviso">
         <Icono nombre="lock" tamaño={20} className="aviso-icono" />
         <p>{FOTOS.fijo}</p>

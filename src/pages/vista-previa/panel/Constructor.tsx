@@ -108,8 +108,14 @@ export default function Constructor(_: PropsPantalla) {
         ojo={C.ojo}
         titulo={C.titulo(camila.nombre)}
         antes={
+          // En el teléfono se ve el programa publicado; el borrador solo existe en el editor.
           <div className="pa-etiquetas">
-            <Etiqueta variante="nota">{C.borrador}</Etiqueta>
+            <Etiqueta variante="activo" className="pa-constructor__solo-movil">
+              {C.publicado(programa.version)}
+            </Etiqueta>
+            <Etiqueta variante="nota" className="pa-constructor__solo-escritorio">
+              {C.borrador}
+            </Etiqueta>
           </div>
         }
       />
@@ -402,7 +408,7 @@ function FormAccion({ accion: a, metas, acciones, onCambio }: { accion: AccionB;
       <CampoSelect id="accion-meta" etiqueta={C.accion.meta} value={a.metaId} onChange={(ev) => onCambio({ metaId: ev.target.value })}>
         {metas.map((m) => (
           <option key={m.id} value={m.id}>
-            {`${m.titulo} · ${categorias[m.categoria].nombre}`}
+            {m.titulo}
           </option>
         ))}
       </CampoSelect>

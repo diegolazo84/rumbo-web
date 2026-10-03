@@ -9,7 +9,9 @@ import { Link, Route, Routes, useLocation } from "react-router-dom";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import Etiqueta from "../../components/Etiqueta";
-import { Banda, Cargando, EstructuraApp } from "../../components/app";
+import { Banda, BandaSinConexion, Cargando, EstructuraApp } from "../../components/app";
+import { AUSENCIA } from "../../data/ejemplo-app";
+import { contadores } from "./panel/cola";
 import { PantallaPreviaContexto } from "./contexto";
 import Indice from "./Indice";
 import { INDICE, pantallaPorRuta, pantallas, type PantallaPrevia, type PropsPantalla } from "./registro";
@@ -64,6 +66,16 @@ function Marco({ pantalla, children }: { pantalla?: PantallaPrevia; children: Re
           novedades={pantalla?.novedades}
           contadores={panel ? CONTADORES_EJEMPLO : undefined}
           sinNavegacion={marco === "ingreso"}
+          banda={
+            pantalla?.banda === "sin-conexion" ? (
+              <BandaSinConexion />
+            ) : pantalla?.banda === "ausencia" ? (
+              <Banda rol="status" icono="info">
+                {AUSENCIA.banda}
+                <Etiqueta variante="ejemplo">{TEXTOS_PREVIA.ejemplo}</Etiqueta>
+              </Banda>
+            ) : undefined
+          }
         >
           {children}
         </EstructuraApp>
@@ -80,8 +92,8 @@ function Marco({ pantalla, children }: { pantalla?: PantallaPrevia; children: Re
   );
 }
 
-// Contadores de ejemplo del panel (5.2: ahí sí son números).
-const CONTADORES_EJEMPLO = { hoy: 3, solicitudes: 2, participantes: 1, revisar: 1, mas: 1 };
+// Contadores del panel (5.2: ahí sí son números), calculados con los datos de ejemplo.
+const CONTADORES_EJEMPLO = contadores();
 
 // Foco al h1 cuando la pantalla aparece tras navegar (plataforma 2.1). App.tsx ya lo intenta al
 // cambiar de ruta, pero una pantalla perezosa que aún no carga todavía no tiene h1: este

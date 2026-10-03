@@ -1,6 +1,8 @@
 // Calendario de ejemplo (3.13): la pieza de producto de la portada. Datos ficticios,
 // sin fechas, rotulados como ejemplo. Las reglas vienen de reglasCreditos y bonoDiario.
-import { useRef, useState } from "react";
+// Mismo patrón que Mi espacio (plataforma 4.1.3): la fila abre una hoja de ejemplo punteada
+// con la etiqueta «Ejemplo» y el control de la derecha marca. Dos objetivos de 44 px.
+import { useEffect, useRef, useState } from "react";
 import { bonoDiario, categorias, estados, nivelPara, reglasCreditos, t, type CategoriaId } from "../data/rumbo";
 import Etiqueta, { EtiquetaCategoria } from "./Etiqueta";
 import Icono from "./Icono";
@@ -58,8 +60,24 @@ const PIE = t(
   reglasCreditos,
 );
 
+const HOJA = { marcar: "Marcar como hecha", desmarcar: "Desmarcar", cerrar: "Cerrar", flexible: "Flexible" } as const;
+const nombreControl = (titulo: string) => `Marcar “${titulo}” como hecha`;
+
 export default function CalendarioEjemplo() {
   const [hechas, setHechas] = useState<Set<string>>(() => new Set());
+  // Hoja de ejemplo abierta: la acción y su día. Al cerrarla, el foco vuelve a la fila.
+  const [abierta, setAbierta] = useState<{ accion: Accion; dia: string } | null>(null);
+  const hoja = useRef<HTMLDialogElement>(null);
+  const origen = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    const d = hoja.current;
+    if (!d) return;
+    if (abierta && !d.open) d.showModal();
+    if (!abierta && d.open) {
+      d.close();
+      origen.current?.focus();
+    }
+  }, [abierta]);
   const [aviso, setAviso] = useState("");
   // Última acción marcada: muestra la ficha «+1». La clave reinicia la animación.
   const [ficha, setFicha] = useState<{ id: string; clave: number } | null>(null);
@@ -152,8 +170,17 @@ export default function CalendarioEjemplo() {
             {dia.acciones.map((a) => {
               const marcada = hechas.has(a.id);
               return (
-                <label key={a.id} className={marcada ? "accion accion--hecha" : "accion"} data-cat={a.categoria}>
-                  <span className="accion-hora">{a.hora ?? "Flexible"}</span>
+                <div key={a.id} className={marcada ? "accion accion--demo accion--hecha" : "accion accion--demo"} data-cat={a.categoria}>
+                  <button
+                    type="button"
+                    className="accion-abrir"
+                    aria-haspopup="dialog"
+                    onClick={(e) => {
+                      origen.current = e.currentTarget;
+                      setAbierta({ accion: a, dia: dia.nombre });
+                    }}
+                  >
+                  <span className="accion-hora">{a.hora ?? HOJA.flexible}</span>
                   <span className="accion-texto">
                     <span className="accion-titulo">{a.titulo}</span>
                     {/* El corte de línea cae antes de «·», nunca después: «· categoría» y «· Hecha» van juntos. */}
@@ -170,13 +197,16 @@ export default function CalendarioEjemplo() {
                       )}
                     </span>
                   </span>
-                  <input type="checkbox" checked={marcada} onChange={() => alternar(a.id)} />
+                  </button>
+                  <label className="accion-marcar">
+                    <input type="checkbox" checked={marcada} aria-label={nombreControl(a.titulo)} onChange={() => alternar(a.id)} />
+                  </label>
                   {ficha?.id === a.id && (
                     <span key={ficha.clave} className="accion-ficha" aria-hidden="true">
                       +{reglasCreditos.porAccion}
                     </span>
                   )}
-                </label>
+                </div>
               );
             })}
           </fieldset>
@@ -199,6 +229,39 @@ export default function CalendarioEjemplo() {
         {aviso}
       </p>
       <figcaption className="calendario-pie">{PIE}</figcaption>
+
+      <dialog
+        ref={hoja}
+        className="hoja-demo"
+        aria-labelledby="hoja-demo-titulo"
+        onCancel={(e) => {
+          e.preventDefault();
+          setAbierta(null);
+        }}
+      >
+        {abierta && (
+          <div className="hoja-demo__caja">
+            <div className="hoja-demo__cabeza">
+              <Etiqueta variante={estados.ejemplo.variante}>{estados.ejemplo.texto}</Etiqueta>
+              <button type="button" className="boton boton--terciario" onClick={() => setAbierta(null)}>
+                {HOJA.cerrar}
+              </button>
+            </div>
+            <h2 id="hoja-demo-titulo" className="hoja-demo__titulo">
+              {abierta.accion.titulo}
+            </h2>
+            <p className="accion-detalle">
+              {abierta.dia} · {abierta.accion.hora ?? HOJA.flexible} · {abierta.accion.duracion} ·{" "}
+              <span className="accion-cat" data-cat={abierta.accion.categoria}>
+                {categorias[abierta.accion.categoria].nombre}
+              </span>
+            </p>
+            <button type="button" className="boton boton--primario boton--ancho" onClick={() => alternar(abierta.accion.id)}>
+              {hechas.has(abierta.accion.id) ? HOJA.desmarcar : HOJA.marcar}
+            </button>
+          </div>
+        )}
+      </dialog>
     </figure>
   );
 }

@@ -1,13 +1,12 @@
 // Piezas comunes de las pantallas del panel en la vista previa (plataforma 5). Solo las usa este
 // grupo: encabezado de pantalla, rutas entre pantallas, plazos («vence»), botón de copiar,
-// selector de variantes de la vista previa, lista de datos y desplegables.
+// lista de datos y desplegables.
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import Etiqueta from "../../../components/Etiqueta";
-import { Icono, Segmentado } from "../../../components/app";
+import { Icono } from "../../../components/app";
 import { areas, planes, type CategoriaId } from "../../../data/rumbo";
 import { diaCorto, sumarDias, type Iso } from "../../../lib/fechas";
-import { RUTAS_PANEL, rutaPrevia } from "../rutas";
 import { HOY, habilesEntre } from "./ejemplo";
 import { T_PANEL, VENCE } from "./textos";
 // Estilos propios de este grupo (solo tokens de :root). Lo importan todas sus pantallas.
@@ -16,21 +15,7 @@ import "../../../styles/vista-panel.css";
 // ---------------------------------------------------------------------------
 // Rutas de la vista previa entre pantallas del panel (los ?id= se leen tras hidratar)
 
-export const R = {
-  ...RUTAS_PANEL,
-  solicitud: rutaPrevia("equipo/solicitud/"),
-  participante: rutaPrevia("equipo/participante/"),
-  constructor: rutaPrevia("equipo/constructor/"),
-  revision: rutaPrevia("equipo/revision/"),
-  ajustes: rutaPrevia("equipo/ajustes/"),
-  contacto: rutaPrevia("equipo/contacto/"),
-  hoyVacio: rutaPrevia("equipo/hoy/vacio/"),
-  verComo: rutaPrevia("mi-espacio/"),
-  estado: rutaPrevia("estado/"),
-} as const;
-
-export const conId = (ruta: string, id: string, extra?: Record<string, string>) =>
-  `${ruta}?${new URLSearchParams({ id, ...extra }).toString()}`;
+export { R, conId, ordenPorPlazo } from "./base";
 
 // Lee un parámetro de la búsqueda DESPUÉS de hidratar: el HTML prerenderizado no tiene búsqueda,
 // así que leerlo durante el primer render rompería la hidratación.
@@ -54,9 +39,6 @@ export function venceTexto(fecha: Iso, hoy: Iso = HOY): string {
 }
 
 // Orden de la cola: plazo pasado → hoy → mañana → después → sin plazo.
-export const ordenPorPlazo = <T extends { vence: Iso | null }>(a: T, b: T) =>
-  a.vence && b.vence ? a.vence.localeCompare(b.vence) : a.vence ? -1 : b.vence ? 1 : 0;
-
 // ---------------------------------------------------------------------------
 // Encabezado de pantalla: ojo con la etiqueta «Ejemplo» (punteada), H1 y bajada.
 
@@ -84,25 +66,6 @@ export function Cabeza({ ojo, titulo, antes, bajada, children }: CabezaProps) {
       {bajada && <div className="pa-cabeza__bajada">{typeof bajada === "string" ? <p>{bajada}</p> : bajada}</div>}
       {children}
     </header>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Selector de variantes: solo existe en la vista previa (borde punteado y «Ejemplo»).
-
-export function Variantes({
-  opciones,
-  valor,
-  onCambio,
-}: {
-  opciones: readonly { valor: string; texto: string }[];
-  valor: string;
-  onCambio: (v: string) => void;
-}) {
-  return (
-    <div className="pa-variantes">
-      <Segmentado leyenda={T_PANEL.variantes} opciones={opciones} valor={valor} onCambio={onCambio} />
-    </div>
   );
 }
 

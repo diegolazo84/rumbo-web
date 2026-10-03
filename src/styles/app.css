@@ -485,3 +485,49 @@ a.accion__abrir, button.accion__abrir { cursor: pointer; }
   .nav-app__item[aria-current="page"] { text-decoration: underline; }
   .punto-meta, .nav-app__punto { forced-color-adjust: none; background: CanvasText; }
 }
+
+/* Interruptor (Preferencias de Mi espacio y «Recibir solicitudes» del panel): casilla nativa con role="switch", pista 44×26 px dentro de una fila de 44 px. */
+.interruptor { display: grid; gap: var(--e-2); }
+.interruptor__fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-4);
+  min-block-size: 44px;
+  cursor: pointer;
+}
+.interruptor__texto { font-weight: 500; }
+.interruptor__control {
+  appearance: none;
+  flex: none;
+  position: relative;
+  inline-size: 48px;
+  block-size: 28px;
+  margin: 0;
+  border: 1.5px solid var(--linea-fuerte);
+  border-radius: var(--r-full);
+  background: var(--superficie);
+  cursor: pointer;
+  transition: background-color var(--dur-2) var(--curva), border-color var(--dur-2) var(--curva);
+}
+.interruptor__control::before {
+  content: "";
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 3px;
+  inline-size: 20px;
+  block-size: 20px;
+  border-radius: 50%;
+  background: var(--linea-fuerte);
+  transform: translateY(-50%);
+  transition: transform var(--dur-2) var(--curva), background-color var(--dur-2) var(--curva);
+}
+.interruptor__control:checked { border-color: var(--bosque); background: var(--bosque); }
+.interruptor__control:checked::before { background: var(--superficie); transform: translate(19px, -50%); }
+.interruptor__control:focus-visible { outline: var(--foco-ancho) solid var(--foco-color); outline-offset: var(--foco-offset); }
+@media (forced-colors: active) {
+  .interruptor__control { border-color: ButtonText; }
+  .interruptor__control::before { background: ButtonText; }
+  .interruptor__control:checked { background: Highlight; border-color: Highlight; }
+  .interruptor__control:checked::before { background: HighlightText; }
+}

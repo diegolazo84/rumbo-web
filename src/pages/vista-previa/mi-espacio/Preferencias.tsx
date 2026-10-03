@@ -99,14 +99,14 @@ function PantallaPreferencias() {
         <h2 id="pref-avance" className="me-h2">
           {T_PREFERENCIAS.avance.titulo}
         </h2>
-        <div className="me-interruptor">
-          <label className="me-interruptor__fila" htmlFor="pref-creditos">
-            <span className="me-interruptor__texto">{PREFERENCIAS.mostrarCreditos.etiqueta}</span>
+        <div className="interruptor">
+          <label className="interruptor__fila" htmlFor="pref-creditos">
+            <span className="interruptor__texto">{PREFERENCIAS.mostrarCreditos.etiqueta}</span>
             <input
               id="pref-creditos"
               type="checkbox"
               role="switch"
-              className="me-interruptor__control"
+              className="interruptor__control"
               checked={mostrar}
               aria-describedby="pref-creditos-ayuda"
               onChange={(e) => setMostrar(e.target.checked)}

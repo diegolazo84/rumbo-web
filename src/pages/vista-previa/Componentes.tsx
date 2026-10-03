@@ -3,6 +3,8 @@
 // las pantallas y lo recorren las pruebas (axe, 320 px, objetivos táctiles). Solo vista previa.
 import { useState } from "react";
 import { Aviso } from "../../components/Bloques";
+import Etiqueta from "../../components/Etiqueta";
+import { estados } from "../../data/rumbo";
 import {
   CampoArea,
   CampoSelect,
@@ -159,6 +161,9 @@ export default function Componentes() {
     <div className="previa-componentes">
       <div className="encabezado">
         <p className="ojo">{mayuscula(diaCorto(HOY))}</p>
+        <p>
+          <Etiqueta variante={estados.ejemplo.variante}>{estados.ejemplo.texto}</Etiqueta>
+        </p>
         <h1>{TEXTOS_COMPONENTES.titulo}</h1>
         <p className="bajada">{TEXTOS_COMPONENTES.bajada}</p>
       </div>
@@ -202,7 +207,7 @@ export default function Componentes() {
       <section aria-labelledby="comp-app" className="previa-componentes__seccion">
         <h2 id="comp-app">{TEXTOS_COMPONENTES.aplicacion}</h2>
         <BandaSinConexion />
-        <FranjaSemana dias={diasFranja()} seleccionado={dia} onElegir={setDia} etiqueta="Días de la semana" />
+        <FranjaSemana dias={diasFranja()} elegido={dia} onElegir={setDia} etiqueta="Días de la semana" />
         <LeyendaMetas metas={metas} etiqueta="Colores de tus metas" />
         <Segmentado
           leyenda={REGISTRO_SEMANAL.carga.leyenda}

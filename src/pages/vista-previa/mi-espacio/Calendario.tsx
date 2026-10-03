@@ -265,7 +265,7 @@ function VistaSemana({ fecha, hoy, lista, progreso, fila }: { fecha: Iso; hoy: I
 
   return (
     <div className="me-cal-semana">
-      <FranjaSemana dias={franja} seleccionado={elegido} onElegir={ir} etiqueta={T_CALENDARIO.semana.diasDeLaSemana} />
+      <FranjaSemana dias={franja} elegido={elegido} onElegir={ir} etiqueta={T_CALENDARIO.semana.diasDeLaSemana} />
       <div className="me-cal-semana__dias">
         {dias.map((d) => {
           const del = ocurrenciasDel(d, lista);

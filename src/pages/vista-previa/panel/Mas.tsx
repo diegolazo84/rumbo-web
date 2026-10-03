@@ -36,9 +36,24 @@ export default function Mas(_: PropsPantalla) {
 
       <Seccion titulo={MAS.postulaciones.titulo} id="postulaciones" className="tarjeta pa-tarjeta">
         <form className="pa-form" noValidate onSubmit={(e) => e.preventDefault()}>
-          <CasillaAjuste id={"recibir"} checked={recibir} onChange={(v) => setRecibir(v)} ayuda={MAS.postulaciones.ayuda}>
-            {MAS.postulaciones.recibir}
-          </CasillaAjuste>
+          {/* Interruptor (role="switch"), igual que «Mostrar créditos y nivel en Hoy» de Preferencias. */}
+          <div className="interruptor">
+            <label className="interruptor__fila" htmlFor="recibir">
+              <span className="interruptor__texto">{MAS.postulaciones.recibir}</span>
+              <input
+                id="recibir"
+                type="checkbox"
+                role="switch"
+                className="interruptor__control"
+                checked={recibir}
+                aria-describedby="recibir-ayuda"
+                onChange={(e) => setRecibir(e.target.checked)}
+              />
+            </label>
+            <div id="recibir-ayuda" className="campo__ayuda">
+              <p>{MAS.postulaciones.ayuda}</p>
+            </div>
+          </div>
           <CampoTexto
             id="tope"
             etiqueta={MAS.postulaciones.tope}

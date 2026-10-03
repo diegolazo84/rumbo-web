@@ -5,8 +5,8 @@
 // - Derecha: «Qué funcionó» (obligatorio), «Qué ajustamos» (opcional) + «Abrir el constructor» y
 //   «Tu foco de la semana» (obligatorio). Sin registro: «Revisión a partir de lo que marcó en el
 //   calendario». En Acompañamiento cercano el título es «Resumen de la videollamada».
-// Funciona a 360 px (columnas apiladas). Variantes: Martín (cercano, con registro) y Camila
-// (Con acompañamiento, sin registro de la semana 2).
+// Funciona a 360 px (columnas apiladas). Estados (registro.ts): cercano (Martín, con registro)
+// y sin-registro (Camila, Con acompañamiento, sin registro de la semana 2).
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Etiqueta from "../../../components/Etiqueta";
@@ -15,18 +15,13 @@ import { CampoArea, ResumenErrores, type ErrorResumen } from "../../../component
 import { LIMITES } from "../../../data/formularios";
 import { resumenSemana } from "../../../data/ejemplo-app";
 import type { PropsPantalla } from "../registro";
-import { Cabeza, R, Seccion, Variantes } from "./comun";
+import { Cabeza, R, Seccion } from "./comun";
 import { ajustes, evidencias, participantes, semanaMartin } from "./ejemplo";
 import { RegistroLectura, ResumenPorMeta } from "./FichaParticipante";
 import { AJUSTES, FOTOS, REVISION, T_PANEL } from "./textos";
 
-export default function Revision(_: PropsPantalla) {
-  const [variante, setVariante] = useState("cercano");
-  return <Contenido key={variante} variante={variante} onVariante={setVariante} />;
-}
-
-function Contenido({ variante, onVariante }: { variante: string; onVariante: (v: string) => void }) {
-  const cercano = variante === "cercano";
+export default function Revision({ estado = "cercano" }: PropsPantalla) {
+  const cercano = estado !== "sin-registro";
   const p = participantes.find((x) => x.id === (cercano ? "p-2" : "p-1"))!;
   const semana = p.semana ?? 1;
   const camila = resumenSemana(semana);
@@ -58,10 +53,9 @@ function Contenido({ variante, onVariante }: { variante: string; onVariante: (v:
     <div className="pa-pantalla">
       <Cabeza
         ojo={REVISION.ojo}
-        titulo={cercano ? REVISION.tituloCercano : REVISION.ojo}
+        titulo={cercano ? `${REVISION.tituloCercano}.` : REVISION.titulo(p.nombre, semana)}
         antes={<p className="pa-cabeza__linea">{`${p.nombre} · ${T_PANEL.semanaDe(semana, p.semanas)}`}</p>}
       />
-      <Variantes opciones={REVISION.variantes} valor={variante} onCambio={onVariante} />
 
       <div className="pa-revision">
         <div className="pa-revision__izquierda">

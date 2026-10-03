@@ -18,12 +18,12 @@ export type DiaFranja = {
 
 type Props = {
   dias: DiaFranja[];
-  seleccionado?: string;
+  elegido?: string;
   onElegir?: (fecha: string) => void;
   etiqueta?: string; // nombre del grupo, p. ej. «Días de la semana»
 };
 
-export default function FranjaSemana({ dias, seleccionado, onElegir, etiqueta }: Props) {
+export default function FranjaSemana({ dias, elegido, onElegir, etiqueta }: Props) {
   return (
     <div className="franja-semana" role="group" aria-label={etiqueta}>
       {dias.map((d) => {
@@ -36,7 +36,7 @@ export default function FranjaSemana({ dias, seleccionado, onElegir, etiqueta }:
             type="button"
             className={clases}
             aria-label={d.nombre}
-            aria-pressed={seleccionado ? seleccionado === d.fecha : undefined}
+            aria-pressed={elegido ? elegido === d.fecha : undefined}
             onClick={() => onElegir?.(d.fecha)}
           >
             <span className="franja-semana__inicial" aria-hidden="true">

@@ -10,8 +10,6 @@
 
 export const T_PANEL = {
   ejemplo: "Ejemplo",
-  // (vista previa) Selector de variantes de una pantalla: solo existe en la vista previa.
-  variantes: "Variante de esta vista previa",
   semanaDe: (n: number, de: number) => `Semana ${n} de ${de}`,
   copiar: "Copiar respuesta",
   copiada: "Respuesta copiada.", // (vista previa) anuncio role="status"
@@ -37,7 +35,7 @@ export const VENCE = {
 
 export const HOY_PANEL = {
   ojo: "Panel",
-  titulo: "Hoy",
+  titulo: "Hoy.",
   vacio: "No tienes nada pendiente con plazo. Las solicitudes nuevas aparecerán aquí.",
   tipos: {
     solicitud: "Solicitud sin primera respuesta",
@@ -75,7 +73,7 @@ export const HOY_PANEL = {
 
 export const SOLICITUDES = {
   ojo: "Panel",
-  titulo: "Solicitudes",
+  titulo: "Solicitudes.",
   filtros: [
     { valor: "responder", texto: "Por responder" },
     { valor: "conversacion", texto: "En conversación" },
@@ -126,6 +124,7 @@ export const FICHA_SOLICITUD = {
     copiar: "Copiar respuesta",
     abrir: "Abrir en el correo",
     respondida: "Marcar como respondida",
+    porCompletar: "Lo resaltado lo completas tú antes de enviar.", // (vista previa)
   },
   acuerdo: {
     boton: "Registrar acuerdo",
@@ -209,7 +208,7 @@ export { nombreCoach } from "../../../data/formularios";
 
 export const PARTICIPANTES = {
   ojo: "Panel",
-  titulo: "Participantes",
+  titulo: "Participantes.",
   vacio: "Todavía no hay participantes. Se crean desde una solicitud con acuerdo aceptado.",
   columnas: { plan: "Plan", semana: "Semana", proxima: "Próxima revisión", estado: "Estado del ciclo" },
   estadosCiclo: {
@@ -218,10 +217,6 @@ export const PARTICIPANTES = {
     pausa: "En pausa",
     cerrado: "Cerrado", // (vista previa)
   } as Record<string, string>,
-  variantes: [
-    { valor: "lista", texto: "Con participantes" },
-    { valor: "vacio", texto: "Sin participantes" },
-  ],
 } as const;
 
 export const FICHA_PARTICIPANTE = {
@@ -308,9 +303,10 @@ export const FICHA_PARTICIPANTE = {
 
 export const CONSTRUCTOR = {
   ojo: "Constructor",
-  titulo: (nombre: string) => `Programa de ${nombre}`, // (vista previa)
+  titulo: (nombre: string) => `Programa de ${nombre}.`, // (vista previa)
   movil: "El constructor se usa en un computador. Desde aquí puedes ver el programa publicado.",
   borrador: "Borrador · todavía no lo ve",
+  publicado: (v: number) => `Versión ${v} · publicada`, // (vista previa) en el teléfono se ve el programa publicado
   metas: {
     titulo: "Metas",
     tituloCampo: "Título",
@@ -392,7 +388,7 @@ export const CONSTRUCTOR = {
 export const REVISION = {
   ojo: "Revisión semanal",
   tituloCercano: "Resumen de la videollamada",
-  titulo: (nombre: string, semana: number) => `Revisión de ${nombre} · semana ${semana}`, // (vista previa)
+  titulo: (nombre: string, semana: number) => `Revisión de ${nombre} · semana ${semana}.`, // (vista previa)
   izquierda: {
     semana: "Su semana", // (vista previa)
     porMeta: (hechas: number, de: number) => `${hechas} de ${de} acciones programadas`,
@@ -411,18 +407,13 @@ export const REVISION = {
   foco: { etiqueta: "Tu foco de la semana" },
   publicar: "Publicar revisión",
   publicada: "Vista previa: la revisión no se publicó.", // (vista previa)
-  // Recordatorio fijo de 5.7. Su segunda frase («Evita “…”, “…”…») cita palabras prohibidas y el
-  // guardián de frases del JavaScript publicado (pruebas/marcadores.spec.ts) la rechaza: queda
-  // fuera hasta que Diego decida cómo exceptuarla.
-  recordatorio: "Escribe sobre la dificultad, no sobre la persona.",
+  // Recordatorio fijo de 5.7, completo. Cita palabras prohibidas para pedir que no se usen: es
+  // una excepción explícita del guardián (scripts/marcadores.mjs, EXCEPCIONES).
+  recordatorio: "Escribe sobre la dificultad, no sobre la persona. Evita “fallaste”, “disciplina”, “fuerza de voluntad”, “sin excusas”.",
   errores: {
     funciono: "Escribe qué funcionó.", // (vista previa)
     foco: "Escribe el foco de la semana.", // (vista previa)
   },
-  variantes: [
-    { valor: "cercano", texto: "Cercano, con registro" },
-    { valor: "sin-registro", texto: "Con acompañamiento, sin registro" },
-  ],
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -430,7 +421,7 @@ export const REVISION = {
 
 export const FOTOS = {
   ojo: "Panel",
-  titulo: "Fotos y explicaciones",
+  titulo: "Fotos y explicaciones.",
   vacio: "No hay fotos por revisar.",
   fijo: "No pedimos fotos íntimas ni documentos de salud. Si llega una, no la apruebes, usa la plantilla de privacidad y elimínala.",
   eliminarArchivo: "Eliminar archivo ahora",
@@ -451,10 +442,6 @@ export const FOTOS = {
   sinFoto: "Sin foto: «No puedo subir una foto»", // (vista previa)
   errorNota: "Escribe la nota para la persona.", // (vista previa)
   archivoEliminado: "Archivo eliminado.", // (vista previa)
-  variantes: [
-    { valor: "cola", texto: "Con fotos" },
-    { valor: "vacio", texto: "Sin fotos" },
-  ],
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -462,7 +449,7 @@ export const FOTOS = {
 
 export const AJUSTES = {
   ojo: "Panel",
-  titulo: "Solicitudes de ajuste",
+  titulo: "Solicitudes de ajuste.",
   estados: {
     enviada: { texto: "Enviada", variante: "nota" },
     en_revision: { texto: "En revisión", variante: "nota" },
@@ -489,7 +476,7 @@ export const AJUSTES = {
 export const CONTACTO_PANEL = {
   ojo: "Panel",
   correo: "Correo",
-  titulo: "Contacto y derechos",
+  titulo: "Contacto y derechos.",
   mensajes: {
     titulo: "Mensajes",
     estados: { nuevo: "Nuevo", respondido: "Respondido", archivado: "Archivado" } as Record<string, string>,
@@ -522,7 +509,7 @@ export const CONTACTO_PANEL = {
 
 export const MAS = {
   ojo: "Panel",
-  titulo: "Más",
+  titulo: "Más.",
   contacto: "Contacto y derechos",
   postulaciones: {
     titulo: "Postulaciones",
@@ -548,7 +535,8 @@ export const MAS = {
     titulo: "Mantención",
     fotos: "Fotos para depurar",
     depurar: "Depurar",
-    depurarAyuda: "Borra los archivos con la API de Storage y marca foto_depurada_en.", // 5.11
+    // 5.11 en palabras simples (la especificación técnica: API de Storage y la fecha de depuración).
+    depurarAyuda: "Borra los archivos de las fotos revisadas hace más de 30 días y deja anotada la fecha. El crédito de cada acción se mantiene.",
     huerfanos: "Archivos huérfanos",
     sinHuerfanos: "Sin archivos huérfanos.", // (vista previa)
     respaldo: "Último respaldo",
