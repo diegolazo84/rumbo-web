@@ -15,7 +15,8 @@
 import type { ReactElement } from "react";
 
 // Solo los nombres permitidos por el sistema de diseño (2.7). Prohibidos: emoji, «✓» y «→».
-const trazos = {
+// Exportados para la lista de la plataforma (components/app/Icono.tsx), que los extiende.
+export const trazos = {
   // Navegación
   "arrow-right": (
     <>

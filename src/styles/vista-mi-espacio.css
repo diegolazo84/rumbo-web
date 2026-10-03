@@ -1,0 +1,568 @@
+/* Rumbo · pantallas de Mi espacio en la vista previa (plataforma 4).
+   Solo de este grupo: todas las clases llevan el prefijo «me-». Lo compartido vive en
+   styles.css, form.css y app.css. Solo tokens de :root: sin colores ni fuentes nuevas.
+   En los estados de registro (días, acciones, rachas) no existe el rojo. */
+
+/* ========================================================================
+   Pantalla y encabezado
+   ======================================================================== */
+.me-pantalla { display: grid; gap: var(--e-6); min-inline-size: 0; }
+.me-pantalla--angosta { max-inline-size: var(--medida); }
+.me-pantalla > * { min-inline-size: 0; }
+
+.me-cabeza { display: grid; gap: var(--e-3); }
+.me-cabeza__fila { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.me-cabeza__fila .ojo { margin: 0; }
+.me-cabeza__bajada { display: grid; gap: var(--e-3); max-inline-size: var(--medida); font-size: var(--t-base); line-height: 1.55; color: var(--tinta-suave); }
+.me-cabeza__bajada .etiqueta { color: var(--bosque); }
+.me-saludo { font-size: var(--t-s); font-weight: 500; color: var(--tinta-suave); }
+
+.me-h1 { max-inline-size: 22ch; }
+.me-h1--h2 { font-size: var(--t-h2); font-weight: 500; line-height: 1.1; letter-spacing: -0.015em; }
+.me-h1--h3 { max-inline-size: none; font: 600 var(--t-h3)/1.25 var(--serif); letter-spacing: -0.005em; }
+.me-h1--titulo { font-size: var(--t-titulo); }
+/* El foco programático del h1 al navegar no dibuja anillo (styles.css: [tabindex="-1"]:focus). */
+
+/* Subtítulos de bloque: Fraunces --t-h3 (h2 con estilo h3). */
+.me-h2, .me-subtitulo { font: 600 var(--t-h3)/1.25 var(--serif); letter-spacing: -0.005em; color: var(--tinta); }
+.me-rotulo { font: 600 var(--t-micro)/1.3 var(--sans); letter-spacing: 0.01em; color: var(--terracota-texto); }
+
+/* Bloque: título, bajada y contenido. */
+.me-bloque { display: grid; gap: var(--e-4); min-inline-size: 0; }
+.me-bloque__cabeza { display: grid; gap: var(--e-2); }
+.me-bloque__bajada { max-inline-size: var(--medida); font-size: var(--t-s); line-height: 1.55; color: var(--tinta-suave); }
+
+/* Botones de este grupo ------------------------------------------------------------------ */
+/* Secundario chico (4.6 «Ya la hice»): 44 px de alto, texto --t-xs. */
+.boton.me-boton-chico { min-block-size: 44px; padding: 0 16px; font-size: var(--t-xs); }
+/* Terciario alineado con el texto (sin el padding lateral que lo centra). */
+.boton--terciario.me-boton-izq { padding-inline: 0; }
+.enlace-flecha .icono { margin-inline-start: 6px; }
+
+/* Pie de pantalla: «¿Tu semana cambió? Pedir un ajuste» · «Ayuda inmediata». */
+.me-pie { display: grid; gap: var(--e-1); padding-block-start: var(--e-4); border-block-start: 1px solid var(--linea); font-size: var(--t-s); color: var(--tinta-suave); }
+.me-pie .enlace-util { color: var(--bosque); font-weight: 600; }
+
+/* ========================================================================
+   Hoy (4.4)
+   ======================================================================== */
+.me-hoy { row-gap: var(--e-6); }
+.me-hoy__cabeza { display: grid; gap: var(--e-5); }
+.me-hoy__cuerpo, .me-hoy__lado { display: grid; gap: var(--e-6); align-content: start; min-inline-size: 0; }
+/* Escritorio: encabezado y acciones en 7 columnas; foco, resumen y próxima revisión en 5. */
+@media (min-width: 1024px) {
+  .me-hoy {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    grid-template-areas:
+      "cabeza foco"
+      "cabeza lado"
+      "cuerpo lado"
+      "pie    lado";
+    column-gap: var(--e-6);
+    align-items: start;
+  }
+  .me-hoy__cabeza { grid-area: cabeza; }
+  .me-hoy .me-foco { grid-area: foco; }
+  .me-hoy__cuerpo { grid-area: cuerpo; }
+  .me-hoy__lado { grid-area: lado; }
+  .me-hoy__pie { grid-area: pie; }
+}
+
+/* Novedades: avisos info compactos con enlace. */
+.me-novedades { display: grid; gap: var(--e-2); }
+.me-novedad { padding: 12px 16px; align-items: start; }
+.me-novedad__cuerpo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 12px; min-inline-size: 0; }
+.me-novedad__cuerpo p { padding-block: 10px 0; }
+@media (min-width: 600px) { .me-novedad__cuerpo p { padding-block: 10px; } .me-novedad .aviso-icono { margin-block-start: 12px; } }
+.me-novedad .aviso-icono { margin-block-start: 12px; }
+.me-novedad .enlace-flecha { flex: none; }
+
+/* Foco de la semana: mosaico message-circle en niebla, rótulo terracota y frase en voz. */
+.me-foco {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding: 18px 20px;
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  background: var(--superficie);
+}
+.me-foco__cuerpo { display: grid; gap: 6px; padding-block-start: 2px; }
+.me-foco .voz { color: var(--tinta); }
+
+/* Grupos de acciones: rótulo como la leyenda de un día del calendario. */
+.me-grupo { display: grid; gap: var(--e-2); min-inline-size: 0; }
+.me-grupo + .me-grupo { margin-block-start: var(--e-3); }
+.me-grupo__titulo {
+  font: 600 var(--t-micro)/1.3 var(--sans);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tinta-suave);
+}
+.me-filas { list-style: none; display: grid; gap: 8px; min-inline-size: 0; }
+.me-filas > li { min-inline-size: 0; }
+
+/* De días anteriores: la fecha y la hora van en la nota; la columna de hora sobra. */
+.me-anteriores { padding-block-start: var(--e-5); border-block-start: 1px solid var(--linea); }
+.me-anteriores__filas .accion__abrir { grid-template-columns: minmax(0, 1fr); }
+.me-anteriores__filas .accion-hora { display: none; }
+.me-anteriores__filas .accion__extra { padding-inline-start: 14px; padding-block-end: 6px; gap: 4px 4px; }
+.me-anteriores__filas .accion-nota { order: -1; font-weight: 600; color: var(--tinta-suave); }
+.me-mas { margin-inline-start: auto; color: var(--bosque); }
+.me-mas[aria-expanded="true"] { background: var(--superficie); }
+.me-mas__lista { flex-basis: 100%; list-style: none; display: grid; margin-block-start: 4px; border-radius: var(--r-s); background: var(--superficie); border: 1px solid var(--linea); overflow: hidden; }
+.me-mas__lista[hidden] { display: none; }
+.me-mas__fila {
+  display: flex;
+  align-items: center;
+  inline-size: 100%;
+  min-block-size: 48px;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  color: var(--bosque);
+  font: 600 var(--t-s)/1.3 var(--sans);
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+.me-mas__lista li + li { border-block-start: 1px solid var(--linea); }
+@media (hover: hover) { .me-mas__fila:hover { background: var(--niebla); } }
+
+/* Aviso de carga: aviso con cierre. */
+.me-carga { grid-template-columns: 20px minmax(0, 1fr) auto; }
+.me-carga .acciones { margin-block-start: var(--e-3); }
+.me-carga__cerrar { margin: -10px -12px 0 0; }
+
+/* Resumen de avance (tarjeta compacta). */
+.me-resumen { gap: var(--e-3); padding: 20px; }
+@media (min-width: 1024px) { .me-resumen { padding: 24px; } }
+.me-resumen__fila { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.me-resumen__creditos { font: 600 var(--t-s)/1.2 var(--sans); font-variant-numeric: tabular-nums; color: var(--tinta); }
+.me-resumen__bono { display: grid; gap: 2px; }
+.me-resumen__bono > p:first-child { font-weight: 600; }
+.me-resumen .enlace-flecha { justify-self: start; }
+
+/* Próxima revisión */
+.me-revision { gap: var(--e-2); font-size: var(--t-s); line-height: 1.55; }
+.me-revision .enlace-flecha { justify-self: start; }
+
+/* ========================================================================
+   Detalle de acción (4.8) y foto privada (4.9)
+   ======================================================================== */
+.me-detalle { display: grid; gap: var(--e-5); min-inline-size: 0; font-size: var(--t-s); line-height: 1.55; }
+.me-detalle__cabeza { display: grid; gap: var(--e-3); }
+.me-detalle__cabeza > .microcopia { margin-block-start: calc(-1 * var(--e-1)); }
+.me-detalle__etiquetas { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.me-datos { list-style: none; display: grid; gap: 6px; font-size: var(--t-s); color: var(--tinta); }
+.me-datos li { display: flex; align-items: flex-start; gap: 10px; }
+.me-datos .icono { margin-block-start: 4px; color: var(--bosque); }
+.me-detalle__estado { display: grid; gap: var(--e-3); padding-block: var(--e-4); border-block: 1px solid var(--linea); }
+.me-detalle__botones { display: grid; gap: var(--e-3); justify-items: start; }
+.me-detalle__botones .boton--ancho { max-inline-size: 26rem; }
+.me-detalle__fila-estado { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.me-detalle__seccion { display: grid; gap: var(--e-3); }
+.me-detalle--hoja .me-subtitulo { font: 600 var(--t-base)/1.4 var(--sans); }
+.me-pasos { display: grid; gap: var(--e-2); padding-inline-start: 1.4em; }
+.me-pasos li { padding-inline-start: 4px; }
+.me-pasos li::marker { color: var(--terracota-texto); font-weight: 600; font-variant-numeric: tabular-nums; }
+.me-aviso-hondo { background: var(--papel-hondo); }
+.me-para-que { display: grid; gap: var(--e-2); margin: 0; }
+.me-para-que blockquote { margin: 0; padding-inline-start: var(--e-4); border-inline-start: 2px solid var(--linea); }
+.me-detalle__pie { display: grid; gap: var(--e-1); padding-block-start: var(--e-4); border-block-start: 1px solid var(--linea); color: var(--tinta-suave); }
+
+.me-foto { display: grid; gap: var(--e-4); }
+.me-foto__zona { display: grid; gap: var(--e-3); }
+.me-foto__subiendo { display: grid; gap: var(--e-2); }
+.me-foto__revision { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: var(--e-4); align-items: start; }
+@media (min-width: 480px) { .me-foto__revision { grid-template-columns: 120px minmax(0, 1fr); } }
+.me-foto__texto { display: grid; gap: var(--e-2); justify-items: start; }
+.me-foto__texto > .me-foto__explicacion, .me-foto__texto > .me-detalle__botones { justify-self: stretch; }
+.me-foto__nota { display: grid; gap: var(--e-1); margin: 0; }
+.me-foto__nota blockquote { margin: 0; }
+.me-foto__miniatura { inline-size: 100%; aspect-ratio: 1; border-radius: var(--r-s); object-fit: cover; background: var(--papel-hondo); }
+.me-foto__miniatura--ejemplo {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  border: 1px dashed var(--terracota-texto);
+  color: var(--tinta-suave);
+}
+
+.me-foto__explicacion { grid-column: 1 / -1; margin: 0; padding: 12px 16px; border-radius: var(--r-s); background: var(--papel-hondo); }
+.me-foto__explicar { gap: var(--e-4); }
+.hoja--confirmar .acciones { margin-block-start: var(--e-2); }
+
+/* ========================================================================
+   Calendario (4.7)
+   ======================================================================== */
+.me-calendario { gap: var(--e-5); }
+.me-calendario__barra { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.me-calendario__nav { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px auto; align-items: center; gap: 4px; }
+.me-calendario__titulo { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px 8px; text-align: center; text-wrap: balance; }
+.me-flecha { border: 1.5px solid var(--linea-fuerte); color: var(--bosque); }
+.me-calendario__hoy { margin-inline-start: 8px; }
+@media (max-width: 479.98px) {
+  .me-calendario__nav { grid-template-columns: 44px minmax(0, 1fr) 44px; }
+  .me-calendario__hoy { grid-column: 1 / -1; justify-self: center; margin: 0; }
+}
+.me-icono-revision { display: inline-block; color: var(--terracota-texto); }
+.me-calendario__leyenda { margin-block: calc(-1 * var(--e-3)) 0; }
+.me-puntos { display: inline-flex; gap: 3px; margin-inline-end: 8px; }
+.me-solo-escritorio { display: none; }
+@media (min-width: 1024px) { .me-solo-movil { display: none; } .me-solo-escritorio { display: block; } }
+.me-calendario__vacio { display: grid; gap: var(--e-1); padding: var(--e-5); border: 1px solid var(--linea); border-radius: var(--r-m); background: var(--superficie); color: var(--tinta-suave); }
+
+/* Semana: lista por día; cada día es un fieldset con su leyenda. */
+.me-cal-semana { display: grid; gap: var(--e-4); min-inline-size: 0; }
+.me-cal-semana .franja-semana { margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); border-block-end: 1px solid var(--linea); }
+@media (min-width: 1024px) { .me-cal-semana .franja-semana { margin-inline: 0; padding-inline: 0; } }
+.me-cal-semana__dias { display: grid; gap: var(--e-5); }
+.me-dia { scroll-margin-block-start: calc(var(--cabecera-alto) + 96px); }
+.me-dia legend { margin-block-end: 4px; }
+.me-dia__nombre { display: inline-flex; align-items: center; gap: 6px; }
+.me-dia--hoy legend { color: var(--bosque); }
+.me-dia__vacio { padding: 10px 14px; border: 1px solid var(--linea); border-radius: var(--r-s); font-size: var(--t-xs); font-weight: 500; color: var(--tinta-suave); }
+.me-cal-semana__pie { padding-block-start: var(--e-3); border-block-start: 1px solid var(--linea); }
+
+/* Mes: grilla de 7 columnas, celdas de 44 px o más, sin desborde a 320 px. */
+.me-cal-mes { display: grid; gap: var(--e-4); }
+.me-mes {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  padding: 12px 8px;
+  border: 1px solid var(--linea);
+  border-radius: var(--r-l);
+  background: var(--superficie);
+}
+@media (min-width: 600px) { .me-mes { gap: 6px; padding: 16px; } }
+.me-mes__cabeza { padding-block: 4px 8px; font: 600 var(--t-micro)/1 var(--sans); text-align: center; color: var(--tinta-suave); }
+.me-mes__celda {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 4px;
+  min-inline-size: 0;
+  min-block-size: 52px;
+  padding: 6px 0;
+  border: 1.5px solid transparent;
+  border-radius: var(--r-s);
+  background: transparent;
+  color: var(--tinta);
+  font: inherit;
+}
+@media (min-width: 600px) { .me-mes__celda { min-block-size: 64px; } }
+.me-mes__celda--vacia { pointer-events: none; }
+.me-mes__numero {
+  display: grid;
+  place-items: center;
+  inline-size: 30px;
+  block-size: 30px;
+  border: 1.5px solid transparent;
+  border-radius: 50%;
+  font: 600 var(--t-s)/1 var(--sans);
+  font-variant-numeric: tabular-nums;
+}
+.me-mes__puntos { display: flex; align-items: center; gap: 3px; min-block-size: 6px; }
+.me-mes__mas { font: 600 var(--t-micro)/1 var(--sans); color: var(--tinta-suave); }
+/* Hoy: contorno bosque 1,5 px. Día completo: número sobre círculo niebla con borde bosque. */
+.me-mes__celda.es-hoy { border-color: var(--bosque); }
+.me-mes__celda.es-completo .me-mes__numero { border-color: var(--bosque); background: var(--niebla); color: var(--bosque); }
+.me-mes__celda.es-fuera { color: var(--tinta-suave); }
+.me-mes__celda.es-fuera .me-mes__numero { font-weight: 500; }
+@media (hover: hover) { .me-mes__celda:hover { background: var(--niebla); } }
+@media (forced-colors: active) {
+  .me-mes__celda.es-hoy { border-color: CanvasText; }
+  .me-mes__celda.es-completo .me-mes__numero { border-color: Highlight; }
+}
+/* Leyenda oculta del segmentado: form.css le da ancho 100 % y desborda a 320 px. */
+/* En la vista Semana, la nota de una acción que aún no se marca se lee (aria-describedby) pero
+   no se repite fila por fila: el control punteado y el día ya lo dicen. */
+.me-cal-semana .accion-nota[id] { position: absolute; inline-size: 1px; block-size: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ========================================================================
+   Progreso (4.10) e historial de créditos
+   ======================================================================== */
+.me-metas { display: grid; gap: var(--e-4); }
+@media (min-width: 1024px) { .me-metas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--e-5); } }
+.me-meta { gap: var(--e-3); }
+.me-meta > .chip-meta { align-self: flex-start; }
+.me-meta__para { color: var(--tinta-suave); }
+.me-meta__semanas { font-size: var(--t-xs); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--tinta); }
+.me-meta__semana.es-futura { font-weight: 500; color: var(--tinta-suave); }
+.me-meta__hitos { display: grid; gap: var(--e-2); padding-block-start: var(--e-3); border-block-start: 1px solid var(--linea); }
+.me-hitos { row-gap: 8px; }
+/* Hito que viene: círculo en contorno (no es una falla: todavía no llega). */
+.me-hito--pendiente { color: var(--tinta-suave); }
+.me-hito--pendiente .lista-check-icono { background: transparent; border: 1.5px solid var(--linea-fuerte); }
+.me-hito--pendiente .lista-check-icono::before { content: none; }
+
+.me-progreso__columnas { display: grid; gap: var(--e-6); align-items: start; }
+@media (min-width: 1024px) { .me-progreso__columnas { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.me-hechas { list-style: none; display: grid; border-block-start: 1px solid var(--linea); }
+.me-hechas li {
+  display: grid;
+  grid-template-columns: 5.75rem minmax(0, 1fr);
+  gap: 4px 12px;
+  padding: 10px 0 10px 14px;
+  border-block-end: 1px solid var(--linea);
+  box-shadow: inset 3px 0 0 var(--cat);
+  font-size: var(--t-s);
+  line-height: 1.4;
+}
+@media (max-width: 379.98px) { .me-hechas li { grid-template-columns: minmax(0, 1fr); } }
+.me-hechas__dia { font-size: var(--t-xs); font-weight: 600; color: var(--tinta-suave); padding-block-start: 1px; }
+.me-hechas__titulo { font-weight: 500; }
+.me-creditos { gap: var(--e-4); }
+.me-creditos__bono { font-weight: 600; }
+.me-creditos .acordeon + .acordeon { border-block-start: 0; }
+.me-creditos .enlace-flecha { justify-self: start; align-self: flex-start; }
+.me-nivel-actual { font-weight: 600; color: var(--bosque) !important; }
+.me-nivel-actual > :last-child { color: var(--bosque) !important; }
+.me-reglas { display: grid; gap: 8px; padding-inline-start: 1.1em; }
+.me-reglas li::marker { color: var(--terracota-texto); }
+
+.me-volver { margin-inline-start: -4px; color: var(--bosque); font-weight: 600; }
+.me-resumen__fila--inicio { justify-content: flex-start; }
+.me-historial { list-style: none; display: grid; border-block-start: 1px solid var(--linea); }
+.me-historial__dia { display: grid; gap: 4px; padding-block: 14px; border-block-end: 1px solid var(--linea); }
+.me-historial__titulo { font: 600 var(--t-base)/1.4 var(--sans); font-variant-numeric: tabular-nums; }
+.me-historial__dia--neutro .me-historial__titulo { font-weight: 500; font-size: var(--t-s); color: var(--tinta-suave); }
+.me-historial__detalle { list-style: none; display: grid; gap: 2px; font-size: var(--t-s); font-variant-numeric: tabular-nums; color: var(--tinta-suave); }
+
+/* ========================================================================
+   Semana: registro y revisión (4.11)
+   ======================================================================== */
+.me-semana__selector { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.me-semana__selector > legend.campo__etiqueta { float: none; inline-size: auto; margin: 0; padding: 0; }
+.me-semana__selector .segmentado__opcion span { min-inline-size: 44px; justify-content: center; padding: 0 12px; font-variant-numeric: tabular-nums; }
+.me-semana__cuerpo { display: grid; gap: var(--e-6); align-items: start; }
+@media (min-width: 1024px) { .me-semana__cuerpo { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); } }
+.me-semana__lado { display: grid; gap: var(--e-5); min-inline-size: 0; }
+.me-registro { gap: var(--e-4); }
+.me-registro__cabeza { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.me-registro__form { gap: var(--e-5); }
+.me-registro__envio { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+@media (max-width: 479.98px) { .me-registro__envio .boton { inline-size: 100%; } }
+.me-registro__envio .microcopia { display: inline-flex; align-items: center; gap: 6px; }
+.me-icono-guardado { color: var(--bosque); }
+.me-leido { display: grid; gap: var(--e-4); margin: 0; }
+.me-leido dt { font: 600 var(--t-xs)/1.4 var(--sans); color: var(--tinta-suave); }
+.me-leido dd { margin: 2px 0 0; font-size: var(--t-s); line-height: 1.55; white-space: pre-line; }
+.me-marcaste__lista { list-style: none; display: grid; gap: 8px; }
+.me-marcaste__lista li {
+  display: grid;
+  gap: 2px;
+  padding: 10px 14px;
+  border-radius: var(--r-s);
+  background: var(--cat-fondo);
+  box-shadow: inset 3px 0 0 var(--cat);
+}
+.me-marcaste__meta { font: 600 var(--t-s)/1.35 var(--sans); }
+.me-marcaste__dato { font-size: var(--t-xs); font-weight: 500; font-variant-numeric: tabular-nums; color: var(--tinta-suave); }
+.me-respuesta { gap: var(--e-4); }
+.me-respuesta__cabeza { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: center; }
+.me-respuesta__rotulo { font-family: var(--sans); }
+.me-respuesta__parte { display: grid; gap: 4px; }
+.me-respuesta__parte h3 { font: 600 var(--t-s)/1.4 var(--sans); letter-spacing: 0; }
+.me-semana__principal { display: grid; gap: var(--e-5); min-inline-size: 0; }
+
+/* ========================================================================
+   Pedir un ajuste (4.13)
+   ======================================================================== */
+.me-ajuste { gap: var(--e-7); }
+.me-acciones-ajuste { gap: var(--e-4); }
+.me-acciones-ajuste__dia { display: grid; gap: 2px; }
+.me-acciones-ajuste__dia .me-grupo__titulo { margin-block-end: 2px; }
+.me-acciones-ajuste__fila {
+  padding: 10px 12px;
+  border-radius: var(--r-s);
+  background: var(--superficie);
+  box-shadow: inset 3px 0 0 var(--cat);
+}
+.me-acciones-ajuste__fila:has(:checked) { background: var(--cat-fondo); }
+.me-acciones-ajuste__hora { font-size: var(--t-xs); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--tinta-suave); }
+.me-campo-fecha .control { max-inline-size: 16rem; }
+.me-plazo { display: grid; gap: var(--e-3); }
+.me-envio { display: grid; gap: var(--e-3); justify-items: start; }
+@media (max-width: 479.98px) { .me-envio .boton { inline-size: 100%; } }
+.me-confirmacion { display: grid; gap: var(--e-5); }
+.me-confirmacion__icono { margin-block: var(--e-2) 0; }
+.me-solicitudes__lista { list-style: none; display: grid; gap: var(--e-3); }
+.me-solicitud { gap: var(--e-2); padding: 20px; }
+.me-solicitud__cabeza { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.me-solicitud__tipo { font: 600 var(--t-base)/1.35 var(--sans); letter-spacing: 0; }
+.me-solicitud__respuesta { display: grid; gap: 4px; margin-block-start: var(--e-2); padding: 12px 16px; border-radius: var(--r-s); background: var(--papel-hondo); }
+.me-solicitud .enlace-flecha { align-self: flex-start; }
+
+/* ========================================================================
+   Preferencias y Mis datos (4.14)
+   ======================================================================== */
+.me-preferencias { gap: var(--e-6); }
+.me-seccion { display: grid; gap: var(--e-4); min-inline-size: 0; }
+.me-separador { margin: 0; border: 0; border-block-start: 1px solid var(--linea); }
+.me-fila-form { display: grid; gap: var(--e-3); }
+.me-fila-form__envio { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.me-fila-form__envio .microcopia:empty { display: none; }
+.me-fila-form__envio .microcopia { color: var(--bosque); font-weight: 600; }
+@media (min-width: 600px) {
+  .me-fila-form { grid-template-columns: minmax(0, 22rem) auto; align-items: end; justify-content: start; column-gap: var(--e-4); }
+  .me-fila-form > .campo { margin: 0; }
+  .me-fila-form__envio { min-block-size: 48px; }
+}
+.me-cuenta { display: grid; gap: var(--e-4); margin: 0; }
+.me-cuenta > div { display: grid; gap: 2px; }
+.me-cuenta dd { margin: 0; overflow-wrap: anywhere; }
+.me-cuenta dd:first-of-type { font-weight: 500; }
+
+/* Interruptor: casilla nativa con role="switch", pista 44×26 px dentro de una fila de 44 px. */
+.me-interruptor { display: grid; gap: var(--e-2); }
+.me-interruptor__fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-4);
+  min-block-size: 44px;
+  cursor: pointer;
+}
+.me-interruptor__texto { font-weight: 500; }
+.me-interruptor__control {
+  appearance: none;
+  flex: none;
+  position: relative;
+  inline-size: 48px;
+  block-size: 28px;
+  margin: 0;
+  border: 1.5px solid var(--linea-fuerte);
+  border-radius: var(--r-full);
+  background: var(--superficie);
+  cursor: pointer;
+  transition: background-color var(--dur-2) var(--curva), border-color var(--dur-2) var(--curva);
+}
+.me-interruptor__control::before {
+  content: "";
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 3px;
+  inline-size: 20px;
+  block-size: 20px;
+  border-radius: 50%;
+  background: var(--linea-fuerte);
+  transform: translateY(-50%);
+  transition: transform var(--dur-2) var(--curva), background-color var(--dur-2) var(--curva);
+}
+.me-interruptor__control:checked { border-color: var(--bosque); background: var(--bosque); }
+.me-interruptor__control:checked::before { background: var(--superficie); transform: translate(19px, -50%); }
+.me-interruptor__control:focus-visible { outline: var(--foco-ancho) solid var(--foco-color); outline-offset: var(--foco-offset); }
+@media (forced-colors: active) {
+  .me-interruptor__control { border-color: ButtonText; }
+  .me-interruptor__control::before { background: ButtonText; }
+  .me-interruptor__control:checked { background: Highlight; border-color: Highlight; }
+  .me-interruptor__control:checked::before { background: HighlightText; }
+}
+
+.me-datos-acciones { display: grid; gap: var(--e-3); justify-items: start; }
+.me-datos-acciones__item { display: grid; gap: var(--e-2); justify-items: start; margin-block-end: var(--e-2); }
+.me-datos-acciones > [id="pref-otro"] { inline-size: 100%; }
+.me-otro { display: grid; gap: var(--e-4); padding: 20px; border-radius: var(--r-m); background: var(--papel-hondo); }
+.me-confirmado { align-items: flex-start; }
+.me-lista-puntos { display: grid; gap: 6px; padding-inline-start: 1.2em; }
+.me-lista-puntos li::marker { color: var(--terracota-texto); }
+.me-negrita { font-weight: 600; }
+.me-eliminar .me-seccion { gap: var(--e-2); }
+.me-pie--enlaces { display: flex; flex-wrap: wrap; gap: 4px 24px; }
+.me-pie--enlaces .enlace-util { display: inline-flex; align-items: center; gap: 6px; min-block-size: 44px; }
+
+/* ========================================================================
+   Ingreso (4.2): columna angosta centrada, sin navegación.
+   ======================================================================== */
+.me-ingreso { max-inline-size: 30rem; margin-inline: auto; padding-block: var(--e-4) var(--e-7); gap: var(--e-6); }
+.me-ingreso .me-h1 { max-inline-size: 14ch; }
+.me-ingreso__mosaico { inline-size: 56px; block-size: 56px; border-radius: var(--r-m); background: var(--niebla); color: var(--bosque); }
+.me-ingreso__form { display: grid; gap: var(--e-4); }
+.me-envio-ancho .envio__boton { inline-size: 100%; }
+.me-boton-ancho { inline-size: 100%; justify-content: center; }
+.me-ingreso__correo { color: var(--tinta); font-weight: 600; overflow-wrap: anywhere; }
+.me-ingreso__notas { display: grid; gap: var(--e-3); font-size: var(--t-xs); line-height: 1.55; color: var(--tinta-suave); }
+.me-ingreso__notas a { color: var(--bosque); font-weight: 600; }
+.me-campo-codigo .control {
+  max-inline-size: 12rem;
+  font-size: var(--t-h3);
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  font-variant-numeric: tabular-nums;
+}
+.me-ingreso__no-llego { display: grid; gap: var(--e-3); padding-block-start: var(--e-5); border-block-start: 1px solid var(--linea); }
+.me-ingreso__no-llego > p { font-size: var(--t-s); line-height: 1.55; color: var(--tinta-suave); }
+.me-ingreso__reenvio { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.me-ingreso__reenvio .microcopia:empty { display: none; }
+.me-ingreso__reenvio .boton[aria-disabled="true"] { cursor: not-allowed; opacity: 0.6; }
+
+/* ========================================================================
+   Estados del programa (4.3)
+   ======================================================================== */
+.me-estado { gap: var(--e-6); }
+.me-estado .estado-vacio { padding-block-start: 0; }
+.me-estado .estado-vacio__titulo { font-size: var(--t-h2); font-weight: 500; line-height: 1.1; letter-spacing: -0.015em; max-inline-size: 18ch; }
+.me-estado .estado-vacio__texto { font-size: var(--t-base); line-height: 1.55; color: var(--tinta-suave); }
+.me-estado .estado-vacio__texto strong { color: var(--tinta); }
+.me-estado .estado-vacio .acciones { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-3); }
+.me-estado__fila { justify-self: stretch; }
+.me-estado__tarjetas { display: grid; gap: var(--e-4); align-items: start; }
+@media (min-width: 768px) { .me-estado__tarjetas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--e-5); } }
+.me-estado__tarjeta { display: grid; gap: var(--e-4); min-inline-size: 0; }
+.me-mientras { list-style: none; display: grid; }
+.me-mientras > li { border-block-end: 1px solid var(--linea); }
+.me-mientras > li:last-child { border-block-end: 0; }
+.me-mientras__enlace {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 12px;
+  min-block-size: 52px;
+  padding-block: 10px;
+  color: var(--tinta);
+  font-weight: 500;
+  text-decoration: none;
+}
+.me-mientras__enlace > .icono:first-child { color: var(--bosque); }
+.me-mientras__enlace > .icono:last-child { color: var(--tinta-suave); }
+.me-mientras__enlace:hover span { text-decoration: underline; text-underline-offset: 3px; }
+.me-mientras__acordeon { border: 0; }
+.me-mientras__acordeon details { border: 0; }
+.me-mientras__acordeon summary { min-block-size: 52px; padding-inline: 32px 0; font-size: var(--t-base); font-weight: 500; color: var(--tinta); }
+.me-mientras__acordeon .me-reglas { padding-block-end: var(--e-3); font-size: var(--t-s); }
+
+.me-ejemplo-punteado {
+  display: grid;
+  gap: var(--e-3);
+  max-inline-size: 40rem;
+  padding: var(--e-2);
+  border: 1.5px dashed var(--linea-fuerte);
+  border-radius: var(--r-l);
+}
+.me-ejemplo-punteado .calendario { margin: 0; }
+.me-ejemplo-punteado__pie { padding-inline: var(--e-2); font-size: var(--t-xs); line-height: 1.5; color: var(--tinta-suave); }
+
+.me-estado__primer-dia { max-inline-size: 40rem; }
+.me-estado__ayuda { align-items: flex-start; }
+.me-estado__ayuda .aviso-cuerpo { display: grid; gap: var(--e-3); }
+.me-estado__lineas { list-style: none; display: grid; gap: var(--e-3); }
+.me-estado__lineas li { display: grid; gap: 2px; }
+.me-estado__linea-nombre { font-weight: 600; color: var(--tinta); }
+.me-estado__numero { justify-self: start; font: 600 var(--t-h3)/1.2 var(--serif); color: var(--bosque); font-variant-numeric: tabular-nums; }
+a.me-estado__numero { display: inline-flex; align-items: center; min-block-size: 44px; }
+.me-estado__linea-texto { font-size: var(--t-xs); line-height: 1.5; color: var(--tinta-suave); }
+.me-estado__registradas { font-weight: 600; font-variant-numeric: tabular-nums; }
+.me-estado__voz { font-size: var(--t-lead); color: var(--bosque); }
+
+/* Ayuda inmediata como página (4.15) */
+.me-ayuda .ayuda-app { gap: var(--e-4); }
+.me-enlace-solo { display: inline-flex; align-items: center; min-block-size: 44px; }
+
+/* Carga y error global (4.1.4): el texto es el H1, con el tamaño de un párrafo. */
+.me-cargando__titulo { margin: 0; font: 500 var(--t-base)/1.5 var(--sans); letter-spacing: 0; color: var(--tinta-suave); }
+.me-h1--aviso { margin: 0; font: 600 var(--t-base)/1.4 var(--sans); letter-spacing: 0; color: var(--tinta); }

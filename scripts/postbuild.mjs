@@ -5,6 +5,7 @@
 // - páginas de reenvío a la plataforma con la piel de la marca (5.7),
 // - guardián de marcadores: falla si queda un «[PENDIENTE]», una llave o un «null»,
 // - analítica opcional (solo con VITE_UMAMI_WEBSITE_ID),
+// - vista previa de la plataforma (etapa 0): noindex y nofollow, sin analítica, fuera del sitemap,
 // - robots.txt y sitemap.xml con la dirección pública.
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
@@ -38,6 +39,7 @@ if (VERIFICACION_GOOGLE && !/^[\w-]+$/.test(VERIFICACION_GOOGLE)) {
 // 2. Paquete de prerender y plantilla.
 const ssr = await import(pathToFileURL(join(SSR, "entry-server.js")).href);
 const { render, paginas, PAGINA_404, IMAGEN_SOCIAL, LEMA } = ssr;
+const { renderPrevia, pantallasPrevia = [], INDICE_PREVIA, ID_VISTA_PREVIA } = ssr;
 // entry-server.tsx reexporta los datos operativos (6.1) para la puerta de lanzamiento y los reenvíos.
 const operacion = ssr.operacion ?? null;
 const ayuda = ssr.ayuda ?? null;
@@ -100,12 +102,13 @@ const conAnalitica = Boolean(UMAMI_ID);
 // CSP por meta (6.6): GitHub Pages no permite cabeceras propias. frame-ancestors no
 // funciona en meta (limitación del estándar). 'unsafe-inline' en style-src solo
 // cubre los anchos de las barras de progreso y el estilo de los reenvíos.
-function csp({ scripts = [], analitica = false } = {}) {
+// blob: en img-src solo en la vista previa (la foto antes de subir, plataforma 2.3).
+function csp({ scripts = [], analitica = false, imgBlob = false } = {}) {
   return [
     "default-src 'self'",
     ["script-src 'self'", ...scripts, ...(analitica ? UMAMI.scriptSrc : [])].join(" "),
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data:",
+    imgBlob ? "img-src 'self' data: blob:" : "img-src 'self' data:",
     "font-src 'self'",
     ["connect-src 'self'", ...(analitica ? UMAMI.connectSrc : [])].join(" "),
     "manifest-src 'self'",
@@ -118,15 +121,17 @@ function csp({ scripts = [], analitica = false } = {}) {
 const imagenSocial = `${SITE_URL}/${IMAGEN_SOCIAL.ruta}`;
 
 // 4. <head> de cada página de contenido.
-function cabeza({ titulo, descripcion, ogDescripcion, canonical, indexable, extra = "" }) {
+// previa: vista previa de la plataforma (noindex y nofollow, sin analítica ni verificación).
+function cabeza({ titulo, descripcion, ogDescripcion, canonical, indexable, extra = "", previa = false }) {
   const t = esc(titulo);
   const d = esc(descripcion);
   const og = esc(ogDescripcion ?? descripcion);
+  const analitica = conAnalitica && !previa;
   return [
-    `<meta http-equiv="Content-Security-Policy" content="${csp({ analitica: conAnalitica })}" />`,
+    `<meta http-equiv="Content-Security-Policy" content="${csp({ analitica, imgBlob: previa })}" />`,
     `<title>${t}</title>`,
     `<meta name="description" content="${d}" />`,
-    indexable ? "" : `<meta name="robots" content="noindex" />`,
+    previa ? `<meta name="robots" content="noindex, nofollow" />` : indexable ? "" : `<meta name="robots" content="noindex" />`,
     canonical ? `<link rel="canonical" href="${canonical}" />` : "",
     ...fuentesCriticas.map(
       (f) => `<link rel="preload" href="${BASE}assets/${f}" as="font" type="font/woff2" crossorigin />`,
@@ -145,8 +150,8 @@ function cabeza({ titulo, descripcion, ogDescripcion, canonical, indexable, extr
     `<meta name="twitter:card" content="summary_large_image" />`,
     // comprobar-produccion (6.10) espera a que la caché de Pages sirva esta versión.
     `<meta name="rumbo-version" content="${esc(VERSION)}" />`,
-    VERIFICACION_GOOGLE ? `<meta name="google-site-verification" content="${VERIFICACION_GOOGLE}" />` : "",
-    conAnalitica
+    VERIFICACION_GOOGLE && !previa ? `<meta name="google-site-verification" content="${VERIFICACION_GOOGLE}" />` : "",
+    analitica
       ? `<script defer src="${UMAMI.script}" data-website-id="${UMAMI_ID}" data-do-not-track="true" data-domains="${new URL(SITE_URL).hostname}"></script>`
       : "",
     extra,
@@ -203,10 +208,12 @@ function conPagina(html, id) {
   return html.replace('<div id="root">', `<div id="root" data-pagina="${id}">`);
 }
 
-function pagina(urlRender, id, head) {
-  const cuerpo = render(urlRender);
+function armar(urlRender, id, head, cuerpo) {
   if (!cuerpo.includes("<h1")) throw new Error(`El prerender de ${urlRender} no tiene <h1>.`);
   return conPagina(plantilla.replace("<!--app-head-->", head).replace("<!--app-html-->", cuerpo), id);
+}
+function pagina(urlRender, id, head) {
+  return armar(urlRender, id, head, render(urlRender));
 }
 
 for (const p of paginas) {
@@ -234,6 +241,32 @@ escribirArchivo(
     cabeza({ titulo: PAGINA_404.titulo, descripcion: PAGINA_404.descripcion, canonical: null, indexable: false }),
   ),
 );
+
+// 5b. Vista previa de la plataforma (etapa 0, plataforma 2.1): cada pantalla prerenderizada,
+// noindex y nofollow, sin canonical ni analítica, fuera del sitemap y sin enlaces desde la web.
+// Su CSS es de una porción aparte: se enlaza en <head> (después del CSS principal, para que
+// el orden de la cascada sea el mismo que al cargarlo con JS) y así no hay salto al hidratar.
+let totalPrevia = 0;
+if (renderPrevia && INDICE_PREVIA) {
+  const enPlantilla = new Set([...plantilla.matchAll(/assets\/([^"]+\.css)/g)].map((m) => m[1]));
+  const hojas = readdirSync(join(DIST, "assets"))
+    .filter((f) => f.endsWith(".css") && !enPlantilla.has(f))
+    .sort();
+  const enlaces = hojas.map((f) => `<link rel="stylesheet" crossorigin href="${BASE}assets/${f}">`).join("\n    ");
+  const conHojas = (html) => html.replace("</head>", `  ${enlaces}\n  </head>`);
+  const rutasVistas = new Set();
+  for (const p of [INDICE_PREVIA, ...pantallasPrevia]) {
+    if (rutasVistas.has(p.ruta)) throw new Error(`Vista previa: la ruta ${p.ruta} está repetida en registro.ts.`);
+    rutasVistas.add(p.ruta);
+    const url = BASE + p.ruta.replace(/^\//, "");
+    const head = cabeza({ titulo: p.titulo, descripcion: INDICE_PREVIA.descripcion, canonical: null, indexable: false, previa: true });
+    const cuerpo = await renderPrevia(url);
+    // Sin scripts en línea: la CSP solo permite 'self'.
+    if (/<script\b/i.test(cuerpo)) throw new Error(`Vista previa: el prerender de ${url} trae un <script> en línea.`);
+    escribir(p.ruta.replace(/^\//, ""), conHojas(armar(url, ID_VISTA_PREVIA, head, cuerpo)));
+    totalPrevia++;
+  }
+}
 
 // 6. Reenvíos (5.7): rutas que viven en la plataforma. Conservan ?area=, ?apoyo= y #token.
 // Piel de la marca sin fuentes propias ni hoja externa: carga al instante.
@@ -319,5 +352,6 @@ if (existsSync(SSR)) rmSync(SSR, { recursive: true });
 
 console.log(
   `postbuild: ${paginas.length} páginas + 404 + ${REENVIOS.reduce((n, r) => n + r.rutas.length, 0)} reenvíos para ${SITE_URL} (base ${BASE})` +
+    `${totalPrevia ? ` + ${totalPrevia} de vista previa` : ""}` +
     `${conAnalitica ? ", con analítica" : ""}${LANZAMIENTO ? ", puerta de lanzamiento superada" : ""}`,
 );

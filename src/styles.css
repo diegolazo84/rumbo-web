@@ -39,6 +39,11 @@
   --bienestar: #B77B16; --bienestar-texto: #895C10; --bienestar-fondo: #F6EDDD;
   --sobre-categoria: #FFFFFF; /* check de una acción marcada, sobre la base de categoría */
 
+  /* 4b. Validación de formularios (plataforma 3.1): SOLO campos con error y su resumen.
+     Nunca en estados de registro (días, acciones, rachas): ahí no existe el rojo. */
+  --error: #A12B22;          /* texto y borde de un campo con error */
+  --error-fondo: #F8E4DF;    /* fondo del resumen de errores */
+
   /* 5. Tipografía */
   --serif: "Fraunces Variable", Georgia, "Times New Roman", serif;
   --sans: "Instrument Sans Variable", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;

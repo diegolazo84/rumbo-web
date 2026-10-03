@@ -1,0 +1,26 @@
+/* Rumbo · vista previa de la plataforma (etapa 0, plataforma 2.1 y 10). Solo esta porción la
+   carga; se borra al pasar a la etapa 3. Solo tokens de :root (styles.css). */
+
+/* Aviso «Ejemplo» arriba de cada pantalla: borde punteado, como todo ejemplo (1.2). */
+.previa-aviso .banda { border-block-end: 1px dashed var(--linea-fuerte); }
+.previa-aviso__texto { min-inline-size: 0; }
+.previa-aviso__enlace { display: inline-flex; align-items: center; min-block-size: 44px; font-weight: 600; }
+
+/* Lugar reservado de una pantalla todavía sin construir. */
+.previa-marcador { display: grid; gap: var(--e-4); padding-block: var(--e-6); }
+.previa-marcador p { max-inline-size: var(--medida); color: var(--tinta-suave); }
+
+/* Índice */
+.previa-indice { display: grid; gap: var(--e-7); }
+.previa-indice__grupo { display: grid; gap: var(--e-5); }
+.previa-indice__grupo h2 { font-size: var(--t-h3); }
+.previa-indice__apartado { display: grid; gap: var(--e-2); }
+.previa-indice__apartado h3 { font: 600 var(--t-s)/1.4 var(--sans); color: var(--tinta-suave); }
+.previa-indice__lista { list-style: none; display: grid; border-block-start: 1px solid var(--linea); }
+.previa-indice__lista li { border-block-end: 1px solid var(--linea); }
+.previa-indice__lista a { display: flex; align-items: center; min-block-size: 48px; padding-block: 8px; font-weight: 500; overflow-wrap: anywhere; }
+
+/* Catálogo de componentes */
+.previa-componentes { display: grid; gap: var(--e-7); }
+.previa-componentes__seccion { display: grid; gap: var(--e-5); min-inline-size: 0; }
+.previa-componentes__acciones { list-style: none; display: grid; gap: var(--e-3); }

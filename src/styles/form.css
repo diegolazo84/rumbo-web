@@ -1,0 +1,189 @@
+/* Rumbo · formularios de la plataforma (especificación de la plataforma 3.1).
+   Compartidos por /postular/, /estado/, /contacto/, Mi espacio y el panel. Solo tokens de :root
+   (styles.css): --error y --error-fondo existen SOLO para validar campos; nunca en estados de
+   registro. El error nunca se distingue solo por color: lleva icono circle-alert y texto. */
+
+/* Formulario: columna con aire de --e-6, novalidate --------------------------------------- */
+.formulario { display: flex; flex-direction: column; gap: var(--e-6); min-inline-size: 0; }
+.formulario__aviso { font-size: var(--t-xs); font-weight: 500; line-height: 1.45; color: var(--tinta-suave); }
+
+/* Leyendas flotantes: así la <legend> se ordena como un hijo más del fieldset (grid o flex).
+   Una leyenda .sr-only queda oculta: la regla no le devuelve ancho. */
+.bloque-numerado > legend:not(.sr-only),
+.grupo-opciones > legend:not(.sr-only),
+.segmentado > legend:not(.sr-only) { float: inline-start; inline-size: 100%; padding: 0; }
+
+/* Bloque numerado: <fieldset> con el estilo de .tarjeta tal cual ------------------------- */
+.bloque-numerado { margin: 0; min-inline-size: 0; gap: var(--e-5); }
+.bloque-numerado__leyenda {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 600 var(--t-h3)/1.25 var(--serif);
+  letter-spacing: -0.005em;
+  color: var(--tinta);
+}
+.bloque-numerado__leyenda .paso-numero { flex: none; }
+.bloque-numerado__bajada { margin-block-start: calc(-1 * var(--e-3)); font-size: var(--t-s); line-height: 1.5; color: var(--tinta-suave); }
+.bloque-numerado__campos { display: flex; flex-direction: column; gap: var(--e-6); min-inline-size: 0; }
+
+/* Campo: label → ayuda → control → error ---------------------------------------------- */
+.campo { display: grid; gap: 6px; min-inline-size: 0; }
+.campo__etiqueta { font: 600 var(--t-s)/1.4 var(--sans); color: var(--tinta); }
+.campo__opcional { font-weight: 400; color: var(--tinta-suave); }
+.campo__ayuda { display: grid; gap: 6px; max-inline-size: var(--medida); font-size: var(--t-xs); line-height: 1.45; color: var(--tinta-suave); }
+.campo__ayuda .etiqueta { justify-self: start; }
+
+.control {
+  display: block;
+  inline-size: 100%;
+  min-block-size: 48px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1.5px solid var(--linea-fuerte);
+  border-radius: var(--r-s);
+  background: var(--superficie);
+  color: var(--tinta);
+  font-size: var(--t-base); /* 17 px: iOS no hace zoom */
+  line-height: 1.45;
+}
+.control:focus { border-color: var(--bosque); }
+textarea.control {
+  min-block-size: 9rem;
+  max-block-size: 20rem;
+  resize: vertical;
+  field-sizing: content;
+}
+.control[aria-invalid="true"] { border: 2px solid var(--error); padding: 11.5px 13.5px; }
+.control[readonly] { background: var(--papel-hondo); }
+
+/* Existe siempre (aria-describedby), pero vacío no ocupa lugar. */
+.campo__error { display: flex; align-items: flex-start; gap: 6px; font: 500 var(--t-s)/1.4 var(--sans); color: var(--error); }
+.campo__error:empty { display: none; }
+.campo__error .icono { margin-block-start: 3px; }
+
+.contador { font-size: var(--t-xs); font-weight: 500; line-height: 1.45; font-variant-numeric: tabular-nums; color: var(--tinta-suave); }
+
+/* Opción en tarjeta (radio o casilla) ---------------------------------------------------- */
+.grupo-opciones { display: grid; gap: 8px; min-inline-size: 0; margin: 0; padding: 0; border: 0; }
+.grupo-opciones__lista { display: grid; gap: 12px; min-inline-size: 0; }
+@media (min-width: 600px) { .grupo-opciones__lista--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.grupo-opciones__lista--fila { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.opcion {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  min-block-size: 56px;
+  padding: 16px;
+  border: 1.5px solid var(--linea-fuerte);
+  border-radius: var(--r-m);
+  background: var(--superficie);
+  cursor: pointer;
+}
+.opcion__control {
+  appearance: none;
+  display: grid;
+  place-content: center;
+  inline-size: 22px;
+  block-size: 22px;
+  margin: 1px 0 0;
+  border: 1.5px solid var(--linea-fuerte);
+  border-radius: 50%;
+  background: var(--superficie);
+  cursor: pointer;
+}
+.opcion__control[type="checkbox"] { border-radius: var(--r-s); }
+.opcion__control::before { content: ""; scale: 0; }
+.opcion__control[type="radio"]::before { inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--papel); }
+.opcion__control[type="checkbox"]::before {
+  inline-size: 14px;
+  block-size: 14px;
+  background: var(--papel);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.opcion__control:checked { border-color: var(--bosque); background: var(--bosque); }
+.opcion__control:checked::before { scale: 1; }
+.opcion__cuerpo { display: grid; gap: 4px; min-inline-size: 0; }
+.opcion__cabeza { display: flex; align-items: center; gap: 12px; min-inline-size: 0; }
+.opcion--con-icono .opcion__control { margin-block-start: 9px; }
+.opcion__titulo { font: 600 var(--t-s)/1.35 var(--sans); color: var(--tinta); }
+.opcion__linea { font-size: var(--t-xs); line-height: 1.45; color: var(--tinta-suave); }
+.opcion__etiquetas { display: flex; flex-wrap: wrap; gap: 6px; margin-block-start: 4px; }
+/* Mosaico: neutro hasta elegir; en áreas, var(--cat-fondo) al elegir (lleno = elegido). */
+.opcion__mosaico { background: var(--papel-hondo); color: var(--tinta-suave); }
+
+/* Marcada: borde 2 px bosque y fondo niebla. El padding compensa el borde más grueso. */
+.opcion:has(:checked) { padding: 15.5px; border: 2px solid var(--bosque); background: var(--niebla); }
+.opcion[data-cat]:has(:checked) { border-color: var(--cat); background: var(--superficie); }
+.opcion[data-cat]:has(:checked) .opcion__mosaico { background: var(--cat-fondo); color: var(--cat-texto); }
+.opcion:has(:checked) .opcion__mosaico { background: var(--superficie); color: var(--bosque); }
+
+/* Área «Más adelante»: contorno, como .fila-futura. */
+.opcion--mas-adelante { border: 1px solid var(--linea); background: transparent; padding: 16.5px; }
+
+/* Días de la semana: tarjetas chicas en fila. */
+.opcion--chica { align-items: center; min-block-size: 48px; padding: 10px 14px; }
+.opcion--chica:has(:checked) { padding: 9.5px 13.5px; }
+.opcion--chica .opcion__control { margin: 0; }
+
+@supports selector(:has(*)) {
+  .opcion:has(:focus-visible) { outline: var(--foco-ancho) solid var(--foco-color); outline-offset: var(--foco-offset); }
+  .opcion__control:focus-visible { outline: none; }
+}
+@media (hover: hover) { .opcion:hover { border-color: var(--bosque); } }
+
+/* Casilla: toda la fila es objetivo táctil ---------------------------------------------- */
+.casilla {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  min-block-size: 44px;
+  padding-block: 10px;
+  font-size: var(--t-s);
+  line-height: 1.5;
+  cursor: pointer;
+}
+.casilla input { inline-size: 24px; block-size: 24px; margin: 0; accent-color: var(--bosque); cursor: pointer; }
+.campo--casilla { gap: 0; }
+.campo--casilla .campo__ayuda, .campo--casilla .campo__error { padding-inline-start: 36px; }
+
+/* Resumen de errores ------------------------------------------------------------------- */
+.resumen-errores { background: var(--error-fondo); }
+.resumen-errores .aviso-icono { color: var(--error); }
+.resumen-errores .aviso-titulo { font: 600 var(--t-base)/1.4 var(--sans); letter-spacing: 0; color: var(--tinta); }
+.resumen-errores ul { list-style: none; padding: 0; display: grid; gap: 4px; }
+.resumen-errores a { display: inline-flex; align-items: center; min-block-size: 44px; color: var(--error); font-weight: 500; }
+
+/* Zona de envío -------------------------------------------------------------------------- */
+.envio { display: grid; gap: 12px; justify-items: start; }
+.envio__alerta { inline-size: 100%; }
+/* Vacía sigue en el DOM (región viva) sin dejar aire extra. */
+.envio__alerta:empty { margin-block-end: -12px; }
+.envio__boton { inline-size: 100%; }
+@media (min-width: 600px) { .envio__boton { inline-size: auto; } }
+.envio__frases { display: grid; gap: 4px; max-inline-size: var(--medida); font-size: var(--t-xs); font-weight: 500; line-height: 1.45; color: var(--tinta-suave); }
+.boton[aria-disabled="true"] { cursor: progress; }
+
+/* Aviso de ayuda bajo todo texto libre (variante compacta del aviso phone) ---------------- */
+.aviso-ayuda { grid-template-columns: 16px minmax(0, 1fr); gap: 10px; padding: 12px 16px; font-size: var(--t-xs); line-height: 1.5; }
+.aviso-ayuda .aviso-icono { margin-block-start: 2px; }
+.no-es-chat { font-size: var(--t-xs); font-weight: 500; line-height: 1.45; color: var(--tinta-suave); }
+
+/* Campo trampa: fuera de pantalla, sin foco ni anuncio ------------------------------------- */
+.campo-trampa { position: absolute; inset-inline-start: -10000px; inline-size: 1px; block-size: 1px; overflow: hidden; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .opcion__control::before { transition: scale var(--dur-1) var(--curva); }
+}
+
+@media (forced-colors: active) {
+  .opcion { border: 1px solid CanvasText; }
+  .opcion:has(:checked) { border: 2px solid Highlight; }
+  .opcion__control:checked { forced-color-adjust: none; background: Highlight; border-color: Highlight; }
+  .opcion__control:checked::before { background: HighlightText; }
+  .control[aria-invalid="true"] { border-style: dashed; }
+}

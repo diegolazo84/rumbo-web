@@ -1,0 +1,198 @@
+/* Rumbo · vista previa de /postular/, /estado/ y /contacto/ (plataforma 3; grupo «formulario»).
+   Lo importan solo las pantallas de src/pages/vista-previa/formulario/. Lo compartido vive en
+   form.css y app.css. Solo tokens de :root (styles.css): sin colores ni fuentes nuevas.
+   --error solo en campos con error y en «Retirar» (3.14). */
+
+/* Disposición (3.4): una columna; desde 1024 px, columnas 1–7 (máx. 42rem) y aside en 9–12. --- */
+.vf-pagina {
+  display: grid;
+  gap: var(--e-7);
+  padding-block: clamp(2rem, 1.25rem + 3vw, 4rem) var(--seccion-y);
+}
+.vf-principal { display: flex; flex-direction: column; gap: var(--e-6); min-inline-size: 0; }
+.vf-aside { display: grid; gap: var(--e-5); align-content: start; min-inline-size: 0; }
+@media (min-width: 1024px) {
+  .vf-pagina { grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 24px; align-items: start; }
+  .vf-principal { grid-column: 1 / span 7; max-inline-size: 42rem; }
+  .vf-aside { grid-column: 9 / -1; }
+}
+/* Pegajoso solo si cabe entero en la ventana (si no, «¿Dudas? Escríbenos» quedaría fuera de vista). */
+@media (min-width: 1024px) and (min-height: 820px) {
+  .vf-aside { position: sticky; inset-block-start: calc(var(--cabecera-alto) + 2rem); }
+}
+
+/* Encabezado: el aire lo da la columna. */
+.vf-encabezado { margin-block-end: 0; }
+.vf-encabezado > h1 { max-inline-size: 18ch; }
+.vf-encabezado > :is(.lista-check, .formulario__aviso, .vf-etiquetas, p:not(.ojo, .bajada)) { margin-block-start: 16px; }
+.vf-encabezado > .bajada + .bajada { margin-block-start: 12px; }
+.vf-encabezado > .acciones { margin-block-start: 24px; }
+.vf-etiquetas { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Regiones vivas vacías: siguen en el árbol de accesibilidad, pero fuera del flujo (sin aire). */
+.vf-anuncio:empty { position: absolute; }
+.vf-anuncio { font: 600 var(--t-s)/1.5 var(--sans); color: var(--bosque); max-inline-size: var(--medida); }
+
+.vf-ejemplo-nota { margin-block-end: calc(-1 * var(--e-4)); }
+.vf-restaurado .boton--terciario { margin-inline-start: -8px; }
+.vf-noscript { grid-template-columns: minmax(0, 1fr); }
+
+/* Bloque ① «Tu meta» --------------------------------------------------------------------- */
+.vf-campo-libre { display: grid; gap: 12px; min-inline-size: 0; }
+.vf-ejemplo-texto { font-style: italic; }
+.vf-otras { margin-block-start: 4px; }
+.vf-otras__cuerpo { display: grid; gap: 12px; max-inline-size: none; padding: 4px 0 12px; font-size: var(--t-xs); }
+.vf-cambiar-area { margin-inline-start: -8px; }
+
+/* Bloque ② «Cómo te acompañamos» -------------------------------------------------------- */
+.vf-apoyo { display: grid; gap: 12px; min-inline-size: 0; }
+.vf-precio { font: 600 var(--t-s)/1.4 var(--sans); font-variant-numeric: tabular-nums; color: var(--tinta); }
+.vf-nota-precio { display: grid; gap: 4px; max-inline-size: var(--medida); font-size: var(--t-xs); font-weight: 500; line-height: 1.45; color: var(--tinta-suave); }
+.vf-nota { font-size: var(--t-xs); font-weight: 500; line-height: 1.45; color: var(--tinta-suave); max-inline-size: var(--medida); }
+
+/* Bloque ③ «Tus datos» ------------------------------------------------------------------- */
+.vf-sugerencia { display: flex; flex-wrap: wrap; align-items: center; column-gap: 4px; font-size: var(--t-s); line-height: 1.45; }
+.vf-sugerencia .boton--terciario { margin-inline-start: -8px; }
+.vf-sugerencia p:not(:empty) + .boton--terciario { margin-inline-start: 0; }
+.vf-casillas { display: grid; gap: var(--e-2); }
+
+/* Contacto -------------------------------------------------------------------------------- */
+.vf-ayuda-datos { margin-block-start: 4px; }
+.vf-informacion {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 8px;
+  max-inline-size: var(--medida);
+  font-size: var(--t-xs);
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--tinta-suave);
+}
+.vf-informacion .icono { margin-block-start: 2px; color: var(--bosque); }
+
+/* Aside: «Qué pasa después», «En simple» y «¿Dudas? Escríbenos» --------------------------- */
+.vf-aside__titulo { margin-block-end: 16px; font: 600 var(--t-h3)/1.25 var(--serif); letter-spacing: -0.005em; }
+.vf-aside__simple { font-size: var(--t-xs); line-height: 1.5; }
+.vf-aside__dudas .enlace-util { font-size: var(--t-s); font-weight: 600; color: var(--bosque); }
+.vf-aside__dudas .enlace-util[aria-current="page"] { color: var(--tinta); }
+
+/* Línea de tiempo (3.13, 3.14): completos llenos, actual con borde bosque, pendientes en contorno. */
+.vf-linea { list-style: none; display: grid; gap: 20px; }
+.vf-linea__paso { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 14px; align-items: start; }
+.vf-linea__paso:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: 17px;
+  inset-block: 40px -16px;
+  border-inline-start: 2px dotted var(--linea-fuerte);
+}
+.vf-linea__marca {
+  display: grid;
+  place-items: center;
+  inline-size: 36px;
+  block-size: 36px;
+  border: 1.5px solid var(--linea-fuerte);
+  border-radius: var(--r-full);
+  background: transparent;
+  font: 600 var(--t-xs)/1 var(--sans);
+  font-variant-numeric: tabular-nums;
+  color: var(--tinta-suave);
+}
+.vf-linea__paso--completo .vf-linea__marca { border-color: var(--bosque); background: var(--bosque); color: var(--papel); }
+.vf-linea__paso--actual .vf-linea__marca { border: 2px solid var(--bosque); background: var(--superficie); color: var(--bosque); }
+.vf-linea__cuerpo { display: grid; gap: 4px; padding-block-start: 6px; font-size: var(--t-s); line-height: 1.55; color: var(--tinta-suave); min-inline-size: 0; }
+/* Un solo estilo de Pasos en la confirmación, el estado y el aside (también cuando el título es h3). */
+.vf-linea__titulo { font: 600 var(--t-s)/1.4 var(--sans); letter-spacing: 0; color: var(--tinta); }
+.vf-linea__paso--pendiente .vf-linea__titulo { color: var(--tinta-suave); }
+.vf-linea__paso--actual .vf-linea__titulo { color: var(--bosque); }
+/* Compacta (aside): círculos y textos más chicos. */
+.vf-linea--compacta { gap: 16px; }
+.vf-linea--compacta .vf-linea__paso { grid-template-columns: 28px minmax(0, 1fr); gap: 12px; }
+.vf-linea--compacta .vf-linea__paso:not(:last-child)::after { inset-inline-start: 13px; inset-block: 32px -12px; }
+.vf-linea--compacta .vf-linea__marca { inline-size: 28px; block-size: 28px; }
+.vf-linea--compacta .vf-linea__cuerpo { padding-block-start: 3px; font-size: var(--t-xs); line-height: 1.45; }
+.vf-linea--compacta .vf-linea__titulo { font-size: var(--t-s); color: var(--tinta); }
+
+/* Tarjetas: enlace privado, «Lo que nos contaste» y el acuerdo ------------------------------- */
+.vf-tarjeta__cabeza { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.vf-tarjeta__titulo { font: 600 var(--t-h3)/1.25 var(--serif); letter-spacing: -0.005em; }
+.vf-seccion { display: grid; gap: var(--e-5); }
+.vf-seccion__titulo { font-size: var(--t-h3); font-weight: 600; line-height: 1.25; }
+
+.vf-enlace { gap: 16px; }
+.vf-enlace__url {
+  padding: 12px 14px;
+  border-radius: var(--r-s);
+  background: var(--papel-hondo);
+  font-size: var(--t-xs);
+  font-weight: 500;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.vf-enlace__acciones { row-gap: 4px; }
+.vf-enlace__copiado { font-size: var(--t-xs); font-weight: 600; color: var(--bosque); }
+.vf-enlace__copiado:empty { position: absolute; }
+.vf-aviso-chico { padding: 12px 16px; font-size: var(--t-xs); line-height: 1.5; }
+
+.vf-datos { display: grid; }
+.vf-datos > div { display: grid; gap: 2px; padding-block: 10px; border-block-end: 1px solid var(--linea); }
+.vf-datos > div:first-child { padding-block-start: 0; }
+.vf-datos dt { font: 600 var(--t-xs)/1.4 var(--sans); color: var(--tinta-suave); }
+.vf-datos dd { margin: 0; min-inline-size: 0; overflow-wrap: anywhere; }
+@media (min-width: 600px) {
+  .vf-datos > div { grid-template-columns: 8rem minmax(0, 1fr); gap: 16px; align-items: baseline; }
+}
+.vf-meta summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-block-size: 44px;
+  list-style: none;
+  font-weight: 600;
+  color: var(--bosque);
+  cursor: pointer;
+}
+.vf-meta summary::-webkit-details-marker { display: none; }
+.vf-meta[open] .vf-meta__icono { rotate: 90deg; }
+.vf-meta > p { max-inline-size: var(--medida); padding: 12px 14px; border-radius: var(--r-s); background: var(--papel-hondo); }
+@media (hover: hover) { .vf-meta summary:hover { text-decoration: underline; text-underline-offset: 4px; } }
+@media (prefers-reduced-motion: no-preference) { .vf-meta__icono { transition: rotate var(--dur-2) var(--curva); } }
+
+.vf-acuerdo { gap: 16px; }
+.vf-acuerdo__plan { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: var(--t-base); }
+.vf-acuerdo .formulario { gap: var(--e-4); }
+.vf-acuerdo .plan-nota { margin-block-start: 8px; }
+
+/* Acciones del estado: «Retirar» es terciario en --error (3.14). */
+.vf-acciones-estado { display: grid; gap: var(--e-1); justify-items: start; }
+.vf-retirar { margin-inline-start: -8px; color: var(--error); }
+.vf-acciones-estado .enlace-util { font-size: var(--t-s); }
+
+/* Diálogo modal (retirar) ---------------------------------------------------------------- */
+.vf-dialogo {
+  inline-size: min(32rem, calc(100vw - 2 * var(--gutter)));
+  max-inline-size: none;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-l);
+  background: var(--superficie);
+  color: var(--tinta);
+  box-shadow: var(--sombra-2);
+}
+.vf-dialogo::backdrop { background: rgb(29 38 33 / 0.45); }
+.vf-dialogo__cuerpo { display: grid; gap: var(--e-4); padding: 24px; font-size: var(--t-s); line-height: 1.55; }
+.vf-dialogo__titulo { font: 600 var(--t-h3)/1.25 var(--serif); letter-spacing: -0.005em; }
+.vf-dialogo__acciones { margin-block-start: 8px; }
+
+@media (forced-colors: active) {
+  .vf-linea__marca { border: 1px solid CanvasText; }
+  .vf-linea__paso--completo .vf-linea__marca { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; }
+  .vf-dialogo { border: 1px solid CanvasText; }
+}
+
+/* Nota de cierre (3.14): «Nota de {coach}» bajo el texto fijo, nunca en su lugar. */
+.vf-nota-cierre { display: grid; gap: 6px; max-inline-size: var(--medida); margin: 0; padding-block-start: 16px; border-block-start: 1px solid var(--linea); }
+.vf-nota-cierre blockquote { margin: 0; font-size: var(--t-s); line-height: 1.55; }
+/* Enlace suelto en su propia línea: objetivo de 44 px (2.5.8). */
+.vf-enlace-alto { display: inline-flex; align-items: center; min-block-size: 44px; }

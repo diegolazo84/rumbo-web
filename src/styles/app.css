@@ -1,0 +1,487 @@
+/* Rumbo · Mi espacio y panel (especificación de la plataforma 4.1 y 5.2).
+   Mismos tokens, componentes y colores de categoría que la web. En los estados de registro
+   (días, acciones, rachas) no existe el rojo: --error es solo para campos de formulario. */
+
+/* ========================================================================
+   Estructura
+   ======================================================================== */
+.app { flex: 1; display: flex; flex-direction: column; min-inline-size: 0; }
+
+/* La barra inferior no tapa el elemento con foco (WCAG 2.4.11). */
+@media (max-width: 1023.98px) {
+  /* Alto de la barra: 56 px, o hasta 72 px cuando un rótulo largo pasa a dos líneas. */
+  :root:has(.barra-inferior) { --barra-alto: 72px; scroll-padding-bottom: calc(var(--barra-alto) + env(safe-area-inset-bottom) + 1rem); }
+}
+
+/* Cabecera propia: sin CTA comercial. Reusa .cabecera (pegajosa, alto --cabecera-alto). */
+.cabecera-app { border-block-end-color: var(--linea); }
+.cabecera-app__fila {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  block-size: 100%;
+  padding-inline: var(--gutter);
+}
+.cabecera-app .logo { margin: 0; }
+.cabecera-app__seccion {
+  overflow: hidden;
+  font: 600 var(--t-xs)/1.2 var(--sans);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--tinta);
+}
+.cabecera-app__acciones { grid-column: 3; display: flex; align-items: center; gap: 8px; }
+.cabecera-app__ayuda {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+  padding: 0;
+  border: 1.5px solid var(--linea-fuerte);
+  border-radius: var(--r-full);
+  background: var(--superficie);
+  color: var(--bosque);
+  font: 600 var(--t-xs)/1.2 var(--sans);
+}
+@media (max-width: 479.98px) {
+  .cabecera-app__ayuda-texto { position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+}
+@media (min-width: 480px) { .cabecera-app__ayuda { padding: 0 14px 0 12px; } }
+.cabecera-app__web { display: none; }
+@media (min-width: 1024px) {
+  .cabecera-app__seccion { display: none; }
+  .cabecera-app__web { display: inline-flex; padding-inline: 8px; }
+  /* En escritorio, «Ayuda inmediata» es un enlace utilitario con su icono. */
+  .cabecera-app__ayuda { padding: 0 8px; border-color: transparent; background: transparent; color: var(--tinta); font-weight: 500; }
+}
+@media (hover: hover) {
+  .cabecera-app__ayuda:hover { background: var(--niebla); }
+}
+
+.app__cuerpo { flex: 1; min-inline-size: 0; }
+@media (min-width: 1024px) {
+  .app:not(.app--sin-navegacion) .app__cuerpo { display: grid; grid-template-columns: 240px minmax(0, 1fr); align-items: start; }
+}
+.app__main { min-inline-size: 0; padding-block: var(--e-5) var(--e-8); }
+@media (max-width: 1023.98px) {
+  .app:not(.app--sin-navegacion) .app__main { padding-block-end: calc(var(--barra-alto, 56px) + env(safe-area-inset-bottom) + var(--e-7)); }
+}
+/* Contenedor del contenido: --ancho-medio con el gutter de la web. */
+.app__contenido {
+  inline-size: 100%;
+  max-inline-size: calc(var(--ancho-medio) + 2 * var(--gutter));
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/* Botón de solo icono (44 × 44): cerrar hojas y tostadas. Su nombre va en texto oculto. */
+.boton-icono {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  inline-size: 44px;
+  block-size: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--tinta);
+}
+@media (hover: hover) { .boton-icono:hover { background: var(--niebla); } }
+
+/* ========================================================================
+   Navegación: barra inferior (móvil) y lateral (≥1024 px)
+   ======================================================================== */
+.nav-app ul { list-style: none; }
+.nav-app__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  inline-size: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--tinta-suave);
+  text-decoration: none;
+  cursor: pointer;
+}
+.nav-app__icono { position: relative; display: grid; place-items: center; flex: none; border-radius: var(--r-full); }
+.nav-app__item[aria-current="page"] { color: var(--bosque); }
+.nav-app__item[aria-current="page"] .nav-app__icono { background: var(--niebla); }
+/* Novedad: punto terracota de 8 px, nunca un número. */
+.nav-app__punto {
+  position: absolute;
+  inset-block-start: 1px;
+  inset-inline-end: 6px;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--terracota);
+}
+/* Contadores del panel: sí son números (herramienta de trabajo). */
+.nav-app__contador {
+  min-inline-size: 22px;
+  padding: 3px 6px;
+  border-radius: var(--r-full);
+  background: var(--bosque);
+  color: var(--papel);
+  font: 600 var(--t-micro)/1 var(--sans);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+@media (hover: hover) { .nav-app__item:hover { color: var(--bosque); } }
+
+.barra-inferior {
+  position: fixed;
+  inset-inline: 0;
+  inset-block-end: 0;
+  z-index: 20;
+  padding-block-end: env(safe-area-inset-bottom);
+  border-block-start: 1px solid var(--linea);
+  background: var(--superficie);
+}
+.barra-inferior[data-oculta] { display: none; }
+.barra-inferior ul { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.barra-inferior .nav-app__item {
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-block-size: 56px;
+  padding: 4px 2px;
+  font: 600 var(--t-micro)/1.2 var(--sans);
+}
+.barra-inferior .nav-app__icono { inline-size: 44px; block-size: 28px; }
+/* Rótulos largos («Participantes», «Calendario») pasan a dos líneas con guion (corte silábico
+   del destino) en vez de encimarse con el vecino: nunca más anchos que su celda. */
+.barra-inferior .nav-app__texto {
+  max-inline-size: 100%;
+  text-align: center;
+  hyphens: manual;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+}
+.barra-inferior .nav-app__contador { position: absolute; inset-block-start: 2px; inset-inline-start: calc(50% + 8px); }
+@media (min-width: 1024px) { .barra-inferior { display: none; } }
+
+.lateral { display: none; }
+@media (min-width: 1024px) {
+  .lateral {
+    position: sticky;
+    inset-block-start: var(--cabecera-alto);
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-4);
+    block-size: calc(100dvh - var(--cabecera-alto));
+    overflow-y: auto;
+    padding: var(--e-5) var(--e-4);
+    border-inline-end: 1px solid var(--linea);
+    background: var(--papel-hondo);
+  }
+  .lateral ul { display: grid; gap: 4px; }
+  .lateral .nav-app__item {
+    gap: 12px;
+    min-block-size: 48px;
+    padding: 0 12px 0 4px;
+    border-radius: var(--r-full);
+    font: 600 var(--t-s)/1.2 var(--sans);
+  }
+  .lateral .nav-app__icono { inline-size: 44px; block-size: 32px; }
+  .lateral .nav-app__contador { margin-inline-start: auto; }
+  .lateral__pie { display: grid; gap: 4px; justify-items: start; }
+  .lateral__pie hr { justify-self: stretch; margin-block: var(--e-2); }
+  .lateral__pie .boton { margin-block-end: var(--e-2); }
+}
+button.enlace-util { padding: 0; border: 0; background: transparent; cursor: pointer; }
+
+/* Hoja «Más» (filas de 52 px) */
+.lista-mas { list-style: none; }
+.lista-mas__fila {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  inline-size: 100%;
+  min-block-size: 52px;
+  padding: 0 4px;
+  border: 0;
+  border-block-end: 1px solid var(--linea);
+  background: transparent;
+  color: var(--tinta);
+  font: 500 var(--t-base)/1.3 var(--sans);
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+.lista-mas__fila .icono { color: var(--bosque); }
+.lista-mas__separada { margin-block-start: var(--e-4); border-block-start: 1px solid var(--linea); }
+
+/* ========================================================================
+   Hoja (<dialog>): inferior en móvil, panel derecho de 420 px en escritorio
+   ======================================================================== */
+.hoja {
+  inline-size: 100%;
+  max-inline-size: none;
+  max-block-size: 90dvh;
+  margin: auto 0 0;
+  padding: 0;
+  overflow-y: auto;
+  border: 0;
+  border-radius: var(--r-l) var(--r-l) 0 0;
+  background: var(--superficie);
+  color: var(--tinta);
+  box-shadow: var(--sombra-2);
+}
+.hoja::backdrop { background: rgb(29 38 33 / 0.45); }
+.hoja__caja { display: grid; gap: 12px; padding: 8px var(--gutter) calc(var(--e-5) + env(safe-area-inset-bottom)); }
+.hoja__asa { justify-self: center; inline-size: 40px; block-size: 4px; border-radius: var(--r-full); background: var(--linea-fuerte); }
+.hoja__cabeza { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.hoja__titulo { font: 600 var(--t-h3)/1.25 var(--serif); letter-spacing: -0.005em; }
+.hoja__cuerpo { display: grid; gap: 16px; font-size: var(--t-s); line-height: 1.55; }
+@media (min-width: 1024px) {
+  .hoja {
+    inline-size: 420px;
+    block-size: 100dvh;
+    max-block-size: 100dvh;
+    margin: 0 0 0 auto;
+    border-radius: 0;
+  }
+  .hoja__asa { display: none; }
+  .hoja__caja { padding: var(--e-5); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hoja[open] { animation: hoja-subir var(--dur-2) var(--curva); }
+}
+@keyframes hoja-subir { from { translate: 0 24px; } }
+
+/* Ayuda inmediata (4.15) */
+.ayuda-app { display: grid; gap: 16px; }
+.ayuda-app__lineas { list-style: none; display: grid; gap: 12px; }
+.ayuda-app__linea { gap: 4px; padding: 16px; }
+.ayuda-app__nombre { font: 600 var(--t-s)/1.35 var(--sans); letter-spacing: 0; }
+.ayuda-app__numero {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-block-size: 44px;
+  font: 600 var(--t-h3)/1.2 var(--serif);
+  font-variant-numeric: tabular-nums;
+  color: var(--bosque);
+}
+.ayuda-app__descripcion { color: var(--tinta-suave); }
+
+/* ========================================================================
+   Tostada: sobre la barra inferior, en role="status"
+   ======================================================================== */
+.tostada-zona {
+  position: fixed;
+  inset-inline: var(--gutter);
+  inset-block-end: calc(var(--barra-alto, 56px) + env(safe-area-inset-bottom) + 12px);
+  z-index: 25;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+@media (min-width: 1024px) { .tostada-zona { inset-block-end: var(--e-5); } }
+.tostada {
+  --foco-color: var(--ambar);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-inline-size: 32rem;
+  padding: 6px 6px 6px 16px;
+  border-radius: var(--r-m);
+  background: var(--bosque);
+  color: var(--papel);
+  font-size: var(--t-s);
+  line-height: 1.4;
+  box-shadow: var(--sombra-1);
+  pointer-events: auto;
+}
+.tostada__texto { flex: 1; padding-block: 8px; }
+.tostada .boton--terciario, .tostada .boton-icono { color: var(--papel); }
+@media (hover: hover) { .tostada .boton-icono:hover { background: rgb(245 239 228 / 0.12); } }
+
+/* ========================================================================
+   Tarjeta de acción (.accion.accion--app): la fila abre el detalle; el control marca
+   ======================================================================== */
+.accion.accion--app {
+  grid-template-columns: minmax(0, 1fr) 44px;
+  column-gap: 4px;
+  padding: 6px 6px 6px 0;
+  cursor: auto;
+}
+/* Dos objetivos separados: cada uno muestra su propio foco (no toda la fila). */
+.accion.accion--app:has(:focus-visible) { outline: none; }
+.accion__abrir {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  min-block-size: 44px;
+  padding: 4px 8px 4px 14px;
+  border: 0;
+  border-radius: var(--r-s);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  text-decoration: none;
+}
+a.accion__abrir, button.accion__abrir { cursor: pointer; }
+.accion__control {
+  display: grid;
+  place-items: center;
+  inline-size: 44px;
+  block-size: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--cat-texto);
+  cursor: pointer;
+}
+.accion.accion--app .accion__control input { justify-self: center; }
+.accion__control:has(:focus-visible) { outline: var(--foco-ancho) solid var(--foco-color); outline-offset: 0; }
+/* Desactivado (día futuro, sin conexión): contorno tenue sólido. El punteado es solo para «Ejemplo» (1.2). */
+.accion__control input[aria-disabled="true"] { border-color: var(--linea); background: var(--papel-hondo); cursor: not-allowed; }
+.accion__control[aria-disabled="true"] { cursor: not-allowed; }
+/* Hecha: check relleno con var(--cat) y título en tinta (sin tachado). */
+.accion.accion--app.accion--hecha .accion-titulo { color: var(--tinta); }
+.accion-nota { font-size: var(--t-xs); font-weight: 500; line-height: 1.45; color: var(--tinta-suave); }
+.accion__extra { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 0 8px 4px 78px; }
+@media (max-width: 359.98px) { .accion__extra { padding-inline-start: 14px; } }
+.accion--compacta .accion__abrir { padding-block: 2px; }
+.accion.accion--app.accion--sin-control { grid-template-columns: minmax(0, 1fr); }
+@media (hover: hover) {
+  a.accion__abrir:hover .accion-titulo, button.accion__abrir:hover .accion-titulo { text-decoration: underline; text-underline-offset: 3px; }
+  .accion__control:hover { background: var(--superficie); }
+}
+
+/* ========================================================================
+   Chips de meta, barra de progreso, tarjeta de meta
+   ======================================================================== */
+/* El nombre de la meta puede ser largo: el chip crece en alto, nunca desborda a 320 px. */
+.chip-meta { white-space: normal; block-size: auto; min-block-size: 26px; padding-block: 4px; line-height: 1.25; }
+.leyenda-metas { list-style: none; }
+.punto-meta { display: inline-block; inline-size: 6px; block-size: 6px; border-radius: 50%; background: var(--cat); }
+
+.progreso { display: grid; gap: 6px; }
+.barra--meta .barra-relleno { background: var(--cat); }
+
+.meta-tarjeta { box-shadow: inset 3px 0 0 var(--cat); }
+.meta-tarjeta > .etiqueta { align-self: flex-start; }
+
+/* ========================================================================
+   Estado vacío, banda, carga
+   ======================================================================== */
+.estado-vacio { display: grid; justify-items: start; gap: 16px; padding-block: var(--e-5); }
+.estado-vacio__ruta { inline-size: min(100%, 240px); opacity: 0.7; }
+.estado-vacio__texto { display: grid; gap: 12px; max-inline-size: var(--medida); }
+.estado-vacio .acciones { margin-block-start: var(--e-2); }
+.estado-vacio .ojo { margin: 0; }
+
+.banda { border-block-end: 1px solid var(--linea); background: var(--papel-hondo); }
+.banda__fila {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-inline-size: calc(var(--ancho-sitio) + 2 * var(--gutter));
+  margin-inline: auto;
+  padding: 10px var(--gutter);
+  font-size: var(--t-xs);
+  font-weight: 500;
+  line-height: 1.45;
+}
+.banda__icono { margin-block-start: 1px; color: var(--bosque); }
+.banda__texto { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-inline-size: 0; }
+.banda__texto .enlace-util { min-block-size: 32px; }
+
+.cargando { display: grid; justify-items: start; gap: 12px; color: var(--tinta-suave); }
+.error-bloque { font-size: var(--t-xs); font-weight: 500; color: var(--tinta-suave); }
+
+/* ========================================================================
+   Control segmentado y franja de la semana
+   ======================================================================== */
+.segmentado { min-inline-size: 0; margin: 0; padding: 0; border: 0; }
+.segmentado > .campo__etiqueta { margin-block-end: 8px; }
+.segmentado__opciones { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: var(--r-l); background: var(--papel-hondo); }
+.segmentado__opcion { position: relative; display: inline-flex; }
+.segmentado__opcion input {
+  appearance: none;
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  cursor: pointer;
+}
+.segmentado__opcion span {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  padding: 0 18px;
+  border-radius: var(--r-full);
+  font: 600 var(--t-s)/1.2 var(--sans);
+  color: var(--tinta);
+  pointer-events: none;
+}
+.segmentado__opcion:has(:checked) span { background: var(--bosque); color: var(--papel); }
+.segmentado__opcion input:focus-visible { outline: var(--foco-ancho) solid var(--foco-color); outline-offset: var(--foco-offset); }
+
+.franja-semana {
+  position: sticky;
+  inset-block-start: var(--cabecera-alto);
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  padding-block: 8px;
+  background: var(--papel);
+}
+.franja-semana__dia {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-inline-size: 0;
+  min-block-size: 64px;
+  padding: 6px 0;
+  border: 1.5px solid transparent;
+  border-radius: var(--r-s);
+  background: transparent;
+  color: var(--tinta);
+  font: 500 var(--t-micro)/1.2 var(--sans);
+}
+.franja-semana__numero { font: 600 var(--t-s)/1.2 var(--sans); font-variant-numeric: tabular-nums; }
+.franja-semana__puntos { display: flex; gap: 3px; min-block-size: 6px; }
+.franja-semana__dia.es-hoy { border-color: var(--bosque); }
+.franja-semana__dia.es-fuera { color: var(--tinta-suave); }
+.franja-semana__dia[aria-pressed="true"] { background: var(--niebla); }
+/* Día completo: check pequeño en niebla y bosque (lleno = logrado). */
+.franja-semana__dia.es-completo::before,
+.franja-semana__dia.es-completo::after {
+  content: "";
+  position: absolute;
+  inset-block-start: 3px;
+  inset-inline-end: 3px;
+  inline-size: 14px;
+  block-size: 14px;
+  border-radius: 50%;
+}
+.franja-semana__dia.es-completo::before { background: var(--niebla); }
+.franja-semana__dia.es-completo::after {
+  background: var(--bosque);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 10px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 10px no-repeat;
+}
+@media (hover: hover) { .franja-semana__dia:hover { background: var(--niebla); } }
+
+@media (forced-colors: active) {
+  .franja-semana__dia, .segmentado__opcion span, .tostada { border: 1px solid CanvasText; }
+  .segmentado__opcion:has(:checked) span { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+  .nav-app__item[aria-current="page"] { text-decoration: underline; }
+  .punto-meta, .nav-app__punto { forced-color-adjust: none; background: CanvasText; }
+}

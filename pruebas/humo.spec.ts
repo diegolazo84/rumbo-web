@@ -512,13 +512,17 @@ test("sitemap: cada URL existe, termina en barra y coincide con su canonical", P
 
 test("presupuesto de peso (dist/)", async () => {
   test.skip(!!process.env.URL_PRUEBA, "solo sobre el build local");
-  const assets = readdirSync("dist/assets");
   const gz = (f: string) => gzipSync(readFileSync(`dist/assets/${f}`)).length;
-  const js = assets.filter((f) => f.endsWith(".js")).reduce((t, f) => t + gz(f), 0);
-  const css = assets.filter((f) => f.endsWith(".css")).reduce((t, f) => t + gz(f), 0);
+  const html = readFileSync("dist/index.html");
+  // Lo que carga la portada: el script de entrada, sus precargas de módulos y sus hojas.
+  // Las porciones perezosas (vista previa de la plataforma) no pesan en las páginas públicas.
+  const cargados = [...html.toString().matchAll(/(?:src|href)="[^"]*\/assets\/([^"]+\.(?:js|css))"/g)].map((m) => m[1]);
+  expect(cargados.some((f) => f.endsWith(".js")), "la portada carga un script").toBe(true);
+  expect(readdirSync("dist/assets")).toEqual(expect.arrayContaining(cargados));
+  const js = cargados.filter((f) => f.endsWith(".js")).reduce((t, f) => t + gz(f), 0);
+  const css = cargados.filter((f) => f.endsWith(".css")).reduce((t, f) => t + gz(f), 0);
   expect(js, "JS comprimido").toBeLessThan(110 * 1024);
   expect(css, "CSS comprimido").toBeLessThan(12 * 1024);
-  const html = readFileSync("dist/index.html");
   expect(html.length, "HTML de la portada").toBeLessThan(70 * 1024);
   const precargas = [...html.toString().matchAll(/rel="preload" href="[^"]*\/assets\/([^"]+)"/g)].map((m) => m[1]);
   expect(precargas.length, "fuentes precargadas").toBe(3);
