@@ -41,7 +41,32 @@ export const FRASES_PROHIBIDAS = [
   "peso ideal",
   "has sido seleccionado",
   "cupos limitados",
+  // Palabras prohibidas en todo el producto (plataforma 1.4).
+  "atrasada",
+  "vencida",
+  "incumplida",
+  "perdiste",
+  "otra vez",
+  "se rompió",
+  "no rompas tu racha",
+  "seleccionado",
+  "te pasaste",
 ];
+
+// Excepciones explícitas: textos que la especificación fija tal cual y que contienen una palabra
+// de la lista. Se quitan antes de buscar; cualquier otro uso de la palabra sigue fallando.
+// Las decide Diego (si cambia el texto de la especificación, la excepción se borra).
+export const EXCEPCIONES = [
+  // 3.14 «¿Buscas tu solicitud?» y plantilla «Solicitud repetida» (3.16): «Si lo perdiste, …».
+  { motivo: "enlace privado perdido (3.14, 3.16)", re: /\bsi lo perdiste\b/giu },
+  // 3.12 sin conexión: «Cuando vuelva, toca “Enviar mi solicitud” otra vez.» (el botón varía).
+  { motivo: "reintento sin conexión (3.12)", re: /toca “[^”\n]{1,40}” otra vez\./gu },
+  // 5.7 recordatorio fijo del panel: cita las palabras para pedir que no se usen.
+  { motivo: "recordatorio de la revisión (5.7)", re: /Evita “fallaste”, “disciplina”, “fuerza de voluntad”, “sin excusas”\./gu },
+];
+
+export const sinExcepciones = (texto, excepciones = EXCEPCIONES) =>
+  excepciones.reduce((t, e) => t.replace(e.re, " "), texto);
 
 const ENTIDADES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 export function decodificar(s) {
@@ -97,7 +122,8 @@ export function buscarMarcadores(html) {
 }
 
 // Busca frases prohibidas como palabras completas, sin distinguir mayúsculas.
-export function buscarFrases(texto, frases = FRASES_PROHIBIDAS) {
+export function buscarFrases(texto, frases = FRASES_PROHIBIDAS, excepciones = EXCEPCIONES) {
+  texto = sinExcepciones(texto, excepciones);
   const encontradas = [];
   for (const frase of frases) {
     const escapada = frase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
