@@ -26,3 +26,6 @@ end $$;
 select cron.schedule('rumbo-por-hora',     '5 * * * *',  $$select privado.tareas_por_hora()$$);
 select cron.schedule('rumbo-recalcular',   '15 5 * * *', $$select privado.recalcular_todo()$$);       -- 01:15/02:15 en Chile
 select cron.schedule('rumbo-conservacion', '30 6 * * *', $$select privado.aplicar_conservacion()$$);
+
+-- Solo las ejecutan triggers, cron o las políticas indicadas: nadie más.
+revoke execute on function privado.tareas_por_hora(), privado.aplicar_conservacion() from public, anon, authenticated;

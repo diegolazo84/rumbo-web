@@ -30,3 +30,7 @@ create policy evid_ver    on storage.objects for select to authenticated
 create policy evid_borrar on storage.objects for delete to authenticated
   using (bucket_id = 'evidencias' and privado.foto_permitida(name, false));
 -- Sin política de UPDATE: no se sobrescribe; reemplazar = subir otra y borrar la anterior.
+
+-- Solo las ejecutan triggers, cron o las políticas indicadas: nadie más.
+revoke execute on function privado.foto_permitida(text, boolean) from public, anon, authenticated;
+grant execute on function privado.foto_permitida(text, boolean) to authenticated;

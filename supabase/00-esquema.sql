@@ -15,6 +15,8 @@ grant usage on schema privado to authenticated;   -- las políticas llaman a pri
 alter default privileges for role postgres in schema public  revoke all     on tables    from anon, authenticated;
 alter default privileges for role postgres in schema public  revoke execute on functions from public, anon, authenticated;
 alter default privileges for role postgres in schema privado revoke execute on functions from public, anon, authenticated;
+-- El EXECUTE que Postgres da a PUBLIC solo se quita con una regla global (sin «in schema»).
+alter default privileges for role postgres revoke execute on functions from public;
 
 -- ===================== Catálogos (semillas desde rumbo.ts) =====================
 create table if not exists public.areas (

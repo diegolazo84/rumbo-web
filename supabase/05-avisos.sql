@@ -55,3 +55,6 @@ begin
   if v_atraso > 0 then perform privado.avisar('Rumbo · ' || v_atraso || ' solicitud(es) pasaron su plazo', 'Ábrelas en el panel.'); end if;
   if v_vencen > 0 then perform privado.avisar('Rumbo · hoy vencen ' || v_vencen, 'Ábrelas en el panel.'); end if;
 end $$;
+
+-- Solo las ejecutan triggers, cron o las políticas indicadas: nadie más.
+revoke execute on function privado.avisar(text, text), privado.aviso_nuevo(), privado.resumen_diario() from public, anon, authenticated;

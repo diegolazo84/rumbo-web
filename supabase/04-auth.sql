@@ -32,3 +32,6 @@ create or replace trigger al_crear_usuario after insert on auth.users
 insert into privado.correos_equipo values ('SU_CORREO');
 -- después de su primer ingreso por /mi-espacio/entrar/:
 insert into public.equipo (user_id, nombre) select id, 'Diego' from auth.users where email = 'SU_CORREO';
+
+-- Solo las ejecutan triggers, cron o las políticas indicadas: nadie más.
+revoke execute on function privado.vincular_cuenta() from public, anon, authenticated;
