@@ -42,6 +42,7 @@ import {
   type DatosPostular,
   type ModoPostular,
   type OpcionArea,
+  CODIGO_DIA,
 } from "../../../data/formularios";
 import { areas, estados, notaPrecio, operacion, planes } from "../../../data/rumbo";
 import { ErrorApi, errorPostular, estadoPostulaciones, enviarSolicitud, esToken, nuevoToken } from "../../../lib/api";
@@ -380,7 +381,7 @@ export default function Postular({ estado = "solicitud" }: PropsPantalla) {
         area: tipo === "solicitud" || modo === "interes" ? v.area || null : null,
         meta: tipo === "solicitud" ? v.meta.trim() : null,
         apoyo: tipo === "solicitud" ? v.apoyo : null,
-        dias: tipo === "solicitud" ? extras.dias : [],
+        dias: tipo === "solicitud" ? extras.dias.map((d) => CODIGO_DIA[d] ?? d) : [],
         franjas: tipo === "solicitud" ? extras.franjas : [],
         horarios_nota: tipo === "solicitud" ? extras.notaHorarios.trim() || null : null,
         zona_horaria: zona,

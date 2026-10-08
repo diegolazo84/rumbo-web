@@ -13,7 +13,7 @@ import Etiqueta from "../../../components/Etiqueta";
 import { Boton } from "../../../components/Enlaces";
 import { AvisoAyuda, Casilla, Envio, Formulario } from "../../../components/form";
 import { Icono } from "../../../components/app";
-import { ACEPTAR_ACUERDO, POSTULAR, RETIRAR, estadosEnvio, nombreCoach } from "../../../data/formularios";
+import { ACEPTAR_ACUERDO, NOMBRE_DIA, POSTULAR, RETIRAR, estadosEnvio, nombreCoach } from "../../../data/formularios";
 import { areas, notaPrecio, operacion, planes, type Plan, type VarianteEtiqueta } from "../../../data/rumbo";
 import {
   ErrorApi,
@@ -151,7 +151,7 @@ function vistaReal(s: Solicitud): { estado: Estado; vista: Vista } {
     ejemplo: false,
     area: s.area ?? "", // interés en la reapertura: sin área
     apoyo: s.apoyo ?? null,
-    dias: s.dias ?? [],
+    dias: (s.dias ?? []).map((d: string) => NOMBRE_DIA[d] ?? d),
     franjas: s.franjas ?? [],
     meta: s.meta ?? null,
     nombre: s.nombre ?? "",
