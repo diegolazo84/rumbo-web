@@ -5,13 +5,14 @@
 import { Link } from "react-router-dom";
 import Etiqueta from "../../../components/Etiqueta";
 import { Icono } from "../../../components/app";
-import { HOY, calcularProgreso, type DiaProgreso } from "../../../data/ejemplo-app";
+import { calcularProgreso, type DiaProgreso } from "../../../data/ejemplo-app";
 import { diaCorto, mayuscula } from "../../../lib/fechas";
-import { Cabeza, R, prepararLista } from "./comun";
+import { Cabeza, prepararLista, useEspacio } from "./comun";
 import { T_CREDITOS, T_HOY } from "./textos";
 
 export default function Creditos() {
-  const progreso = calcularProgreso(prepararLista({}, HOY), HOY);
+  const { hoy, esc, ciclo, R, progreso: delServidor } = useEspacio();
+  const progreso = delServidor ?? calcularProgreso(prepararLista({}, hoy, esc.ocurrencias), hoy, ciclo.inicio);
   const dias = [...progreso.dias].reverse().filter((d) => d.estado === "sin_acciones" || d.estado === "suspenso" || d.creditos > 0);
 
   return (

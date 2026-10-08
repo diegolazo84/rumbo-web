@@ -13,6 +13,8 @@ export default defineConfig({
   define: {
     __ANIO__: JSON.stringify(process.env.ANIO_COMPILACION ?? String(new Date().getFullYear())),
     __FORMULARIO_PROPIO__: JSON.stringify(process.env.FORMULARIO_PROPIO === "1"),
+    // MI_ESPACIO_PROPIO=1 enciende operacion.miEspacioPropio (Mi espacio y panel, etapa 3).
+    __MI_ESPACIO_PROPIO__: JSON.stringify(process.env.MI_ESPACIO_PROPIO === "1"),
   },
   // postbuild.mjs lee el manifiesto para enlazar en <head> el CSS de las páginas perezosas
   // (postular, estado y contacto) y lo borra después: no se publica.

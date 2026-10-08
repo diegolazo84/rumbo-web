@@ -27,6 +27,18 @@ const PROPIO = FORMULARIO_PROPIO || FORMULARIO_FORZADO;
 // Los enlaces a postular y contacto salen a la plataforma (flecha diagonal y texto oculto).
 export const FORMULARIO_EXTERNO = !PROPIO;
 
+// Interruptor D8 de la plataforma (2.4, etapa 3): Mi espacio (/mi-espacio/…) y el panel
+// (/equipo/…) en esta web, con Supabase. Mientras sea `false`, nada público cambia. Diego lo
+// enciende cuando el SMTP propio esté configurado en Supabase (9.5) y el SQL de la etapa 3
+// (supabase/07-etapa3.sql) esté pegado. MI_ESPACIO_PROPIO=1 en el entorno lo fuerza encendido
+// sin tocar este archivo (al compilar, por vite.config.ts, y al correr las pruebas).
+const MI_ESPACIO_PROPIO = false;
+const MI_ESPACIO_FORZADO =
+  typeof __MI_ESPACIO_PROPIO__ !== "undefined"
+    ? __MI_ESPACIO_PROPIO__ === true
+    : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.MI_ESPACIO_PROPIO === "1";
+const ESPACIO_PROPIO = MI_ESPACIO_PROPIO || MI_ESPACIO_FORZADO;
+
 // Rutas que viven en la plataforma original. scripts/postbuild.mjs además genera
 // reenvíos con las mismas rutas en este dominio, para enlaces escritos a mano.
 // Con el formulario propio, postular y contacto son páginas de esta web (con barra final).
@@ -100,6 +112,7 @@ export type EstadoId = keyof typeof estados;
 
 export const operacion = {
   formularioPropio: PROPIO, // D8: postular, estado y contacto en la web propia (arriba, FORMULARIO_PROPIO)
+  miEspacioPropio: ESPACIO_PROPIO, // D8: Mi espacio y el panel en la web propia (arriba, MI_ESPACIO_PROPIO)
   responsable: { nombre: "Diego Alfonso Muñoz Abeleida", comuna: "Providencia" } as null | { nombre: string; rut?: string; comuna: string }, // bloquea el lanzamiento público
   correo: null as string | null, // bloquea el lanzamiento público
   acompanante: null as null | { nombre: string; rol: string; bio: string; foto?: string }, // foto: archivo en public/, p. ej. «acompanante.jpg» (la portada le antepone la base)

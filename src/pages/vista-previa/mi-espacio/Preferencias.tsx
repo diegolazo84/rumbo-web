@@ -6,26 +6,67 @@ import { Link } from "react-router-dom";
 import { Aviso } from "../../../components/Bloques";
 import { HojaAyuda, Icono } from "../../../components/app";
 import { CampoArea, CampoTexto, Casilla, Formulario, GrupoOpciones, Opcion } from "../../../components/form";
-import { HOY, ciclo, participante } from "../../../data/ejemplo-app";
+import { HOY } from "../../../data/ejemplo-app";
 import { NOMBRE, PREFERENCIAS } from "../../../data/formularios";
-import { fechaLarga, sumarDias } from "../../../lib/fechas";
+import { fechaLarga, sumarDias, type Iso } from "../../../lib/fechas";
 import type { PropsPantalla } from "../registro";
-import { Cabeza, R, descargarDatos } from "./comun";
+import { AlertaGuardar, Cabeza, useDescargarDatos, useEspacio } from "./comun";
 import { T_PREFERENCIAS } from "./textos";
 
 // Fecha límite de ejemplo para los pedidos sobre datos personales. El plazo real lo fija la
 // ley y lo confirma Diego (plataforma 9.3): aquí es solo un ejemplo.
 const FECHA_LIMITE = fechaLarga(sumarDias(HOY, 30));
 
+// Valores del formulario → tipos de pedir_derecho (6.7).
+const TIPO_DERECHO: Record<string, string> = {
+  ver: "acceso",
+  corregir: "rectificacion",
+  copia_fotos: "copia_fotos",
+  oposicion: "oposicion",
+  bloqueo: "bloqueo",
+  eliminar: "supresion",
+};
+
+// Confirmación del pedido: con la fecha límite que devuelve la base o, en la vista previa, la de ejemplo.
+const confirmacion = (fecha: Iso | null | undefined) =>
+  fecha === undefined
+    ? T_PREFERENCIAS.confirmacion(FECHA_LIMITE)
+    : fecha
+      ? T_PREFERENCIAS.confirmacion(fechaLarga(fecha))
+      : T_PREFERENCIAS.confirmacionSinFecha;
+
+// Envía el pedido (Mi espacio real) o lo simula (vista previa). Devuelve la fecha límite.
+function usePedirDerecho() {
+  const { servidor } = useEspacio();
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const pedir = (valor: string, detalle: string | null, listo: (fecha: Iso | null | undefined) => void) => {
+    if (!servidor) return listo(undefined);
+    if (enviando) return;
+    setEnviando(true);
+    setError(null);
+    servidor
+      .pedirDerecho(TIPO_DERECHO[valor] ?? "otro", detalle)
+      .then((f) => listo(f))
+      .catch(() => setError(T_PREFERENCIAS.errorGuardar))
+      .finally(() => setEnviando(false));
+  };
+  return { pedir, enviando, error, real: !!servidor };
+}
+
 export default function Preferencias({ estado = "preferencias" }: PropsPantalla) {
   return estado === "eliminar" ? <Eliminar /> : <PantallaPreferencias />;
 }
 
 function PantallaPreferencias() {
+  const { participante, R, servidor } = useEspacio();
+  const descargarDatos = useDescargarDatos();
   const [nombre, setNombre] = useState(participante.nombre);
   const [errorNombre, setErrorNombre] = useState<string | null>(null);
   const [guardado, setGuardado] = useState("");
   const [mostrar, setMostrar] = useState(participante.mostrarCreditosEnHoy);
+  const [errorGuardar, setErrorGuardar] = useState<string | null>(null);
+  const [descargando, setDescargando] = useState(false);
   const [otro, setOtro] = useState(false);
   const [ayuda, setAyuda] = useState(false);
 
@@ -46,7 +87,12 @@ function PantallaPreferencias() {
               return;
             }
             setErrorNombre(null);
-            setGuardado(T_PREFERENCIAS.nombre.guardado);
+            if (!servidor) return setGuardado(T_PREFERENCIAS.nombre.guardado);
+            setErrorGuardar(null);
+            servidor
+              .guardarNombre(nombre.trim())
+              .then(() => setGuardado(T_PREFERENCIAS.nombre.guardado))
+              .catch(() => setErrorGuardar(T_PREFERENCIAS.errorGuardar));
           }}
         >
           <CampoTexto
@@ -72,6 +118,8 @@ function PantallaPreferencias() {
           </div>
         </Formulario>
       </section>
+
+      {servidor && <AlertaGuardar texto={errorGuardar} />}
 
       <hr className="me-separador" />
 
@@ -109,7 +157,16 @@ function PantallaPreferencias() {
               className="interruptor__control"
               checked={mostrar}
               aria-describedby="pref-creditos-ayuda"
-              onChange={(e) => setMostrar(e.target.checked)}
+              onChange={(e) => {
+                const v = e.target.checked;
+                setMostrar(v);
+                if (!servidor) return;
+                setErrorGuardar(null);
+                servidor.mostrarCreditos(v).catch(() => {
+                  setMostrar(!v);
+                  setErrorGuardar(T_PREFERENCIAS.errorGuardar);
+                });
+              }}
             />
           </label>
           <p id="pref-creditos-ayuda" className="microcopia">
@@ -127,7 +184,19 @@ function PantallaPreferencias() {
         <Aviso icono="lock">{T_PREFERENCIAS.datos.aviso}</Aviso>
         <div className="me-datos-acciones">
           <div className="me-datos-acciones__item">
-            <button type="button" className="boton boton--secundario" onClick={() => descargarDatos()}>
+            <button
+              type="button"
+              className="boton boton--secundario"
+              aria-disabled={descargando || undefined}
+              onClick={() => {
+                if (descargando) return;
+                setDescargando(true);
+                setErrorGuardar(null);
+                descargarDatos()
+                  .catch(() => setErrorGuardar(T_PREFERENCIAS.errorDescargar))
+                  .finally(() => setDescargando(false));
+              }}
+            >
               <Icono nombre="download" tamaño={20} />
               {T_PREFERENCIAS.datos.descargar}
             </button>
@@ -188,16 +257,17 @@ function PantallaPreferencias() {
 function OtroPedido() {
   const [tipo, setTipo] = useState("");
   const [detalle, setDetalle] = useState("");
-  const [enviado, setEnviado] = useState(false);
+  const [enviado, setEnviado] = useState<{ fecha: Iso | null | undefined } | null>(null);
+  const d = usePedirDerecho();
   if (enviado)
     return (
       <p className="aviso me-confirmado" role="status">
         <Icono nombre="check" tamaño={20} className="aviso-icono" />
-        <span>{T_PREFERENCIAS.confirmacion(FECHA_LIMITE)}</span>
+        <span>{confirmacion(enviado.fecha)}</span>
       </p>
     );
   return (
-    <Formulario className="me-otro" onSubmit={() => tipo && setEnviado(true)}>
+    <Formulario className="me-otro" onSubmit={() => tipo && d.pedir(tipo, detalle.trim() || null, (fecha) => setEnviado({ fecha }))}>
       <GrupoOpciones id="pref-derecho" leyenda={T_PREFERENCIAS.datos.otro}>
         {PREFERENCIAS.derechos.map((d) => (
           <Opcion key={d.valor} name="pref-derecho" value={d.valor} titulo={d.texto} checked={tipo === d.valor} onChange={() => setTipo(d.valor)} chica />
@@ -211,8 +281,9 @@ function OtroPedido() {
         value={detalle}
         onChange={(e) => setDetalle(e.target.value)}
       />
+      {d.real && <AlertaGuardar texto={d.error} />}
       <div>
-        <button type="submit" className="boton boton--primario">
+        <button type="submit" className="boton boton--primario" aria-disabled={d.enviando || undefined}>
           {T_PREFERENCIAS.datos.enviar}
         </button>
       </div>
@@ -224,9 +295,11 @@ function OtroPedido() {
 // Pedir que eliminemos tus datos (confirmación explícita, WCAG 3.3.4)
 
 function Eliminar() {
+  const { ciclo, R } = useEspacio();
   const [entiendo, setEntiendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [enviado, setEnviado] = useState(false);
+  const [enviado, setEnviado] = useState<{ fecha: Iso | null | undefined } | null>(null);
+  const d = usePedirDerecho();
   const enCurso = ciclo.estado === "en_curso";
 
   return (
@@ -259,7 +332,7 @@ function Eliminar() {
       {enviado ? (
         <p className="aviso me-confirmado" role="status">
           <Icono nombre="check" tamaño={20} className="aviso-icono" />
-          <span>{T_PREFERENCIAS.confirmacion(FECHA_LIMITE)}</span>
+          <span>{confirmacion(enviado.fecha)}</span>
         </p>
       ) : (
         <Formulario
@@ -269,7 +342,7 @@ function Eliminar() {
               requestAnimationFrame(() => document.getElementById("eliminar-entiendo")?.focus());
               return;
             }
-            setEnviado(true);
+            d.pedir("eliminar", null, (fecha) => setEnviado({ fecha }));
           }}
         >
           <Casilla
@@ -283,8 +356,9 @@ function Eliminar() {
           >
             {PREFERENCIAS.eliminar.casilla}
           </Casilla>
+          {d.real && <AlertaGuardar texto={d.error} />}
           <div>
-            <button type="submit" className="boton boton--primario">
+            <button type="submit" className="boton boton--primario" aria-disabled={d.enviando || undefined}>
               {PREFERENCIAS.eliminar.boton}
             </button>
           </div>

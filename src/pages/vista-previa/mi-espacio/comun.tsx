@@ -1,70 +1,29 @@
-// Piezas comunes de las pantallas de Mi espacio en la vista previa (plataforma 4). Solo las usa
-// este grupo: encabezado de pantalla, rutas entre pantallas, estado del programa en memoria
-// (marcar y desmarcar con créditos recalculados) y la fila de acción armada desde una ocurrencia.
+// Piezas comunes de las pantallas de Mi espacio (plataforma 4), en la vista previa y en Mi espacio
+// real (el modo lo da EspacioContexto, espacio.ts): encabezado de pantalla, estado del programa
+// (marcar y desmarcar con créditos) y la fila de acción armada desde una ocurrencia.
 //
-// Créditos en memoria: en la v1 real los calcula la base (D4) y el navegador solo los muestra.
-// Aquí se simula la respuesta del servidor: el check cambia al instante y los créditos, la racha
-// y el nivel se actualizan un momento después, con las mismas reglas de rumbo.ts.
-import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+// Créditos: en Mi espacio real los calcula la base (D4) y el navegador solo los muestra; el check
+// cambia al instante y los créditos, la racha y el nivel llegan con la respuesta del servidor.
+// En la vista previa se simula esa respuesta con las mismas reglas de rumbo.ts.
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Etiqueta from "../../../components/Etiqueta";
-import { FilaAccion, TEXTOS_CARGA } from "../../../components/app";
-import {
-  HOY,
-  calcularProgreso,
-  ciclo,
-  cuentaComoHecha,
-  metaPorId,
-  metas,
-  metasDeLaPersona,
-  ocurrencias,
-  participante,
-  registrosSemanales,
-  revisiones,
-  solicitudesAjuste,
-  type EstadoRegistro,
-  type Ocurrencia,
-} from "../../../data/ejemplo-app";
-import { LIMITES } from "../../../data/formularios";
-import { diaCorto, sumarDias, type Iso } from "../../../lib/fechas";
-import { RUTAS_MI_ESPACIO, RUTAS_PUBLICAS, rutaPrevia } from "../rutas";
+import { FilaAccion, Icono, TEXTOS_CARGA } from "../../../components/app";
+import { calcularProgreso, cuentaComoHecha, type EstadoRegistro, type Ocurrencia } from "../../../data/ejemplo-app";
+import { diaCorto, type Iso } from "../../../lib/fechas";
+import { useEspacio, type Progreso } from "./espacio";
 import { T_CALENDARIO, T_COMUN } from "./textos";
 // Estilos propios de este grupo (solo tokens de :root). Lo importan todas sus pantallas.
 import "../../../styles/vista-mi-espacio.css";
 
-// ---------------------------------------------------------------------------
-// Rutas de la vista previa entre pantallas de Mi espacio
-
-export const R = {
-  ...RUTAS_MI_ESPACIO,
-  postular: RUTAS_PUBLICAS.postular,
-  entrar: rutaPrevia("mi-espacio/entrar/"),
-  revisaCorreo: rutaPrevia("mi-espacio/entrar/revisa-tu-correo/"),
-  calendarioDia: rutaPrevia("mi-espacio/calendario/dia/"),
-  calendarioMes: rutaPrevia("mi-espacio/calendario/mes/"),
-  accion: rutaPrevia("mi-espacio/accion/"),
-  creditos: rutaPrevia("mi-espacio/progreso/creditos/"),
-  semanaPublicada: rutaPrevia("mi-espacio/semana/publicada/"),
-  semanaEnviado: rutaPrevia("mi-espacio/semana/enviado/"),
-  ajusteLista: `${RUTAS_MI_ESPACIO.ajuste}#tus-solicitudes`,
-  eliminar: rutaPrevia("mi-espacio/preferencias/eliminar/"),
-  ayuda: rutaPrevia("mi-espacio/ayuda/"),
-  privacidad: "/privacidad/",
-  condiciones: "/condiciones/",
-} as const;
-
-// Pedir un ajuste con una acción elegida (se preselecciona en el formulario).
-export const rutaAjuste = (ocurrencia?: string, tipo?: string) => {
-  const q = new URLSearchParams();
-  if (ocurrencia) q.set("accion", ocurrencia);
-  if (tipo) q.set("tipo", tipo);
-  const s = q.toString();
-  return s ? `${RUTAS_MI_ESPACIO.ajuste}?${s}` : RUTAS_MI_ESPACIO.ajuste;
-};
+export { useEspacio, type Progreso } from "./espacio";
 
 // ---------------------------------------------------------------------------
 // Encabezado de pantalla: ojo con la etiqueta «Ejemplo» (punteada), saludo, H1 y bajada.
 
+// En Mi espacio real no hay datos de ejemplo: la etiqueta no se muestra.
 export function EtiquetaEjemplo() {
+  const { real } = useEspacio();
+  if (real) return null;
   return <Etiqueta variante="ejemplo">{T_COMUN.ejemplo}</Etiqueta>;
 }
 
@@ -79,7 +38,9 @@ type CabezaProps = {
   ejemplo?: boolean; // false solo donde nada es dato de ejemplo (Ayuda inmediata)
 };
 
-export function Cabeza({ ojo, antes, titulo, tamaño = "h2", bajada, children, className, ejemplo = true }: CabezaProps) {
+export function Cabeza({ ojo, antes, titulo, tamaño = "h2", bajada, children, className, ejemplo: conEjemplo = true }: CabezaProps) {
+  const { real } = useEspacio();
+  const ejemplo = conEjemplo && !real;
   return (
     <header className={["me-cabeza", className].filter(Boolean).join(" ")}>
       {(ojo || ejemplo) && (
@@ -97,13 +58,12 @@ export function Cabeza({ ojo, antes, titulo, tamaño = "h2", bajada, children, c
 }
 
 // ---------------------------------------------------------------------------
-// Programa en memoria
+// Programa: lista de acciones con su registro y progreso
 
-export type Progreso = ReturnType<typeof calcularProgreso>;
 export type Cambios = Record<string, EstadoRegistro | null>;
 
 // Ocurrencias con registros cambiados y sin registros posteriores a «hoy» (no se marca el futuro).
-export function prepararLista(cambios: Cambios = {}, hoy: Iso = HOY, base: Ocurrencia[] = ocurrencias): Ocurrencia[] {
+export function prepararLista(cambios: Cambios, hoy: Iso, base: Ocurrencia[]): Ocurrencia[] {
   return base.map((o) => {
     const registro = o.id in cambios ? cambios[o.id] : o.registro;
     return { ...o, registro: o.fecha > hoy ? null : registro };
@@ -112,36 +72,81 @@ export function prepararLista(cambios: Cambios = {}, hoy: Iso = HOY, base: Ocurr
 
 const RETARDO_SERVIDOR = 450; // ms: «normalmente menos de un segundo» (4.5)
 
-export function usePrograma({ hoy = HOY, cambios = {} as Cambios, base = ocurrencias } = {}) {
-  const [lista, setLista] = useState(() => prepararLista(cambios, hoy, base));
+type OpcionesPrograma = { hoy?: Iso; cambios?: Cambios; base?: Ocurrencia[] };
+
+// Marcar y desmarcar (4.5): el check cambia al instante (respuesta optimista solo del check) y el
+// progreso llega con la respuesta del servidor. Si falla, el check vuelve atrás y se llama a
+// `fallo` (la pantalla muestra «No pudimos guardar…» con «Reintentar»).
+export function usePrograma({ hoy: hoyDado, cambios, base: baseDada }: OpcionesPrograma = {}) {
+  const esp = useEspacio();
+  const hoy = hoyDado ?? esp.hoy;
+  const base = baseDada ?? esp.esc.ocurrencias;
+  const servidor = esp.servidor;
+  const inicio = esp.ciclo.inicio;
+  const [lista, setLista] = useState(() => prepararLista(cambios ?? {}, hoy, base));
   const [confirmada, setConfirmada] = useState(lista);
   const ultima = useRef(lista);
-  const progreso = useMemo(() => calcularProgreso(confirmada, hoy), [confirmada, hoy]);
+  // Marcas enviadas que el servidor todavía no confirma (sobreviven a una recarga del contexto).
+  const pendientes = useRef<Cambios>({});
 
-  // Registra (o borra, con null) y llama a `listo` con el progreso que devuelve el «servidor».
+  // Mi espacio real: cuando el contexto cambia (respuesta del servidor o recarga), la lista se
+  // vuelve a armar con lo que dice la base, más lo que aún está en camino.
+  useEffect(() => {
+    if (!servidor) return;
+    const nueva = prepararLista(pendientes.current, hoy, base);
+    ultima.current = nueva;
+    setLista(nueva);
+    setConfirmada(nueva);
+  }, [servidor, base, hoy]);
+
+  const simulado = useMemo(() => (servidor ? null : calcularProgreso(confirmada, hoy, inicio)), [servidor, confirmada, hoy, inicio]);
+  const progreso: Progreso = esp.progreso && servidor ? esp.progreso : (simulado ?? calcularProgreso(confirmada, hoy, inicio));
+
+  // Registra (o borra, con null) y llama a `listo` con el progreso que devuelve el servidor.
   const registrar = useCallback(
-    (id: string, estado: EstadoRegistro | null, listo?: (p: Progreso) => void) => {
+    (id: string, estado: EstadoRegistro | null, listo?: (p: Progreso) => void, fallo?: () => void) => {
+      const anterior = ultima.current.find((o) => o.id === id)?.registro ?? null;
       const nueva = ultima.current.map((o) => (o.id === id ? { ...o, registro: estado } : o));
       ultima.current = nueva;
       setLista(nueva);
+      if (servidor) {
+        pendientes.current = { ...pendientes.current, [id]: estado };
+        servidor
+          .registrar(id, estado)
+          .then((p) => {
+            const { [id]: _, ...resto } = pendientes.current;
+            pendientes.current = resto;
+            listo?.(p);
+          })
+          .catch(() => {
+            const { [id]: _, ...resto } = pendientes.current;
+            pendientes.current = resto;
+            // Vuelve atrás solo esta acción.
+            const revertida = ultima.current.map((o) => (o.id === id ? { ...o, registro: anterior } : o));
+            ultima.current = revertida;
+            setLista(revertida);
+            fallo?.();
+          });
+        return;
+      }
       window.setTimeout(() => {
         setConfirmada(nueva);
-        listo?.(calcularProgreso(nueva, hoy));
+        listo?.(calcularProgreso(nueva, hoy, inicio));
       }, RETARDO_SERVIDOR);
     },
-    [hoy],
+    [hoy, servidor, inicio],
   );
 
   return { lista, progreso, registrar, hoy };
 }
 
-export const dentroDeVentana = (fecha: Iso, hoy: Iso) => fecha <= hoy && fecha >= sumarDias(hoy, -LIMITES.diasRegistroTardio);
-export const enPrograma = (fecha: Iso) => fecha >= ciclo.inicio && fecha <= ciclo.fin;
-
 // Con dos metas de la misma categoría, la fila muestra el nombre corto de la meta (4.4.5).
-export function etiquetaMeta(o: Ocurrencia): string | undefined {
-  const mismas = metasDeLaPersona(o.metaId).filter((m) => m.categoria === o.categoria);
-  return mismas.length > 1 ? metaPorId(o.metaId).corto : undefined;
+export function useEtiquetaMeta() {
+  const { metasDeLaPersona, metaPorId } = useEspacio();
+  return (o: Ocurrencia): string | undefined => {
+    const mismas = metasDeLaPersona(o.metaId).filter((m) => m.categoria === o.categoria);
+    return mismas.length > 1 ? metaPorId(o.metaId).corto || metaPorId(o.metaId).titulo : undefined;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -161,6 +166,8 @@ type FilaProps = {
 };
 
 export function FilaOcurrencia({ o, hoy, onMarcar, onAbrir, compacta, nota, extra, futura = T_CALENDARIO.dia.futura, sinConexion, sinControl }: FilaProps) {
+  const { dentroDeVentana } = useEspacio();
+  const etiquetaMeta = useEtiquetaMeta();
   const estado = cuentaComoHecha(o.registro) ? "hecha" : o.registro === "revision" ? "revision" : "pendiente";
   const desactivada =
     o.fecha > hoy
@@ -216,28 +223,58 @@ export function RegionViva({ texto }: { texto: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// «Descargar mis datos» / «Descargar mis registros» (4.14 y 4.3.5): en la v1, exportar_mis_datos().
-// En la vista previa baja un .json con los datos de ejemplo hasta «hoy».
+// «Descargar mis datos» / «Descargar mis registros» (4.14 y 4.3.5): en Mi espacio real,
+// exportar_mis_datos(); en la vista previa, un .json con los datos de ejemplo hasta «hoy».
 
-export function descargarDatos(hoy: Iso = HOY) {
-  const datos = {
-    ejemplo: "Datos de ejemplo de la vista previa de Rumbo. Ninguna persona es real.",
-    perfil: { nombre: participante.nombre, correo: participante.correo, zonaHoraria: participante.zonaHoraria },
-    ciclos: [ciclo],
-    metas,
-    acciones: ocurrencias
-      .filter((o) => o.fecha <= hoy)
-      .map(({ id, titulo, fecha, hora, duracion, metaId, registro }) => ({ id, titulo, fecha, hora, duracion, metaId, registro })),
-    registrosSemanales,
-    revisiones: revisiones.filter((r) => r.publicadaEl),
-    solicitudesAjuste,
-  };
+export function bajarJson(nombre: string, datos: unknown) {
   const url = URL.createObjectURL(new Blob([JSON.stringify(datos, null, 2)], { type: "application/json" }));
   const a = document.createElement("a");
   a.href = url;
-  a.download = "mis-datos-rumbo-ejemplo.json";
+  a.download = nombre;
   document.body.append(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export function useDescargarDatos() {
+  const esp = useEspacio();
+  return async (hoy: Iso = esp.hoy) => {
+    if (esp.servidor) {
+      const datos = await esp.servidor.exportar();
+      bajarJson("mis-datos-rumbo.json", datos);
+      return;
+    }
+    const { participante, ciclo, esc } = esp;
+    bajarJson("mis-datos-rumbo-ejemplo.json", {
+      ejemplo: "Datos de ejemplo de la vista previa de Rumbo. Ninguna persona es real.",
+      perfil: { nombre: participante.nombre, correo: participante.correo, zonaHoraria: participante.zonaHoraria },
+      ciclos: [ciclo],
+      metas: esc.metas,
+      acciones: esc.ocurrencias
+        .filter((o) => o.fecha <= hoy)
+        .map(({ id, titulo, fecha, hora, duracion, metaId, registro }) => ({ id, titulo, fecha, hora, duracion, metaId, registro })),
+      registrosSemanales: esc.registrosSemanales,
+      revisiones: esc.revisiones.filter((r) => r.publicadaEl),
+      solicitudesAjuste: esc.solicitudesAjuste,
+    });
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Error al guardar en Mi espacio real (mismo estilo que la zona de envío de los formularios):
+// role="alert", sobre el botón. Vacío no ocupa lugar.
+export function AlertaGuardar({ texto }: { texto: string | null }) {
+  return (
+    <div role="alert" className="envio__alerta">
+      {texto && (
+        <div className="aviso aviso--error-envio">
+          <Icono nombre="info" tamaño={20} className="aviso-icono" />
+          <div className="aviso-cuerpo">
+            <p>{texto}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

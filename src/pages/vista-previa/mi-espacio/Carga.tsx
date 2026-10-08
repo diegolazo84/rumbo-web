@@ -4,11 +4,13 @@
 import { useNavigate } from "react-router-dom";
 import { Icono, TEXTOS_CARGA } from "../../../components/app";
 import type { PropsPantalla } from "../registro";
-import { R } from "./comun";
+import { useEspacio } from "./comun";
 
-export default function Carga({ estado = "cargando" }: PropsPantalla) {
+// En Mi espacio real, `alReintentar` repite la consulta.
+export default function Carga({ estado = "cargando", alReintentar }: PropsPantalla & { alReintentar?: () => void }) {
   const navegar = useNavigate();
-  const reintentar = () => navegar(R.hoy);
+  const { R } = useEspacio();
+  const reintentar = alReintentar ?? (() => navegar(R.hoy));
 
   if (estado === "error") {
     return (

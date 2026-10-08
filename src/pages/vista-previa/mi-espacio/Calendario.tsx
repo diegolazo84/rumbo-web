@@ -3,19 +3,10 @@
 // periodo actual. Marcar funciona en memoria, como en Hoy. Una fila abre su detalle en una hoja.
 // Sin rojo, cruces ni gris de castigo: un día pasado incompleto no lleva ninguna marca.
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { FranjaSemana, Hoja, Icono, LeyendaMetas, Segmentado, Tostada, type DiaFranja } from "../../../components/app";
 import Etiqueta from "../../../components/Etiqueta";
-import {
-  HOY,
-  ciclo,
-  cuentaComoHecha,
-  fechaRevision,
-  metaPorId,
-  metas,
-  ocurrenciasDel,
-  semanaDelCiclo,
-  type Ocurrencia,
-} from "../../../data/ejemplo-app";
+import { cuentaComoHecha, ocurrenciasDel, type Ocurrencia } from "../../../data/ejemplo-app";
 import type { CategoriaId } from "../../../data/rumbo";
 import {
   anioDe,
@@ -37,9 +28,9 @@ import {
   FilaOcurrencia,
   RegionViva,
   conHorario,
-  enPrograma,
   flexibles,
   useAvisos,
+  useEspacio,
   usePrograma,
   type Progreso,
 } from "./comun";
@@ -48,8 +39,17 @@ import { T_CALENDARIO, T_COMUN, T_HOY } from "./textos";
 
 type Vista = "dia" | "semana" | "mes";
 
-const esRevision = (f: Iso) => enPrograma(f) && fechaRevision(semanaDelCiclo(f)) === f;
-const puntos = (l: Ocurrencia[]): CategoriaId[] => [...new Set(l.map((o) => metaPorId(o.metaId).categoria))];
+// Día de revisión, puntos de color y programa: con el ciclo de la persona (contexto).
+function useCalendario() {
+  const esp = useEspacio();
+  const { enPrograma, fechaRevision, semanaDelCiclo, metaPorId } = esp;
+  return {
+    ...esp,
+    esRevision: (f: Iso) => enPrograma(f) && fechaRevision(semanaDelCiclo(f)) === f,
+    puntos: (l: Ocurrencia[]): CategoriaId[] => [...new Set(l.map((o) => metaPorId(o.metaId).categoria))],
+  };
+}
+const CLAVE_VISTA = "rumbo-calendario-vista";
 const primeroDelMes = (f: Iso) => `${f.slice(0, 8)}01`;
 function sumarMeses(f: Iso, n: number): Iso {
   const [a, m] = f.split("-").map(Number);
@@ -58,9 +58,38 @@ function sumarMeses(f: Iso, n: number): Iso {
 }
 
 export default function Calendario({ estado = "semana" }: PropsPantalla) {
+  const { real, esc, ciclo, enPrograma, semanaDelCiclo, esRevision } = useCalendario();
+  const metas = esc.metas;
   const [vista, setVista] = useState<Vista>((["dia", "semana", "mes"].includes(estado) ? estado : "semana") as Vista);
-  const [fecha, setFecha] = useState<Iso>(HOY);
   const { lista, progreso, registrar, hoy } = usePrograma();
+  const [fecha, setFecha] = useState<Iso>(hoy);
+  const { search } = useLocation();
+
+  // Mi espacio real (4.7.1): ?vista= y ?fecha= mandan; si no, la vista recordada en este
+  // dispositivo (por defecto Semana). Se leen después de hidratar.
+  useEffect(() => {
+    if (!real) return;
+    const q = new URLSearchParams(search);
+    let v = q.get("vista");
+    if (!v) {
+      try {
+        v = localStorage.getItem(CLAVE_VISTA);
+      } catch {
+        v = null;
+      }
+    }
+    if (v === "dia" || v === "semana" || v === "mes") setVista(v);
+    const f = q.get("fecha");
+    if (f && /^\d{4}-\d{2}-\d{2}$/.test(f)) setFecha(f);
+  }, [real, search]);
+  useEffect(() => {
+    if (!real) return;
+    try {
+      localStorage.setItem(CLAVE_VISTA, vista);
+    } catch {
+      /* sin almacenamiento */
+    }
+  }, [real, vista]);
   const { tostada, setTostada, vivo, setVivo, cerrar } = useAvisos();
   const [abierta, setAbierta] = useState<string | null>(null);
   const [leyenda, setLeyenda] = useState(false);
@@ -77,7 +106,9 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
   }, [vista, fecha]);
 
   const anunciar = (p: Progreso) => setVivo(T_HOY.marcar.vivo(p.creditos, p.nivel.nivel, p.nivel.nombre));
-  const marcar = (o: Ocurrencia, marcada: boolean) =>
+  const fallo = (o: Ocurrencia, reintentar: () => void) => () =>
+    setTostada({ mensaje: T_HOY.marcar.error(o.titulo), accion: { texto: T_HOY.marcar.reintentar, onClick: reintentar } });
+  const marcar = (o: Ocurrencia, marcada: boolean): void =>
     registrar(o.id, marcada ? "hecha" : null, (p) => {
       anunciar(p);
       if (!marcada) return setTostada({ mensaje: T_HOY.marcar.desmarcaste(o.titulo, p.creditos) });
@@ -86,7 +117,7 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
         mensaje: dia?.estado === "completo" ? T_HOY.marcar.completaste(1 + dia.bono) : T_HOY.marcar.marcaste(o.titulo),
         accion: { texto: T_HOY.marcar.deshacer, onClick: () => marcar(o, false) },
       });
-    });
+    }, fallo(o, () => marcar(o, marcada)));
 
   const paso = (n: number) => setFecha((f) => (vista === "dia" ? sumarDias(f, n) : vista === "semana" ? sumarDias(f, 7 * n) : sumarMeses(f, n)));
   const enActual =
@@ -179,7 +210,9 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
         <LeyendaMetas metas={metas} />
       </Hoja>
       <Hoja abierta={!!detalle} onCerrar={() => setAbierta(null)} titulo={detalle?.titulo ?? ""} className="hoja--detalle">
-        {detalle && <Detalle o={detalle} hoy={hoy} enHoja onRegistrar={(e) => registrar(detalle.id, e, anunciar)} />}
+        {detalle && (
+          <Detalle o={detalle} hoy={hoy} enHoja onRegistrar={(e) => registrar(detalle.id, e, anunciar, fallo(detalle, () => registrar(detalle.id, e, anunciar)))} />
+        )}
       </Hoja>
       <Tostada mensaje={tostada?.mensaje ?? null} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
       <RegionViva texto={vivo} />
@@ -198,6 +231,7 @@ type FilaDe = (o: Ocurrencia) => {
 // Día (4.7.2): igual que la lista de Hoy para cualquier fecha, sin novedades ni resumen.
 
 function VistaDia({ fecha, hoy, lista, fila }: { fecha: Iso; hoy: Iso; lista: Ocurrencia[]; fila: FilaDe }) {
+  const { enPrograma } = useCalendario();
   const del = ocurrenciasDel(fecha, lista);
   if (!enPrograma(fecha))
     return <p className="me-calendario__vacio">{T_CALENDARIO.fuera}</p>;
@@ -234,6 +268,8 @@ function VistaDia({ fecha, hoy, lista, fila }: { fecha: Iso; hoy: Iso; lista: Oc
 // Semana (4.7.3): lista por día en todos los anchos, con la franja de días pegajosa arriba.
 
 function VistaSemana({ fecha, hoy, lista, progreso, fila }: { fecha: Iso; hoy: Iso; lista: Ocurrencia[]; progreso: Progreso; fila: FilaDe }) {
+  const { enPrograma, esRevision, puntos } = useCalendario();
+  const nombreDia = useNombreDia();
   const dias = semanaDesde(lunesDe(fecha));
   const [elegido, setElegido] = useState<string | undefined>(undefined);
 
@@ -307,18 +343,23 @@ function VistaSemana({ fecha, hoy, lista, progreso, fila }: { fecha: Iso; hoy: I
 }
 
 // Nombre accesible de un día (franja y mes): «Martes 13 de octubre: 3 acciones, 1 hecha.»
-function nombreDia(d: Iso, del: Ocurrencia[], completo: boolean, futuro: boolean) {
-  const f = mayuscula(fechaLarga(d));
-  if (!enPrograma(d)) return T_CALENDARIO.mes.fuera(f);
-  if (!del.length) return T_CALENDARIO.mes.sinAcciones(f);
-  if (completo) return T_CALENDARIO.mes.completo(f);
-  return T_CALENDARIO.mes.celda(f, del.length, futuro ? null : del.filter((o) => cuentaComoHecha(o.registro)).length);
+function useNombreDia() {
+  const { enPrograma } = useCalendario();
+  return (d: Iso, del: Ocurrencia[], completo: boolean, futuro: boolean) => {
+    const f = mayuscula(fechaLarga(d));
+    if (!enPrograma(d)) return T_CALENDARIO.mes.fuera(f);
+    if (!del.length) return T_CALENDARIO.mes.sinAcciones(f);
+    if (completo) return T_CALENDARIO.mes.completo(f);
+    return T_CALENDARIO.mes.celda(f, del.length, futuro ? null : del.filter((o) => cuentaComoHecha(o.registro)).length);
+  };
 }
 
 // ---------------------------------------------------------------------------
 // Mes (4.7.4): grilla de 7 columnas; cada celda abre la vista Día.
 
 function VistaMes({ fecha, hoy, lista, progreso, onAbrirDia }: { fecha: Iso; hoy: Iso; lista: Ocurrencia[]; progreso: Progreso; onAbrirDia: (f: Iso) => void }) {
+  const { enPrograma, puntos } = useCalendario();
+  const nombreDia = useNombreDia();
   const primero = primeroDelMes(fecha);
   const siguiente = sumarMeses(primero, 1);
   const inicio = lunesDe(primero);
