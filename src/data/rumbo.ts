@@ -102,7 +102,7 @@ export type EstadoId = keyof typeof estados;
 export const operacion = {
   formularioPropio: PROPIO, // D8: postular, estado y contacto en la web propia (arriba, FORMULARIO_PROPIO)
   responsable: { nombre: "Diego Alfonso Muñoz Abeleida", comuna: "Providencia" } as null | { nombre: string; rut?: string; comuna: string }, // bloquea el lanzamiento público
-  correo: null as string | null, // bloquea el lanzamiento público
+  correo: "rumbo.acompana@gmail.com" as string | null, // creado y aprobado por Diego el 8 de octubre de 2026
   acompanante: null as null | { nombre: string; rol: string; bio: string; foto?: string }, // foto: archivo en public/, p. ej. «acompanante.jpg» (la portada le antepone la base)
   // Decisión del 2 de octubre de 2026: se responde a todas las solicitudes, también a quien no avanza.
   plazoPrimeraRespuesta: "2\u00a0días hábiles" as string | null, // bloquea el lanzamiento público
