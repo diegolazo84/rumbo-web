@@ -16,7 +16,7 @@ export const PLATAFORMA = "https://rumbo-acompanamiento-diego.diegolazo84.chatgp
 // Al encenderlo: VERSION_PUBLICADA (paginas.ts) pasa a la fecha de ese día, Privacidad y
 // Condiciones pasan solas a la versión 1.1 y ajustes_operacion.version_privacidad y
 // version_condiciones deben decir también '1.1' (hoy su valor por defecto es '1.0').
-const FORMULARIO_PROPIO = false;
+const FORMULARIO_PROPIO = true;
 // FORMULARIO_PROPIO=1 en el entorno lo fuerza encendido sin tocar este archivo: al compilar
 // (vite.config.ts lo pasa como __FORMULARIO_PROPIO__) y al correr las pruebas (fuera de Vite).
 const FORMULARIO_FORZADO =

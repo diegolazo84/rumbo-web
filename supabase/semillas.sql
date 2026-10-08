@@ -31,3 +31,6 @@ on conflict (id) do update set por_accion = excluded.por_accion, bono_dia_comple
 -- Decisiones tomadas con lo recomendado (especificación §9.3); Diego las cambia desde el panel.
 insert into public.ajustes_operacion (id, tope_solicitudes_dia) values (true, 15)
 on conflict (id) do nothing;
+
+-- Formulario propio activo desde el 8 de octubre de 2026: textos legales versión 1.1.
+update public.ajustes_operacion set version_privacidad = '1.1', version_condiciones = '1.1';

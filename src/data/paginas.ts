@@ -6,7 +6,7 @@ import { LEMA, operacion } from "./rumbo";
 // Fecha de la versión publicada: la usan las bajadas de Privacidad y Condiciones («vigente
 // desde el…») y el sitemap. Es literal y se cambia a mano en el mismo commit que publica una
 // versión nueva (nunca un marcador). Una página que cambie después lleva su propia fecha.
-export const VERSION_PUBLICADA = { iso: "2026-10-02", texto: "2 de octubre de 2026" } as const;
+export const VERSION_PUBLICADA = { iso: "2026-10-08", texto: "8 de octubre de 2026" } as const;
 
 export type PaginaId = "inicio" | "privacidad" | "condiciones" | "ayuda" | "postular" | "estado" | "contacto";
 
