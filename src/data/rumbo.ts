@@ -7,11 +7,33 @@ import type { NombreIcono } from "../components/Icono";
 
 export const PLATAFORMA = "https://rumbo-acompanamiento-diego.diegolazo84.chatgpt.site";
 
+// Interruptor D8 de la plataforma (2.4 y 7, momento A): «Cuéntanos tu meta» (/postular/), el
+// estado de la solicitud (/estado/#token) y el contacto (/contacto/) en esta web, con Supabase.
+// Diego lo cambia a `true` aquí, en el mismo commit que publica Privacidad y Condiciones del
+// momento A, cuando el SQL de supabase/ esté pegado en el proyecto real y verificacion.sql diga
+// «ok». Mientras sea `false`, todo sigue como hoy: los enlaces van a la plataforma de ChatGPT y
+// postbuild.mjs genera los reenvíos de /postular, /contacto y /estado.
+// Al encenderlo: VERSION_PUBLICADA (paginas.ts) pasa a la fecha de ese día, Privacidad y
+// Condiciones pasan solas a la versión 1.1 y ajustes_operacion.version_privacidad y
+// version_condiciones deben decir también '1.1' (hoy su valor por defecto es '1.0').
+const FORMULARIO_PROPIO = true;
+// FORMULARIO_PROPIO=1 en el entorno lo fuerza encendido sin tocar este archivo: al compilar
+// (vite.config.ts lo pasa como __FORMULARIO_PROPIO__) y al correr las pruebas (fuera de Vite).
+const FORMULARIO_FORZADO =
+  typeof __FORMULARIO_PROPIO__ !== "undefined"
+    ? __FORMULARIO_PROPIO__ === true
+    : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.FORMULARIO_PROPIO === "1";
+const PROPIO = FORMULARIO_PROPIO || FORMULARIO_FORZADO;
+// Los enlaces a postular y contacto salen a la plataforma (flecha diagonal y texto oculto).
+export const FORMULARIO_EXTERNO = !PROPIO;
+
 // Rutas que viven en la plataforma original. scripts/postbuild.mjs además genera
 // reenvíos con las mismas rutas en este dominio, para enlaces escritos a mano.
+// Con el formulario propio, postular y contacto son páginas de esta web (con barra final).
 export const rutas = {
-  postular: `${PLATAFORMA}/postular`,
-  contacto: `${PLATAFORMA}/contacto`,
+  postular: PROPIO ? "/postular/" : `${PLATAFORMA}/postular`,
+  contacto: PROPIO ? "/contacto/" : `${PLATAFORMA}/contacto`,
+  estado: PROPIO ? "/estado/" : `${PLATAFORMA}/estado`,
   miEspacio: `${PLATAFORMA}/mi-programa`,
   comunidad: `${PLATAFORMA}/comunidad`,
   privacidadPlataforma: `${PLATAFORMA}/privacidad-piloto`,
@@ -77,6 +99,7 @@ export type EstadoId = keyof typeof estados;
 // Datos operativos que SOLO Diego puede aportar. null = no publicado; la web usa el texto alternativo.
 
 export const operacion = {
+  formularioPropio: PROPIO, // D8: postular, estado y contacto en la web propia (arriba, FORMULARIO_PROPIO)
   responsable: { nombre: "Diego Alfonso Muñoz Abeleida", comuna: "Providencia" } as null | { nombre: string; rut?: string; comuna: string }, // bloquea el lanzamiento público
   correo: null as string | null, // bloquea el lanzamiento público
   acompanante: null as null | { nombre: string; rol: string; bio: string; foto?: string }, // foto: archivo en public/, p. ej. «acompanante.jpg» (la portada le antepone la base)
@@ -109,8 +132,9 @@ export const operacion = {
   alojamientoVerificado: false, // true cuando Diego confirme qué infraestructura usa ChatGPT Sites (Privacidad §6)
   tamanoPrimerGrupo: 5 as number | null,
   preseleccionVerificada: false, // ?area= y ?apoyo= preseleccionan el formulario (probado)
-  paramEstudio: null as string | null, // valor de ?area= para «Estudio y aprendizaje»
-  paramCambios: null as string | null, // valor de ?area= para «Cambios y relaciones»
+  // Valores de ?area= que solo entiende el formulario propio (plataforma 2.4 y 3.10).
+  paramEstudio: (PROPIO ? "estudio" : null) as string | null, // valor de ?area= para «Estudio y aprendizaje»
+  paramCambios: (PROPIO ? "cambios" : null) as string | null, // valor de ?area= para «Cambios y relaciones»
 };
 export type Operacion = typeof operacion;
 
@@ -352,8 +376,9 @@ export const areasPiloto = areas.filter((a) => a.enPiloto);
 export const areasMasAdelante = areas.filter((a) => !a.enPiloto);
 
 // Microcopia bajo los enlaces mientras ?area= y ?apoyo= no estén probados (5.2).
+// Con el formulario propio no hace falta (plataforma 7.3): ?area= y ?apoyo= están probados (8.2-F4).
 export const microcopiaFormulario = (opcion: string, op: Operacion = operacion) =>
-  op.preseleccionVerificada ? null : `En el formulario, elige “${opcion}”.`;
+  op.formularioPropio || op.preseleccionVerificada ? null : `En el formulario, elige “${opcion}”.`;
 
 // ---------------------------------------------------------------------------
 // Planes: precios propuestos por ciclo de 4 semanas (propuesta del 2-10-2026; hipótesis por validar en el piloto).

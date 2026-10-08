@@ -5,15 +5,15 @@ import { expect, test } from "@playwright/test";
 import { paginas } from "../src/data/paginas";
 import { operacion } from "../src/data/rumbo";
 import { FRASES_PROHIBIDAS, atributosVisibles, buscarFrases, buscarMarcadores, textoVisible } from "../scripts/marcadores.mjs";
-import { REENVIOS } from "../scripts/reenvios.mjs";
+import { reenviosActivos } from "../scripts/reenvios.mjs";
 
 const relativa = (ruta: string) => ruta.replace(/^\//, "") || "./";
 
-// Todo HTML que se publica: las 4 páginas, la 404 y los reenvíos.
+// Todo HTML que se publica: las páginas, la 404 y los reenvíos activos.
 const documentos = [
   ...paginas.map((p) => ({ nombre: p.ruta, ruta: relativa(p.ruta), estado: 200 })),
   { nombre: "404", ruta: "esta-ruta-no-existe/", estado: 404 },
-  ...REENVIOS.flatMap((r) => r.rutas.map((ruta) => ({ nombre: `/${ruta}/`, ruta: `${ruta}/`, estado: 200 }))),
+  ...reenviosActivos(operacion).flatMap((r) => r.rutas.map((ruta) => ({ nombre: `/${ruta}/`, ruta: `${ruta}/`, estado: 200 }))),
 ];
 
 test.describe("marcadores y frases prohibidas", () => {

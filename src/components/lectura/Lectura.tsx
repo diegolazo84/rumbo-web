@@ -1,9 +1,9 @@
 // Piezas de las páginas de lectura (Privacidad, Condiciones, Ayuda y 404): contenedor,
 // listas, enlaces de contacto y botón de imprimir. Los textos viven en cada página.
 import type { ReactNode } from "react";
-import { rutas, type Operacion, type RecursoAyuda } from "../../data/rumbo";
+import { FORMULARIO_EXTERNO, rutas, type Operacion, type RecursoAyuda } from "../../data/rumbo";
 import { Aviso } from "../Bloques";
-import { SeAbrePlataforma } from "../Enlaces";
+import { Enlace, SeAbrePlataforma } from "../Enlaces";
 import Icono from "../Icono";
 
 // Disposición de lectura (.contenedor--lectura); centrada en Ayuda y la 404.
@@ -27,13 +27,14 @@ export function ListaLectura({ items, numerada }: { items: ReactNode[]; numerada
   );
 }
 
-// «página de contacto», «Contacto»: formulario de la plataforma, con aviso de salida.
-export function EnlaceContacto({ children = "página de contacto" }: { children?: string }) {
+// «página de contacto», «Contacto»: formulario de contacto; mientras esté en la plataforma, con
+// aviso de salida. motivo: preselecciona el motivo en el formulario propio (?motivo=, plataforma 3.15).
+export function EnlaceContacto({ children = "página de contacto", motivo }: { children?: string; motivo?: string }) {
   return (
-    <a href={rutas.contacto}>
+    <Enlace href={motivo && !FORMULARIO_EXTERNO ? `${rutas.contacto}?motivo=${motivo}` : rutas.contacto}>
       {children}
-      <SeAbrePlataforma />
-    </a>
+      {FORMULARIO_EXTERNO && <SeAbrePlataforma />}
+    </Enlace>
   );
 }
 

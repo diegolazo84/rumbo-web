@@ -6,7 +6,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { IMAGEN_SOCIAL, PAGINA_404, VERSION_PUBLICADA, paginas } from "../src/data/paginas";
+import { IMAGEN_SOCIAL, PAGINA_404, VERSION_PUBLICADA, paginas, paginasIndexables } from "../src/data/paginas";
 import { preguntasVisibles, textoPlano } from "../src/data/preguntas";
 import {
   PLATAFORMA,
@@ -24,7 +24,26 @@ import {
   reglasCreditosTextos,
 } from "../src/data/rumbo";
 import { buscarMarcadores } from "../scripts/marcadores.mjs";
-import { PLATAFORMA as PLATAFORMA_REENVIOS, REENVIOS, scriptReenvio, textosReenvio } from "../scripts/reenvios.mjs";
+import { SUPABASE_URL } from "../src/lib/supabase-config";
+import {
+  PLATAFORMA as PLATAFORMA_REENVIOS,
+  reenviosActivos,
+  scriptReenvio,
+  textosReenvio,
+} from "../scripts/reenvios.mjs";
+
+// Con el formulario propio, /postular/ consulta al cargar si las postulaciones están abiertas.
+// Nunca se toca Supabase real: se responde «abiertas» (pruebas/formulario-real.spec.ts prueba el resto).
+if (operacion.formularioPropio) {
+  test.beforeEach(async ({ page }) => {
+    await page.route(`${SUPABASE_URL}/rest/v1/rpc/**`, (rt) =>
+      rt.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ abiertas: true, motivo: "cerradas", responder_antes: null, ausencia: null }),
+      }),
+    );
+  });
+}
 
 // Destinos externos permitidos (sección 4).
 const RUTAS_PLATAFORMA = ["/postular", "/contacto", "/mi-programa", "/comunidad", "/privacidad-piloto"];
@@ -143,8 +162,16 @@ for (const p of paginas) {
       const html = await r.text();
       expect(html).toContain("<h1");
       expect(html).toContain(`<title>${p.titulo}</title>`);
-      expect(html).toContain(`<link rel="canonical" href="${SITE_URL}${p.ruta}" />`);
-      expect(html).toContain(`<meta property="og:url" content="${SITE_URL}${p.ruta}" />`);
+      if (p.indexable === false) {
+        // /estado/ (plataforma 3.2): noindex, sin canonical y sin referrer.
+        expect(html).toContain('<meta name="robots" content="noindex" />');
+        expect(html).not.toContain('rel="canonical"');
+      } else {
+        expect(html).toContain(`<link rel="canonical" href="${SITE_URL}${p.ruta}" />`);
+        expect(html).toContain(`<meta property="og:url" content="${SITE_URL}${p.ruta}" />`);
+        expect(html).not.toContain('content="noindex');
+      }
+      if (p.referrer) expect(html).toContain(`<meta name="referrer" content="${p.referrer}" />`);
       expect(html).toContain(`<meta property="og:image" content="${SITE_URL}/${IMAGEN_SOCIAL.ruta}" />`);
       expect(html).toMatch(/<meta http-equiv="Content-Security-Policy" content="default-src 'self';[^"]*object-src 'none'/);
       expect(html).toContain('<meta name="rumbo-version" content="');
@@ -207,6 +234,16 @@ for (const p of paginas) {
         } else if (url.origin === origen) {
           const r = await request.get(url.pathname + url.search, { maxRedirects: 0 });
           expect(r.status(), `enlace roto o con redirección: ${e.href}`).toBe(200);
+          // Formulario propio: los enlaces a /postular/ siguen las mismas reglas que hacia la plataforma.
+          if (url.pathname.endsWith("/postular/") && e.evento === "postular") {
+            for (const [clave, valor] of url.searchParams) {
+              if (clave === "area") expect(AREAS_PERMITIDAS).toContain(valor);
+              else if (clave === "apoyo") expect(["coach", "cercano"]).toContain(valor);
+              else throw new Error(`parámetro no permitido: ${e.href}`);
+            }
+            expect(e.ubicacion, `postular sin ubicación: ${e.href}`).toBeTruthy();
+            ubicaciones.push(e.ubicacion!);
+          }
         } else {
           expect(url.origin, `enlace externo inesperado: ${e.href}`).toBe(PLATAFORMA);
           expect(RUTAS_PLATAFORMA, `ruta de la plataforma no permitida: ${e.href}`).toContain(url.pathname);
@@ -443,7 +480,7 @@ test("los reenvíos apuntan a la misma plataforma que los enlaces", async () => 
   expect(PLATAFORMA_REENVIOS).toBe(PLATAFORMA);
 });
 
-for (const r of REENVIOS) {
+for (const r of reenviosActivos(operacion)) {
   const url = PLATAFORMA_REENVIOS + r.destino;
   const textos = textosReenvio(r);
   for (const ruta of r.rutas) {
@@ -501,7 +538,7 @@ test("imagen para redes, íconos y manifest", PROD, async ({ request }) => {
 test("sitemap: cada URL existe, termina en barra y coincide con su canonical", PROD, async ({ request }) => {
   const xml = await (await request.get("sitemap.xml")).text();
   const locs = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map((m) => m[1]);
-  expect(locs).toEqual(paginas.map((p) => `${SITE_URL}${p.ruta}`));
+  expect(locs).toEqual(paginasIndexables().map((p) => `${SITE_URL}${p.ruta}`));
   for (const loc of locs) {
     expect(loc.endsWith("/"), loc).toBe(true);
     const r = await request.get(relativa(loc.slice(SITE_URL.length)), { maxRedirects: 0 });

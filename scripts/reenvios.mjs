@@ -6,10 +6,12 @@ export const PLATAFORMA = "https://rumbo-acompanamiento-diego.diegolazo84.chatgp
 const OTRA_DIRECCION = "La plataforma está en otra dirección web.";
 
 // rutas: carpetas de esta web · destino: ruta en la plataforma · nombre: {destino} del texto ·
-// nota (opcional): párrafo bajo el botón, que se lee también sin JavaScript.
+// nota (opcional): párrafo bajo el botón, que se lee también sin JavaScript ·
+// formulario: desaparece con operacion.formularioPropio, porque la ruta pasa a ser una página
+// propia (plataforma 2.2).
 export const REENVIOS = [
-  { rutas: ["postular"], destino: "/postular", nombre: "el formulario para postular", explicacion: OTRA_DIRECCION },
-  { rutas: ["contacto"], destino: "/contacto", nombre: "el formulario de contacto", explicacion: OTRA_DIRECCION },
+  { rutas: ["postular"], destino: "/postular", nombre: "el formulario para postular", explicacion: OTRA_DIRECCION, formulario: true },
+  { rutas: ["contacto"], destino: "/contacto", nombre: "el formulario de contacto", explicacion: OTRA_DIRECCION, formulario: true },
   {
     rutas: ["mi-programa", "app"],
     destino: "/mi-programa",
@@ -30,6 +32,7 @@ export const REENVIOS = [
     explicacion: OTRA_DIRECCION,
     // El botón (y el reenvío sin JavaScript) no conserva el #token del enlace privado.
     nota: "Si no se abre, vuelve a usar el enlace privado completo que guardaste: este botón no lo incluye.",
+    formulario: true,
   },
   {
     rutas: ["privacidad-piloto"],
@@ -38,6 +41,9 @@ export const REENVIOS = [
     explicacion: OTRA_DIRECCION,
   },
 ];
+
+// Reenvíos que se publican según los interruptores de `operacion` (rumbo.ts).
+export const reenviosActivos = (op) => REENVIOS.filter((r) => !(r.formulario && op?.formularioPropio));
 
 // «a» + «el» se contrae: «Te llevamos al formulario para postular».
 const aDestino = (nombre) => (nombre.startsWith("el ") ? `al ${nombre.slice(3)}` : `a ${nombre}`);

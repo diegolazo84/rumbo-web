@@ -3,7 +3,7 @@
 // data-umami-event="postular" y una ubicación única dentro de la página.
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { TEXTO_PLATAFORMA, postularHref } from "../data/rumbo";
+import { FORMULARIO_EXTERNO, TEXTO_PLATAFORMA, postularHref } from "../data/rumbo";
 import Icono, { type NombreIcono } from "./Icono";
 
 // Texto oculto de salida. `antes` se lee justo antes, p. ej. «, Movimiento ».
@@ -155,10 +155,11 @@ type PostularProps = {
   className?: string;
 };
 
-// Botón a /postular con analítica y texto oculto. Por defecto, el CTA principal.
+// Botón a /postular con analítica y, mientras el formulario esté en la plataforma, texto oculto
+// de salida. Por defecto, el CTA principal.
 export function BotonPostular({ ubicacion, area, apoyo, children = "Cuéntanos tu meta", ...resto }: PostularProps) {
   return (
-    <Boton href={postularHref({ area, apoyo })} plataforma evento="postular" ubicacion={ubicacion} {...resto}>
+    <Boton href={postularHref({ area, apoyo })} plataforma={FORMULARIO_EXTERNO} evento="postular" ubicacion={ubicacion} {...resto}>
       {children}
     </Boton>
   );

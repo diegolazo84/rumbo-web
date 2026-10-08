@@ -1,6 +1,7 @@
-// Vista previa · confirmación de /postular/ (plataforma 3.13): modo solicitud, modo interés y
-// «Ya enviaste esta solicitud.» (recarga). Postular.tsx la muestra en la misma página al enviar;
-// las filas del registro la muestran sola con la solicitud de ejemplo.
+// Confirmación de /postular/ (plataforma 3.13): modo solicitud, modo interés y «Ya enviaste esta
+// solicitud.» (recarga). Postular.tsx la muestra en la misma página al enviar; las filas del
+// registro de la vista previa la muestran sola con la solicitud de ejemplo. En modo real (modo.ts)
+// el enlace privado lleva el token de verdad y las fechas son las que devolvió la base.
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { BASENAME } from "../../../base";
@@ -8,11 +9,13 @@ import { Aviso } from "../../../components/Bloques";
 import { EnlaceFlecha } from "../../../components/Enlaces";
 import { Icono } from "../../../components/app";
 import { operacion } from "../../../data/rumbo";
-import { fechaLarga } from "../../../lib/fechas";
+import { enChile } from "../../../lib/api";
+import { fechaLarga, type Iso } from "../../../lib/fechas";
 import type { PropsPantalla } from "../registro";
-import { RUTAS_PUBLICAS, rutaPrevia } from "../rutas";
+import { rutaPrevia } from "../rutas";
 import { AsideAyuda, EtiquetaEjemplo, LineaTiempo, PaginaConAside, useTituloDocumento } from "./comunes";
 import { SOLICITUD, fechaHora, nombreArea, plazoDe } from "./ejemplo";
+import { useModoFormulario } from "./modo";
 import { CONFIRMACION } from "./textos";
 
 export type DatosConfirmacion = {
@@ -21,6 +24,10 @@ export type DatosConfirmacion = {
   correo: string;
   area?: string; // modo interés: id del área («bienestar»…) o null en reapertura
   yaEnviada?: boolean;
+  // Solo en modo real: lo que devolvió enviar_solicitud (6.6).
+  token?: string;
+  plazo?: Iso | null; // responder_antes
+  creada?: string | null; // creada_en (marca de tiempo)
 };
 
 const T_ENVIADA = "Solicitud enviada · Rumbo";
@@ -28,8 +35,9 @@ const RUTA_ESTADO = (interes: boolean) => rutaPrevia(interes ? "estado/interes-r
 
 // Tarjeta «Tu enlace privado»: el enlace visible y seleccionable, «Copiar enlace» con su aviso
 // (role=status, 4 s, sin cambiar el tamaño del botón) y «Ver mi solicitud».
-function TarjetaEnlace({ interes }: { interes: boolean }) {
-  const destino = `${RUTA_ESTADO(interes)}#${SOLICITUD.token}`;
+function TarjetaEnlace({ interes, token }: { interes: boolean; token?: string }) {
+  const { real, rutas } = useModoFormulario();
+  const destino = real ? `${rutas.estado}#${token ?? ""}` : `${RUTA_ESTADO(interes)}#${SOLICITUD.token}`;
   // El prerender no conoce el dominio: muestra la ruta y, al hidratar, el enlace completo.
   const [visible, setVisible] = useState(`${BASENAME.replace(/\/$/, "")}${destino}`);
   const [copiado, setCopiado] = useState(false);
@@ -58,7 +66,7 @@ function TarjetaEnlace({ interes }: { interes: boolean }) {
         <h2 id="enlace-privado-titulo" className="vf-tarjeta__titulo">
           {t.titulo}
         </h2>
-        <EtiquetaEjemplo />
+        {!real && <EtiquetaEjemplo />}
       </div>
       {interes ? (
         <p>{t.textoInteres}</p>
@@ -92,6 +100,7 @@ function TarjetaEnlace({ interes }: { interes: boolean }) {
 
 export function VistaConfirmacion({ datos, onOtra }: { datos: DatosConfirmacion; onOtra?: () => void }) {
   const interes = datos.modo === "interes";
+  const { real, rutas } = useModoFormulario();
   const titulo = useRef<HTMLHeadingElement>(null);
   useTituloDocumento(T_ENVIADA);
   // Tras enviar, la confirmación aparece en la misma página: foco al H1 (no al recargar).
@@ -99,7 +108,19 @@ export function VistaConfirmacion({ datos, onOtra }: { datos: DatosConfirmacion;
     if (onOtra && !datos.yaEnviada) titulo.current?.focus();
   }, [onOtra, datos.yaEnviada]);
 
-  const plazo = operacion.plazoPrimeraRespuesta ? fechaLarga(plazoDe(SOLICITUD.enviada)) : null;
+  // Real: la fecha que fijó la base (responder_antes) y la hora de envío en hora de Chile.
+  const plazo = !operacion.plazoPrimeraRespuesta
+    ? null
+    : real
+      ? datos.plazo
+        ? fechaLarga(datos.plazo)
+        : null
+      : fechaLarga(plazoDe(SOLICITUD.enviada));
+  const enviada = real
+    ? datos.creada
+      ? (({ fecha, hora }) => fechaHora(fecha, hora))(enChile(datos.creada))
+      : null
+    : fechaHora(SOLICITUD.enviada, SOLICITUD.hora);
   const area = datos.area ? nombreArea(datos.area) : null;
   const h1 = datos.yaEnviada
     ? CONFIRMACION.yaEnviada
@@ -111,7 +132,7 @@ export function VistaConfirmacion({ datos, onOtra }: { datos: DatosConfirmacion;
       {CONFIRMACION.otra}
     </button>
   ) : (
-    <Link to={RUTAS_PUBLICAS.postular} className="boton boton--terciario">
+    <Link to={rutas.postular} className="boton boton--terciario">
       {CONFIRMACION.otra}
     </Link>
   );
@@ -156,11 +177,11 @@ export function VistaConfirmacion({ datos, onOtra }: { datos: DatosConfirmacion;
         )}
       </div>
 
-      <TarjetaEnlace interes={interes} />
+      <TarjetaEnlace interes={interes} token={datos.token} />
 
       {interes ? (
         <p>
-          <EnlaceFlecha href={RUTAS_PUBLICAS.postular}>{CONFIRMACION.interes.flecha}</EnlaceFlecha>
+          <EnlaceFlecha href={rutas.postular}>{CONFIRMACION.interes.flecha}</EnlaceFlecha>
         </p>
       ) : (
         <>
@@ -171,7 +192,7 @@ export function VistaConfirmacion({ datos, onOtra }: { datos: DatosConfirmacion;
             <LineaTiempo
               numerada
               nivelTitulo="h3"
-              pasos={CONFIRMACION.pasos(fechaHora(SOLICITUD.enviada, SOLICITUD.hora), plazo).map((p, i) => ({
+              pasos={CONFIRMACION.pasos(enviada, plazo).map((p, i) => ({
                 ...p,
                 estado: i === 0 ? "completo" : "pendiente",
               }))}

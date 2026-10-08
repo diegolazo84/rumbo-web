@@ -1,14 +1,14 @@
 // Metadatos por página (6.7): los usa el prerenderizado (scripts/postbuild.mjs) para
 // escribir <head> en el HTML estático, y la app para actualizar el título al
 // navegar. Una página nueva se agrega aquí y en App.tsx (TypeScript exige ambas).
-import { LEMA } from "./rumbo";
+import { LEMA, operacion } from "./rumbo";
 
 // Fecha de la versión publicada: la usan las bajadas de Privacidad y Condiciones («vigente
 // desde el…») y el sitemap. Es literal y se cambia a mano en el mismo commit que publica una
 // versión nueva (nunca un marcador). Una página que cambie después lleva su propia fecha.
-export const VERSION_PUBLICADA = { iso: "2026-10-02", texto: "2 de octubre de 2026" } as const;
+export const VERSION_PUBLICADA = { iso: "2026-10-08", texto: "8 de octubre de 2026" } as const;
 
-export type PaginaId = "inicio" | "privacidad" | "condiciones" | "ayuda";
+export type PaginaId = "inicio" | "privacidad" | "condiciones" | "ayuda" | "postular" | "estado" | "contacto";
 
 export type Pagina = {
   id: PaginaId;
@@ -20,7 +20,51 @@ export type Pagina = {
   ogDescripcion?: string;
   // Fecha de última revisión de contenido para sitemap.xml (AAAA-MM-DD).
   revisada: string;
+  // false: noindex, sin canonical y fuera del sitemap (por defecto, indexable).
+  indexable?: boolean;
+  // false: sin analítica aunque esté activa (plataforma 2.1: /estado/ no carga Umami).
+  analitica?: boolean;
+  // <meta name="referrer">: /estado/ lleva el token en el # (plataforma 2.1 y 6.15).
+  referrer?: string;
+  // Formularios con Supabase (plataforma 2.3): connect-src permite el proyecto, y la página es una
+  // porción perezosa que postbuild prerenderiza esperando que cargue, con su CSS en <head>.
+  formulario?: boolean;
 };
+
+// Páginas del formulario propio (plataforma 2.1 y 3.2): existen solo con
+// operacion.formularioPropio; si no, esas rutas son reenvíos a la plataforma (postbuild.mjs).
+const PAGINAS_FORMULARIO: Pagina[] = [
+  {
+    id: "postular",
+    ruta: "/postular/",
+    titulo: "Cuéntanos tu meta · Rumbo",
+    descripcion:
+      "Cuéntanos qué quieres lograr. Una persona lee cada solicitud y te responde en hasta 2 días hábiles. Postular es gratis y no te compromete.",
+    revisada: VERSION_PUBLICADA.iso,
+    formulario: true,
+  },
+  {
+    id: "estado",
+    ruta: "/estado/",
+    titulo: "Tu solicitud · Rumbo",
+    // La especificación (3.2) no le da descripción: es noindex y no se comparte.
+    descripcion: "Estado de tu solicitud a Rumbo, con el enlace privado que viste al enviarla.",
+    revisada: VERSION_PUBLICADA.iso,
+    indexable: false,
+    analitica: false,
+    referrer: "no-referrer",
+    formulario: true,
+  },
+  {
+    id: "contacto",
+    ruta: "/contacto/",
+    titulo: "Contacto · Rumbo",
+    descripcion:
+      "Escríbenos con tus dudas sobre Rumbo, tu solicitud o tus datos. Respondemos en días hábiles; no hay atención inmediata.",
+    revisada: VERSION_PUBLICADA.iso,
+    formulario: true,
+  },
+];
 
 export const paginas: Pagina[] = [
   {
@@ -57,7 +101,11 @@ export const paginas: Pagina[] = [
       "Rumbo no es un servicio de urgencias. Si necesitas ayuda ahora en Chile: *4141 (prevención del suicidio), 131 (SAMU) y Salud Responde 600 360 7777.",
     revisada: VERSION_PUBLICADA.iso,
   },
+  ...(operacion.formularioPropio ? PAGINAS_FORMULARIO : []),
 ];
+
+// Páginas que van en sitemap.xml.
+export const paginasIndexables = () => paginas.filter((p) => p.indexable !== false);
 
 export const PAGINA_404 = {
   titulo: "Página no encontrada · Rumbo",
