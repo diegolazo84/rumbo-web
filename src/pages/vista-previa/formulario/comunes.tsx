@@ -10,7 +10,7 @@ import Etiqueta from "../../../components/Etiqueta";
 import { Icono } from "../../../components/app";
 import type { ErrorResumen } from "../../../components/form";
 import { estados } from "../../../data/rumbo";
-import { RUTAS_PUBLICAS } from "../rutas";
+import { useModoFormulario } from "./modo";
 import { ASIDE, ESTADO } from "./textos";
 import "../../../styles/vista-formulario.css";
 
@@ -76,7 +76,14 @@ export function useFormularioPrevia<V extends Record<string, unknown>>(
     setVisibles({});
   }, []);
 
-  return { valores, cambiar, salir, errores: visibles, enviar, reiniciar };
+  // Errores que devuelve el servidor (3.12, validación del servidor): se muestran en sus campos
+  // y en el resumen, y se revalidan al escribir como los del cliente.
+  const mostrar = useCallback((errores: Errores<V>): ErrorResumen[] => {
+    setVisibles(errores);
+    return resumir(errores, idDe);
+  }, [idDe]);
+
+  return { valores, cambiar, salir, errores: visibles, enviar, reiniciar, mostrar };
 }
 
 // Lista para el resumen de errores, en el orden del DOM (el de la validación).
@@ -140,6 +147,7 @@ export type PasoCompacto = { titulo: string; contenido: string };
 // que «Tu calendario y tus fotos son privados» no se muestra.
 export function AsideAyuda({ pasos, actual, sinPrograma }: { pasos?: PasoCompacto[]; actual?: "contacto"; sinPrograma?: boolean }) {
   const items = ASIDE.enSimple.items.filter((i) => !(sinPrograma && i === ASIDE.enSimple.soloConPrograma));
+  const { rutas } = useModoFormulario();
   return (
     <aside className="vf-aside" aria-label={ASIDE.etiqueta}>
       {pasos && (
@@ -156,7 +164,7 @@ export function AsideAyuda({ pasos, actual, sinPrograma }: { pasos?: PasoCompact
         </ul>
       </Aviso>
       <p className="vf-aside__dudas">
-        <Link to={RUTAS_PUBLICAS.contacto} className="enlace-util" aria-current={actual === "contacto" ? "page" : undefined}>
+        <Link to={rutas.contacto} className="enlace-util" aria-current={actual === "contacto" ? "page" : undefined}>
           <Icono nombre="mail" tamaño={16} />
           <span>{ASIDE.dudas}</span>
         </Link>

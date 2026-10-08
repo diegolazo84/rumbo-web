@@ -42,3 +42,61 @@ jobs:
         run: |
           psql "$PGURL" -v ON_ERROR_STOP=1 -At -F ' | ' -f supabase/verificacion.sql | tee verificacion.txt
           if grep -v '| ok$' verificacion.txt; then echo "::error::verificacion.sql tiene filas que no dicen ok"; exit 1; fi
+      # Humo de la API tal como la usa el navegador (plataforma 6.6): PostgREST con la clave anon.
+      # Envía una solicitud válida, la lee con el mismo token y comprueba que la tabla no se lee
+      # directo. La clave sale de `supabase status`; nunca se usa una clave de servicio.
+      - name: Humo de la API
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          set -euo pipefail
+          psql "$PGURL" -q -c "notify pgrst, 'reload schema'"
+          eval "$(cd "$RUNNER_TEMP/sb" && supabase status -o env)"
+          CLAVE="${ANON_KEY:-${PUBLISHABLE_KEY:-}}"
+          if [ -z "$CLAVE" ]; then echo "::error::supabase status no entregó la clave anon"; exit 1; fi
+          API="http://127.0.0.1:54321"
+          CABECERAS=(-H "apikey: $CLAVE" -H "Content-Type: application/json")
+          # La clave anon antigua es un JWT y va también como Bearer (como en src/lib/api.ts).
+          case "$CLAVE" in eyJ*) CABECERAS+=(-H "Authorization: Bearer $CLAVE") ;; esac
+          rpc() { curl -sS --fail-with-body -X POST "${CABECERAS[@]}" -d "$2" "$API/rest/v1/rpc/$1"; }
+
+          # PostgREST recarga el esquema en segundo plano: se espera a que responda la RPC.
+          for i in $(seq 1 30); do
+            if rpc estado_postulaciones '{}' > /dev/null 2>&1; then break; fi
+            if [ "$i" = 30 ]; then echo "::error::PostgREST no responde estado_postulaciones"; exit 1; fi
+            sleep 2
+          done
+
+          # Token como el del navegador: 32 bytes en base64url, 43 caracteres.
+          TOKEN=$(openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\n')
+          if [ "${#TOKEN}" != 43 ]; then echo "::error::token de ${#TOKEN} caracteres"; exit 1; fi
+          CUERPO=$(jq -n --arg t "$TOKEN" '{p: {
+            token: $t, tipo: "solicitud", nombre: "Prueba CI", correo: "prueba-ci@example.com",
+            area: "proyectos", meta: "Quiero ordenar mis semanas para terminar mi proyecto.", apoyo: "coach",
+            dias: ["lun"], franjas: ["tarde"], horarios_nota: null, zona_horaria: "America/Santiago",
+            mayor_edad: true, autorizacion: true, texto_autorizacion: "Autorizo (prueba de CI).",
+            avisos_futuros: false, origen: null, ms: 5000, campo_extra_7: ""}}')
+          echo "::group::enviar_solicitud"
+          ENVIO=$(rpc enviar_solicitud "$CUERPO") || { echo "::error::enviar_solicitud falló: $ENVIO"; exit 1; }
+          echo "$ENVIO" | jq -e '.tipo == "solicitud"'
+          # Reintento con el mismo token: misma respuesta, sin duplicar.
+          rpc enviar_solicitud "$CUERPO" | jq -e '.tipo == "solicitud"'
+          echo "::endgroup::"
+
+          echo "::group::ver_solicitud"
+          VISTA=$(rpc ver_solicitud "$(jq -n --arg t "$TOKEN" '{p_token: $t}')") || { echo "::error::ver_solicitud falló: $VISTA"; exit 1; }
+          echo "$VISTA" | jq '{tipo, estado}'
+          if ! echo "$VISTA" | jq -e '.estado == "recibida"' > /dev/null; then
+            echo "::error::ver_solicitud no devolvió el estado de la solicitud"; exit 1
+          fi
+          echo "::endgroup::"
+
+          # La tabla no se lee con la clave anon: 401, 403 o ninguna fila.
+          CODIGO=$(curl -sS -o filas.json -w '%{http_code}' "${CABECERAS[@]}" "$API/rest/v1/solicitudes?select=*")
+          case "$CODIGO" in
+            401|403) echo "solicitudes: $CODIGO (sin acceso)" ;;
+            200) if ! jq -e 'length == 0' filas.json > /dev/null; then
+                   echo "::error::la clave anon lee filas de solicitudes"; exit 1
+                 fi; echo "solicitudes: 200 sin filas" ;;
+            *) echo "::error::GET solicitudes respondió $CODIGO"; cat filas.json; exit 1 ;;
+          esac

@@ -1,7 +1,8 @@
-// Vista previa · contacto (/contacto/, plataforma 3.15): motivo (con ?motivo= y la ayuda de «Mis
-// datos personales»), nombre opcional, correo con sugerencia de tipeo, mensaje con contador y
-// aviso de ayuda, resumen de errores y confirmación. La validación funciona de verdad; el envío
-// se simula sin red.
+// Contacto (/contacto/, plataforma 3.15): motivo (con ?motivo= y la ayuda de «Mis datos
+// personales»), nombre opcional, correo con sugerencia de tipeo, mensaje con contador y aviso de
+// ayuda, resumen de errores y confirmación. La validación funciona de verdad. En la vista previa
+// el envío se simula sin red; en modo real (modo.ts) llama a enviar_mensaje (6.6), con los
+// estados del envío de 3.12.
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Aviso } from "../../../components/Bloques";
@@ -30,9 +31,11 @@ import {
   type DatosContacto,
 } from "../../../data/formularios";
 import { operacion } from "../../../data/rumbo";
+import { ErrorApi, enviarMensaje, errorContacto } from "../../../lib/api";
 import type { PropsPantalla } from "../registro";
 import { AsideAyuda, EtiquetaEjemplo, PaginaConAside, resumir, useFormularioPrevia } from "./comunes";
 import { SOLICITUD } from "./ejemplo";
+import { useModoFormulario } from "./modo";
 
 const VACIO: DatosContacto = { motivo: "", nombre: "", correo: "", mensaje: "" };
 // Variante «con errores al enviar»: sin motivo, un correo incompleto y un mensaje muy corto.
@@ -42,6 +45,7 @@ const E = estadosEnvio("mensaje", CONTACTO.boton);
 const sinOpcional = (texto: string) => texto.replace(/ \(opcional\)$/, "");
 
 type Confirmado = { correo: string; motivo: string; ejemplo?: boolean };
+type EstadoEnvio = "inicial" | "sinConexion" | "red" | "red2" | "servidor" | "limite";
 
 function inicialDe(estado: string): DatosContacto {
   if (estado === "errores") return CON_ERRORES;
@@ -105,11 +109,14 @@ function Confirmacion({ datos, onOtro }: { datos: Confirmado; onOtro: () => void
 }
 
 export default function Contacto({ estado = "inicial" }: PropsPantalla) {
+  const { real } = useModoFormulario();
   const [confirmado, setConfirmado] = useState<Confirmado | null>(
     estado === "enviado" ? { correo: SOLICITUD.correo, motivo: "duda", ejemplo: true } : null,
   );
   const [enviando, setEnviando] = useState(false);
-  const [sinConexion, setSinConexion] = useState(false);
+  const [envio, setEnvio] = useState<EstadoEnvio>("inicial");
+  const [fallos, setFallos] = useState(0);
+  const inicio = useRef<number | null>(null); // primera interacción (tiempo mínimo, 3.11)
   const f = useFormularioPrevia(inicialDe(estado), validarContacto, {
     erroresIniciales: estado === "errores" ? validarContacto(CON_ERRORES) : {},
     bloqueado: enviando,
@@ -140,8 +147,16 @@ export default function Contacto({ estado = "inicial" }: PropsPantalla) {
   }, [focoTitulo]);
   useEffect(() => () => window.clearTimeout(temporizador.current), []);
 
+  const cambiar = <K extends keyof DatosContacto>(campo: K, valor: DatosContacto[K]) => {
+    if (inicio.current === null) inicio.current = Date.now();
+    f.cambiar(campo, valor);
+  };
+
   const otro = () => {
     f.reiniciar(VACIO);
+    setEnvio("inicial");
+    setFallos(0);
+    inicio.current = null;
     setMostrarResumen(false);
     setVerSugerencia(false);
     setConfirmado(null);
@@ -163,16 +178,69 @@ export default function Contacto({ estado = "inicial" }: PropsPantalla) {
       return;
     }
     if (!navigator.onLine) {
-      setSinConexion(true);
+      setEnvio("sinConexion");
       return;
     }
-    setSinConexion(false);
+    setEnvio("inicial");
     setEnviando(true);
+    if (real) {
+      void enviarReal();
+      return;
+    }
     temporizador.current = window.setTimeout(() => {
       setEnviando(false);
       setConfirmado({ correo: v.correo.trim().toLowerCase(), motivo: v.motivo });
     }, SIMULACION_MS);
   };
+
+  const enviarReal = async () => {
+    const correo = v.correo.trim().toLowerCase();
+    try {
+      await enviarMensaje({
+        motivo: v.motivo,
+        nombre: v.nombre.trim() || null,
+        correo,
+        mensaje: v.mensaje.trim(),
+        ms: inicio.current === null ? 0 : Date.now() - inicio.current,
+        campo_extra_7: trampa,
+      });
+      setEnviando(false);
+      setFallos(0);
+      setConfirmado({ correo, motivo: v.motivo });
+    } catch (e) {
+      setEnviando(false);
+      const error = e instanceof ErrorApi ? e : new ErrorApi("servidor");
+      if (error.esDeRed) {
+        setEnvio(fallos >= 1 ? "red2" : "red");
+        setFallos((n) => n + 1);
+        return;
+      }
+      const campo = error.tipo === "validacion" ? errorContacto(error) : null;
+      if (campo) {
+        f.mostrar({ [campo.campo]: campo.texto });
+        setMostrarResumen(true);
+        setIntento((n) => n + 1);
+        return;
+      }
+      setEnvio(error.tipo === "limite" ? "limite" : "servidor");
+    }
+  };
+
+  const alerta =
+    envio === "sinConexion" ? (
+      E.sinConexion
+    ) : envio === "red" ? (
+      E.red
+    ) : envio === "red2" ? (
+      <>
+        <p>{E.red}</p>
+        <p>{E.segundoFallo}</p>
+      </>
+    ) : envio === "servidor" ? (
+      E.servidor
+    ) : envio === "limite" ? (
+      E.limite
+    ) : null;
 
   return (
     <PaginaConAside aside={<AsideAyuda actual="contacto" sinPrograma />} className="vf-contacto">
@@ -222,7 +290,7 @@ export default function Contacto({ estado = "inicial" }: PropsPantalla) {
               titulo={o.texto}
               describedBy={o.valor === "datos" && conDatos ? "ayuda-motivo-datos" : undefined}
               checked={v.motivo === o.valor}
-              onChange={() => f.cambiar("motivo", o.valor)}
+              onChange={() => cambiar("motivo", o.valor)}
             />
           ))}
         </GrupoOpciones>
@@ -236,7 +304,7 @@ export default function Contacto({ estado = "inicial" }: PropsPantalla) {
           maxLength={CONTACTO.nombre.max}
           value={v.nombre}
           readOnly={enviando}
-          onChange={(e) => f.cambiar("nombre", e.target.value)}
+          onChange={(e) => cambiar("nombre", e.target.value)}
         />
         <CampoTexto
           id="correo"
@@ -246,7 +314,7 @@ export default function Contacto({ estado = "inicial" }: PropsPantalla) {
           {...CORREO.atributos}
           value={v.correo}
           readOnly={enviando}
-          onChange={(e) => f.cambiar("correo", e.target.value)}
+          onChange={(e) => cambiar("correo", e.target.value)}
           onBlur={() => {
             f.salir("correo");
             if (v.correo.trim()) setVerSugerencia(true);
@@ -255,7 +323,7 @@ export default function Contacto({ estado = "inicial" }: PropsPantalla) {
             <div className="vf-sugerencia">
               <p role="status">{sugerencia ? CORREO.sugerencia(sugerencia) : ""}</p>
               {sugerencia && (
-                <button type="button" className="boton boton--terciario" onClick={() => f.cambiar("correo", sugerencia)}>
+                <button type="button" className="boton boton--terciario" onClick={() => cambiar("correo", sugerencia)}>
                   {CORREO.usarSugerencia(sugerencia)}
                 </button>
               )}
@@ -272,7 +340,7 @@ export default function Contacto({ estado = "inicial" }: PropsPantalla) {
             max={LIMITES.mensajeContacto.max}
             value={v.mensaje}
             readOnly={enviando}
-            onChange={(e) => f.cambiar("mensaje", e.target.value)}
+            onChange={(e) => cambiar("mensaje", e.target.value)}
             onBlur={() => f.salir("mensaje")}
           />
           <AvisoAyuda />
@@ -287,11 +355,11 @@ export default function Contacto({ estado = "inicial" }: PropsPantalla) {
         </p>
         <CampoTrampa valor={trampa} onCambio={setTrampa} />
         <Envio
-          texto={CONTACTO.boton}
           textoEnviando={E.enviando}
           anuncioEnviando={E.anuncioEnviando}
           enviando={enviando}
-          alerta={sinConexion ? E.sinConexion : null}
+          texto={envio === "red" || envio === "red2" || envio === "servidor" || envio === "limite" ? E.reintentar : CONTACTO.boton}
+          alerta={alerta}
           frases={[TEXTOS_FORM.noEsChat]}
         />
       </Formulario>

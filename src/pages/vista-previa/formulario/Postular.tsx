@@ -1,8 +1,11 @@
-// Vista previa · «Cuéntanos tu meta» (/postular/, plataforma 3.3 a 3.12): modo solicitud con
-// sus tres bloques, modo «Dejar mi interés», postulaciones cerradas (por Diego o por el tope del
-// día), borrador en la pestaña, preselección por ?area= y ?apoyo=, resumen de errores y estados
-// del envío. La validación funciona de verdad en el navegador; el envío se simula (sin red) y
-// termina en la confirmación (3.13) en la misma página.
+// «Cuéntanos tu meta» (/postular/, plataforma 3.3 a 3.12): modo solicitud con sus tres bloques,
+// modo «Dejar mi interés», postulaciones cerradas (por Diego o por el tope del día), borrador en
+// la pestaña, preselección por ?area= y ?apoyo=, resumen de errores y estados del envío.
+// - Vista previa (modo.ts): el envío se simula (sin red) y las variantes del registro muestran
+//   cada estado con datos de ejemplo.
+// - Modo real: estado_postulaciones() al cargar (cerradas, ausencia, plazo) y enviar_solicitud()
+//   con un token de 32 bytes generado aquí, que se guarda en la pestaña para que un reintento
+//   use el mismo (idempotencia, 3.12). La confirmación (3.13) aparece en la misma página.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Aviso, ListaCheck } from "../../../components/Bloques";
@@ -41,20 +44,20 @@ import {
   type OpcionArea,
 } from "../../../data/formularios";
 import { areas, estados, notaPrecio, operacion, planes } from "../../../data/rumbo";
+import { ErrorApi, errorPostular, estadoPostulaciones, enviarSolicitud, esToken, nuevoToken } from "../../../lib/api";
 import { fechaLarga } from "../../../lib/fechas";
 import type { PropsPantalla } from "../registro";
-import { RUTAS_PUBLICAS } from "../rutas";
 import { AsideAyuda, EtiquetaEjemplo, PaginaConAside, resumir, useFormularioPrevia, useTituloDocumento } from "./comunes";
 import { VistaConfirmacion, type DatosConfirmacion } from "./Confirmacion";
 import { AUSENCIA_POSTULAR, DATOS_COMPLETOS, DATOS_CON_ERRORES, SOLICITUD, nombreArea, plazoDe } from "./ejemplo";
+import { useModoFormulario } from "./modo";
 import { pasosAntesDeEnviar } from "./textos";
 
 const T_POSTULAR = "Cuéntanos tu meta · Rumbo";
 const T_INTERES = "Deja tu interés · Rumbo";
 
 // sessionStorage (no localStorage: en un computador compartido la meta no sobrevive al cierre).
-const CLAVE_BORRADOR = "rumbo-vista-previa-postular";
-const CLAVE_ENVIADA = "rumbo-vista-previa-postular-enviada";
+// Las claves dependen del modo (modo.ts): la vista previa y la página real no se mezclan.
 const leer = (clave: string) => {
   try {
     const v = window.sessionStorage.getItem(clave);
@@ -112,9 +115,20 @@ function inicialDe(estado: string, cerradas: boolean): { datos: DatosPostular; e
   return { datos: VACIO, extras: EXTRAS_VACIOS };
 }
 
+// Postulaciones cerradas que informó la base al cargar (modo real, 3.9).
+type Cierre = null | "tope" | "cerradas";
+// Lo que fija la base (6.6): plazo de respuesta y ausencia de Diego.
+type DatosServidor = { plazo: string | null; ausencia: { hasta: string; texto: string } | null };
+
 export default function Postular({ estado = "solicitud" }: PropsPantalla) {
-  const cerradas = estado === "cerradas" || estado === "cerradas-tope";
-  const conBorrador = estado === "solicitud"; // borrador y ?area= solo en la variante limpia
+  const { real, claves, rutas } = useModoFormulario();
+  const CLAVE_BORRADOR = claves.borrador;
+  const CLAVE_ENVIADA = claves.enviada;
+  const [cierre, setCierre] = useState<Cierre>(null);
+  const [cierreAlEnviar, setCierreAlEnviar] = useState<Cierre>(null); // 409 «cerradas» al enviar
+  const [servidor, setServidor] = useState<DatosServidor>({ plazo: null, ausencia: null });
+  const cerradas = real ? cierre !== null : estado === "cerradas" || estado === "cerradas-tope";
+  const conBorrador = real || estado === "solicitud"; // borrador y ?area= solo en la variante limpia
   const inicial = useMemo(() => inicialDe(estado, cerradas), [estado, cerradas]);
   const modoDe = (area: string): ModoPostular => (cerradas ? "cerradas" : esAreaMasAdelante(area) ? "interes" : "solicitud");
   const validar = (d: DatosPostular) => validarPostular(d, modoDe(d.area));
@@ -143,14 +157,31 @@ export default function Postular({ estado = "solicitud" }: PropsPantalla) {
   const [focoTitulo, setFocoTitulo] = useState(0);
 
   const v = f.valores;
+  const valoresRef = useRef(v);
+  valoresRef.current = v;
   const modo = modoDe(v.area);
   const interes = modo !== "solicitud";
   const E = estadosEnvio("solicitud", interes ? POSTULAR.interes.boton : POSTULAR.envio.boton);
-  const ausencia = estado === "ausencia";
+  // Aviso de ausencia (3.3): en la vista previa, el de ejemplo; en modo real, el que trae la base.
+  const ausencia = real
+    ? servidor.ausencia && servidor.plazo
+      ? {
+          texto: servidor.ausencia.texto.replace(/\.$/, ""),
+          hasta: fechaLarga(servidor.ausencia.hasta),
+          fecha: fechaLarga(servidor.plazo),
+        }
+      : null
+    : estado === "ausencia"
+      ? AUSENCIA_POSTULAR
+      : null;
   const plazo = operacion.plazoPrimeraRespuesta
-    ? ausencia
-      ? AUSENCIA_POSTULAR.fecha
-      : fechaLarga(plazoDe(SOLICITUD.enviada))
+    ? real
+      ? servidor.plazo
+        ? fechaLarga(servidor.plazo)
+        : null
+      : ausencia
+        ? AUSENCIA_POSTULAR.fecha
+        : fechaLarga(plazoDe(SOLICITUD.enviada))
     : null;
   const resumen = mostrarResumen ? resumir(f.errores, idDe) : [];
   const sugerencia = verSugerencia ? sugerirCorreo(v.correo) : null;
@@ -160,6 +191,12 @@ export default function Postular({ estado = "solicitud" }: PropsPantalla) {
   const resumenRef = useRef<HTMLDivElement>(null);
   const focoPendiente = useRef<string | null>(null);
   const temporizador = useRef<number>(undefined);
+  // Modo real: primera interacción (tiempo mínimo, 3.11) y ?area= / ?apoyo= aceptados (origen).
+  const inicio = useRef<number | null>(null);
+  const origen = useRef<Record<string, string> | null>(null);
+  const marcarInicio = () => {
+    if (inicio.current === null) inicio.current = Date.now();
+  };
 
   useTituloDocumento(confirmado ? "Solicitud enviada · Rumbo" : modo === "interes" ? T_INTERES : T_POSTULAR);
 
@@ -193,10 +230,35 @@ export default function Postular({ estado = "solicitud" }: PropsPantalla) {
     if (apoyo && !datos.apoyo) datos = { ...datos, apoyo };
     if (apoyo && apoyo !== "nose") setDesdePlanes(planes.find((p) => p.param === apoyo)?.nombre ?? null);
     if (area && esAreaMasAdelante(area)) setOtrasAbiertas(true);
+    if (area || apoyo) origen.current = { ...(area ? { area: q.get("area")! } : {}), ...(apoyo ? { apoyo: q.get("apoyo")! } : {}) };
     if (datos !== VACIO) f.reiniciar(datos);
     setExtras(ext);
     // Solo al montar: la preselección no se repite al navegar dentro de la página.
   }, []);
+
+  // Modo real (3.9 y 6.6): ¿se reciben solicitudes?, plazo de respuesta y ausencia. Si la base no
+  // responde, el formulario sigue abierto y la base decide al enviar.
+  useEffect(() => {
+    if (!real) return;
+    let vigente = true;
+    estadoPostulaciones()
+      .then((r) => {
+        if (!vigente || !r) return;
+        setServidor({
+          plazo: r.responder_antes ?? null,
+          ausencia: r.ausencia?.hasta && r.ausencia.texto ? { hasta: r.ausencia.hasta, texto: r.ausencia.texto } : null,
+        });
+        if (!r.abiertas) {
+          setCierre(r.motivo === "cerradas" ? "cerradas" : "tope");
+          f.reiniciar({ ...valoresRef.current, area: POSTULAR.cerradas.areaReapertura.valor });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      vigente = false;
+    };
+    // Solo al montar.
+  }, [real]);
 
   // Borrador con 500 ms de retardo (sin la autorización ni el campo trampa).
   useEffect(() => {
@@ -226,11 +288,13 @@ export default function Postular({ estado = "solicitud" }: PropsPantalla) {
   const cambiar = <K extends keyof DatosPostular>(campo: K, valor: DatosPostular[K]) => {
     if (enviando) return;
     editado.current = true;
+    marcarInicio();
     f.cambiar(campo, valor);
   };
   const cambiarExtra = <K extends keyof Extras>(campo: K, valor: Extras[K]) => {
     if (enviando) return;
     editado.current = true;
+    marcarInicio();
     setExtras((x) => ({ ...x, [campo]: valor }));
   };
   const alternar = (campo: "dias" | "franjas", valor: string) =>
@@ -260,6 +324,7 @@ export default function Postular({ estado = "solicitud" }: PropsPantalla) {
 
   const empezarDeCero = () => {
     escribir(CLAVE_BORRADOR, null);
+    escribir(claves.token, null);
     editado.current = false;
     f.reiniciar(VACIO);
     setExtras(EXTRAS_VACIOS);
@@ -271,21 +336,88 @@ export default function Postular({ estado = "solicitud" }: PropsPantalla) {
     setFocoTitulo((n) => n + 1);
   };
 
-  const confirmar = (reapertura = false) => {
+  const confirmar = (reapertura = false, delServidor: Pick<DatosConfirmacion, "token" | "plazo" | "creada"> = {}) => {
     const datos: DatosConfirmacion = {
       modo: modo === "solicitud" && !reapertura ? "solicitud" : "interes",
       nombre: v.nombre.trim(),
       correo: v.correo.trim().toLowerCase(),
       area: modo === "cerradas" || reapertura ? undefined : v.area,
+      ...delServidor,
     };
     if (conBorrador) {
       escribir(CLAVE_BORRADOR, null);
+      escribir(claves.token, null);
+      // El token queda en la pestaña hasta cerrarla, con la confirmación (6.15).
       escribir(CLAVE_ENVIADA, datos);
     }
     // Volver atrás no reenvía: la confirmación reemplaza la URL, sin parámetros.
     if (search) window.history.replaceState(window.history.state, "", window.location.pathname);
     setEnvio("inicial");
     setConfirmado(datos);
+  };
+
+  // Modo real: el mismo token en cada reintento (también tras recargar la pestaña).
+  const tokenDelEnvio = () => {
+    const guardado = leer(claves.token);
+    if (typeof guardado === "string" && esToken(guardado)) return guardado;
+    const token = nuevoToken();
+    escribir(claves.token, token);
+    return token;
+  };
+
+  const enviarReal = async (reapertura = false) => {
+    setEnvio("enviando");
+    const tipo = modo === "solicitud" && !reapertura ? "solicitud" : "interes";
+    const autorizacion =
+      tipo === "solicitud" ? POSTULAR.autorizacion : modo === "cerradas" || reapertura ? POSTULAR.cerradas.autorizacion : POSTULAR.autorizacionInteres;
+    const token = tokenDelEnvio();
+    try {
+      const r = await enviarSolicitud({
+        token,
+        tipo,
+        nombre: v.nombre.trim(),
+        correo: v.correo.trim().toLowerCase(),
+        area: tipo === "solicitud" || modo === "interes" ? v.area || null : null,
+        meta: tipo === "solicitud" ? v.meta.trim() : null,
+        apoyo: tipo === "solicitud" ? v.apoyo : null,
+        dias: tipo === "solicitud" ? extras.dias : [],
+        franjas: tipo === "solicitud" ? extras.franjas : [],
+        horarios_nota: tipo === "solicitud" ? extras.notaHorarios.trim() || null : null,
+        zona_horaria: zona,
+        mayor_edad: v.mayorEdad,
+        autorizacion: v.autorizacion,
+        texto_autorizacion: `${autorizacion.antes}${autorizacion.enlace}${autorizacion.despues}`,
+        avisos_futuros: tipo === "solicitud" && extras.avisos,
+        origen: origen.current,
+        ms: inicio.current === null ? 0 : Date.now() - inicio.current,
+        campo_extra_7: extras.trampa,
+      });
+      setFallos(0);
+      confirmar(reapertura, { token, plazo: r?.responder_antes ?? null, creada: r?.creada_en ?? null });
+    } catch (e) {
+      const error = e instanceof ErrorApi ? e : new ErrorApi("servidor");
+      if (error.esDeRed) {
+        setEnvio(fallos >= 1 ? "red2" : "red");
+        setFallos((n) => n + 1);
+        return;
+      }
+      if (error.tipo === "validacion") {
+        const campo = errorPostular(error, reapertura ? "cerradas" : modo);
+        if (campo) {
+          setEnvio("inicial");
+          f.mostrar({ [campo.campo]: campo.texto });
+          setMostrarResumen(true);
+          setIntento((n) => n + 1);
+          return;
+        }
+      }
+      if (error.tipo === "cerradas") {
+        setCierreAlEnviar(cierre ?? "tope");
+        setEnvio("tope");
+        return;
+      }
+      setEnvio(error.tipo === "limite" ? "limite" : "servidor");
+    }
   };
 
   const enviar = () => {
@@ -298,6 +430,10 @@ export default function Postular({ estado = "solicitud" }: PropsPantalla) {
     }
     if (!navigator.onLine) {
       setEnvio("sinConexion");
+      return;
+    }
+    if (real) {
+      void enviarReal();
       return;
     }
     // Simulación sin red. La variante «error de red» falla una vez más (segundo fallo) y luego envía.
@@ -315,6 +451,7 @@ export default function Postular({ estado = "solicitud" }: PropsPantalla) {
 
   const otraSolicitud = () => {
     escribir(CLAVE_ENVIADA, null);
+    setEnvio("inicial");
     editado.current = false;
     f.reiniciar(VACIO);
     setExtras(EXTRAS_VACIOS);
@@ -343,7 +480,7 @@ export default function Postular({ estado = "solicitud" }: PropsPantalla) {
     ) : envio === "limite" ? (
       E.limite
     ) : envio === "tope" ? (
-      POSTULAR.cerradas.tope
+      cierreAlEnviar === "cerradas" ? POSTULAR.cerradas.porDiego : POSTULAR.cerradas.tope
     ) : null;
   // Tope alcanzado mientras escribía: crea el interés con los datos ya escritos, sin la meta (3.9).
   const accionAlerta =
@@ -359,7 +496,8 @@ export default function Postular({ estado = "solicitud" }: PropsPantalla) {
               setIntento((n) => n + 1);
               return;
             }
-            confirmar(true);
+            if (real) void enviarReal(true);
+            else confirmar(true);
           }}
         >
           {POSTULAR.cerradas.avisarme}
@@ -524,7 +662,9 @@ export default function Postular({ estado = "solicitud" }: PropsPantalla) {
         <h1 ref={titulo} tabIndex={-1}>
           {POSTULAR.cerradas.titulo}
         </h1>
-        <p className="bajada">{estado === "cerradas-tope" ? POSTULAR.cerradas.tope : POSTULAR.cerradas.porDiego}</p>
+        <p className="bajada">
+          {(real ? cierre === "tope" : estado === "cerradas-tope") ? POSTULAR.cerradas.tope : POSTULAR.cerradas.porDiego}
+        </p>
         <p className="formulario__aviso">{TEXTOS_FORM.avisoObligatorios}</p>
       </div>
     ) : modo === "interes" ? (
@@ -539,7 +679,7 @@ export default function Postular({ estado = "solicitud" }: PropsPantalla) {
         </p>
         <p className="bajada">{POSTULAR.interes.bajada}</p>
         <p>
-          <Link to={RUTAS_PUBLICAS.postular} className="enlace-flecha" onClick={volverASolicitud}>
+          <Link to={rutas.postular} className="enlace-flecha" onClick={volverASolicitud}>
             <span>
               {POSTULAR.interes.volver.slice(0, POSTULAR.interes.volver.lastIndexOf(" ") + 1)}
               <span className="nowrap">
@@ -578,10 +718,12 @@ export default function Postular({ estado = "solicitud" }: PropsPantalla) {
 
       {ausencia && modo === "solicitud" && (
         <Aviso icono="info" className="vf-ausencia">
-          <p>{POSTULAR.encabezado.ausencia(AUSENCIA_POSTULAR.texto, AUSENCIA_POSTULAR.hasta, AUSENCIA_POSTULAR.fecha)}</p>
-          <p>
-            <EtiquetaEjemplo />
-          </p>
+          <p>{POSTULAR.encabezado.ausencia(ausencia.texto, ausencia.hasta, ausencia.fecha)}</p>
+          {!real && (
+            <p>
+              <EtiquetaEjemplo />
+            </p>
+          )}
         </Aviso>
       )}
       {restaurado && (

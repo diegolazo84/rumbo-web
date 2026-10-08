@@ -5,6 +5,8 @@
 // - páginas de reenvío a la plataforma con la piel de la marca (5.7),
 // - guardián de marcadores: falla si queda un «[PENDIENTE]», una llave o un «null»,
 // - analítica opcional (solo con VITE_UMAMI_WEBSITE_ID),
+// - formulario propio (operacion.formularioPropio): /postular/, /estado/ y /contacto/ son páginas
+//   con la CSP abierta a Supabase y sin sus reenvíos (plataforma 2.2 y 2.3),
 // - vista previa de la plataforma (etapa 0): noindex y nofollow, sin analítica, fuera del sitemap,
 // - robots.txt y sitemap.xml con la dirección pública.
 import { createHash } from "node:crypto";
@@ -12,7 +14,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { buscarMarcadores } from "./marcadores.mjs";
-import { PLATAFORMA, REENVIOS, scriptReenvio, textosReenvio } from "./reenvios.mjs";
+import { PLATAFORMA, reenviosActivos, scriptReenvio, textosReenvio } from "./reenvios.mjs";
 
 const DIST = "dist";
 const SSR = "dist-ssr";
@@ -38,7 +40,7 @@ if (VERIFICACION_GOOGLE && !/^[\w-]+$/.test(VERIFICACION_GOOGLE)) {
 
 // 2. Paquete de prerender y plantilla.
 const ssr = await import(pathToFileURL(join(SSR, "entry-server.js")).href);
-const { render, paginas, PAGINA_404, IMAGEN_SOCIAL, LEMA } = ssr;
+const { render, paginas, PAGINA_404, IMAGEN_SOCIAL, LEMA, SUPABASE_URL } = ssr;
 const { renderPrevia, pantallasPrevia = [], INDICE_PREVIA, ID_VISTA_PREVIA } = ssr;
 // entry-server.tsx reexporta los datos operativos (6.1) para la puerta de lanzamiento y los reenvíos.
 const operacion = ssr.operacion ?? null;
@@ -46,6 +48,18 @@ const ayuda = ssr.ayuda ?? null;
 if (!operacion || !ayuda) {
   console.warn("postbuild: src/entry-server.tsx no reexporta `operacion` y `ayuda` (6.1); se tratan como vacíos.");
 }
+// Formulario propio (plataforma D8): la CSP de esas páginas solo permite conectarse al proyecto.
+const FORMULARIO_PROPIO = Boolean(operacion?.formularioPropio);
+if (FORMULARIO_PROPIO) {
+  let origen = "";
+  try {
+    origen = new URL(SUPABASE_URL).origin;
+  } catch {}
+  if (!origen || origen !== SUPABASE_URL || !/^https:\/\//.test(origen)) {
+    throw new Error(`operacion.formularioPropio necesita la URL https del proyecto de Supabase (VITE_SUPABASE_URL); hay «${SUPABASE_URL}».`);
+  }
+}
+const REENVIOS = reenviosActivos(operacion);
 
 // 11. Puerta de lanzamiento: sin estos datos la web se puede publicar, pero no difundir (sección 8).
 if (LANZAMIENTO) {
@@ -103,14 +117,15 @@ const conAnalitica = Boolean(UMAMI_ID);
 // funciona en meta (limitación del estándar). 'unsafe-inline' en style-src solo
 // cubre los anchos de las barras de progreso y el estilo de los reenvíos.
 // blob: en img-src solo en la vista previa (la foto antes de subir, plataforma 2.3).
-function csp({ scripts = [], analitica = false, imgBlob = false } = {}) {
+// supabase: connect-src permite el proyecto (postular, estado y contacto, plataforma 2.3).
+function csp({ scripts = [], analitica = false, imgBlob = false, supabase = false } = {}) {
   return [
     "default-src 'self'",
     ["script-src 'self'", ...scripts, ...(analitica ? UMAMI.scriptSrc : [])].join(" "),
     "style-src 'self' 'unsafe-inline'",
     imgBlob ? "img-src 'self' data: blob:" : "img-src 'self' data:",
     "font-src 'self'",
-    ["connect-src 'self'", ...(analitica ? UMAMI.connectSrc : [])].join(" "),
+    ["connect-src 'self'", ...(supabase ? [SUPABASE_URL] : []), ...(analitica ? UMAMI.connectSrc : [])].join(" "),
     "manifest-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
@@ -122,13 +137,24 @@ const imagenSocial = `${SITE_URL}/${IMAGEN_SOCIAL.ruta}`;
 
 // 4. <head> de cada página de contenido.
 // previa: vista previa de la plataforma (noindex y nofollow, sin analítica ni verificación).
-function cabeza({ titulo, descripcion, ogDescripcion, canonical, indexable, extra = "", previa = false }) {
+// sinAnalitica: /estado/ no carga Umami (plataforma 2.1). supabase: CSP de los formularios (2.3).
+function cabeza({
+  titulo,
+  descripcion,
+  ogDescripcion,
+  canonical,
+  indexable,
+  extra = "",
+  previa = false,
+  sinAnalitica = false,
+  supabase = false,
+}) {
   const t = esc(titulo);
   const d = esc(descripcion);
   const og = esc(ogDescripcion ?? descripcion);
-  const analitica = conAnalitica && !previa;
+  const analitica = conAnalitica && !previa && !sinAnalitica;
   return [
-    `<meta http-equiv="Content-Security-Policy" content="${csp({ analitica, imgBlob: previa })}" />`,
+    `<meta http-equiv="Content-Security-Policy" content="${csp({ analitica, imgBlob: previa, supabase })}" />`,
     `<title>${t}</title>`,
     `<meta name="description" content="${d}" />`,
     previa ? `<meta name="robots" content="noindex, nofollow" />` : indexable ? "" : `<meta name="robots" content="noindex" />`,
@@ -216,20 +242,58 @@ function pagina(urlRender, id, head) {
   return armar(urlRender, id, head, render(urlRender));
 }
 
+// CSS de una porción perezosa (vite build --manifest): sus hojas y las de lo que importa, en el
+// orden en que las carga Vite, sin las que ya enlaza la plantilla. Se enlazan en <head> después
+// del CSS principal, como en la vista previa (5b), para que no haya salto al hidratar.
+const MANIFIESTO = join(DIST, ".vite", "manifest.json");
+const manifiesto = existsSync(MANIFIESTO) ? JSON.parse(readFileSync(MANIFIESTO, "utf8")) : {};
+const enPlantillaCss = new Set([...plantilla.matchAll(/assets\/([^"]+\.css)/g)].map((m) => `assets/${m[1]}`));
+function hojasDe(entrada) {
+  const hojas = [];
+  const vistos = new Set();
+  const recorrer = (clave) => {
+    if (vistos.has(clave) || !manifiesto[clave]) return;
+    vistos.add(clave);
+    for (const i of manifiesto[clave].imports ?? []) recorrer(i);
+    for (const c of manifiesto[clave].css ?? []) if (!hojas.includes(c) && !enPlantillaCss.has(c)) hojas.push(c);
+  };
+  recorrer(entrada);
+  if (!vistos.size) throw new Error(`postbuild: ${entrada} no está en el manifiesto de Vite (build.manifest).`);
+  return hojas;
+}
+const conEnlaces = (html, hojas) =>
+  html.replace("</head>", `  ${hojas.map((f) => `<link rel="stylesheet" crossorigin href="${BASE}${f}">`).join("\n    ")}\n  </head>`);
+const ENTRADA_FORMULARIO = "src/pages/formulario/PaginaFormulario.tsx";
+
 for (const p of paginas) {
-  const canonical = `${SITE_URL}${p.ruta}`;
-  const html = pagina(
-    BASE + p.ruta.replace(/^\//, ""),
-    p.id,
-    cabeza({
-      titulo: p.titulo,
-      descripcion: p.descripcion,
-      ogDescripcion: p.ogDescripcion,
-      canonical,
-      indexable: true,
-      extra: p.id === "inicio" ? jsonLd() : "",
-    }),
-  );
+  const indexable = p.indexable !== false;
+  const url = BASE + p.ruta.replace(/^\//, "");
+  const head = cabeza({
+    titulo: p.titulo,
+    descripcion: p.descripcion,
+    ogDescripcion: p.ogDescripcion,
+    canonical: indexable ? `${SITE_URL}${p.ruta}` : null,
+    indexable,
+    sinAnalitica: p.analitica === false,
+    supabase: Boolean(p.formulario),
+    extra: p.id === "inicio" ? jsonLd() : "",
+  });
+  let html;
+  if (p.formulario) {
+    // Porción perezosa: se espera a que cargue (prerender), como en la vista previa.
+    const cuerpo = await renderPrevia(url);
+    if (/<script\b/i.test(cuerpo)) throw new Error(`El prerender de ${url} trae un <script> en línea.`);
+    html = conEnlaces(armar(url, p.id, head, cuerpo), hojasDe(ENTRADA_FORMULARIO));
+  } else {
+    html = pagina(url, p.id, head);
+  }
+  // Política de referrer propia (/estado/: no-referrer, plataforma 2.1): reemplaza la de la
+  // plantilla, porque con dos <meta name="referrer"> manda la última.
+  if (p.referrer) {
+    const META_REFERRER = '<meta name="referrer" content="strict-origin-when-cross-origin" />';
+    if (!html.includes(META_REFERRER)) throw new Error("index.html ya no trae la política de referrer que postbuild reemplaza.");
+    html = html.replace(META_REFERRER, `<meta name="referrer" content="${esc(p.referrer)}" />`);
+  }
   escribir(p.ruta.replace(/^\//, ""), html);
 }
 
@@ -248,10 +312,17 @@ escribirArchivo(
 // el orden de la cascada sea el mismo que al cargarlo con JS) y así no hay salto al hidratar.
 let totalPrevia = 0;
 if (renderPrevia && INDICE_PREVIA) {
+  // Primero las hojas de la porción VistaPrevia en el orden en que las carga Vite (con lo que
+  // comparte con las páginas del formulario, form.css y app.css quedan en una porción común);
+  // después las de cada pantalla, en orden alfabético.
+  const propias = hojasDe("src/pages/vista-previa/VistaPrevia.tsx").map((f) => f.replace(/^assets\//, ""));
   const enPlantilla = new Set([...plantilla.matchAll(/assets\/([^"]+\.css)/g)].map((m) => m[1]));
-  const hojas = readdirSync(join(DIST, "assets"))
-    .filter((f) => f.endsWith(".css") && !enPlantilla.has(f))
-    .sort();
+  const hojas = [
+    ...propias,
+    ...readdirSync(join(DIST, "assets"))
+      .filter((f) => f.endsWith(".css") && !enPlantilla.has(f) && !propias.includes(f))
+      .sort(),
+  ];
   const enlaces = hojas.map((f) => `<link rel="stylesheet" crossorigin href="${BASE}assets/${f}">`).join("\n    ");
   const conHojas = (html) => html.replace("</head>", `  ${enlaces}\n  </head>`);
   const rutasVistas = new Set();
@@ -281,7 +352,11 @@ a { color: #1F4636; text-underline-offset: 3px; }
 a:focus-visible { outline: 3px solid #B85A2E; outline-offset: 3px; }
 @media (hover: hover) { .boton:hover { background: #E2EADF; } }`.trim();
 
+const rutasPaginas = new Set(paginas.map((p) => p.ruta.replace(/^\/|\/$/g, "")));
 for (const r of REENVIOS) {
+  for (const ruta of r.rutas) {
+    if (rutasPaginas.has(ruta)) throw new Error(`El reenvío /${ruta} pisaría la página propia /${ruta}/.`);
+  }
   const url = PLATAFORMA + r.destino;
   const script = scriptReenvio(url);
   const hash = createHash("sha256").update(script).digest("base64");
@@ -341,7 +416,10 @@ writeFileSync(
   join(DIST, "sitemap.xml"),
   `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${paginas.map((p) => `  <url><loc>${SITE_URL}${p.ruta}</loc><lastmod>${p.revisada}</lastmod></url>`).join("\n")}
+${paginas
+  .filter((p) => p.indexable !== false)
+  .map((p) => `  <url><loc>${SITE_URL}${p.ruta}</loc><lastmod>${p.revisada}</lastmod></url>`)
+  .join("\n")}
 </urlset>
 `,
 );
@@ -349,9 +427,12 @@ ${paginas.map((p) => `  <url><loc>${SITE_URL}${p.ruta}</loc><lastmod>${p.revisad
 // 9. El paquete de prerender no se publica. Sin .nojekyll: con despliegue por Actions no
 // se usa Jekyll, y upload-pages-artifact excluye los archivos ocultos.
 if (existsSync(SSR)) rmSync(SSR, { recursive: true });
+// El manifiesto de Vite solo sirve aquí (hojas de las porciones perezosas): no se publica.
+if (existsSync(join(DIST, ".vite"))) rmSync(join(DIST, ".vite"), { recursive: true });
 
 console.log(
   `postbuild: ${paginas.length} páginas + 404 + ${REENVIOS.reduce((n, r) => n + r.rutas.length, 0)} reenvíos para ${SITE_URL} (base ${BASE})` +
     `${totalPrevia ? ` + ${totalPrevia} de vista previa` : ""}` +
-    `${conAnalitica ? ", con analítica" : ""}${LANZAMIENTO ? ", puerta de lanzamiento superada" : ""}`,
+    `${conAnalitica ? ", con analítica" : ""}${FORMULARIO_PROPIO ? `, formulario propio (${SUPABASE_URL})` : ""}` +
+    `${LANZAMIENTO ? ", puerta de lanzamiento superada" : ""}`,
 );

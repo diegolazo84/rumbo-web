@@ -8,6 +8,8 @@ import { BASENAME } from "./base";
 
 export { paginas, PAGINA_404, IMAGEN_SOCIAL } from "./data/paginas";
 export { LEMA, operacion, ayuda } from "./data/rumbo";
+// Origen de Supabase para la CSP de los formularios (plataforma 2.3).
+export { SUPABASE_URL } from "./lib/supabase-config";
 // Vista previa (etapa 0): rutas y títulos para postbuild.mjs.
 export { pantallas as pantallasPrevia, INDICE as INDICE_PREVIA } from "./pages/vista-previa/registro";
 export { ID_VISTA_PREVIA } from "./vista-previa";

@@ -1,6 +1,6 @@
 // Tarjetas de camino del piloto (tarjeta enlazada, 3.6) y filas «Más adelante» (3.16).
 // Todo el texto sale de `areas` en rumbo.ts.
-import { estados, microcopiaFormulario, postularHref, type Area } from "../data/rumbo";
+import { FORMULARIO_EXTERNO, estados, microcopiaFormulario, postularHref, type Area } from "../data/rumbo";
 import { EnlaceFlecha } from "./Enlaces";
 import Etiqueta, { EtiquetaCategoria } from "./Etiqueta";
 import Icono from "./Icono";
@@ -27,7 +27,12 @@ export function TarjetaCamino({ area }: { area: Area }) {
       <p className="voz">{area.frase}</p>
       <p className="camino-texto">{area.texto}</p>
       <div className="tarjeta-pie">
-        <EnlaceFlecha href={postularHref({ area: area.param })} plataforma evento="postular" ubicacion={area.ubicacion}>
+        <EnlaceFlecha
+          href={postularHref({ area: area.param })}
+          plataforma={FORMULARIO_EXTERNO}
+          evento="postular"
+          ubicacion={area.ubicacion}
+        >
           {area.enlace}
         </EnlaceFlecha>
         {micro && <p className="microcopia">{micro}</p>}
@@ -53,7 +58,7 @@ export function FilaFutura({ area }: { area: Area }) {
         <div>
           <EnlaceFlecha
             href={postularHref({ area: area.param })}
-            plataforma
+            plataforma={FORMULARIO_EXTERNO}
             antesOculto={`, ${area.nombre} `}
             evento="postular"
             ubicacion={area.ubicacion}

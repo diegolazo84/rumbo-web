@@ -1,9 +1,9 @@
 // Capítulo 5: Decidir (5.2). Papel hondo: los dos planes con el mismo peso visual y,
 // tras el separador, las preguntas frecuentes (src/data/preguntas.ts).
 import { preguntasPorGrupo } from "../../data/preguntas";
-import { operacion, postularHref, rutas, t } from "../../data/rumbo";
+import { FORMULARIO_EXTERNO, operacion, postularHref, rutas, t } from "../../data/rumbo";
 import { Acordeon, Encabezado, Segmentos } from "../Bloques";
-import { EnlaceFlecha, SeAbrePlataforma } from "../Enlaces";
+import { Enlace, EnlaceFlecha, SeAbrePlataforma } from "../Enlaces";
 import GrillaPlanes from "../Planes";
 import { bajadaPlanes } from "./textos";
 
@@ -63,12 +63,13 @@ export default function Decidir() {
           <p className="planes-ayuda">
             ¿No sabes cuál elegir?{" "}
             <strong>
-              <a href={postularHref()} data-umami-event="postular" data-umami-event-ubicacion="plan-sin-elegir">
+              <Enlace href={postularHref()} evento="postular" ubicacion="plan-sin-elegir">
                 Postula sin elegir plan
-                <SeAbrePlataforma />
-              </a>
+                {FORMULARIO_EXTERNO && <SeAbrePlataforma />}
+              </Enlace>
             </strong>{" "}
-            y lo vemos contigo antes de empezar. En el formulario, elige “Quiero que me orienten”.
+            {/* La opción de la plataforma de ChatGPT; en el formulario propio es «Todavía no lo sé» (3.6). */}
+            {`y lo vemos contigo antes de empezar. En el formulario, elige “${FORMULARIO_EXTERNO ? "Quiero que me orienten" : "Todavía no lo sé"}”.`}
           </p>
         </div>
 
@@ -83,7 +84,7 @@ export default function Decidir() {
             bajada="Lo que conviene saber antes de enviar tu solicitud."
           >
             <div className="preguntas-contacto">
-              <EnlaceFlecha href={rutas.contacto} plataforma evento="contacto">
+              <EnlaceFlecha href={rutas.contacto} plataforma={FORMULARIO_EXTERNO} evento="contacto">
                 ¿Otra duda? Escríbenos
               </EnlaceFlecha>
               <p className="microcopia">Si aún no postulas, escribe el correo donde quieres recibir la respuesta.</p>

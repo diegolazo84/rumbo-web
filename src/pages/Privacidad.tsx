@@ -9,12 +9,25 @@ import {
   identificacion,
 } from "../components/lectura/Lectura";
 import { VERSION_PUBLICADA } from "../data/paginas";
-import { ANALITICA_ACTIVA as ANALITICA, SANTIAGO, operacion as op, rayas, rutas, t } from "../data/rumbo";
+import {
+  ANALITICA_ACTIVA as ANALITICA,
+  FORMULARIO_EXTERNO,
+  SANTIAGO,
+  operacion as op,
+  rayas,
+  rutas,
+  t,
+} from "../data/rumbo";
 
 // Política de privacidad (5.3). La fecha es la de la versión publicada (VERSION_PUBLICADA en
 // paginas.ts), literal y escrita en el mismo commit que la publica (nunca un marcador).
-const VERSION_PRIVACIDAD = { numero: "1.0", fecha: VERSION_PUBLICADA.texto };
+// Momento A (plataforma 7.1): con operacion.formularioPropio la política pasa a 1.1 y nombra a
+// Supabase, el enlace privado y el código derivado de la IP. La misma versión debe quedar en
+// ajustes_operacion.version_privacidad. Todo el momento A pasa por revisión legal (8.10).
+const A = op.formularioPropio;
+const VERSION_PRIVACIDAD = { numero: A ? "1.1" : "1.0", fecha: VERSION_PUBLICADA.texto };
 
+const RETIRAR = "Si retiras tu solicitud con tu enlace privado, la borramos de inmediato.";
 const ELIMINAR =
   "Puedes pedirnos que los eliminemos en cualquier momento, y lo haremos, salvo lo que la ley nos obligue a conservar, como los documentos tributarios.";
 
@@ -49,18 +62,42 @@ const secciones: Paso[] = [
         <ListaLectura
           items={[
             <>
-              <strong>Cuando visitas esta web:</strong> No tiene formularios ni cookies. GitHub, que la aloja, registra
-              tu dirección IP por seguridad. Las tipografías se sirven desde este mismo sitio.
+              <strong>Cuando visitas esta web:</strong>{" "}
+              {A
+                ? "Esta web no usa cookies. Si llenas un formulario, tu borrador se guarda solo en esa pestaña de tu navegador hasta que la cierres. GitHub, que aloja la web, registra tu dirección IP por seguridad. Al enviar un formulario, guardamos por 48 horas un código derivado de tu dirección IP, que no permite conocerla, solo para evitar envíos abusivos."
+                : "No tiene formularios ni cookies. GitHub, que la aloja, registra tu dirección IP por seguridad."}{" "}
+              Las tipografías se sirven desde este mismo sitio.
               {ANALITICA &&
                 " Usamos Umami, una herramienta de estadísticas sin cookies que no guarda datos que te identifiquen: solo cifras agregadas, como páginas vistas, origen de la visita y clics en botones."}
             </>,
-            <>
-              <strong>Cuando postulas:</strong> Nombre, correo, el área que eliges, una descripción breve de tu meta, tu
-              preferencia de apoyo, tu disponibilidad si la indicas y la confirmación de que eres mayor de edad.
-            </>,
-            <>
-              <strong>Cuando nos escribes:</strong> Nombre, correo y tu mensaje.
-            </>,
+            ...(A
+              ? [
+                  <>
+                    <strong>Cuando postulas:</strong> Nombre, correo, el área, lo que quieres conseguir, el tipo de
+                    apoyo, los días y franjas para conversar, tu zona horaria (la detecta tu navegador), tu declaración
+                    de mayoría de edad, el registro de tu autorización (texto, versión y fecha) y, si la das, tu
+                    preferencia de recibir avisos.
+                  </>,
+                  <>
+                    <strong>Cuando dejas tu interés:</strong> Nombre, correo y el área.
+                  </>,
+                  <>
+                    <strong>Cuando nos escribes:</strong> Motivo, nombre si lo das, correo y mensaje.
+                  </>,
+                  <>
+                    <strong>Cuando aceptas tu acuerdo:</strong> La versión de las condiciones, el acuerdo y la fecha.
+                  </>,
+                ]
+              : [
+                  <>
+                    <strong>Cuando postulas:</strong> Nombre, correo, el área que eliges, una descripción breve de tu
+                    meta, tu preferencia de apoyo, tu disponibilidad si la indicas y la confirmación de que eres mayor
+                    de edad.
+                  </>,
+                  <>
+                    <strong>Cuando nos escribes:</strong> Nombre, correo y tu mensaje.
+                  </>,
+                ]),
             <>
               <strong>Cuando participas en un ciclo:</strong> Los datos de la cuenta con la que inicias sesión; tu
               programa (metas, acciones, horarios e instrucciones); lo que registras como hecho; créditos, niveles y
@@ -100,6 +137,14 @@ const secciones: Paso[] = [
         <ListaLectura
           items={[
             "Revisar tu solicitud y contactarte sobre el piloto: con tu consentimiento, que das al postular.",
+            // Momento A (7.1). La base de cada finalidad nueva la decide la revisión legal (8.10).
+            ...(A
+              ? [
+                  "Avisarte si se abre un área o una etapa: solo si lo autorizas.",
+                  "Evitar envíos abusivos en los formularios.",
+                  "Registrar tu aceptación del acuerdo.",
+                ]
+              : []),
             "Acordar contigo el plan, el precio y las condiciones: porque tú lo solicitas, antes de un acuerdo.",
             "Preparar, publicar y ajustar tu programa, hacer las revisiones y calcular créditos y niveles: para cumplir lo que acordamos contigo.",
             "Mostrar tu alias en el ranking y tus publicaciones en el foro: solo si tú lo activas.",
@@ -115,8 +160,22 @@ const secciones: Paso[] = [
   },
   {
     titulo: "Decisiones automatizadas",
-    contenido:
-      "Los créditos, niveles y rachas se calculan automáticamente, con reglas públicas, a partir de lo que registras. Son informativos: no deciden si te aceptamos, cuánto pagas ni si continúas, y no evalúan tu valor como persona. La aceptación al piloto siempre la decide una persona.",
+    contenido: A ? (
+      <>
+        <p>
+          No tomamos decisiones automatizadas sobre ti. La aceptación al piloto la decide una persona. Algunas
+          solicitudes se marcan automáticamente para revisarlas con más cuidado (por ejemplo, si parecen repetidas o
+          enviadas por un programa): esa marca solo ordena la bandeja; una persona las lee todas.
+        </p>
+        <p>
+          Los créditos, niveles y rachas se calculan automáticamente, con reglas públicas, a partir de lo que
+          registras. Son informativos: no deciden si te aceptamos, cuánto pagas ni si continúas, y no evalúan tu valor
+          como persona.
+        </p>
+      </>
+    ) : (
+      "Los créditos, niveles y rachas se calculan automáticamente, con reglas públicas, a partir de lo que registras. Son informativos: no deciden si te aceptamos, cuánto pagas ni si continúas, y no evalúan tu valor como persona. La aceptación al piloto siempre la decide una persona."
+    ),
   },
   {
     titulo: "Con quién compartimos tus datos",
@@ -126,6 +185,10 @@ const secciones: Paso[] = [
         <ListaLectura
           items={puntuar([
             "GitHub (Estados Unidos), que aloja esta web",
+            // Verificar que la infraestructura de la región sea la que Supabase declara (7.1).
+            ...(A
+              ? ["Supabase Inc. (Estados Unidos), que guarda tu solicitud y tus mensajes en servidores ubicados en São Paulo, Brasil"]
+              : []),
             // Cloudflare solo se nombra cuando Diego confirme la infraestructura de ChatGPT Sites (8.11).
             rayas(
               op.alojamientoVerificado
@@ -146,16 +209,26 @@ const secciones: Paso[] = [
   },
   {
     titulo: "Transferencias fuera de Chile",
-    contenido:
-      "Estos proveedores pueden guardar o procesar datos en Estados Unidos u otros países, que podrían no ofrecer un nivel de protección equivalente al chileno.",
+    // Base y garantías de la transferencia: las decide la revisión legal (7.1).
+    contenido: A
+      ? "Tu solicitud y tus mensajes se guardan en servidores ubicados en Brasil. Los proveedores son empresas de Estados Unidos y pueden guardar o procesar datos en Estados Unidos u otros países, que podrían no ofrecer un nivel de protección equivalente al chileno."
+      : "Estos proveedores pueden guardar o procesar datos en Estados Unidos u otros países, que podrían no ofrecer un nivel de protección equivalente al chileno.",
   },
   {
     titulo: "Cuánto tiempo guardamos tus datos",
     contenido: op.conservacion ? (
       <>
-        <ListaLectura items={op.conservacion.map((c) => `${c.tipo}: ${c.plazo}`)} />
+        <ListaLectura
+          items={[
+            ...op.conservacion.map((c) => `${c.tipo}: ${c.plazo}`),
+            ...(A && !op.conservacion.some((c) => /IP/.test(c.tipo)) ? ["Código derivado de tu dirección IP: 48 horas"] : []),
+          ]}
+        />
+        {A && <p>{RETIRAR}</p>}
         <p>{ELIMINAR}</p>
       </>
+    ) : A ? (
+      `Los guardamos solo mientras son necesarios para la finalidad por la que nos los entregaste: revisar tu solicitud, acompañarte durante el piloto o cumplir una obligación legal. El código derivado de tu dirección IP se borra a las 48 horas. ${RETIRAR} ${ELIMINAR}`
     ) : (
       `Los guardamos solo mientras son necesarios para la finalidad por la que nos los entregaste: revisar tu solicitud, acompañarte durante el piloto o cumplir una obligación legal. ${ELIMINAR}`
     ),
@@ -166,7 +239,12 @@ const secciones: Paso[] = [
       <>
         <ListaLectura
           items={[
-            "Tu solicitud se consulta con un enlace privado que solo tú recibes.",
+            ...(A
+              ? [
+                  "Tu solicitud se consulta con un enlace privado que solo tú recibes. Guardamos ese enlace de una forma que ni siquiera nosotros podemos reconstruir.",
+                  "Quien opera Rumbo entra a sus herramientas con un segundo factor de verificación.",
+                ]
+              : ["Tu solicitud se consulta con un enlace privado que solo tú recibes."]),
             "Tu espacio requiere iniciar sesión.",
             "Las fotos solo las ves tú y quien te acompaña en Rumbo, que las revisa. Nunca se publican.",
             "El ranking muestra solo alias y créditos, nunca tu correo, tus fotos, tu calendario ni tus metas.",
@@ -197,7 +275,17 @@ const secciones: Paso[] = [
         </p>
         <p>
           <strong>Cómo:</strong>{" "}
-          {op.correo ? (
+          {A ? (
+            <>
+              con tu enlace privado puedes ver y retirar tu solicitud. Para todo lo demás,{" "}
+              {op.correo && (
+                <>
+                  escríbenos a <EnlaceCorreo correo={op.correo} /> o{" "}
+                </>
+              )}
+              usa la <EnlaceContacto motivo="datos" /> con el motivo «Mis datos personales».
+            </>
+          ) : op.correo ? (
             <>
               escríbenos a <EnlaceCorreo correo={op.correo} /> o desde la <EnlaceContacto />.
             </>
@@ -212,7 +300,7 @@ const secciones: Paso[] = [
           Si no respondemos o no estás conforme con la respuesta, puedes reclamar ante la Agencia de Protección de
           Datos Personales una vez que entre en funciones, o ante los tribunales según la normativa vigente.
         </p>
-        <p>También puedes retirar tu solicitud cuando quieras con tu enlace privado.</p>
+        {!A && <p>También puedes retirar tu solicitud cuando quieras con tu enlace privado.</p>}
       </>
     ),
   },
@@ -265,10 +353,10 @@ export default function Privacidad() {
           <Boton
             href={op.correo ? `mailto:${op.correo}` : rutas.contacto}
             variante="terciario"
-            plataforma={!op.correo}
+            plataforma={!op.correo && FORMULARIO_EXTERNO}
           >
             Escríbenos
-            <Icono nombre="arrow-up-right" tamaño={16} />
+            {(op.correo || FORMULARIO_EXTERNO) && <Icono nombre="arrow-up-right" tamaño={16} />}
           </Boton>
         </div>
       </div>

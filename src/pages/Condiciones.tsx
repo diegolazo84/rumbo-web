@@ -29,7 +29,11 @@ import {
 
 // Condiciones del piloto (5.4), imprimibles. La fecha es la de la versión publicada
 // (VERSION_PUBLICADA en paginas.ts), literal y escrita en el mismo commit que la publica.
-const VERSION_CONDICIONES = { numero: "1.0", fecha: VERSION_PUBLICADA.texto };
+// Momento A (plataforma 7.2): con operacion.formularioPropio pasa a 1.1 y §3 describe el
+// formulario propio y el enlace privado. La misma versión debe quedar en
+// ajustes_operacion.version_condiciones (es la que se registra al aceptar el acuerdo).
+const A = op.formularioPropio;
+const VERSION_CONDICIONES = { numero: A ? "1.1" : "1.0", fecha: VERSION_PUBLICADA.texto };
 
 const ACEPTACION =
   "La aceptación depende de que el piloto pueda ayudarte con tu meta y de nuestra capacidad en esta etapa.";
@@ -39,6 +43,26 @@ const revision = !plazo
   : op.respondemosTodas
     ? t("Una persona revisa cada solicitud y te responde dentro de {plazo}, también si en esta etapa no podemos acompañarte.", { plazo })
     : t("Una persona revisa cada solicitud y, si el piloto puede acompañarte, te escribe dentro de {plazo}.", { plazo });
+// La misma idea en las palabras del momento A (7.2, punto 3).
+const lectura = !plazo
+  ? "Una persona lee tu solicitud."
+  : op.respondemosTodas
+    ? t("Una persona lee tu solicitud y te escribe dentro de {plazo}, también si en esta etapa no podemos acompañarte.", { plazo })
+    : t("Una persona lee tu solicitud y, si el piloto puede acompañarte, te escribe dentro de {plazo}.", { plazo });
+const ENTRADA = A
+  ? [
+      "Nos cuentas tu meta en la web. Postular es gratis y no te compromete.",
+      "Al enviar, ves en pantalla un enlace privado para consultar el estado de tu solicitud o retirarla. Guárdalo: por ahora no lo enviamos por correo.",
+      `${lectura} ${ACEPTACION}`,
+      "Si el piloto puede ayudarte, conversamos tu meta, tu disponibilidad, el plan, el precio y estas condiciones.",
+      "Te dejamos el acuerdo en tu enlace privado. El acuerdo existe solo cuando lo aceptas ahí. Nada empieza ni se cobra antes.",
+    ]
+  : [
+      "Postular es gratis y no es una compra, una reserva ni una venta. No crea obligaciones para ti ni para Rumbo.",
+      `${revision} ${ACEPTACION}`,
+      "Al enviar tu solicitud verás en pantalla un enlace privado para consultar su estado o retirarla. No enviamos correos automáticos.",
+      "Si podemos acompañarte, te contactamos para aclarar tu meta, tu disponibilidad, el plan, el precio y estas condiciones. El acuerdo existe solo cuando lo aceptas.",
+    ];
 
 const SIN_RENOVACION =
   "No hay cobros adicionales a los acordados ni renovación automática: cada ciclo nuevo requiere un nuevo acuerdo.";
@@ -106,12 +130,7 @@ const secciones: Paso[] = [
     contenido: (
       <ListaLectura
         numerada
-        items={[
-          "Postular es gratis y no es una compra, una reserva ni una venta. No crea obligaciones para ti ni para Rumbo.",
-          `${revision} ${ACEPTACION}`,
-          "Al enviar tu solicitud verás en pantalla un enlace privado para consultar su estado o retirarla. No enviamos correos automáticos.",
-          "Si podemos acompañarte, te contactamos para aclarar tu meta, tu disponibilidad, el plan, el precio y estas condiciones. El acuerdo existe solo cuando lo aceptas.",
-        ]}
+        items={ENTRADA}
       />
     ),
   },

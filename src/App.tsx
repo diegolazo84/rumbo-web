@@ -13,6 +13,13 @@ import { esVistaPrevia } from "./vista-previa";
 
 // Vista previa de la plataforma (etapa 0): porción aparte, con su propio marco, título y estilos.
 const VistaPrevia = lazy(() => import("./pages/vista-previa/VistaPrevia"));
+// Postular, estado y contacto (solo con operacion.formularioPropio): porción aparte, con sus estilos.
+const PaginaFormulario = lazy(() => import("./pages/formulario/PaginaFormulario"));
+const formulario = (pagina: "postular" | "estado" | "contacto") => (
+  <Suspense fallback={null}>
+    <PaginaFormulario pagina={pagina} />
+  </Suspense>
+);
 
 // TypeScript exige una vista por cada página declarada en data/paginas.ts.
 const vistas: Record<PaginaId, ReactElement> = {
@@ -20,6 +27,9 @@ const vistas: Record<PaginaId, ReactElement> = {
   privacidad: <Privacidad />,
   condiciones: <Condiciones />,
   ayuda: <Ayuda />,
+  postular: formulario("postular"),
+  estado: formulario("estado"),
+  contacto: formulario("contacto"),
 };
 
 // Desplazamiento, foco y metadatos al navegar dentro de la app.
@@ -63,8 +73,9 @@ function AlCambiarDeRuta() {
 export default function App() {
   const { pathname } = useLocation();
   useRevelar();
-  // Ayuda inmediata no lleva llamado comercial en la cabecera.
-  const conCta = paginaPorRuta(pathname)?.id !== "ayuda";
+  // Ayuda inmediata no lleva llamado comercial en la cabecera; /postular/ tampoco (plataforma 3.2).
+  const id = paginaPorRuta(pathname)?.id;
+  const conCta = id !== "ayuda" && id !== "postular";
 
   if (esVistaPrevia(pathname)) {
     return (

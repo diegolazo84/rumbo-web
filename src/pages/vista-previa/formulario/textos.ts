@@ -73,8 +73,9 @@ export const CONFIRMACION = {
     lock: "Este enlace es solo para ti: quien lo tenga puede ver lo que nos contaste. No lo compartas.",
   },
   quePasa: "Qué pasa ahora",
-  pasos: (fechaHora: string, fecha: string | null) => [
-    { titulo: "Enviaste tu solicitud", contenido: `${fechaHora}, hora de Chile.` },
+  // fechaHora null (modo real sin la hora de la base): el paso queda sin contenido.
+  pasos: (fechaHora: string | null, fecha: string | null) => [
+    { titulo: "Enviaste tu solicitud", contenido: fechaHora ? `${fechaHora}, hora de Chile.` : undefined },
     { titulo: "La leemos", contenido: pasoLeemos(fecha) },
     { titulo: "Te escribimos", contenido: PASO_ESCRIBIMOS },
     { titulo: "Decides tú", contenido: "El acuerdo existe solo cuando lo aceptas. Nada empieza ni se cobra antes." },
@@ -202,6 +203,13 @@ export const ESTADO = {
     texto: (correo: string) => `Si esta área abre, te escribiremos a ${correo}.`,
   },
   interesCerrado: { etiqueta: "Cerrada", titulo: "Ya no te enviaremos avisos." },
+  // PROPUESTO (lo decide Diego; la especificación no fija su texto): error de red al retirar o
+  // al aceptar el acuerdo en /estado/. Mismo tono que «No pudimos cargar tu solicitud» (3.14).
+  errorAccion: {
+    retirar: "No pudimos retirar tu solicitud. Revisa tu conexión e inténtalo de nuevo.",
+    interes: "No pudimos quitar tu aviso. Revisa tu conexión e inténtalo de nuevo.",
+    aceptar: "No pudimos registrar tu aceptación. Revisa tu conexión e inténtalo de nuevo.",
+  },
   // «Nota de {nombreCoach}» (nota_cierre, opcional): va bajo el texto fijo, nunca lo reemplaza.
   notaDe: (nombre: string) => `Nota de ${nombre}`,
   // Bloque de aceptación del acuerdo (estado acordada).

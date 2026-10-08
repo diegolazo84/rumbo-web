@@ -1,7 +1,7 @@
 // Pie (3.11, 5.1.2): en todas las páginas, también en la 404. El aviso de crisis va
 // siempre visible, sin interacción. El *4141 va sin enlace (iOS no marca tel: con «*»).
 import { Link } from "react-router-dom";
-import { LEMA, SANTIAGO, operacion, postularHref, rutas } from "../data/rumbo";
+import { FORMULARIO_EXTERNO, LEMA, SANTIAGO, operacion, postularHref, rutas } from "../data/rumbo";
 import { Aviso } from "./Bloques";
 import { EnlaceUtil } from "./Enlaces";
 import { anclas } from "./Header";
@@ -64,7 +64,7 @@ export default function Footer() {
             <h2 id="pie-piloto">Piloto</h2>
             <ul>
               <li>
-                <EnlaceUtil href={postularHref()} plataforma evento="postular" ubicacion="pie">
+                <EnlaceUtil href={postularHref()} plataforma={FORMULARIO_EXTERNO} evento="postular" ubicacion="pie">
                   Postular
                 </EnlaceUtil>
               </li>
@@ -85,7 +85,7 @@ export default function Footer() {
             <h2 id="pie-ayuda">Ayuda</h2>
             <ul>
               <li>
-                <EnlaceUtil href={rutas.contacto} plataforma>
+                <EnlaceUtil href={rutas.contacto} plataforma={FORMULARIO_EXTERNO}>
                   Contacto
                 </EnlaceUtil>
               </li>
