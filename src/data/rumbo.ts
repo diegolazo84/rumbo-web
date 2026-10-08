@@ -126,9 +126,9 @@ export const operacion = {
   cobertura: {
     encaje: "hablas español y puedes conectarte en línea, desde Chile o desde otro país",
     respuesta:
-      "Sí, en línea y en español, desde la mayoría de los países. Para entrar a Mi espacio necesitas una cuenta de ChatGPT, que no está disponible en algunos países, como Venezuela o Cuba; en ese caso hoy no podemos acompañarte. Fuera de Chile se paga en dólares. Las videollamadas son en franjas fijas de hora de Chile y los plazos se cuentan en días hábiles de Chile.",
+      "Sí, en línea y en español, desde cualquier país. Fuera de Chile se paga en dólares. Las videollamadas son en franjas fijas de hora de Chile y los plazos se cuentan en días hábiles de Chile.",
     condiciones:
-      "Se participa en línea y en español, desde Chile o desde la mayoría de los países. Mi espacio requiere una cuenta de ChatGPT, que no está disponible en algunos países, como Venezuela o Cuba: desde ellos hoy no podemos acompañarte. Fuera de Chile el pago es en dólares. Las videollamadas se agendan en franjas fijas de hora de Chile, y todos los plazos se cuentan en días hábiles de Chile, de lunes a viernes, sin contar sus feriados.",
+      "Se participa en línea y en español, desde Chile o desde cualquier otro país. Fuera de Chile el pago es en dólares. Las videollamadas se agendan en franjas fijas de hora de Chile, y todos los plazos se cuentan en días hábiles de Chile, de lunes a viernes, sin contar sus feriados.",
   } as null | { encaje: string; respuesta: string; condiciones: string },
   alojamientoVerificado: false, // true cuando Diego confirme qué infraestructura usa ChatGPT Sites (Privacidad §6)
   tamanoPrimerGrupo: 5 as number | null,
