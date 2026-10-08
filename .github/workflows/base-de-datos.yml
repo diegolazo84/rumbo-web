@@ -1,0 +1,44 @@
+name: Base de datos
+
+# Aplica supabase/*.sql sobre un Supabase local, en el mismo orden que Diego los pega,
+# y exige que verificacion.sql diga «ok» en todas las filas.
+on:
+  pull_request:
+    paths: ["supabase/**", ".github/workflows/base-de-datos.yml"]
+  push:
+    branches: [main]
+    paths: ["supabase/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sql:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Levantar Supabase local
+        run: |
+          mkdir -p "$RUNNER_TEMP/sb" && cd "$RUNNER_TEMP/sb"
+          supabase init --force
+          supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,postgres-meta,supavisor,mailpit
+      - name: Aplicar el SQL en orden
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          for f in 00-esquema 01-funciones 02-rls 03-storage 04-auth 05-avisos 06-cron semillas feriados-2026-2027; do
+            echo "::group::$f.sql"
+            psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "supabase/$f.sql"
+            echo "::endgroup::"
+          done
+      - name: Verificación
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          psql "$PGURL" -v ON_ERROR_STOP=1 -At -F ' | ' -f supabase/verificacion.sql | tee verificacion.txt
+          if grep -v '| ok$' verificacion.txt; then echo "::error::verificacion.sql tiene filas que no dicen ok"; exit 1; fi
