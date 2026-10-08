@@ -30,6 +30,7 @@ import {
   reenviosActivos,
   scriptReenvio,
   textosReenvio,
+  urlReenvio,
 } from "../scripts/reenvios.mjs";
 
 // Con el formulario propio, /postular/ consulta al cargar si las postulaciones están abiertas.
@@ -481,7 +482,9 @@ test("los reenvíos apuntan a la misma plataforma que los enlaces", async () => 
 });
 
 for (const r of reenviosActivos(operacion)) {
-  const url = PLATAFORMA_REENVIOS + r.destino;
+  // Interno (Mi espacio propio): la misma web, bajo la base del sitio.
+  const interno = "interno" in r && !!r.interno;
+  const url = urlReenvio(r, (process.env.BASE_PATH || "/rumbo-web/").replace(/\/?$/, "/"));
   const textos = textosReenvio(r);
   for (const ruta of r.rutas) {
     test(`reenvío /${ruta}/: página propia, noindex y CSP con hash`, PROD, async ({ request }) => {
@@ -511,6 +514,11 @@ for (const r of reenviosActivos(operacion)) {
       await page.route(`${PLATAFORMA}/**`, (rt) => rt.fulfill({ contentType: "text/html", body: "<p>plataforma</p>" }));
       // Sin barra final, como en un enlace escrito a mano.
       await page.goto(`${ruta}?area=emprendimiento&apoyo=coach#token-de-prueba`);
+      if (interno) {
+        // Mi espacio sin sesión sigue a su ingreso (mi-espacio/entrar/): basta con llegar a la carpeta.
+        await page.waitForURL((u) => u.pathname.startsWith(url));
+        return;
+      }
       await page.waitForURL(`${PLATAFORMA}/**`);
       expect(page.url()).toBe(`${url}?area=emprendimiento&apoyo=coach#token-de-prueba`);
     });

@@ -124,6 +124,7 @@ export type Servidor = {
   mostrarCreditos: (mostrar: boolean) => Promise<void>;
   pedirDerecho: (tipo: string, detalle: string | null) => Promise<Iso | null>; // fecha límite, si hay
   exportar: () => Promise<unknown>;
+  verNovedad: (id: string) => void; // la novedad deja de mostrarse en Hoy
   recargar: () => void;
 };
 

@@ -5,6 +5,7 @@ import App from "./App";
 import { BASENAME } from "./base";
 import { paginaPorRuta } from "./data/paginas";
 import { ID_VISTA_PREVIA, esVistaPrevia } from "./vista-previa";
+import { ID_PLATAFORMA, esPlataforma } from "./plataforma";
 import "@fontsource-variable/fraunces/opsz.css";
 import "@fontsource-variable/fraunces/opsz-italic.css";
 import "@fontsource-variable/instrument-sans/wght.css";
@@ -31,7 +32,11 @@ if (location.pathname.endsWith("/index.html")) {
 // En producción el HTML viene prerenderizado: se hidrata solo si corresponde a la ruta
 // pedida (p. ej. /Privacidad/ recibe el HTML de la 404). En `npm run dev` llega vacío.
 const ruta = "/" + location.pathname.slice(BASENAME.length);
-const esperada = esVistaPrevia(ruta) ? ID_VISTA_PREVIA : (paginaPorRuta(ruta)?.id ?? "404");
+const esperada = esVistaPrevia(ruta)
+  ? ID_VISTA_PREVIA
+  : esPlataforma(ruta)
+    ? ID_PLATAFORMA
+    : (paginaPorRuta(ruta)?.id ?? "404");
 if (raiz.firstElementChild && raiz.dataset.pagina === esperada) {
   hydrateRoot(raiz, app, {
     onRecoverableError(error) {

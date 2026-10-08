@@ -451,3 +451,25 @@ export const T_PREFERENCIAS = {
   // PROPUESTO: Mi espacio real, si no se pudo armar la descarga.
   errorDescargar: "No pudimos preparar la descarga. Revisa tu conexión e inténtalo de nuevo.",
 } as const;
+
+// ---------------------------------------------------------------------------
+// 4.4.3 Novedades (Mi espacio real: las arma ProveedorEspacio con los datos de la base)
+
+export const T_NOVEDADES = {
+  revision: (n: number) => `Tu coach respondió tu registro de la semana ${n}.`,
+  verRevision: "Ver la revisión",
+  ajuste: "Respondimos tu solicitud de ajuste.",
+  verAjuste: "Ver la respuesta",
+  programa: (fecha: string) => `Hubo cambios en tu programa desde el ${fecha}.`,
+  verPrograma: "Ver qué cambió",
+  aprobada: (accion: string) => `Tu foto de “${accion}” fue aprobada · +1`,
+  rechazada: (accion: string) => `Tu foto de “${accion}” no se aprobó. Puedes subir otra.`,
+  verAccion: "Ver la acción",
+} as const;
+
+// Mi espacio real: la cuenta no tiene una ficha abierta (cerrada o eliminada). PROPUESTO.
+export const T_SIN_FICHA = {
+  titulo: "No encontramos un espacio abierto con este correo.",
+  texto: "Si tu programa terminó o crees que es un error, escríbenos y lo revisamos contigo.",
+  salir: "Salir",
+} as const;

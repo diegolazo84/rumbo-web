@@ -3,7 +3,7 @@
 // reales (Supabase por src/lib/api.ts, rutas públicas). Por defecto, vista previa: el registro
 // de la vista previa no cambia. src/pages/formulario/PaginaFormulario.tsx pone el modo real.
 import { createContext, useContext } from "react";
-import { rutas } from "../../../data/rumbo";
+import { operacion, rutas } from "../../../data/rumbo";
 import { RUTAS_PUBLICAS } from "../rutas";
 
 export type RutasFormulario = { postular: string; estado: string; contacto: string; entrar: string };
@@ -24,10 +24,16 @@ export const MODO_PREVIA: ModoFormulario = {
   },
 };
 
-// Mi espacio sigue en la plataforma de ChatGPT hasta que se encienda miEspacioPropio (D8).
+// Mi espacio sigue en la plataforma de ChatGPT hasta que se encienda miEspacioPropio (D8); con
+// el interruptor, «Entrar a Mi espacio» lleva al ingreso propio.
 export const MODO_REAL: ModoFormulario = {
   real: true,
-  rutas: { postular: "/postular/", estado: "/estado/", contacto: "/contacto/", entrar: rutas.miEspacio },
+  rutas: {
+    postular: "/postular/",
+    estado: "/estado/",
+    contacto: "/contacto/",
+    entrar: operacion.miEspacioPropio ? "/mi-espacio/entrar/" : rutas.miEspacio,
+  },
   claves: { borrador: "rumbo-postular", enviada: "rumbo-postular-enviada", token: "rumbo-postular-token" },
 };
 

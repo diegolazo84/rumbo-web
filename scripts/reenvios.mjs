@@ -17,6 +17,7 @@ export const REENVIOS = [
     destino: "/mi-programa",
     nombre: "Mi espacio",
     explicacion: "La plataforma está en otra dirección web y pide iniciar sesión con una cuenta de ChatGPT.",
+    miEspacio: true,
   },
   {
     rutas: ["comunidad"],
@@ -42,8 +43,23 @@ export const REENVIOS = [
   },
 ];
 
+// Con operacion.miEspacioPropio, /mi-programa/ y /app/ llevan a Mi espacio propio, en esta misma
+// web (interno: carpeta bajo la base). Reemplaza al reenvío a la plataforma externa.
+export const REENVIO_MI_ESPACIO = {
+  rutas: ["mi-programa", "app"],
+  interno: "mi-espacio/",
+  nombre: "Mi espacio",
+  explicacion: "Mi espacio ahora está en esta misma web.",
+};
+
 // Reenvíos que se publican según los interruptores de `operacion` (rumbo.ts).
-export const reenviosActivos = (op) => REENVIOS.filter((r) => !(r.formulario && op?.formularioPropio));
+export const reenviosActivos = (op) => [
+  ...REENVIOS.filter((r) => !(r.formulario && op?.formularioPropio) && !(r.miEspacio && op?.miEspacioPropio)),
+  ...(op?.miEspacioPropio ? [REENVIO_MI_ESPACIO] : []),
+];
+
+// Dirección final de un reenvío (base: la ruta base del sitio, p. ej. «/rumbo-web/»).
+export const urlReenvio = (r, base) => (r.interno ? base + r.interno : PLATAFORMA + r.destino);
 
 // «a» + «el» se contrae: «Te llevamos al formulario para postular».
 const aDestino = (nombre) => (nombre.startsWith("el ") ? `al ${nombre.slice(3)}` : `a ${nombre}`);
@@ -52,7 +68,7 @@ const aDestino = (nombre) => (nombre.startsWith("el ") ? `al ${nombre.slice(3)}`
 export function textosReenvio(r) {
   return {
     titulo: `Abriendo ${r.nombre} · Rumbo`,
-    llevamos: `Te llevamos ${aDestino(r.nombre)}, en la plataforma de Rumbo.`,
+    llevamos: r.interno ? `Te llevamos ${aDestino(r.nombre)}.` : `Te llevamos ${aDestino(r.nombre)}, en la plataforma de Rumbo.`,
     explicacion: `${r.explicacion} Si no pasa nada en unos segundos, usa este enlace:`,
     enlace: `Abrir ${r.nombre}`,
     nota: r.nota ?? null,

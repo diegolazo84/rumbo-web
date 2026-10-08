@@ -266,7 +266,7 @@ function CabezaHoy({ hoy, semana, progreso, esc }: { hoy: Iso; semana: number; p
 // Novedades: 0 a 2 avisos info con enlace (4.4.3). Nunca un contador.
 
 function Novedades() {
-  const { novedades, R } = useEspacio();
+  const { novedades, R, servidor } = useEspacio();
   const DESTINO_NOVEDAD = { semana: R.semanaPublicada, ajuste: R.ajusteLista, programa: R.semanaPublicada, accion: R.accion };
   return (
     <section className="me-novedades" aria-label={T_HOY.novedades.etiqueta}>
@@ -275,7 +275,7 @@ function Novedades() {
           <Icono nombre="info" tamaño={20} className="aviso-icono" />
           <div className="me-novedad__cuerpo">
             <p>{n.texto}</p>
-            <Link to={n.ruta ?? DESTINO_NOVEDAD[n.destino]} className="enlace-flecha">
+            <Link to={n.ruta ?? DESTINO_NOVEDAD[n.destino]} className="enlace-flecha" onClick={() => servidor?.verNovedad(n.id)}>
               {n.enlace}
               <Icono nombre="arrow-right" tamaño={16} />
             </Link>
