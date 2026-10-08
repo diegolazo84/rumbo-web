@@ -80,7 +80,9 @@ export default function App() {
   const id = paginaPorRuta(pathname)?.id;
   const conCta = id !== "ayuda" && id !== "postular";
 
-  if (esVistaPrevia(pathname)) {
+  // Vista previa y plataforma propia: porción aparte, con su propio marco.
+  const Aparte = esVistaPrevia(pathname) ? VistaPrevia : esPlataforma(pathname) ? Plataforma : null;
+  if (Aparte) {
     return (
       <>
         <a className="saltar" href="#contenido">
@@ -88,21 +90,7 @@ export default function App() {
         </a>
         <AlCambiarDeRuta />
         <Suspense fallback={null}>
-          <VistaPrevia />
-        </Suspense>
-      </>
-    );
-  }
-
-  if (esPlataforma(pathname)) {
-    return (
-      <>
-        <a className="saltar" href="#contenido">
-          Saltar al contenido
-        </a>
-        <AlCambiarDeRuta />
-        <Suspense fallback={null}>
-          <Plataforma />
+          <Aparte />
         </Suspense>
       </>
     );

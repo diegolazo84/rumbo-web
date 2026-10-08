@@ -18,5 +18,14 @@ export default defineConfig({
   },
   // postbuild.mjs lee el manifiesto para enlazar en <head> el CSS de las páginas perezosas
   // (postular, estado y contacto) y lo borra después: no se publica.
-  build: { manifest: true },
+  // La vista previa y la plataforma propia (Mi espacio y panel) no precargan sus módulos JS
+  // desde el script de la portada: esa lista pesa en todas las páginas públicas (presupuesto de
+  // peso, pruebas/humo.spec.ts). Sus módulos llegan al importarse y sus hojas se siguen cargando
+  // (Vite agrega siempre las dependencias CSS).
+  build: {
+    manifest: true,
+    modulePreload: {
+      resolveDependencies: (archivo, deps) => (/(^|\/)(VistaPrevia|Plataforma)-[\w-]+\.js$/.test(archivo) ? [] : deps),
+    },
+  },
 });

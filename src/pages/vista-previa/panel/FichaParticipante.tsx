@@ -25,13 +25,14 @@ import {
   solicitudesAjuste,
 } from "../../../data/ejemplo-app";
 import { DIAS, diaCorto, duracionTexto, fechaLarga, mayuscula, semanaDesde, type Iso } from "../../../lib/fechas";
-import { Cabeza, Datos, Desplegable, R, Seccion, descargarJson, planDe, useParametro } from "./comun";
+import { Cabeza, Datos, Desplegable, R, Seccion, descargarJson, planDe, useParametro, usePanel } from "./comun";
+import { textoError } from "./FichaSolicitud";
 import { ajustes, evidencias, participantes, semanaMartin, type FichaParticipante as Ficha } from "./ejemplo";
 import { EtiquetaCiclo, semanaTexto } from "./Participantes";
-import { AJUSTES, CONSTRUCTOR, FICHA_PARTICIPANTE as F, FOTOS, REVISION } from "./textos";
+import { AJUSTES, CONSTRUCTOR, FICHA_PARTICIPANTE as F, FOTOS, PANEL_REAL, REVISION } from "./textos";
 
-type Pestana = (typeof F.pestanas)[number]["valor"];
-const PESTANAS = F.pestanas.map((p) => p.valor) as Pestana[];
+export type Pestana = (typeof F.pestanas)[number]["valor"];
+export const PESTANAS = F.pestanas.map((p) => p.valor) as Pestana[];
 
 export default function FichaParticipante() {
   const id = useParametro("id");
@@ -78,7 +79,7 @@ function Contenido({ p, inicial }: { p: Ficha; inicial: Pestana }) {
 // ---------------------------------------------------------------------------
 // Pestañas accesibles (flechas, Inicio y Fin; foco itinerante)
 
-function Pestanas({ actual, onCambio }: { actual: Pestana; onCambio: (p: Pestana) => void }) {
+export function Pestanas({ actual, onCambio }: { actual: Pestana; onCambio: (p: Pestana) => void }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const mover = (e: KeyboardEvent, i: number) => {
     const n = PESTANAS.length;
@@ -215,15 +216,59 @@ export function SemanaLectura({ semana = 2, hoy = HOY }: { semana?: number; hoy?
   const hastaHoy = ocurrencias.filter((o) => o.semana === semana && o.vigente && o.fecha <= hoy);
   const hechas = hastaHoy.filter((o) => cuentaComoHecha(o.registro)).length;
   return (
+    <SemanaLista
+      dias={dias}
+      hoy={hoy}
+      filas={(fecha) =>
+        ocurrenciasDel(fecha).map((o) => ({ id: o.id, hora: o.hora, titulo: o.titulo, duracion: o.duracion, meta: metaPorId(o.metaId).corto, categoria: o.categoria, fecha: o.fecha, registro: o.registro }))
+      }
+      completo={(fecha) => {
+        const dia = progreso.dias.find((d) => d.fecha === fecha);
+        return dia?.estado === "completo" ? dia.creditos : null;
+      }}
+      hechas={hechas}
+      deHoy={hastaHoy.length}
+    />
+  );
+}
+
+// Fila de la semana en solo lectura (vista previa y panel real).
+export type FilaSemana = {
+  id: string;
+  hora: string | null;
+  titulo: string;
+  duracion: number;
+  meta: string;
+  categoria: string;
+  fecha: Iso;
+  registro: string | null; // hecha, aprobada, corta, dejada, revision
+};
+
+export function SemanaLista({
+  dias,
+  hoy,
+  filas,
+  completo,
+  hechas,
+  deHoy,
+}: {
+  dias: Iso[];
+  hoy: Iso;
+  filas: (fecha: Iso) => FilaSemana[];
+  completo: (fecha: Iso) => number | null; // créditos del día completo
+  hechas: number;
+  deHoy: number;
+}) {
+  return (
     <div className="pa-semana">
       {dias.map((fecha) => {
-        const del = ocurrenciasDel(fecha);
-        const dia = progreso.dias.find((d) => d.fecha === fecha);
+        const del = filas(fecha);
+        const creditos = completo(fecha);
         return (
           <fieldset key={fecha} className="dia pa-semana__dia">
             <legend>
               <span>{diaCorto(fecha)}</span>
-              {dia?.estado === "completo" && <Etiqueta variante="activo">{F.semana.diaCompleto(dia.creditos)}</Etiqueta>}
+              {creditos !== null && <Etiqueta variante="activo">{F.semana.diaCompleto(creditos)}</Etiqueta>}
             </legend>
             {del.length ? (
               <ul className="pa-sem-filas">
@@ -233,8 +278,8 @@ export function SemanaLectura({ semana = 2, hoy = HOY }: { semana?: number; hoy?
                     <span className="pa-sem-fila__texto">
                       <span className="pa-sem-fila__titulo">{o.titulo}</span>
                       <span className="microcopia">
-                        {duracionTexto(o.duracion)} · {metaPorId(o.metaId).corto}
-                        {o.fecha <= hoy && ` · ${o.registro ? ESTADO_FILA[o.registro] : F.semana.sinRegistro}`}
+                        {duracionTexto(o.duracion)} · {o.meta}
+                        {o.fecha <= hoy && ` · ${o.registro ? ESTADO_FILA[o.registro] ?? F.semana.sinRegistro : F.semana.sinRegistro}`}
                       </span>
                     </span>
                   </li>
@@ -246,7 +291,7 @@ export function SemanaLectura({ semana = 2, hoy = HOY }: { semana?: number; hoy?
           </fieldset>
         );
       })}
-      <p className="calendario-pie">{F.semana.pie(hechas, hastaHoy.length)}</p>
+      <p className="calendario-pie">{F.semana.pie(hechas, deHoy)}</p>
     </div>
   );
 }
@@ -404,7 +449,7 @@ function Fotos({ p }: { p: Ficha }) {
 // ---------------------------------------------------------------------------
 // Datos: correo, zona horaria (editable solo aquí), ciclos, exportar, peticiones, eliminar
 
-const ZONAS = ["America/Santiago", "America/Argentina/Buenos_Aires", "America/Montevideo", "America/Lima", "America/Bogota", "America/Mexico_City", "Europe/Madrid"];
+export const ZONAS = ["America/Santiago", "America/Argentina/Buenos_Aires", "America/Montevideo", "America/Lima", "America/Bogota", "America/Mexico_City", "Europe/Madrid"];
 
 function DatosPersona({ p }: { p: Ficha }) {
   const [zona, setZona] = useState(p.zona);
@@ -460,16 +505,61 @@ function DatosPersona({ p }: { p: Ficha }) {
 // ---------------------------------------------------------------------------
 // Acciones del ciclo: pausar (motivo, desde, hasta opcional), reanudar, cerrar, nuevo, extender
 
-function AccionesCiclo({ estado, onCambio }: { estado: Ficha["estadoCiclo"]; onCambio: (e: Ficha["estadoCiclo"]) => void }) {
+// Panel real: escrituras del ciclo (pausar_ciclo, reanudar_ciclo y la fecha de fin o el estado
+// del ciclo). Sin servidor (vista previa), solo cambia la etiqueta.
+export type ServidorCiclo = {
+  fin: Iso;
+  pausar: (motivo: string, desde: Iso, hasta: Iso | null) => Promise<void>;
+  reanudar: () => Promise<void>;
+  extender: (fin: Iso) => Promise<void>;
+  cerrar: () => Promise<void>;
+};
+
+export function AccionesCiclo({
+  estado,
+  onCambio,
+  servidor,
+}: {
+  estado: Ficha["estadoCiclo"];
+  onCambio: (e: Ficha["estadoCiclo"]) => void;
+  servidor?: ServidorCiclo;
+}) {
+  const { R, hoy } = usePanel();
   const [motivo, setMotivo] = useState("pedida");
-  const [desde, setDesde] = useState<Iso>(HOY);
+  const [desde, setDesde] = useState<Iso>(hoy);
   const [hasta, setHasta] = useState("");
-  const [fin, setFin] = useState<Iso>(ciclo.fin);
+  const finActual = servidor?.fin ?? ciclo.fin;
+  const [fin, setFin] = useState<Iso>(finActual);
+  const [cerrar, setCerrar] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Vista previa: cambia la etiqueta. Panel real: escribe y la ficha se vuelve a leer.
+  const hacer = async (nuevo: Ficha["estadoCiclo"], fn?: () => Promise<void>) => {
+    setError(null);
+    if (servidor && fn) {
+      try {
+        await fn();
+      } catch (e) {
+        setError(textoError(e));
+        return;
+      }
+    }
+    onCambio(nuevo);
+  };
   return (
     <Seccion titulo={F.ciclo.titulo} className="pa-ciclo">
+      {servidor && (
+        <div role="alert" className="envio__alerta">
+          {error && (
+            <p className="aviso aviso--error-envio">
+              <Icono nombre="info" tamaño={20} className="aviso-icono" />
+              <span>{error}</span>
+            </p>
+          )}
+        </div>
+      )}
       <div className="pa-ciclo__botones">
         {estado === "pausa" ? (
-          <button type="button" className="boton boton--secundario" onClick={() => onCambio("en_curso")}>
+          <button type="button" className="boton boton--secundario" onClick={() => void hacer("en_curso", servidor?.reanudar)}>
             {F.ciclo.reanudar}
           </button>
         ) : (
@@ -479,7 +569,7 @@ function AccionesCiclo({ estado, onCambio }: { estado: Ficha["estadoCiclo"]; onC
               noValidate
               onSubmit={(e) => {
                 e.preventDefault();
-                onCambio("pausa");
+                void hacer("pausa", servidor ? () => servidor.pausar(motivo, desde, hasta || null) : undefined);
               }}
             >
               <GrupoOpciones id="pausa-motivo" leyenda={F.ciclo.motivo} columnas="fila">
@@ -496,20 +586,54 @@ function AccionesCiclo({ estado, onCambio }: { estado: Ficha["estadoCiclo"]; onC
           </Desplegable>
         )}
         <Desplegable boton={F.ciclo.extender}>
-          <form className="pa-form" noValidate onSubmit={(e) => e.preventDefault()}>
-            <CampoTexto id="ciclo-fin" etiqueta={F.ciclo.fin} type="date" value={fin} min={ciclo.fin} onChange={(e) => setFin(e.target.value)} />
+          <form
+            className="pa-form"
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (servidor && fin > finActual) void hacer(estado, () => servidor.extender(fin));
+            }}
+          >
+            <CampoTexto id="ciclo-fin" etiqueta={F.ciclo.fin} type="date" value={fin} min={finActual} onChange={(e) => setFin(e.target.value)} />
             <button type="submit" className="boton boton--primario">
               {F.ciclo.extender}
             </button>
           </form>
         </Desplegable>
-        <button type="button" className="boton boton--secundario" onClick={() => onCambio("cerrado")}>
+        <button
+          type="button"
+          className="boton boton--secundario"
+          aria-haspopup={servidor ? "dialog" : undefined}
+          onClick={() => (servidor ? setCerrar(true) : onCambio("cerrado"))}
+        >
           {F.ciclo.cerrar}
         </button>
-        <Link to={R.constructor} className="boton boton--secundario">
-          {F.ciclo.nuevo}
-        </Link>
+        {!servidor && (
+          <Link to={R.constructor} className="boton boton--secundario">
+            {F.ciclo.nuevo}
+          </Link>
+        )}
       </div>
+      {servidor && (
+        <Hoja abierta={cerrar} onCerrar={() => setCerrar(false)} titulo={F.ciclo.cerrar}>
+          <p>{PANEL_REAL.participante.cerrarConfirmar}</p>
+          <div className="acciones">
+            <button type="button" className="boton boton--secundario" onClick={() => setCerrar(false)}>
+              {F.datos.cancelar}
+            </button>
+            <button
+              type="button"
+              className="boton boton--primario"
+              onClick={() => {
+                setCerrar(false);
+                void hacer("cerrado", servidor.cerrar);
+              }}
+            >
+              {F.ciclo.cerrar}
+            </button>
+          </div>
+        </Hoja>
+      )}
     </Seccion>
   );
 }

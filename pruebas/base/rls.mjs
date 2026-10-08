@@ -181,6 +181,27 @@ if (manana) {
 ok(await a.rpc("guardar_registro_semanal", { p_semana: 1, p: { carga: "justa", funciono: "Escribir temprano." }, p_enviar: true }), "registro semanal");
 paso("A marca la acción de hoy (créditos del servidor) y no puede marcar mañana");
 
+// 4b. Revisión semanal desde el panel (como equipo/participante.tsx): se abre con upsert, A no
+//     la lee hasta que se publica; mientras tanto mi_contexto dice «en revisión».
+const abrir = () =>
+  diego.from("revisiones").upsert({ participante_id: fichas.A, ciclo_id: ciclo.id, semana: 1, tipo: "escrita" }, { onConflict: "ciclo_id,semana", ignoreDuplicates: true });
+ok(await abrir(), "abrir revisión");
+ok(await abrir(), "abrir revisión otra vez (sin efecto)");
+assert.equal(ok(await a.from("revisiones").select("id"), "A revisión sin publicar").length, 0, "A no lee la revisión sin publicar");
+assert.deepEqual(ok(await a.rpc("mi_contexto"), "A contexto").semanas_en_revision, [1]);
+ok(
+  await diego
+    .from("revisiones")
+    .update({ que_funciono: "Escribir temprano.", foco: "Seguir igual.", publicada_en: new Date().toISOString() })
+    .eq("ciclo_id", ciclo.id)
+    .eq("semana", 1),
+  "publicar revisión",
+);
+assert.deepEqual(ok(await a.from("revisiones").select("semana,foco"), "A revisión publicada"), [{ semana: 1, foco: "Seguir igual." }]);
+assert.deepEqual(ok(await a.rpc("mi_contexto"), "A contexto").semanas_en_revision, []);
+assert.equal(ok(await b.from("revisiones").select("id"), "B revisiones").length, 0, "B no lee la revisión de A");
+paso("la revisión semanal solo llega a A al publicarse");
+
 // 5. Lo que ve B de A: nada
 for (const t of ["participantes", "ciclos", "programas", "metas", "ocurrencias", "registros", "progreso", "progreso_diario", "registros_semanales"]) {
   const filas = ok(await b.from(t).select("*").eq(t === "participantes" ? "id" : "participante_id", fichas.A), `B ${t}`);

@@ -1,14 +1,18 @@
-// Vista previa · panel, constructor de programa (plataforma 5.6). Es de escritorio (≥1024 px):
-// metas a la izquierda (280 px) · semana en el centro (lista por día con columna de horas y suma
-// de minutos por día) · panel derecho con el formulario de la acción. En el teléfono muestra
-// «El constructor se usa en un computador…» y el programa publicado.
+// Panel, constructor de programa (plataforma 5.6). Es de escritorio (≥1024 px): metas a la
+// izquierda (280 px) · semana en el centro (lista por día con columna de horas y suma de minutos
+// por día) · panel derecho con el formulario de la acción. En el teléfono muestra «El constructor
+// se usa en un computador…» y el programa publicado.
 // - Revisión de carga y solapamientos en vivo: la suma por día es informativa y nunca bloquea; un
 //   solapamiento marca ambas acciones y bloquea publicar salvo «Sí, son compatibles».
 // - «Vista previa» punteada con las filas de Mi espacio; «Publicar» abre la lista de comprobación.
-// Todo en memoria: no se guarda ni se publica nada. El borrador es la v2 del programa de Camila
-// (ejemplo-app.ts) con dos cambios de ejemplo: «Escribir 3 ideas» pasa del jueves al miércoles y
-// «Reservar 2 bloques» queda a las 08:45, cruzada con «Escribir a quién quieres ayudar».
-import { useMemo, useState } from "react";
+// Vista previa: todo en memoria, no se guarda ni se publica nada. El borrador es la v2 del
+// programa de Camila (ejemplo-app.ts) con dos cambios de ejemplo: «Escribir 3 ideas» pasa del
+// jueves al miércoles y «Reservar 2 bloques» queda a las 08:45, cruzada con «Escribir a quién
+// quieres ayudar».
+// Panel real (etapa 3, con `servidor`): el borrador de la base; «Guardar borrador» escribe metas
+// y acciones (solo se puede mientras es borrador) y «Publicar» corre publicar_programa, después de
+// revisar con la base los solapamientos y la carga prevista.
+import { useEffect, useMemo, useState } from "react";
 import Etiqueta from "../../../components/Etiqueta";
 import { ChipMeta, FilaAccion, Hoja, Icono, LeyendaMetas, Segmentado } from "../../../components/app";
 import { Casilla, CampoArea, CampoSelect, CampoTexto, GrupoOpciones, Opcion } from "../../../components/form";
@@ -19,10 +23,11 @@ import { diaCorto, duracionTexto, fechaLarga, sumarDias, sumarMinutos, type Iso 
 import type { PropsPantalla } from "../registro";
 import { Cabeza, CasillaAjuste } from "./comun";
 import { participantes } from "./ejemplo";
-import { CONSTRUCTOR as C, T_PANEL } from "./textos";
+import { textoError } from "./FichaSolicitud";
+import { CONSTRUCTOR as C, PANEL_REAL, T_PANEL } from "./textos";
 
-type MetaB = { id: string; titulo: string; paraQue: string; categoria: CategoriaId; hitos: { texto: string; logrado: boolean }[] };
-type AccionB = {
+export type MetaB = { id: string; titulo: string; paraQue: string; categoria: CategoriaId; hitos: { texto: string; logrado: boolean }[] };
+export type AccionB = {
   id: string;
   metaId: string;
   titulo: string;
@@ -36,9 +41,39 @@ type AccionB = {
   conFoto: boolean;
 };
 
+// Lo publicado, para el teléfono (solo lectura).
+export type ProgramaLectura = {
+  version: number;
+  metas: { id: string; titulo: string; categoria: CategoriaId }[];
+  acciones: { id: string; metaId: string; titulo: string; dias: number[]; hora: string | null; duracion: number }[];
+};
+
+export type RevisionBase = { cruces: number; carga: { fecha: Iso; minutos: number } | null };
+
+// Panel real: escrituras en la base. Sin servidor (vista previa), nada se guarda.
+export type ServidorConstructor = {
+  guardar: (metas: MetaB[], acciones: AccionB[]) => Promise<void>;
+  revisar: () => Promise<RevisionBase>; // solapamientos() y carga_prevista() del borrador guardado
+  publicar: (p: { vigencia: Iso; aceptar: boolean; nota: string; foco: string }) => Promise<number>;
+};
+
+export type DatosConstructor = {
+  nombre: string;
+  cercano: boolean;
+  inicio: Iso; // lunes de inicio del ciclo
+  semanas: number; // 4, 8 o 12
+  hoy: Iso;
+  version: number; // versión del borrador
+  publicada: ProgramaLectura | null;
+  metas: MetaB[];
+  acciones: AccionB[];
+  elegida?: string; // acción abierta al entrar
+  semanaInicial?: number;
+  servidor?: ServidorConstructor;
+};
+
 const LIMITE_NOTA_CAMBIOS = 600; // nota_cambios (6.4)
 const camila = participantes[0];
-const CERCANO = camila.plan === "cercano";
 
 const metasIniciales = (): MetaB[] =>
   metasPublicadas.map((m) => ({ id: m.id, titulo: m.titulo, paraQue: m.paraQue ?? "", categoria: m.categoria, hitos: m.hitos.map((h) => ({ ...h })) }));
@@ -58,12 +93,32 @@ const accionesIniciales = (): AccionB[] =>
     conFoto: a.conFoto,
   }));
 
+// Datos de ejemplo de la vista previa.
+const EJEMPLO = (): DatosConstructor => ({
+  nombre: camila.nombre,
+  cercano: camila.plan === "cercano",
+  inicio: ciclo.inicio,
+  semanas: ciclo.semanas,
+  hoy: HOY,
+  version: programa.version + 1,
+  publicada: {
+    version: programa.version,
+    metas: metasPublicadas.map((m) => ({ id: m.id, titulo: m.titulo, categoria: m.categoria })),
+    acciones: programa.acciones.map((a) => ({ id: a.id, metaId: a.metaId, titulo: a.titulo, dias: [...a.dias], hora: a.hora, duracion: a.duracion })),
+  },
+  metas: metasIniciales(),
+  acciones: accionesIniciales(),
+  elegida: "a4",
+  semanaInicial: 2,
+});
+
 const aMinutos = (h: string) => {
   const [hh, mm] = h.split(":").map(Number);
   return hh * 60 + mm;
 };
 const enSemana = (a: AccionB, n: number) => n >= a.desde && n < a.desde + a.durante;
 const ordenDia = (a: AccionB, b: AccionB) => (a.hora && b.hora ? a.hora.localeCompare(b.hora) : a.hora ? -1 : b.hora ? 1 : a.titulo.localeCompare(b.titulo));
+const SEMANAS_MAX = Array.from({ length: 12 }, (_, i) => i + 1);
 
 // Solapamientos: dos acciones con horario que se cruzan el mismo día de la misma semana.
 function cruces(acciones: AccionB[]) {
@@ -74,7 +129,7 @@ function cruces(acciones: AccionB[]) {
       const b = acciones[j];
       if (!a.hora || !b.hora) continue;
       const mismoDia = a.dias.some((d) => b.dias.includes(d));
-      const mismaSemana = [1, 2, 3, 4].some((n) => enSemana(a, n) && enSemana(b, n));
+      const mismaSemana = SEMANAS_MAX.some((n) => enSemana(a, n) && enSemana(b, n));
       const ia = aMinutos(a.hora);
       const ib = aMinutos(b.hora);
       if (mismoDia && mismaSemana && ia < ib + b.duracion && ib < ia + a.duracion) {
@@ -100,19 +155,30 @@ function errorDe(a: AccionB) {
     instrucciones: a.instrucciones.trim().length < LIMITES.instrucciones.min ? C.accion.errores.instrucciones : null,
   };
 }
+const accionValida = (a: AccionB) => Object.values(errorDe(a)).every((e) => !e);
+const metaValida = (m: MetaB) => m.titulo.trim().length >= 2 && m.titulo.trim().length <= LIMITES.tituloMeta.max;
+
+// Identificador nuevo: en el panel real es el uuid con que se guarda la fila.
+const idNuevo = (real: boolean, prefijo: string, n: number) => (real ? crypto.randomUUID() : `${prefijo}${n}`);
 
 export default function Constructor(_: PropsPantalla) {
+  return <PantallaConstructor {...EJEMPLO()} />;
+}
+
+export function PantallaConstructor(d: DatosConstructor) {
   return (
     <div className="pa-pantalla pa-constructor">
       <Cabeza
         ojo={C.ojo}
-        titulo={C.titulo(camila.nombre)}
+        titulo={C.titulo(d.nombre)}
         antes={
           // En el teléfono se ve el programa publicado; el borrador solo existe en el editor.
           <div className="pa-etiquetas">
-            <Etiqueta variante="activo" className="pa-constructor__solo-movil">
-              {C.publicado(programa.version)}
-            </Etiqueta>
+            {d.publicada && (
+              <Etiqueta variante="activo" className="pa-constructor__solo-movil">
+                {C.publicado(d.publicada.version)}
+              </Etiqueta>
+            )}
             <Etiqueta variante="nota" className="pa-constructor__solo-escritorio">
               {C.borrador}
             </Etiqueta>
@@ -124,32 +190,32 @@ export default function Constructor(_: PropsPantalla) {
           <Icono nombre="info" tamaño={20} className="aviso-icono" />
           <span>{C.movil}</span>
         </p>
-        <ProgramaPublicado />
+        {d.publicada ? <ProgramaPublicado p={d.publicada} /> : <p className="pa-vacio">{PANEL_REAL.participante.sinPrograma}</p>}
       </div>
       <div className="pa-constructor__escritorio">
-        <Editor />
+        <Editor d={d} />
       </div>
     </div>
   );
 }
 
 // Programa publicado (lo que se ve en el teléfono): metas y sus acciones, en solo lectura.
-function ProgramaPublicado() {
+function ProgramaPublicado({ p }: { p: ProgramaLectura }) {
   return (
     <div className="pa-pila">
-      {metasPublicadas.map((m) => (
+      {p.metas.map((m) => (
         <section key={m.id} className="tarjeta meta-tarjeta pa-tarjeta" data-cat={m.categoria} aria-labelledby={`pub-${m.id}`}>
           <h2 id={`pub-${m.id}`} className="pa-h3">
             {m.titulo}
           </h2>
           <ul className="pa-prog-acciones">
-            {programa.acciones
+            {p.acciones
               .filter((a) => a.metaId === m.id)
               .map((a) => (
                 <li key={a.id} data-cat={m.categoria}>
                   <span className="pa-prog-acciones__titulo">{a.titulo}</span>
                   <span className="microcopia">
-                    {a.dias.map((d) => C.dias[d - 1]).join(", ")} · {a.hora ?? C.accion.flexible} · {duracionTexto(a.duracion)}
+                    {a.dias.map((x) => C.dias[x - 1]).join(", ")} · {a.hora ?? C.accion.flexible} · {duracionTexto(a.duracion)}
                   </span>
                 </li>
               ))}
@@ -163,35 +229,100 @@ function ProgramaPublicado() {
 // ---------------------------------------------------------------------------
 // Editor de escritorio
 
-function Editor() {
-  const [metas, setMetas] = useState<MetaB[]>(metasIniciales);
-  const [acciones, setAcciones] = useState<AccionB[]>(accionesIniciales);
-  const [metaSel, setMetaSel] = useState(metas[0].id);
-  const [sel, setSel] = useState<string>("a4");
-  const [semana, setSemana] = useState(2);
+function Editor({ d }: { d: DatosConstructor }) {
+  const real = !!d.servidor;
+  const [metas, setMetas] = useState<MetaB[]>(d.metas);
+  const [acciones, setAcciones] = useState<AccionB[]>(d.acciones);
+  const [metaSel, setMetaSel] = useState(d.metas[0]?.id ?? "");
+  const [sel, setSel] = useState<string>(d.elegida ?? d.acciones[0]?.id ?? "");
+  const [semana, setSemana] = useState(d.semanaInicial ?? 1);
   const [vista, setVista] = useState(false);
   const [publicar, setPublicar] = useState(false);
+  const [sucio, setSucio] = useState(false);
+  const [ocupado, setOcupado] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [aviso, setAviso] = useState("");
   const mapa = useMemo(() => cruces(acciones), [acciones]);
   const pares = [...mapa.values()].reduce((s, x) => s + x.size, 0) / 2;
   const accion = acciones.find((a) => a.id === sel);
   const nombre = (id: string) => acciones.find((a) => a.id === id)?.titulo ?? "";
-  const meta = (id: string) => metas.find((m) => m.id === id)!;
+  const meta = (id: string) => metas.find((m) => m.id === id);
+  const catDe = (id: string) => meta(id)?.categoria ?? "proyecto";
+  const semanas = SEMANAS_MAX.slice(0, d.semanas);
 
-  const cambiarAccion = (cambio: Partial<AccionB>) => setAcciones((l) => l.map((a) => (a.id === sel ? { ...a, ...cambio } : a)));
-  const cambiarMeta = (id: string, cambio: Partial<MetaB>) => setMetas((l) => l.map((m) => (m.id === id ? { ...m, ...cambio } : m)));
-  const mover = (i: number, d: -1 | 1) =>
+  const tocar = () => {
+    setSucio(true);
+    setAviso("");
+  };
+  const cambiarAccion = (cambio: Partial<AccionB>) => {
+    tocar();
+    setAcciones((l) => l.map((a) => (a.id === sel ? { ...a, ...cambio } : a)));
+  };
+  const cambiarMeta = (id: string, cambio: Partial<MetaB>) => {
+    tocar();
+    setMetas((l) => l.map((m) => (m.id === id ? { ...m, ...cambio } : m)));
+  };
+  const mover = (i: number, dir: -1 | 1) => {
+    tocar();
     setMetas((l) => {
       const n = [...l];
-      [n[i], n[i + d]] = [n[i + d], n[i]];
+      [n[i], n[i + dir]] = [n[i + dir], n[i]];
       return n;
     });
+  };
   const nueva = () => {
-    const id = `n${acciones.length + 1}`;
+    if (!metaSel) return;
+    tocar();
+    const id = idNuevo(real, "n", acciones.length + 1);
     setAcciones((l) => [
       ...l,
       { id, metaId: metaSel, titulo: "", hora: null, duracion: 10, dias: [], desde: semana, durante: 1, instrucciones: "", versionCorta: "", conFoto: false },
     ]);
     setSel(id);
+  };
+  const nuevaMeta = () => {
+    tocar();
+    const id = idNuevo(real, "m", metas.length + 1);
+    setMetas((l) => [...l, { id, titulo: "", paraQue: "", categoria: "proyecto", hitos: [] }]);
+    setMetaSel(id);
+  };
+  const quitarMeta = (id: string) => {
+    tocar();
+    setMetas((l) => l.filter((m) => m.id !== id));
+    setAcciones((l) => l.filter((a) => a.metaId !== id));
+    setMetaSel(metas.find((m) => m.id !== id)?.id ?? "");
+  };
+  const quitarAccion = (id: string) => {
+    tocar();
+    setAcciones((l) => l.filter((a) => a.id !== id));
+    setSel("");
+  };
+
+  // Guarda el borrador en la base (panel real). Devuelve si quedó guardado.
+  const guardar = async (): Promise<boolean> => {
+    if (!d.servidor) return true;
+    if (!metas.every(metaValida)) {
+      setError(PANEL_REAL.constructor.erroresMeta);
+      return false;
+    }
+    if (!acciones.every(accionValida)) {
+      setError(PANEL_REAL.constructor.erroresAcciones);
+      return false;
+    }
+    if (!sucio) return true;
+    setOcupado(true);
+    setError(null);
+    try {
+      await d.servidor.guardar(metas, acciones);
+      setSucio(false);
+      setAviso(PANEL_REAL.constructor.guardado);
+      return true;
+    } catch (e) {
+      setError(textoError(e));
+      return false;
+    } finally {
+      setOcupado(false);
+    }
   };
 
   const delaSemana = acciones.filter((a) => enSemana(a, semana));
@@ -200,25 +331,62 @@ function Editor() {
   return (
     <>
       <div className="pa-constructor__barra">
-        <Segmentado
-          leyenda={C.semana.titulo}
-          leyendaOculta
-          opciones={[1, 2, 3, 4].map((n) => ({ valor: String(n), texto: C.semana.semanaN(n) }))}
-          valor={String(semana)}
-          onCambio={(v) => setSemana(Number(v))}
-        />
+        {semanas.length <= 4 ? (
+          <Segmentado
+            leyenda={C.semana.titulo}
+            leyendaOculta
+            opciones={semanas.map((n) => ({ valor: String(n), texto: C.semana.semanaN(n) }))}
+            valor={String(semana)}
+            onCambio={(v) => setSemana(Number(v))}
+          />
+        ) : (
+          <CampoSelect id="c-semana-elegida" etiqueta={C.semana.titulo} value={semana} onChange={(e) => setSemana(Number(e.target.value))}>
+            {semanas.map((n) => (
+              <option key={n} value={n}>
+                {C.semana.semanaN(n)}
+              </option>
+            ))}
+          </CampoSelect>
+        )}
         <div className="acciones">
+          {real && (
+            <button type="button" className="boton boton--secundario" aria-disabled={ocupado ? true : undefined} onClick={() => void guardar()}>
+              {PANEL_REAL.constructor.guardar}
+            </button>
+          )}
           <button type="button" className="boton boton--secundario" aria-pressed={vista} onClick={() => setVista((v) => !v)}>
             {vista ? C.cerrarVistaPrevia : C.vistaPrevia}
           </button>
-          <button type="button" className="boton boton--primario" aria-haspopup="dialog" onClick={() => setPublicar(true)}>
+          <button
+            type="button"
+            className="boton boton--primario"
+            aria-haspopup="dialog"
+            onClick={async () => {
+              if (await guardar()) setPublicar(true);
+            }}
+          >
             {C.publicar.boton}
           </button>
         </div>
       </div>
+      {real && (
+        <>
+          <div role="alert" className="envio__alerta">
+            {error && (
+              <p className="aviso aviso--error-envio">
+                <Icono nombre="info" tamaño={20} className="aviso-icono" />
+                <span>{error}</span>
+              </p>
+            )}
+          </div>
+          <p role="status" className="microcopia">
+            {aviso}
+          </p>
+        </>
+      )}
 
       {vista ? (
-        <VistaPrevia acciones={delaSemana} metas={metas} semana={semana} mapa={mapa} nombre={nombre} />
+        <VistaPrevia acciones={delaSemana} metas={metas} semana={semana} mapa={mapa} nombre={nombre} inicio={d.inicio} hoy={d.hoy} />
       ) : (
         <div className="pa-constructor__grilla">
           {/* Metas (izquierda, 280 px) */}
@@ -226,32 +394,50 @@ function Editor() {
             <h2 id="c-metas" className="pa-h2">
               {C.metas.titulo}
             </h2>
-            <ol className="pa-metas">
-              {metas.map((m, i) => (
-                <li key={m.id} className={m.id === metaSel ? "pa-metas__item es-elegida" : "pa-metas__item"} data-cat={m.categoria}>
-                  <button type="button" className="pa-metas__elegir" aria-pressed={m.id === metaSel} onClick={() => setMetaSel(m.id)}>
-                    <span className="pa-metas__titulo">{m.titulo || C.metas.tituloCampo}</span>
-                    <span className="pa-metas__cat">{categorias[m.categoria].nombre}</span>
-                  </button>
-                  <div className="pa-metas__orden">
-                    <button type="button" className="boton boton--terciario" aria-disabled={i === 0 ? true : undefined} onClick={() => i > 0 && mover(i, -1)}>
-                      {C.metas.subir}
-                      <span className="sr-only">{`: ${m.titulo}`}</span>
+            {metas.length ? (
+              <ol className="pa-metas">
+                {metas.map((m, i) => (
+                  <li key={m.id} className={m.id === metaSel ? "pa-metas__item es-elegida" : "pa-metas__item"} data-cat={m.categoria}>
+                    <button type="button" className="pa-metas__elegir" aria-pressed={m.id === metaSel} onClick={() => setMetaSel(m.id)}>
+                      <span className="pa-metas__titulo">{m.titulo || C.metas.tituloCampo}</span>
+                      <span className="pa-metas__cat">{categorias[m.categoria].nombre}</span>
                     </button>
-                    <button
-                      type="button"
-                      className="boton boton--terciario"
-                      aria-disabled={i === metas.length - 1 ? true : undefined}
-                      onClick={() => i < metas.length - 1 && mover(i, 1)}
-                    >
-                      {C.metas.bajar}
-                      <span className="sr-only">{`: ${m.titulo}`}</span>
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ol>
-            <FormMeta meta={meta(metaSel)} onCambio={(c) => cambiarMeta(metaSel, c)} />
+                    <div className="pa-metas__orden">
+                      <button type="button" className="boton boton--terciario" aria-disabled={i === 0 ? true : undefined} onClick={() => i > 0 && mover(i, -1)}>
+                        {C.metas.subir}
+                        <span className="sr-only">{`: ${m.titulo}`}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="boton boton--terciario"
+                        aria-disabled={i === metas.length - 1 ? true : undefined}
+                        onClick={() => i < metas.length - 1 && mover(i, 1)}
+                      >
+                        {C.metas.bajar}
+                        <span className="sr-only">{`: ${m.titulo}`}</span>
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="microcopia">{PANEL_REAL.constructor.sinMetas}</p>
+            )}
+            {real && (
+              <button type="button" className="boton boton--secundario" onClick={nuevaMeta}>
+                <Icono nombre="plus" tamaño={20} />
+                {PANEL_REAL.constructor.nuevaMeta}
+              </button>
+            )}
+            {meta(metaSel) && (
+              <FormMeta
+                key={metaSel}
+                meta={meta(metaSel)!}
+                real={real}
+                onCambio={(c) => cambiarMeta(metaSel, c)}
+                onQuitar={real ? () => quitarMeta(metaSel) : undefined}
+              />
+            )}
             <div className="pa-resumen-metas">
               <h3 className="pa-h3">{C.resumen.titulo}</h3>
               <ul>
@@ -294,7 +480,7 @@ function Editor() {
                             <button
                               type="button"
                               className={["pa-bloque", a.id === sel && "es-elegida", choca.length && "con-cruce"].filter(Boolean).join(" ")}
-                              data-cat={meta(a.metaId).categoria}
+                              data-cat={catDe(a.metaId)}
                               aria-pressed={a.id === sel}
                               onClick={() => setSel(a.id)}
                             >
@@ -320,7 +506,7 @@ function Editor() {
                 </div>
               );
             })}
-            <button type="button" className="boton boton--secundario" onClick={nueva}>
+            <button type="button" className="boton boton--secundario" aria-disabled={metaSel ? undefined : true} onClick={nueva}>
               <Icono nombre="plus" tamaño={20} />
               {C.accion.nueva}
             </button>
@@ -331,12 +517,32 @@ function Editor() {
             <h2 id="c-accion" className="pa-h2">
               {C.accion.titulo}
             </h2>
-            {accion && <FormAccion key={accion.id} accion={accion} metas={metas} acciones={acciones} onCambio={cambiarAccion} />}
+            {accion ? (
+              <>
+                <FormAccion
+                  key={accion.id}
+                  accion={accion}
+                  metas={metas}
+                  acciones={acciones}
+                  semanas={d.semanas}
+                  cercano={d.cercano}
+                  onCambio={cambiarAccion}
+                />
+                {real && (
+                  <button type="button" className="boton boton--terciario pa-boton-izq" onClick={() => quitarAccion(accion.id)}>
+                    <Icono nombre="trash-2" tamaño={20} />
+                    {PANEL_REAL.constructor.eliminarAccion}
+                  </button>
+                )}
+              </>
+            ) : (
+              <p className="microcopia">{PANEL_REAL.constructor.sinAcciones}</p>
+            )}
           </section>
         </div>
       )}
 
-      <Publicar abierta={publicar} onCerrar={() => setPublicar(false)} metas={metas} acciones={acciones} cruces={mapa.size > 0} />
+      <Publicar abierta={publicar} onCerrar={() => setPublicar(false)} d={d} metas={metas} acciones={acciones} cruces={mapa.size > 0} />
     </>
   );
 }
@@ -344,7 +550,10 @@ function Editor() {
 // ---------------------------------------------------------------------------
 // Formulario de meta: título (hasta 80), «Para qué» (hasta 200), categoría y hitos (hasta 5)
 
-function FormMeta({ meta, onCambio }: { meta: MetaB; onCambio: (c: Partial<MetaB>) => void }) {
+const MAX_HITOS = 5;
+
+function FormMeta({ meta, real, onCambio, onQuitar }: { meta: MetaB; real: boolean; onCambio: (c: Partial<MetaB>) => void; onQuitar?: () => void }) {
+  const [hito, setHito] = useState("");
   return (
     <div className="pa-form pa-form--meta" key={meta.id}>
       <CampoTexto id="meta-titulo" etiqueta={C.metas.tituloCampo} maxLength={LIMITES.tituloMeta.max} value={meta.titulo} onChange={(e) => onCambio({ titulo: e.target.value })} />
@@ -380,6 +589,30 @@ function FormMeta({ meta, onCambio }: { meta: MetaB; onCambio: (c: Partial<MetaB
           ))}
         </fieldset>
       )}
+      {real && meta.hitos.length < MAX_HITOS && (
+        <div className="pa-pila pa-pila--chica">
+          <CampoTexto id="meta-hito" etiqueta={PANEL_REAL.constructor.hito} opcional maxLength={80} value={hito} onChange={(e) => setHito(e.target.value)} />
+          <button
+            type="button"
+            className="boton boton--terciario pa-boton-izq"
+            onClick={() => {
+              const t = hito.trim();
+              if (!t || meta.hitos.some((h) => h.texto === t)) return;
+              onCambio({ hitos: [...meta.hitos, { texto: t, logrado: false }] });
+              setHito("");
+            }}
+          >
+            <Icono nombre="plus" tamaño={20} />
+            {PANEL_REAL.constructor.agregarHito}
+          </button>
+        </div>
+      )}
+      {onQuitar && (
+        <button type="button" className="boton boton--terciario pa-boton-izq" onClick={onQuitar}>
+          <Icono nombre="trash-2" tamaño={20} />
+          {PANEL_REAL.constructor.eliminarMeta}
+        </button>
+      )}
     </div>
   );
 }
@@ -387,7 +620,21 @@ function FormMeta({ meta, onCambio }: { meta: MetaB; onCambio: (c: Partial<MetaB
 // ---------------------------------------------------------------------------
 // Formulario de la acción
 
-function FormAccion({ accion: a, metas, acciones, onCambio }: { accion: AccionB; metas: MetaB[]; acciones: AccionB[]; onCambio: (c: Partial<AccionB>) => void }) {
+function FormAccion({
+  accion: a,
+  metas,
+  acciones,
+  semanas,
+  cercano,
+  onCambio,
+}: {
+  accion: AccionB;
+  metas: MetaB[];
+  acciones: AccionB[];
+  semanas: number;
+  cercano: boolean;
+  onCambio: (c: Partial<AccionB>) => void;
+}) {
   const [tocados, setTocados] = useState<Set<string>>(new Set());
   const tocar = (c: string) => setTocados((s) => new Set(s).add(c));
   const e = errorDe(a);
@@ -437,13 +684,13 @@ function FormAccion({ accion: a, metas, acciones, onCambio }: { accion: AccionB;
         onBlur={() => tocar("duracion")}
       />
       <GrupoOpciones id="accion-dias" leyenda={C.accion.dias} tipo="checkbox" columnas="fila" error={err("dias")}>
-        {C.dias.map((d, i) => (
+        {C.dias.map((dia, i) => (
           <Opcion
-            key={d}
+            key={dia}
             tipo="checkbox"
             name="accion-dias"
             value={String(i + 1)}
-            titulo={d}
+            titulo={dia}
             chica
             checked={a.dias.includes(i + 1)}
             onChange={(ev) => {
@@ -455,14 +702,14 @@ function FormAccion({ accion: a, metas, acciones, onCambio }: { accion: AccionB;
       </GrupoOpciones>
       <div className="pa-dos pa-dos--siempre">
         <CampoSelect id="accion-desde" etiqueta={C.accion.desdeSemana} value={a.desde} onChange={(ev) => onCambio({ desde: Number(ev.target.value) })}>
-          {[1, 2, 3, 4].map((n) => (
+          {SEMANAS_MAX.slice(0, semanas).map((n) => (
             <option key={n} value={n}>
               {n}
             </option>
           ))}
         </CampoSelect>
         <CampoSelect id="accion-durante" etiqueta={C.accion.durante} ayuda={C.accion.duranteAyuda} value={a.durante} onChange={(ev) => onCambio({ durante: Number(ev.target.value) })}>
-          {[1, 2, 3, 4].filter((n) => a.desde + n - 1 <= ciclo.semanas).map((n) => (
+          {[1, 2, 3, 4].filter((n) => a.desde + n - 1 <= semanas).map((n) => (
             <option key={n} value={n}>
               {n}
             </option>
@@ -490,7 +737,7 @@ function FormAccion({ accion: a, metas, acciones, onCambio }: { accion: AccionB;
         onChange={(ev) => onCambio({ versionCorta: ev.target.value })}
         rows={3}
       />
-      {CERCANO ? (
+      {cercano ? (
         <CasillaAjuste id="accion-foto" checked={a.conFoto} onChange={(v) => onCambio({ conFoto: v })} ayuda={conFotoSemana > 1 ? C.accion.fotoAviso : undefined}>
           {C.accion.conFoto}
         </CasillaAjuste>
@@ -510,15 +757,19 @@ function VistaPrevia({
   semana,
   mapa,
   nombre,
+  inicio,
+  hoy,
 }: {
   acciones: AccionB[];
   metas: MetaB[];
   semana: number;
   mapa: Map<string, Set<string>>;
   nombre: (id: string) => string;
+  inicio: Iso;
+  hoy: Iso;
 }) {
-  const lunes = sumarDias(ciclo.inicio, (semana - 1) * 7);
-  const metaDe = (id: string) => metas.find((m) => m.id === id)!;
+  const lunes = sumarDias(inicio, (semana - 1) * 7);
+  const catDe = (id: string) => metas.find((m) => m.id === id)?.categoria ?? "proyecto";
   return (
     <section className="pa-punteada pa-vista-previa" aria-labelledby="c-vista">
       <div className="pa-punteada__cabeza">
@@ -543,9 +794,9 @@ function VistaPrevia({
                     titulo={a.titulo || C.accion.nueva}
                     hora={a.hora}
                     duracion={Number.isFinite(a.duracion) ? a.duracion : 0}
-                    cat={metaDe(a.metaId).categoria}
+                    cat={catDe(a.metaId)}
                     compacta
-                    desactivada={fecha > HOY ? C.semana.seMarcaDesde(diaCorto(fecha)) : undefined}
+                    desactivada={fecha > hoy ? C.semana.seMarcaDesde(diaCorto(fecha)) : undefined}
                     nota={otras.length ? C.semana.cruce(nombre(otras[0])) : undefined}
                   />
                 );
@@ -566,27 +817,52 @@ function VistaPrevia({
 function Publicar({
   abierta,
   onCerrar,
+  d,
   metas,
   acciones,
   cruces: hayCruces,
 }: {
   abierta: boolean;
   onCerrar: () => void;
+  d: DatosConstructor;
   metas: MetaB[];
   acciones: AccionB[];
   cruces: boolean;
 }) {
-  const manana = sumarDias(HOY, 1);
+  const real = !!d.servidor;
+  const manana = sumarDias(d.hoy, 1);
+  // En el panel real la base acepta desde hoy (la persona ve el cambio hoy mismo).
+  const minimo = real ? d.hoy : manana;
   const [vigencia, setVigencia] = useState<Iso>(manana);
   const [nota, setNota] = useState("");
+  const [foco, setFoco] = useState("");
   const [compatibles, setCompatibles] = useState(false);
-  const [hecho, setHecho] = useState(false);
-  const metasOk = metas.every((m) => acciones.some((a) => a.metaId === m.id));
+  const [hecho, setHecho] = useState<string | null>(null);
+  const [base, setBase] = useState<RevisionBase | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+  const metasOk = metas.length > 0 && metas.every((m) => acciones.some((a) => a.metaId === m.id));
   const instruccionesOk = acciones.every((a) => a.instrucciones.trim().length >= LIMITES.instrucciones.min);
-  const crucesOk = !hayCruces || compatibles;
-  const vigenciaOk = vigencia >= manana;
-  const listo = metasOk && instruccionesOk && crucesOk && vigenciaOk;
-  const v = programa.version + 1;
+  const crucesBase = (base?.cruces ?? 0) > 0;
+  const crucesOk = (!hayCruces && !crucesBase) || compatibles;
+  const vigenciaOk = vigencia >= minimo;
+  const listo = metasOk && instruccionesOk && crucesOk && vigenciaOk && !hecho;
+  const v = d.version;
+
+  // Al abrir (panel real): la base revisa solapamientos y carga del borrador ya guardado.
+  const servidor = d.servidor;
+  useEffect(() => {
+    if (!abierta || !servidor) return;
+    let vivo = true;
+    setBase(null);
+    servidor.revisar().then(
+      (r) => vivo && setBase(r),
+      () => vivo && setBase(null),
+    );
+    return () => {
+      vivo = false;
+    };
+  }, [abierta, servidor]);
 
   const Item = ({ ok, children }: { ok: boolean; children: string }) => (
     <li className={ok ? "pa-check es-ok" : "pa-check"}>
@@ -605,18 +881,38 @@ function Publicar({
       <form
         className="pa-form"
         noValidate
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          if (listo) setHecho(true);
+          if (!listo || ocupado) return;
+          if (!servidor) {
+            setHecho(C.publicar.simulado);
+            return;
+          }
+          setOcupado(true);
+          setError(null);
+          try {
+            const n = await servidor.publicar({ vigencia, aceptar: compatibles, nota: nota.trim(), foco: foco.trim() });
+            setHecho(PANEL_REAL.constructor.publicado(n));
+          } catch (x) {
+            setError(textoError(x));
+          } finally {
+            setOcupado(false);
+          }
         }}
       >
         <ul className="pa-checks">
-          <Item ok>{`${C.publicar.inicio}: ${fechaLarga(ciclo.inicio)}`}</Item>
+          <Item ok>{`${C.publicar.inicio}: ${fechaLarga(d.inicio)}`}</Item>
           <Item ok={metasOk}>{C.publicar.metas}</Item>
           <Item ok={instruccionesOk}>{C.publicar.instrucciones}</Item>
           <Item ok={crucesOk}>{C.publicar.cruces}</Item>
         </ul>
-        {hayCruces && (
+        {base && (
+          <div className="pa-pila pa-pila--chica">
+            <p className="microcopia">{PANEL_REAL.constructor.crucesBase(base.cruces)}</p>
+            {base.carga && <p className="microcopia">{PANEL_REAL.constructor.cargaBase(base.carga.minutos, fechaLarga(base.carga.fecha))}</p>}
+          </div>
+        )}
+        {(hayCruces || crucesBase) && (
           <Casilla id="pub-compatibles" checked={compatibles} onChange={(e) => setCompatibles(e.target.checked)}>
             {C.cruces.compatibles}
           </Casilla>
@@ -626,20 +922,30 @@ function Publicar({
           etiqueta={C.publicar.vigencia}
           ayuda={C.publicar.vigenciaAyuda}
           type="date"
-          min={manana}
+          min={minimo}
           value={vigencia}
           onChange={(e) => setVigencia(e.target.value || manana)}
         />
         {v > 1 ? (
           <CampoArea id="pub-nota" etiqueta={C.publicar.nota} ayuda={C.publicar.notaAyuda} opcional max={LIMITE_NOTA_CAMBIOS} value={nota} onChange={(e) => setNota(e.target.value)} rows={3} />
         ) : (
-          <CampoTexto id="pub-foco" etiqueta={C.publicar.foco} maxLength={LIMITES.revisionFoco.max} />
+          <CampoTexto id="pub-foco" etiqueta={C.publicar.foco} maxLength={LIMITES.revisionFoco.max} value={foco} onChange={(e) => setFoco(e.target.value)} />
+        )}
+        {real && (
+          <div role="alert" className="envio__alerta">
+            {error && (
+              <p className="aviso aviso--error-envio">
+                <Icono nombre="info" tamaño={20} className="aviso-icono" />
+                <span>{error}</span>
+              </p>
+            )}
+          </div>
         )}
         <button type="submit" className="boton boton--primario" aria-disabled={listo ? undefined : true}>
           {C.publicar.confirmar}
         </button>
         <p role="status" className="microcopia">
-          {hecho ? C.publicar.simulado : ""}
+          {hecho ?? ""}
         </p>
       </form>
     </Hoja>

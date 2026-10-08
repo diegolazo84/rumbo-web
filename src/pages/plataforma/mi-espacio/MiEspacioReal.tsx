@@ -10,7 +10,7 @@ import { Banda, BandaSinConexion, EstructuraApp, Icono } from "../../../componen
 import type { EstadoRegistro, SolicitudAjuste } from "../../../data/ejemplo-app";
 import type { Iso } from "../../../lib/fechas";
 import { datos, supabase, type Cliente } from "../../../lib/supabase";
-import type { RutaPlataforma } from "../../../plataforma";
+import type { RutaPlataforma } from "../rutas";
 import { ESPACIO_PREVIA, EspacioContexto, R_REAL, type Ausencia, type Espacio, type Progreso, type Servidor } from "../../vista-previa/mi-espacio/espacio";
 import Ajuste from "../../vista-previa/mi-espacio/Ajuste";
 import AyudaInmediata from "../../vista-previa/mi-espacio/AyudaInmediata";

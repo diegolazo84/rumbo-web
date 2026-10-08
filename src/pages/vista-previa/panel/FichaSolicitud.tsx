@@ -13,14 +13,52 @@ import { LIMITES } from "../../../data/formularios";
 import { notaPrecio, operacion, planes } from "../../../data/rumbo";
 import { VERSION_PUBLICADA } from "../../../data/paginas";
 import { BASENAME } from "../../../base";
-import { DIAS, diaMes, fechaLarga, miles, mayuscula, type Iso } from "../../../lib/fechas";
-import { BotonCopiar, Cabeza, Datos, Desplegable, EtiquetaArea, R, Seccion, conId, nombreArea, useParametro, venceTexto } from "./comun";
-import { HOY, sinPrimeraRespuesta, solicitudPorId, type Solicitud } from "./ejemplo";
+import { DIAS, diaMes, diaSemana, fechaLarga, miles, mayuscula, sumarDias, type Iso } from "../../../lib/fechas";
+import { BotonCopiar, Cabeza, Datos, Desplegable, EtiquetaArea, Seccion, conId, nombreArea, useParametro, usePanel, useVence } from "./comun";
+import { sinPrimeraRespuesta, solicitudPorId, type Solicitud } from "./ejemplo";
 import { CAMPO_POR_COMPLETAR, PLANTILLAS, plantillaPorId } from "../../../data/plantillas";
 import { textoApoyo } from "./Solicitudes";
-import { ESTADO_PERSONA, ESTADO_SOLICITUD, FICHA_SOLICITUD as F, SOLICITUDES, T_PANEL, nombreCoach } from "./textos";
+import { ESTADO_PERSONA, ESTADO_SOLICITUD, FICHA_SOLICITUD as F, PANEL_REAL, SOLICITUDES, T_PANEL, nombreCoach } from "./textos";
 
 const POR_DEFECTO = "s-100";
+
+// Acuerdo tal como se guarda en solicitudes.acuerdo (6.3).
+export type AcuerdoSolicitud = {
+  plan: "coach" | "cercano";
+  precio_clp: number;
+  inicio: Iso;
+  semanas: number;
+  dia_revision: number; // 1 = lunes … 5 = viernes
+  hora_videollamada: string | null;
+};
+
+// Panel real: lo que ya está en la base y las escrituras. Sin servidor (vista previa), todo
+// queda en memoria y no se guarda nada.
+export type ServidorSolicitud = {
+  acuerdo: AcuerdoSolicitud | null;
+  aceptadaEl: Iso | null; // condiciones_aceptadas.fecha
+  notas: string;
+  marcarRespondida: () => Promise<void>;
+  registrarAcuerdo: (a: AcuerdoSolicitud) => Promise<void>;
+  crearEspacio: () => Promise<void>;
+  cerrar: (motivo: string, nota: string) => Promise<void>;
+  nuevoEnlace: (token: string) => Promise<void>;
+  borrar: () => Promise<void>;
+  guardarNotas: (texto: string) => Promise<void>;
+};
+
+// Token del enlace privado: 32 bytes en base64url (43 caracteres), como exige nuevo_enlace_solicitud.
+export function tokenNuevo(): string {
+  const b = new Uint8Array(32);
+  crypto.getRandomValues(b);
+  return btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+// Error de la base como texto para Diego («campo:codigo» conocido o el genérico).
+export function textoError(e: unknown): string {
+  const x = e as { campo?: string | null; codigo?: string | null } | null;
+  return (x?.campo && PANEL_REAL.errores[`${x.campo}:${x.codigo}`]) || PANEL_REAL.error;
+}
 
 // Origen absoluto para los enlaces de las plantillas: solo en el navegador (el prerender usa la ruta).
 function useOrigen() {
@@ -34,19 +72,48 @@ const fechaHora = (s: Solicitud) => `${fechaLarga(s.recibida)}, ${s.hora}`;
 export default function FichaSolicitud() {
   const id = useParametro("id");
   const s = solicitudPorId(id) ?? solicitudPorId(POR_DEFECTO)!;
-  return <Contenido key={s.id} s={s} />;
+  return <ContenidoSolicitud key={s.id} s={s} anterior={s.anterior ? solicitudPorId(s.anterior) : undefined} />;
 }
 
-function Contenido({ s }: { s: Solicitud }) {
+export function ContenidoSolicitud({ s, anterior, servidor }: { s: Solicitud; anterior?: Solicitud; servidor?: ServidorSolicitud }) {
   const navigate = useNavigate();
   const origen = useOrigen();
-  const anterior = s.anterior ? solicitudPorId(s.anterior) : undefined;
-  // Abrir la ficha pasa una solicitud «recibida» a «en revisión» (5.4).
-  const [estado, setEstado] = useState(s.tipo === "solicitud" && s.estado === "recibida" ? "en_revision" : s.estado);
+  const { R } = usePanel();
+  const venceTexto = useVence();
+  // Abrir la ficha pasa una solicitud «recibida» a «en revisión» (5.4). En el panel real lo hace
+  // la pantalla al abrirla y el estado llega en `s`.
+  const [estadoLocal, setEstado] = useState(s.tipo === "solicitud" && s.estado === "recibida" ? "en_revision" : s.estado);
+  const estado = servidor ? s.estado : estadoLocal;
   const [plantilla, setPlantilla] = useState(anterior ? "repetida" : s.estado === "cerrada" ? s.motivoCierre ?? "capacidad" : "primer-contacto");
-  const [notas, setNotas] = useState("");
+  // Panel real: al crear su espacio, la plantilla pasa a «Tu espacio está listo» (5.4).
+  const real = !!servidor;
+  useEffect(() => {
+    if (real && s.estado === "con_espacio") setPlantilla("espacio-listo");
+  }, [real, s.estado]);
+  const [notas, setNotas] = useState(servidor?.notas ?? "");
   const [token, setToken] = useState<string | null>(null);
   const [borrar, setBorrar] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [aviso, setAviso] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+  // Corre una escritura del panel real; los errores quedan en la alerta de la ficha.
+  const ejecutar = async (fn: () => Promise<void>, listo?: string) => {
+    if (ocupado) return false;
+    setOcupado(true);
+    setError(null);
+    setAviso("");
+    try {
+      await fn();
+      if (listo) setAviso(listo);
+      return true;
+    } catch (e) {
+      setError(textoError(e));
+      return false;
+    } finally {
+      setOcupado(false);
+    }
+  };
+  const aceptada = !!servidor?.aceptadaEl;
   const pendiente = sinPrimeraRespuesta({ ...s, estado: estado as Solicitud["estado"] });
   const vistaPersona = s.tipo === "interes" ? ESTADO_SOLICITUD.interes : ESTADO_SOLICITUD[estado];
 
@@ -149,24 +216,62 @@ function Contenido({ s }: { s: Solicitud }) {
               </a>
             </div>
             {pendiente && (
-              <button type="button" className="boton boton--primario" onClick={() => setEstado("respondida")}>
+              <button
+                type="button"
+                className="boton boton--primario"
+                onClick={() => (servidor ? void ejecutar(servidor.marcarRespondida) : setEstado("respondida"))}
+              >
                 {F.responder.respondida}
               </button>
             )}
           </Seccion>
 
-          {s.tipo === "solicitud" && estado !== "cerrada" && (
-            <>
-              <Acuerdo s={s} onRegistrar={() => setEstado("acordada")} />
-              <div className="pa-desplegable">
-                <button type="button" className="boton boton--secundario" aria-disabled="true" aria-describedby="crear-nota">
-                  {F.crearEspacio.boton}
-                </button>
-                <p id="crear-nota" className="microcopia">
-                  {F.crearEspacio.nota}
+          {servidor && (
+            <div role="alert" className="envio__alerta">
+              {error && (
+                <p className="aviso aviso--error-envio">
+                  <Icono nombre="info" tamaño={20} className="aviso-icono" />
+                  <span>{error}</span>
                 </p>
+              )}
+            </div>
+          )}
+          {servidor && (
+            <p role="status" className="microcopia">
+              {aviso}
+            </p>
+          )}
+
+          {s.tipo === "solicitud" && (servidor ? !["cerrada", "retirada", "con_espacio"].includes(estado) : estado !== "cerrada") && (
+            <>
+              <Acuerdo
+                s={s}
+                inicial={servidor?.acuerdo ?? null}
+                onRegistrar={(a) => (servidor ? ejecutar(() => servidor.registrarAcuerdo(a), PANEL_REAL.guardado) : (setEstado("acordada"), Promise.resolve(true)))}
+              />
+              {servidor && estado === "acordada" && (
+                <p className="microcopia">{aceptada ? PANEL_REAL.solicitud.aceptada(fechaLarga(servidor.aceptadaEl!)) : PANEL_REAL.solicitud.sinAceptar}</p>
+              )}
+              <div className="pa-desplegable">
+                {servidor && estado === "acordada" && aceptada ? (
+                  <button type="button" className="boton boton--primario" onClick={() => void ejecutar(servidor.crearEspacio, PANEL_REAL.solicitud.espacioCreado)}>
+                    {F.crearEspacio.boton}
+                  </button>
+                ) : (
+                  <>
+                    <button type="button" className="boton boton--secundario" aria-disabled="true" aria-describedby="crear-nota">
+                      {F.crearEspacio.boton}
+                    </button>
+                    <p id="crear-nota" className="microcopia">
+                      {F.crearEspacio.nota}
+                    </p>
+                  </>
+                )}
               </div>
-              <Cerrar s={s} onCerrar={() => setEstado("cerrada")} />
+              <Cerrar
+                s={s}
+                onCerrar={(motivo, nota) => (servidor ? ejecutar(() => servidor.cerrar(motivo, nota), PANEL_REAL.guardado) : (setEstado("cerrada"), Promise.resolve(true)))}
+              />
             </>
           )}
 
@@ -176,6 +281,13 @@ function Contenido({ s }: { s: Solicitud }) {
               className="boton boton--secundario"
               aria-describedby="enlace-ayuda"
               onClick={() => {
+                if (servidor) {
+                  const t = tokenNuevo();
+                  void ejecutar(() => servidor.nuevoEnlace(t)).then((ok) => {
+                    if (ok) setToken(t);
+                  });
+                  return;
+                }
                 const b = new Uint8Array(16);
                 crypto.getRandomValues(b);
                 setToken(Array.from(b, (x) => x.toString(16).padStart(2, "0")).join(""));
@@ -214,6 +326,9 @@ function Contenido({ s }: { s: Solicitud }) {
             max={LIMITES.notasInternas.max}
             value={notas}
             onChange={(e) => setNotas(e.target.value)}
+            onBlur={() => {
+              if (servidor && notas !== servidor.notas) void ejecutar(() => servidor.guardarNotas(notas), PANEL_REAL.solicitud.notasGuardadas);
+            }}
           />
         </section>
       </div>
@@ -224,7 +339,17 @@ function Contenido({ s }: { s: Solicitud }) {
           <button type="button" className="boton boton--secundario" onClick={() => setBorrar(false)}>
             {F.borrar.cancelar}
           </button>
-          <button type="button" className="boton boton--primario" onClick={() => navigate(R.solicitudes)}>
+          <button
+            type="button"
+            className="boton boton--primario"
+            onClick={() => {
+              if (!servidor) return navigate(R.solicitudes);
+              setBorrar(false);
+              void ejecutar(servidor.borrar).then((ok) => {
+                if (ok) navigate(R.solicitudes);
+              });
+            }}
+          >
             {F.borrar.confirmar}
           </button>
         </div>
@@ -246,13 +371,27 @@ const DIAS_REVISION = DIAS.slice(0, 5);
 const plural = (dia: string) => (dia.endsWith("s") ? dia : `${dia}s`);
 const precioDe = (param: string) => planes.find((p) => p.param === param)!.precio.replace(/\D/g, "");
 
-function Acuerdo({ s, onRegistrar }: { s: Solicitud; onRegistrar: () => void }) {
-  const [plan, setPlan] = useState<"coach" | "cercano">(s.apoyo === "cercano" ? "cercano" : "coach");
-  const [precio, setPrecio] = useState(precioDe(plan));
-  const [inicio, setInicio] = useState<Iso>("2026-10-19");
-  const [semanas, setSemanas] = useState("4");
-  const [dia, setDia] = useState(3); // jueves
-  const [hora, setHora] = useState("19:00");
+// Lunes siguiente a una fecha (el inicio por defecto en el panel real).
+const lunesSiguiente = (hoy: Iso) => sumarDias(hoy, 8 - diaSemana(hoy));
+
+function Acuerdo({
+  s,
+  inicial,
+  onRegistrar,
+}: {
+  s: Solicitud;
+  inicial: AcuerdoSolicitud | null;
+  onRegistrar: (a: AcuerdoSolicitud) => Promise<boolean>;
+}) {
+  const { real, hoy } = usePanel();
+  const [plan, setPlan] = useState<"coach" | "cercano">(inicial?.plan ?? (s.apoyo === "cercano" ? "cercano" : "coach"));
+  const [precio, setPrecio] = useState(inicial ? String(inicial.precio_clp) : precioDe(plan));
+  const [inicio, setInicio] = useState<Iso>(inicial?.inicio ?? (real ? lunesSiguiente(hoy) : "2026-10-19"));
+  const [semanas, setSemanas] = useState(String(inicial?.semanas ?? 4));
+  const [dia, setDia] = useState(inicial ? inicial.dia_revision - 1 : 3); // jueves
+  const [hora, setHora] = useState(inicial?.hora_videollamada?.slice(0, 5) ?? "19:00");
+  const [errorInicio, setErrorInicio] = useState<string | null>(null);
+  const [errorPrecio, setErrorPrecio] = useState<string | null>(null);
   const p = planes.find((x) => x.param === plan)!;
   const nombreDia = DIAS_REVISION[dia];
   const conDetalles = !!operacion.formaDePago && !!operacion.politicaTermino;
@@ -265,7 +404,19 @@ function Acuerdo({ s, onRegistrar }: { s: Solicitud; onRegistrar: () => void }) 
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
-          onRegistrar();
+          const eInicio = real && (!inicio || diaSemana(inicio) !== 1) ? PANEL_REAL.solicitud.inicioLunes : null;
+          const ePrecio = real && !(numero > 0) ? PANEL_REAL.solicitud.precio : null;
+          setErrorInicio(eInicio);
+          setErrorPrecio(ePrecio);
+          if (eInicio || ePrecio) return;
+          void onRegistrar({
+            plan,
+            precio_clp: numero,
+            inicio,
+            semanas: Number(semanas),
+            dia_revision: dia + 1,
+            hora_videollamada: plan === "cercano" ? hora : null,
+          });
         }}
       >
         <Segmentado
@@ -277,8 +428,24 @@ function Acuerdo({ s, onRegistrar }: { s: Solicitud; onRegistrar: () => void }) 
             setPrecio(precioDe(v));
           }}
         />
-        <CampoTexto id="acuerdo-precio" etiqueta={F.acuerdo.precio} inputMode="numeric" value={precio} onChange={(e) => setPrecio(e.target.value.replace(/\D/g, ""))} />
-        <CampoTexto id="acuerdo-inicio" etiqueta={F.acuerdo.inicio} type="date" value={inicio} min={HOY} step={7} onChange={(e) => setInicio(e.target.value)} />
+        <CampoTexto
+          id="acuerdo-precio"
+          etiqueta={F.acuerdo.precio}
+          inputMode="numeric"
+          value={precio}
+          error={errorPrecio}
+          onChange={(e) => setPrecio(e.target.value.replace(/\D/g, ""))}
+        />
+        <CampoTexto
+          id="acuerdo-inicio"
+          etiqueta={F.acuerdo.inicio}
+          type="date"
+          value={inicio}
+          min={hoy}
+          step={7}
+          error={errorInicio}
+          onChange={(e) => setInicio(e.target.value)}
+        />
         <Segmentado leyenda={F.acuerdo.semanas} opciones={SEMANAS} valor={semanas} onCambio={setSemanas} />
         <CampoSelect id="acuerdo-dia" etiqueta={F.acuerdo.diaRevision} value={dia} onChange={(e) => setDia(Number(e.target.value))}>
           {DIAS_REVISION.map((d, i) => (
@@ -329,7 +496,7 @@ function Acuerdo({ s, onRegistrar }: { s: Solicitud; onRegistrar: () => void }) 
 // ---------------------------------------------------------------------------
 // Cerrar con motivo y nota opcional (máx. 600), con la vista previa del texto fijo de /estado/.
 
-function Cerrar({ s, onCerrar }: { s: Solicitud; onCerrar: () => void }) {
+function Cerrar({ s, onCerrar }: { s: Solicitud; onCerrar: (motivo: string, nota: string) => Promise<boolean> }) {
   const [motivo, setMotivo] = useState<string>(s.motivoCierre ?? "capacidad");
   const [nota, setNota] = useState("");
   const texto = ESTADO_PERSONA.cerrada[motivo];
@@ -340,7 +507,7 @@ function Cerrar({ s, onCerrar }: { s: Solicitud; onCerrar: () => void }) {
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
-          onCerrar();
+          void onCerrar(motivo, nota.trim());
         }}
       >
         <GrupoOpciones id="cerrar-motivo" leyenda={F.cerrar.motivo}>

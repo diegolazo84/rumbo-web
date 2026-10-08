@@ -7,15 +7,16 @@ import { Icono } from "../../../components/app";
 import { fechaLarga, mayuscula } from "../../../lib/fechas";
 import type { PropsPantalla } from "../registro";
 import { cola, type Item } from "./cola";
-import { Cabeza, venceTexto } from "./comun";
-import { HOY } from "./ejemplo";
+import { Cabeza, usePanel, useVence } from "./comun";
 import { HOY_PANEL, T_PANEL } from "./textos";
 
-function Tarjeta({ item }: { item: Item }) {
+export function Tarjeta({ item }: { item: Item }) {
+  const { hoy } = usePanel();
+  const venceTexto = useVence();
   const idQue = `${item.id}-que`;
   const idDetalle = `${item.id}-detalle`;
   const vence = item.vence ? venceTexto(item.vence) : null;
-  const pasado = !!item.vence && item.vence < HOY;
+  const pasado = !!item.vence && item.vence < hoy;
   return (
     <li>
       <article className="tarjeta tarjeta--enlazada pa-cola__tarjeta" aria-labelledby={idQue}>
@@ -45,11 +46,15 @@ function Tarjeta({ item }: { item: Item }) {
 }
 
 export default function Hoy({ estado }: PropsPantalla) {
-  const vacio = estado === "vacio";
-  const items = vacio ? [] : cola();
+  return <ColaHoy items={estado === "vacio" ? [] : cola()} />;
+}
+
+// La cola con los ítems ya armados (vista previa: cola.ts; panel real: con los datos de la base).
+export function ColaHoy({ items }: { items: Item[] }) {
+  const { hoy } = usePanel();
   return (
     <div className="pa-pantalla">
-      <Cabeza ojo={HOY_PANEL.ojo} titulo={HOY_PANEL.titulo} bajada={mayuscula(fechaLarga(HOY))} />
+      <Cabeza ojo={HOY_PANEL.ojo} titulo={HOY_PANEL.titulo} bajada={mayuscula(fechaLarga(hoy))} />
       {items.length ? (
         <ol className="pa-cola">
           {items.map((it) => (

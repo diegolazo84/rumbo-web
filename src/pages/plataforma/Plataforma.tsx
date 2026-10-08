@@ -6,7 +6,7 @@
 import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { EstructuraApp } from "../../components/app";
-import { rutaPlataforma, type RutaPlataforma } from "../../plataforma";
+import { rutaPlataforma, type RutaPlataforma } from "./rutas";
 import { ESPACIO_PREVIA, EspacioContexto, R_REAL, type Espacio } from "../vista-previa/mi-espacio/espacio";
 import Carga from "../vista-previa/mi-espacio/Carga";
 // Estilos de la plataforma: los mismos de la vista previa, sin los propios del índice de ejemplo.
