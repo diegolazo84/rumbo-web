@@ -1,0 +1,25 @@
+name: Diagnóstico Supabase
+on:
+  push:
+    branches: [diagnostico]
+permissions:
+  contents: read
+jobs:
+  probar:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Llamar a las RPC públicas del proyecto real
+        run: |
+          U=https://jhukwxeeytedkjtwqowq.supabase.co
+          K=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpodWt3eGVleXRlZGtqdHdxb3dxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NzkzMTYsImV4cCI6MjEwNjU1NTMxNn0.FvEiq45Z8UWErns_j5YKX4yFRjSsNGuJJz43vLwXAaU
+          for f in ping estado_postulaciones; do
+            echo "== $f"; curl -sS -i -X POST "$U/rest/v1/rpc/$f" -H "apikey: $K" -H "Authorization: Bearer $K" -H "Content-Type: application/json" -d '{}' | sed -n '1p;/^{/p;/^"/p;/^\[/p'
+          done
+          echo "== enviar_solicitud con token inválido (no guarda nada)"
+          curl -sS -i -X POST "$U/rest/v1/rpc/enviar_solicitud" -H "apikey: $K" -H "Authorization: Bearer $K" -H "Content-Type: application/json" -d '{"p":{"token":"x"}}' | sed -n '1p;/^{/p'
+          echo "== enviar_solicitud de diagnóstico (marcada como spam: ms bajo)"
+          T=$(head -c 32 /dev/urandom | base64 | tr '+/' '-_' | tr -d '=')
+          curl -sS -i -X POST "$U/rest/v1/rpc/enviar_solicitud" -H "apikey: $K" -H "Authorization: Bearer $K" -H "Content-Type: application/json" \
+            -d "{\"p\":{\"token\":\"$T\",\"tipo\":\"solicitud\",\"nombre\":\"Prueba diagnostico\",\"correo\":\"prueba@example.com\",\"area\":\"proyectos\",\"meta\":\"Prueba automatica de diagnostico, se puede borrar.\",\"apoyo\":\"nose\",\"mayor_edad\":true,\"autorizacion\":true,\"ms\":1}}" | sed -n '1p;/^{/p'
+          echo "== CORS preflight"
+          curl -sS -i -X OPTIONS "$U/rest/v1/rpc/enviar_solicitud" -H "Origin: https://diegolazo84.github.io" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: apikey,authorization,content-type" | sed -n '1p;/^[Aa]ccess-control/p'
