@@ -73,11 +73,17 @@ test.describe("registro de la vista previa", () => {
     }
   });
 
+  // Única excepción: /mi-espacio/ enlaza a Hoy de ejemplo («Mira cómo será Mi espacio», rotulado como ejemplo).
   test("fuera del sitemap y sin enlaces desde la web pública", async ({ request }) => {
     const sitemap = await (await request.get("sitemap.xml")).text();
     expect(sitemap).not.toContain("vista-previa");
     for (const ruta of [...paginas.map((p) => p.ruta), "/esta-ruta-no-existe/"]) {
-      const html = await (await request.get(relativa(ruta))).text();
+      let html = await (await request.get(relativa(ruta))).text();
+      if (ruta === "/mi-espacio/") {
+        const ejemplo = /href="[^"]*\/vista-previa\/mi-espacio\/"/g;
+        expect(html.match(ejemplo), ruta).toHaveLength(1);
+        html = html.replace(ejemplo, "");
+      }
       expect(html, ruta).not.toContain("vista-previa/");
     }
   });

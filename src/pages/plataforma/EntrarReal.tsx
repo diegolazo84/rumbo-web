@@ -10,6 +10,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase, usarComputadorCompartido, type Cliente } from "../../lib/supabase";
+import { operacion } from "../../data/rumbo";
 import Carga from "../vista-previa/mi-espacio/Carga";
 import {
   EnlaceVencido,
@@ -114,7 +115,7 @@ export default function EntrarReal() {
   if (paso === "verificando") return <Carga estado="cargando" />;
   if (paso === "vencido") return <EnlaceVencido />;
   if (estadoNav?.enviado && estadoNav.correo)
-    return <RevisaCorreo key={ubicacion.key} alVerificar={verificar} alReenviar={(c) => pedir(c, !!estadoNav.compartido)} remitente={null} />;
+    return <RevisaCorreo key={ubicacion.key} alVerificar={verificar} alReenviar={(c) => pedir(c, !!estadoNav.compartido)} remitente={operacion.correo} />;
   const aviso = estadoNav?.aviso === "terminada" ? SESION.terminada : estadoNav?.aviso === "saliste" ? SESION.saliste : undefined;
   return <PedirCodigo key={ubicacion.key} aviso={aviso} alPedir={pedir} />;
 }

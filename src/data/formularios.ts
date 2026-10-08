@@ -482,6 +482,28 @@ export const RETIRAR = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// /mi-espacio/ mientras no haya cuentas: qué es Mi espacio y cómo se entra. Sin datos de nadie.
+
+export const MI_ESPACIO = {
+  ojo: "Mi espacio",
+  titulo: "Mi espacio se abre cuando tu programa esté publicado.",
+  texto:
+    "Es donde vas a ver tu programa: tu calendario de acciones y cómo vas avanzando entre una revisión y otra. Lo abrimos cuando acordamos contigo tu programa y lo publicamos.",
+  comoEntrar: {
+    titulo: "Cómo vas a entrar",
+    items: [
+      "Te daremos acceso por correo, a la dirección que nos diste al postular.",
+      "Si ya postulaste, tu enlace privado de seguimiento muestra el estado de tu solicitud. Es el que apareció al enviarla.",
+      "Si aún no postulas, el primer paso es contarnos tu meta. Postular es gratis y no te compromete.",
+    ],
+  },
+  primario: "Cuéntanos tu meta",
+  secundario: "Mira cómo será Mi espacio",
+  notaEjemplo:
+    "Es una vista de ejemplo: la persona, sus metas y sus fechas son inventadas para mostrar cómo se ve. No es una cuenta real.",
+} as const;
+
+// ---------------------------------------------------------------------------
 // Ingreso a Mi espacio (4.2)
 
 export const ENTRAR = {

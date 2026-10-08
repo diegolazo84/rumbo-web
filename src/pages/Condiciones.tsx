@@ -176,9 +176,8 @@ const secciones: Paso[] = [
     contenido: (
       <>
         <p>
-          Preparamos tu programa a partir de lo que conversamos y lo publicamos en Mi espacio, dentro de la plataforma
-          de Rumbo, que por ahora pide iniciar sesión con una cuenta de ChatGPT. Puedes pedir ajustes y participar en
-          las decisiones.
+          Preparamos tu programa a partir de lo que conversamos y lo publicamos en Mi espacio, dentro de esta web, donde
+          entras con un código que llega a tu correo. Puedes pedir ajustes y participar en las decisiones.
         </p>
         <p>
           La duración se adapta a tu meta: 4, 8 o 12 semanas. En el piloto empezamos con un ciclo de 4 semanas;

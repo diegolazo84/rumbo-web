@@ -1,5 +1,6 @@
 // Páginas reales de «Cuéntanos tu meta» (/postular/), estado de la solicitud (/estado/#token) y
-// contacto (/contacto/), con el interruptor operacion.formularioPropio (plataforma D8 y 2.1).
+// contacto (/contacto/), con el interruptor operacion.formularioPropio (plataforma D8 y 2.1), y
+// Mi espacio (/mi-espacio/), que explica cómo se entra mientras no haya cuentas.
 // Son las mismas pantallas de la vista previa en modo real (vista-previa/formulario/modo.ts):
 // mismo diseño, datos de la base por src/lib/api.ts. Porción aparte (App.tsx la carga con lazy):
 // ni su JS ni su CSS pesan en la portada; postbuild.mjs enlaza su CSS en <head> al prerenderizar.
@@ -12,13 +13,22 @@ import { MODO_REAL, ModoFormularioContexto } from "../vista-previa/formulario/mo
 import Postular from "../vista-previa/formulario/Postular";
 import Estado from "../vista-previa/formulario/Estado";
 import Contacto from "../vista-previa/formulario/Contacto";
+import MiEspacio from "./MiEspacio";
 
-export type PaginaFormularioId = "postular" | "estado" | "contacto";
+export type PaginaFormularioId = "postular" | "estado" | "contacto" | "mi-espacio";
 
 export default function PaginaFormulario({ pagina }: { pagina: PaginaFormularioId }) {
   return (
     <ModoFormularioContexto.Provider value={MODO_REAL}>
-      {pagina === "postular" ? <Postular estado="solicitud" /> : pagina === "estado" ? <Estado /> : <Contacto estado="inicial" />}
+      {pagina === "postular" ? (
+        <Postular estado="solicitud" />
+      ) : pagina === "estado" ? (
+        <Estado />
+      ) : pagina === "mi-espacio" ? (
+        <MiEspacio />
+      ) : (
+        <Contacto estado="inicial" />
+      )}
     </ModoFormularioContexto.Provider>
   );
 }

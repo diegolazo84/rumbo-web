@@ -24,6 +24,7 @@ import {
   reglasCreditosTextos,
 } from "../src/data/rumbo";
 import { buscarMarcadores } from "../scripts/marcadores.mjs";
+import { MI_ESPACIO } from "../src/data/formularios";
 import { SUPABASE_URL } from "../src/lib/supabase-config";
 import {
   PLATAFORMA as PLATAFORMA_REENVIOS,
@@ -46,8 +47,9 @@ if (operacion.formularioPropio) {
   });
 }
 
-// Destinos externos permitidos (sección 4).
-const RUTAS_PLATAFORMA = ["/postular", "/contacto", "/mi-programa", "/comunidad", "/privacidad-piloto"];
+// Destinos externos permitidos (sección 4). Mi espacio es una página propia y la comunidad no se
+// enlaza: de la plataforma solo quedan su aviso de privacidad y, con el interruptor apagado, postular y contacto.
+const RUTAS_PLATAFORMA = ["/postular", "/contacto", "/privacidad-piloto"];
 const TELEFONOS = ["tel:131", "tel:6003607777", "tel:1412", ...(ayuda.incluir1455 ? ["tel:1455"] : [])];
 const AREAS_PERMITIDAS = [
   "emprendimiento",
@@ -481,10 +483,11 @@ test("los reenvíos apuntan a la misma plataforma que los enlaces", async () => 
   expect(PLATAFORMA_REENVIOS).toBe(PLATAFORMA);
 });
 
+// Base de la web (la misma carpeta que SITE_URL, como exige postbuild.mjs).
+const BASE_WEB = new URL(`${SITE_URL}/`).pathname;
+
 for (const r of reenviosActivos(operacion)) {
-  // Interno (Mi espacio propio): la misma web, bajo la base del sitio.
-  const interno = "interno" in r && !!r.interno;
-  const url = urlReenvio(r, (process.env.BASE_PATH || "/rumbo-web/").replace(/\/?$/, "/"));
+  const url = urlReenvio(r, BASE_WEB);
   const textos = textosReenvio(r);
   for (const ruta of r.rutas) {
     test(`reenvío /${ruta}/: página propia, noindex y CSP con hash`, PROD, async ({ request }) => {
@@ -514,16 +517,47 @@ for (const r of reenviosActivos(operacion)) {
       await page.route(`${PLATAFORMA}/**`, (rt) => rt.fulfill({ contentType: "text/html", body: "<p>plataforma</p>" }));
       // Sin barra final, como en un enlace escrito a mano.
       await page.goto(`${ruta}?area=emprendimiento&apoyo=coach#token-de-prueba`);
-      if (interno) {
-        // Mi espacio sin sesión sigue a su ingreso (mi-espacio/entrar/): basta con llegar a la carpeta.
-        await page.waitForURL((u) => u.pathname.startsWith(url));
+      const destino = r.interno ? new URL(url, page.url()).href : url;
+      if (r.interno && operacion.miEspacioPropio) {
+        // Mi espacio propio sin sesión sigue a su ingreso (mi-espacio/entrar/): basta con llegar a la carpeta.
+        await page.waitForURL((u) => u.href.startsWith(destino));
         return;
       }
-      await page.waitForURL(`${PLATAFORMA}/**`);
-      expect(page.url()).toBe(`${url}?area=emprendimiento&apoyo=coach#token-de-prueba`);
+      await page.waitForURL(`${destino}**`);
+      expect(page.url()).toBe(`${destino}?area=emprendimiento&apoyo=coach#token-de-prueba`);
     });
   }
 }
+
+// Mi espacio (/mi-espacio/): página propia prerenderizada (no un reenvío), con el mismo diseño que
+// /estado/, sin datos de nadie y sin salir a la plataforma de ChatGPT.
+test("Mi espacio: página propia que explica cómo se entra", PROD, async ({ page, request }) => {
+  const r = await request.get("mi-espacio/", { maxRedirects: 0 });
+  expect(r.status()).toBe(200);
+  const html = await r.text();
+  expect(html).not.toContain('http-equiv="refresh"');
+  expect(html).not.toContain("chatgpt.site");
+  expect(html).toContain(MI_ESPACIO.titulo);
+
+  await page.goto("mi-espacio/");
+  await esperarHidratacion(page);
+  await expect(page.locator("main h1")).toHaveText(MI_ESPACIO.titulo);
+  await expect(page.locator("main")).toContainText(MI_ESPACIO.comoEntrar.items[0]);
+  const postular = page.locator("main").getByRole("link", { name: MI_ESPACIO.primario });
+  await expect(postular).toHaveAttribute("href", /\/postular\/$/);
+  const ejemplo = page.locator("main").getByRole("link", { name: MI_ESPACIO.secundario });
+  await expect(ejemplo).toHaveAttribute("href", /\/vista-previa\/mi-espacio\/$/);
+  await expect(page.locator("main")).toContainText(MI_ESPACIO.notaEjemplo);
+  // Ni la cabecera ni el pie salen a la plataforma, y la comunidad no se enlaza.
+  await expect(page.locator(`header a[href^="${PLATAFORMA}"], footer a[href^="${PLATAFORMA}"]`)).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Comunidad/ })).toHaveCount(0);
+  await expect(page.locator("footer").getByRole("link", { name: "Mi espacio", exact: true })).toHaveAttribute(
+    "href",
+    /\/mi-espacio\/$/,
+  );
+  await ejemplo.click();
+  await expect(page).toHaveURL(/\/vista-previa\/mi-espacio\/$/);
+});
 
 test("imagen para redes, íconos y manifest", PROD, async ({ request }) => {
   const og = await request.get(IMAGEN_SOCIAL.ruta);

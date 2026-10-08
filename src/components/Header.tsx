@@ -78,7 +78,7 @@ export default function Header({ conCta = true }: { conCta?: boolean }) {
           </ul>
         </nav>
         <span className="cabecera-separador" aria-hidden="true" />
-        <EnlaceUtil href={rutas.miEspacio} icono="user-round" plataforma evento="mi-espacio" className="cabecera-espacio">
+        <EnlaceUtil href={rutas.miEspacio} icono="user-round" evento="mi-espacio" className="cabecera-espacio">
           Mi espacio
         </EnlaceUtil>
 
@@ -124,7 +124,6 @@ export default function Header({ conCta = true }: { conCta?: boolean }) {
             href={rutas.miEspacio}
             variante="secundario"
             ancho
-            plataforma
             icono="user-round"
             evento="mi-espacio"
             onClick={cerrar}

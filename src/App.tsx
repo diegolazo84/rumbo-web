@@ -16,9 +16,9 @@ import { esPlataforma } from "./plataforma";
 const VistaPrevia = lazy(() => import("./pages/vista-previa/VistaPrevia"));
 // Mi espacio propio y panel (etapa 3, solo con operacion.miEspacioPropio): porción aparte.
 const Plataforma = lazy(() => import("./pages/plataforma/Plataforma"));
-// Postular, estado y contacto (solo con operacion.formularioPropio): porción aparte, con sus estilos.
+// Postular, estado y contacto (solo con operacion.formularioPropio) y Mi espacio: porción aparte, con sus estilos.
 const PaginaFormulario = lazy(() => import("./pages/formulario/PaginaFormulario"));
-const formulario = (pagina: "postular" | "estado" | "contacto") => (
+const formulario = (pagina: "postular" | "estado" | "contacto" | "mi-espacio") => (
   <Suspense fallback={null}>
     <PaginaFormulario pagina={pagina} />
   </Suspense>
@@ -33,6 +33,7 @@ const vistas: Record<PaginaId, ReactElement> = {
   postular: formulario("postular"),
   estado: formulario("estado"),
   contacto: formulario("contacto"),
+  "mi-espacio": formulario("mi-espacio"),
 };
 
 // Desplazamiento, foco y metadatos al navegar dentro de la app.
