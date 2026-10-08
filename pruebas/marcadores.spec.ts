@@ -37,6 +37,17 @@ test.describe("marcadores y frases prohibidas", () => {
     });
   }
 
+  // Las excepciones (EXCEPCIONES) dejan pasar solo el texto exacto de la especificación.
+  test("las excepciones son exactas: la misma palabra en otro texto sigue fallando", () => {
+    expect(buscarFrases("Si lo perdiste, escríbenos con el correo de tu solicitud.")).toEqual([]);
+    expect(buscarFrases("Cuando vuelva, toca “Enviar mi solicitud” otra vez.")).toEqual([]);
+    expect(buscarFrases("Escribe sobre la dificultad, no sobre la persona. Evita “fallaste”, “disciplina”, “fuerza de voluntad”, “sin excusas”.")).toEqual([]);
+    expect(buscarFrases("Perdiste tu racha.")).not.toEqual([]);
+    expect(buscarFrases("Inténtalo otra vez.")).not.toEqual([]);
+    expect(buscarFrases("Tu acción está atrasada.")).not.toEqual([]);
+    expect(buscarFrases("Fallaste esta semana.")).not.toEqual([]);
+  });
+
   // El bundle trae también los textos condicionales: ninguno puede usar una frase prohibida.
   test("el JavaScript publicado no contiene frases prohibidas", async () => {
     test.skip(!!process.env.URL_PRUEBA, "solo sobre el build local");

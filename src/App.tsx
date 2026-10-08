@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactElement } from "react";
+import { lazy, Suspense, useEffect, useRef, type ReactElement } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
@@ -9,6 +9,10 @@ import Ayuda from "./pages/Ayuda";
 import NoEncontrada from "./pages/NoEncontrada";
 import { PAGINA_404, paginaPorRuta, paginas, type PaginaId } from "./data/paginas";
 import { useRevelar } from "./revelar";
+import { esVistaPrevia } from "./vista-previa";
+
+// Vista previa de la plataforma (etapa 0): porción aparte, con su propio marco, título y estilos.
+const VistaPrevia = lazy(() => import("./pages/vista-previa/VistaPrevia"));
 
 // TypeScript exige una vista por cada página declarada en data/paginas.ts.
 const vistas: Record<PaginaId, ReactElement> = {
@@ -46,6 +50,7 @@ function AlCambiarDeRuta() {
   // El HTML prerenderizado ya trae <head> completo; al navegar dentro de la app
   // solo hay que mantener el título y la descripción al día.
   useEffect(() => {
+    if (esVistaPrevia(pathname)) return; // su título lo pone VistaPrevia.tsx
     const pagina = paginaPorRuta(pathname);
     document.title = pagina?.titulo ?? PAGINA_404.titulo;
     document
@@ -60,6 +65,20 @@ export default function App() {
   useRevelar();
   // Ayuda inmediata no lleva llamado comercial en la cabecera.
   const conCta = paginaPorRuta(pathname)?.id !== "ayuda";
+
+  if (esVistaPrevia(pathname)) {
+    return (
+      <>
+        <a className="saltar" href="#contenido">
+          Saltar al contenido
+        </a>
+        <AlCambiarDeRuta />
+        <Suspense fallback={null}>
+          <VistaPrevia />
+        </Suspense>
+      </>
+    );
+  }
 
   return (
     <>

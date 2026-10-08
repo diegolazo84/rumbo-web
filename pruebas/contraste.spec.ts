@@ -97,6 +97,12 @@ const PARES: [string, string | string[], number, number][] = [
   ["linea-fuerte", "papel-hondo", 3, 3.27],
   ["linea-fuerte", "superficie", 3, 4.06],
   ["bosque", "papel-hondo", 3, 8.38],
+  // Validación de formularios (plataforma 3.1 y 8.2-D1): texto y borde de error, resumen de errores
+  ["error", "papel", 4.5, 6.36],
+  ["error", "papel-hondo", 4.5, 5.77],
+  ["error", "superficie", 4.5, 7.16],
+  ["error", "error-fondo", 4.5, 5.95],
+  ["tinta", "error-fondo", 4.5, 12.69],
 ];
 
 test.describe("tokens y contraste", () => {

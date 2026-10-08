@@ -39,6 +39,11 @@
   --bienestar: #B77B16; --bienestar-texto: #895C10; --bienestar-fondo: #F6EDDD;
   --sobre-categoria: #FFFFFF; /* check de una acción marcada, sobre la base de categoría */
 
+  /* 4b. Validación de formularios (plataforma 3.1): SOLO campos con error y su resumen.
+     Nunca en estados de registro (días, acciones, rachas): ahí no existe el rojo. */
+  --error: #A12B22;          /* texto y borde de un campo con error */
+  --error-fondo: #F8E4DF;    /* fondo del resumen de errores */
+
   /* 5. Tipografía */
   --serif: "Fraunces Variable", Georgia, "Times New Roman", serif;
   --sans: "Instrument Sans Variable", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
@@ -830,6 +835,46 @@ html:not(.hidratado) .menu-boton { visibility: hidden; }
   .accion:has(:focus-visible) { outline: var(--foco-ancho) solid var(--foco-color); outline-offset: var(--foco-offset); }
   .accion input:focus-visible { outline: none; }
 }
+/* Patrón de Mi espacio (plataforma 4.1.3): la fila abre la hoja y el control de la derecha marca. */
+.accion--demo { grid-template-columns: minmax(0, 1fr) 44px; column-gap: 4px; padding: 6px 6px 6px 0; cursor: auto; }
+.accion-abrir {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  min-block-size: 44px;
+  padding: 4px 8px 4px 14px;
+  border: 0;
+  border-radius: var(--r-s);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.accion-marcar { display: grid; place-items: center; inline-size: 44px; block-size: 44px; border-radius: var(--r-full); cursor: pointer; }
+.accion-marcar input { justify-self: center; }
+@supports selector(:has(*)) {
+  .accion--demo:has(:focus-visible) { outline: none; }
+  .accion-marcar:has(:focus-visible) { outline: var(--foco-ancho) solid var(--foco-color); outline-offset: 0; }
+}
+@media (hover: hover) { .accion-abrir:hover .accion-titulo { text-decoration: underline; text-underline-offset: 3px; } }
+/* Hoja de ejemplo: punteada, como todo lo que es solo ejemplo (1.2). */
+.hoja-demo {
+  inline-size: min(100%, 30rem);
+  max-inline-size: 100%;
+  margin: auto auto 0;
+  padding: 0;
+  border: 1.5px dashed var(--linea-fuerte);
+  border-radius: var(--r-l) var(--r-l) 0 0;
+  background: var(--superficie);
+  color: var(--tinta);
+}
+.hoja-demo::backdrop { background: rgb(29 38 33 / 0.45); }
+@media (min-width: 600px) { .hoja-demo { margin: auto; border-radius: var(--r-l); } }
+.hoja-demo__caja { display: grid; gap: 12px; padding: 16px var(--gutter) calc(24px + env(safe-area-inset-bottom)); }
+.hoja-demo__cabeza { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.hoja-demo__titulo { font: 600 var(--t-h3)/1.25 var(--serif); letter-spacing: -0.005em; }
 /* Hecha: check relleno, título en tinta suave y «Hecha» en el detalle. Sin tachado ni opacidad. */
 .accion--hecha .accion-titulo { color: var(--tinta-suave); }
 /* Ficha «+1»: sube 8 px y se desvanece. Sin movimiento, no aparece. */
