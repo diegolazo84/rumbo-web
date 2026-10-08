@@ -88,6 +88,9 @@ test("postular: un envío válido llega a Supabase y la confirmación muestra el
   // Sin datos ficticios (el «Ejemplo» de la ayuda de la meta sí corresponde, 3.4).
   await expect(page.getByText(estados.ejemploIlustrativo.texto)).toHaveCount(0);
   await llenarPostular(page);
+  // Días y franjas: la base solo acepta sus códigos (lun…vie, manana…noche).
+  await page.getByRole("checkbox", { name: "Lunes", exact: true }).check();
+  await page.getByRole("checkbox", { name: "Miércoles", exact: true }).check();
   await page.getByRole("button", { name: POSTULAR.envio.boton }).click();
   await expect(page.locator("main h1")).toHaveText("Recibimos tu solicitud, Camila.");
   await expect(page.locator("main h1")).toBeFocused();
@@ -109,6 +112,7 @@ test("postular: un envío válido llega a Supabase y la confirmación muestra el
     campo_extra_7: "",
   });
   expect(typeof p.ms).toBe("number");
+  expect(p.dias).toEqual(["lun", "mie"]);
   expect(String(p.texto_autorizacion)).toContain(POSTULAR.autorizacion.enlace);
 
   // El enlace privado es /estado/#token, sin la etiqueta «Ejemplo».

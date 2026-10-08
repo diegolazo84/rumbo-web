@@ -130,6 +130,10 @@ export const CORREO = {
   usarSugerencia: (sugerido: string) => `Usar ${sugerido}`,
 } as const;
 
+// Días del formulario ↔ códigos que acepta la base (solicitudes.dias).
+export const CODIGO_DIA: Record<string, string> = { Lunes: "lun", Martes: "mar", "Miércoles": "mie", Jueves: "jue", Viernes: "vie" };
+export const NOMBRE_DIA: Record<string, string> = Object.fromEntries(Object.entries(CODIGO_DIA).map(([n, c]) => [c, n]));
+
 export function validarCorreo(valor: string): string | null {
   const v = valor.trim();
   if (!v) return CORREO.errores.vacio;
