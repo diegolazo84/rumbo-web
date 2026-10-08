@@ -69,14 +69,7 @@ export default function Footer() {
                 </EnlaceUtil>
               </li>
               <li>
-                <EnlaceUtil href={rutas.miEspacio} plataforma>
-                  Mi espacio
-                </EnlaceUtil>
-              </li>
-              <li>
-                <EnlaceUtil href={rutas.comunidad} plataforma>
-                  Comunidad para participantes
-                </EnlaceUtil>
+                <EnlaceUtil href={rutas.miEspacio}>Mi espacio</EnlaceUtil>
               </li>
             </ul>
           </nav>

@@ -162,7 +162,7 @@ const fabricas: Fabrica[] = [
     pregunta: "¿Necesito una cuenta?",
     respuesta: [
       rayas(
-        "Para postular, no. Si avanzamos, tu programa se publica en Mi espacio, que se abre en la plataforma de Rumbo —otra dirección web— y pide iniciar sesión con una cuenta de ChatGPT. Si no tienes una, puedes crearla gratis. Hoy no hay otra forma de entrar a Mi espacio: si prefieres no crearla, dínoslo antes de acordar nada.",
+        "Para postular, no. Si avanzamos, tu programa se publica en Mi espacio, aquí mismo en la web de Rumbo. Entras con el correo que nos diste: te llega un código para ingresar, sin contraseñas ni cuentas de otras empresas.",
       ),
     ],
   }),

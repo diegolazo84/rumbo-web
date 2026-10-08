@@ -25,8 +25,8 @@ export default function DentroDeRumbo() {
             <Transparencia />
           </div>
           <p className="microcopia que-recibes-nota">
-            Mi espacio se abre en la plataforma de Rumbo, en otra dirección web, y por ahora pide iniciar sesión con una
-            cuenta de ChatGPT.
+            Mi espacio está en esta misma web. Entras con un código que te llega al correo que nos diste, sin contraseñas
+            ni cuentas de otras empresas.
           </p>
         </div>
 

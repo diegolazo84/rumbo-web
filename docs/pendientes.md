@@ -94,7 +94,7 @@ perfiles), y la compilación con `LANZAMIENTO=1` los exige.
 | Dato | Para qué | Estado |
 |---|---|---|
 | `responsable` | Identificar al proveedor y al responsable de los datos (fila legal, Privacidad §1, Condiciones §1). Persona natural: nombre y comuna; el RUT solo si la revisión legal lo pide | cargado (Diego Alfonso Muñoz Abeleida, Providencia) |
-| `correo` | Contacto de privacidad y consultas; aparece en el pie y en los reenvíos | **falta · bloquea la difusión** |
+| `correo` | Contacto de privacidad y consultas; aparece en el pie y en los reenvíos | cargado (rumbo.acompana@gmail.com, 8 de octubre de 2026) |
 | `ayuda.verificadoEl` (e `incluir1455`) | Día en que se verificaron los números de ayuda | **falta · bloquea la difusión** |
 | `plazoPrimeraRespuesta` y `respondemosTodas` | «2 días hábiles», a todas las solicitudes | cargado |
 | `cobertura` | Desde dónde se puede participar («Es para ti si…», pregunta de cobertura, Condiciones §2) | cargado |

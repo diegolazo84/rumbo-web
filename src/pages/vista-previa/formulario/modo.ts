@@ -24,7 +24,7 @@ export const MODO_PREVIA: ModoFormulario = {
   },
 };
 
-// Mi espacio sigue en la plataforma de ChatGPT hasta que se encienda miEspacioPropio (D8).
+// «Entrar a Mi espacio» lleva a /mi-espacio/, que explica cómo se entra mientras no haya cuentas.
 export const MODO_REAL: ModoFormulario = {
   real: true,
   rutas: { postular: "/postular/", estado: "/estado/", contacto: "/contacto/", entrar: rutas.miEspacio },
