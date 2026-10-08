@@ -1,10 +1,11 @@
 name: Base de datos
 
 # Aplica supabase/*.sql sobre un Supabase local, en el mismo orden que Diego los pega,
-# y exige que verificacion.sql diga «ok» en todas las filas.
+# y exige que verificacion.sql diga «ok» en todas las filas. Después prueba la RLS de la
+# etapa 3 con la API como la usa el navegador (pruebas/base/rls.mjs).
 on:
   pull_request:
-    paths: ["supabase/**", ".github/workflows/base-de-datos.yml"]
+    paths: ["supabase/**", "pruebas/base/**", ".github/workflows/base-de-datos.yml", "package-lock.json"]
   push:
     branches: [main]
     paths: ["supabase/**"]
@@ -26,12 +27,25 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/sb" && cd "$RUNNER_TEMP/sb"
           supabase init --force
+          # Segundo factor TOTP para el equipo (plataforma 5.1 y 9.7), como en el proyecto real.
+          python3 - <<'PY'
+          import re
+          p = "supabase/config.toml"
+          s = open(p).read()
+          bloque = "[auth.mfa.totp]\nenroll_enabled = true\nverify_enabled = true\n"
+          if re.search(r"^\[auth\.mfa\.totp\]", s, re.M):
+              s = re.sub(r"^\[auth\.mfa\.totp\]\n(?:[^\[\n].*\n|\n)*?(?=^\[|\Z)", bloque + "\n", s, flags=re.M)
+          else:
+              s += "\n" + bloque
+          open(p, "w").write(s)
+          PY
+          grep -A2 '^\[auth.mfa.totp\]' supabase/config.toml
           supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,postgres-meta,supavisor,mailpit
       - name: Aplicar el SQL en orden
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
         run: |
-          for f in 00-esquema 01-funciones 02-rls 03-storage 04-auth 05-avisos 06-cron semillas feriados-2026-2027; do
+          for f in 00-esquema 01-funciones 02-rls 03-storage 04-auth 05-avisos 06-cron semillas feriados-2026-2027 07-etapa3; do
             echo "::group::$f.sql"
             psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "supabase/$f.sql"
             echo "::endgroup::"
@@ -100,3 +114,22 @@ jobs:
                  fi; echo "solicitudes: 200 sin filas" ;;
             *) echo "::error::GET solicitudes respondió $CODIGO"; cat filas.json; exit 1 ;;
           esac
+
+      # Etapa 3: RLS de Mi espacio y del panel con cuentas reales de la base local (nunca la clave
+      # de servicio): la persona ve solo su programa publicado, nunca borradores; otra persona no
+      # ve nada; el equipo administra solo con segundo factor (aal2).
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Dependencias
+        run: npm ci
+      - name: RLS de la etapa 3
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          set -euo pipefail
+          eval "$(cd "$RUNNER_TEMP/sb" && supabase status -o env)"
+          export API_URL="${API_URL:-http://127.0.0.1:54321}"
+          export ANON_KEY="${ANON_KEY:-${PUBLISHABLE_KEY:-}}"
+          node pruebas/base/rls.mjs
