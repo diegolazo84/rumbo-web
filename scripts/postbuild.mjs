@@ -14,7 +14,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { buscarMarcadores } from "./marcadores.mjs";
-import { PLATAFORMA, reenviosActivos, scriptReenvio, textosReenvio } from "./reenvios.mjs";
+import { reenviosActivos, scriptReenvio, textosReenvio, urlReenvio } from "./reenvios.mjs";
 
 const DIST = "dist";
 const SSR = "dist-ssr";
@@ -279,7 +279,7 @@ for (const p of paginas) {
     extra: p.id === "inicio" ? jsonLd() : "",
   });
   let html;
-  if (p.formulario) {
+  if (p.formulario || p.perezosa) {
     // Porción perezosa: se espera a que cargue (prerender), como en la vista previa.
     const cuerpo = await renderPrevia(url);
     if (/<script\b/i.test(cuerpo)) throw new Error(`El prerender de ${url} trae un <script> en línea.`);
@@ -307,7 +307,8 @@ escribirArchivo(
 );
 
 // 5b. Vista previa de la plataforma (etapa 0, plataforma 2.1): cada pantalla prerenderizada,
-// noindex y nofollow, sin canonical ni analítica, fuera del sitemap y sin enlaces desde la web.
+// noindex y nofollow, sin canonical ni analítica y fuera del sitemap. La web solo la enlaza desde
+// /mi-espacio/ («Mira cómo será Mi espacio», rotulado como ejemplo).
 // Su CSS es de una porción aparte: se enlaza en <head> (después del CSS principal, para que
 // el orden de la cascada sea el mismo que al cargarlo con JS) y así no hay salto al hidratar.
 let totalPrevia = 0;
@@ -339,7 +340,7 @@ if (renderPrevia && INDICE_PREVIA) {
   }
 }
 
-// 6. Reenvíos (5.7): rutas que viven en la plataforma. Conservan ?area=, ?apoyo= y #token.
+// 6. Reenvíos (5.7): rutas de la plataforma o de la plataforma anterior. Conservan ?area=, ?apoyo= y #token.
 // Piel de la marca sin fuentes propias ni hoja externa: carga al instante.
 const ESTILO_REENVIO = `
 body { margin: 0; background: #F5EFE4; color: #1D2621; font: 1.0625rem/1.6 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
@@ -357,7 +358,7 @@ for (const r of REENVIOS) {
   for (const ruta of r.rutas) {
     if (rutasPaginas.has(ruta)) throw new Error(`El reenvío /${ruta} pisaría la página propia /${ruta}/.`);
   }
-  const url = PLATAFORMA + r.destino;
+  const url = urlReenvio(r, BASE);
   const script = scriptReenvio(url);
   const hash = createHash("sha256").update(script).digest("base64");
   const texto = textosReenvio(r);

@@ -27,15 +27,16 @@ const PROPIO = FORMULARIO_PROPIO || FORMULARIO_FORZADO;
 // Los enlaces a postular y contacto salen a la plataforma (flecha diagonal y texto oculto).
 export const FORMULARIO_EXTERNO = !PROPIO;
 
-// Rutas que viven en la plataforma original. scripts/postbuild.mjs además genera
-// reenvíos con las mismas rutas en este dominio, para enlaces escritos a mano.
+// Rutas de la web y, mientras existan, de la plataforma original. scripts/postbuild.mjs además
+// genera reenvíos con las mismas rutas en este dominio, para enlaces escritos a mano.
 // Con el formulario propio, postular y contacto son páginas de esta web (con barra final).
 export const rutas = {
   postular: PROPIO ? "/postular/" : `${PLATAFORMA}/postular`,
   contacto: PROPIO ? "/contacto/" : `${PLATAFORMA}/contacto`,
   estado: PROPIO ? "/estado/" : `${PLATAFORMA}/estado`,
-  miEspacio: `${PLATAFORMA}/mi-programa`,
-  comunidad: `${PLATAFORMA}/comunidad`,
+  // Página propia: explica cómo se entra mientras no haya cuentas (sin correo saliente todavía).
+  // La comunidad queda para más adelante: la web no la enlaza.
+  miEspacio: "/mi-espacio/",
   privacidadPlataforma: `${PLATAFORMA}/privacidad-piloto`,
 } as const;
 

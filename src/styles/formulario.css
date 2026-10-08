@@ -1,3 +1,11 @@
 /* Rumbo · /postular/, /estado/ y /contacto/ (plataforma 3).
    Estilos propios de este grupo de pantallas; lo compartido vive en form.css y app.css.
    Solo tokens de :root (styles.css): sin colores ni fuentes nuevas. */
+
+/* Mi espacio (/mi-espacio/): estado vacío como H1 de la página, sin aire extra arriba. ---------- */
+.vf-mi-espacio .estado-vacio { padding-block: 0; }
+.vf-mi-espacio .estado-vacio__titulo { max-inline-size: 18ch; }
+.vf-mi-espacio .estado-vacio__texto { color: var(--tinta-suave); }
+.vf-mi-espacio__h2 { margin-block-start: var(--e-4); font-size: var(--t-h3); color: var(--tinta); }
+.vf-mi-espacio .lista-check { color: var(--tinta); }
+.vf-mi-espacio__ejemplo { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; max-inline-size: var(--medida); margin-block-start: calc(-1 * var(--e-4)); }

@@ -8,7 +8,7 @@ import { LEMA, operacion } from "./rumbo";
 // versión nueva (nunca un marcador). Una página que cambie después lleva su propia fecha.
 export const VERSION_PUBLICADA = { iso: "2026-10-08", texto: "8 de octubre de 2026" } as const;
 
-export type PaginaId = "inicio" | "privacidad" | "condiciones" | "ayuda" | "postular" | "estado" | "contacto";
+export type PaginaId = "inicio" | "privacidad" | "condiciones" | "ayuda" | "postular" | "estado" | "contacto" | "mi-espacio";
 
 export type Pagina = {
   id: PaginaId;
@@ -29,6 +29,9 @@ export type Pagina = {
   // Formularios con Supabase (plataforma 2.3): connect-src permite el proyecto, y la página es una
   // porción perezosa que postbuild prerenderiza esperando que cargue, con su CSS en <head>.
   formulario?: boolean;
+  // Porción perezosa de PaginaFormulario sin Supabase (Mi espacio): se prerenderiza igual, con su
+  // CSS en <head>, pero su CSP no permite conectarse a la base.
+  perezosa?: boolean;
 };
 
 // Páginas del formulario propio (plataforma 2.1 y 3.2): existen solo con
@@ -102,6 +105,15 @@ export const paginas: Pagina[] = [
     revisada: VERSION_PUBLICADA.iso,
   },
   ...(operacion.formularioPropio ? PAGINAS_FORMULARIO : []),
+  {
+    id: "mi-espacio",
+    ruta: "/mi-espacio/",
+    titulo: "Mi espacio · Rumbo",
+    descripcion:
+      "Mi espacio se abre cuando tu programa está publicado. Te damos acceso por correo, a la dirección que nos diste al postular.",
+    revisada: VERSION_PUBLICADA.iso,
+    perezosa: true,
+  },
 ];
 
 // Páginas que van en sitemap.xml.
