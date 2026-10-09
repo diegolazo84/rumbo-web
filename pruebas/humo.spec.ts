@@ -532,6 +532,8 @@ for (const r of reenviosActivos(operacion)) {
 // Mi espacio (/mi-espacio/): página propia prerenderizada (no un reenvío), con el mismo diseño que
 // /estado/, sin datos de nadie y sin salir a la plataforma de ChatGPT.
 test("Mi espacio: página propia que explica cómo se entra", PROD, async ({ page, request }) => {
+  // Con Mi espacio propio encendido, /mi-espacio/ es el espacio real (mi-espacio-real.spec.ts).
+  test.skip(operacion.miEspacioPropio, "con Mi espacio propio, /mi-espacio/ es el espacio real");
   const r = await request.get("mi-espacio/", { maxRedirects: 0 });
   expect(r.status()).toBe(200);
   const html = await r.text();

@@ -32,7 +32,7 @@ export const FORMULARIO_EXTERNO = !PROPIO;
 // enciende cuando el SMTP propio esté configurado en Supabase (9.5) y el SQL de la etapa 3
 // (supabase/07-etapa3.sql) esté pegado. MI_ESPACIO_PROPIO=1 en el entorno lo fuerza encendido
 // sin tocar este archivo (al compilar, por vite.config.ts, y al correr las pruebas).
-const MI_ESPACIO_PROPIO = false;
+const MI_ESPACIO_PROPIO = true; // encendido el 9 de octubre de 2026: SMTP, plantilla y 07-etapa3.sql listos en Supabase
 const MI_ESPACIO_FORZADO =
   typeof __MI_ESPACIO_PROPIO__ !== "undefined"
     ? __MI_ESPACIO_PROPIO__ === true
