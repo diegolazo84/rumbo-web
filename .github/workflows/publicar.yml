@@ -63,6 +63,40 @@ jobs:
         with:
           path: dist
 
+  # Mi espacio propio y panel (etapa 3) con el interruptor encendido, sin publicar nada: compila
+  # con MI_ESPACIO_PROPIO=1 y prueba el ingreso, Mi espacio y el panel con Supabase simulado.
+  # La web publicada sigue con el interruptor de src/data/rumbo.ts (operacion.miEspacioPropio).
+  mi-espacio-propio:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      MI_ESPACIO_PROPIO: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Fijar el año de compilación
+        run: echo "ANIO_COMPILACION=$(TZ=America/Santiago date +%Y)" >> "$GITHUB_ENV"
+      - run: npm ci
+      - name: Compilar con Mi espacio propio
+        run: npm run build
+      - name: Instalar Chromium de Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Pruebas de Mi espacio y el panel
+        run: npx playwright test pruebas/mi-espacio-real.spec.ts pruebas/panel-real.spec.ts --project=movil --project=escritorio
+      - name: Reenvíos con el interruptor encendido
+        run: npx playwright test pruebas/humo.spec.ts -g "reenvío" --project=escritorio
+      - name: Guardar evidencia si falla
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: evidencia-mi-espacio
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
   publicar:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: verificar

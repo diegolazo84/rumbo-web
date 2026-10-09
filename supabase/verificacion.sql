@@ -38,4 +38,13 @@ union all
 select 'ajustes_operacion tiene una fila', case when (select count(*) from public.ajustes_operacion) = 1 then 'ok' else 'FALLA' end
 union all
 select 'tareas programadas creadas',
-       case when (select count(*) from cron.job where jobname like 'rumbo-%') = 3 then 'ok' else 'FALLA' end;
+       case when (select count(*) from cron.job where jobname like 'rumbo-%') = 3 then 'ok' else 'FALLA' end
+union all
+-- 07-etapa3.sql (Mi espacio propio y panel): dos funciones solo para cuentas con sesión.
+select 'etapa 3: soy_equipo y mi_contexto, solo con sesión',
+       case when (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                   where n.nspname = 'public' and p.proname in ('soy_equipo','mi_contexto')
+                     and has_function_privilege('authenticated', p.oid, 'execute')
+                     and not has_function_privilege('anon', p.oid, 'execute')) = 2
+             and exists (select 1 from pg_trigger where tgname = 'vincular_ficha')
+            then 'ok' else 'FALLA: falta pegar 07-etapa3.sql' end;

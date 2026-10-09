@@ -105,15 +105,21 @@ export const paginas: Pagina[] = [
     revisada: VERSION_PUBLICADA.iso,
   },
   ...(operacion.formularioPropio ? PAGINAS_FORMULARIO : []),
-  {
-    id: "mi-espacio",
-    ruta: "/mi-espacio/",
-    titulo: "Mi espacio · Rumbo",
-    descripcion:
-      "Mi espacio se abre cuando tu programa está publicado. Te damos acceso por correo, a la dirección que nos diste al postular.",
-    revisada: VERSION_PUBLICADA.iso,
-    perezosa: true,
-  },
+  // Con operacion.miEspacioPropio (etapa 3), /mi-espacio/ es Mi espacio de verdad (src/plataforma.ts):
+  // esta página pública deja de existir y sale del sitemap.
+  ...(operacion.miEspacioPropio
+    ? []
+    : [
+        {
+          id: "mi-espacio",
+          ruta: "/mi-espacio/",
+          titulo: "Mi espacio · Rumbo",
+          descripcion:
+            "Mi espacio se abre cuando tu programa está publicado. Te damos acceso por correo, a la dirección que nos diste al postular.",
+          revisada: VERSION_PUBLICADA.iso,
+          perezosa: true,
+        } satisfies Pagina,
+      ]),
 ];
 
 // Páginas que van en sitemap.xml.

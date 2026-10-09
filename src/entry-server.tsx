@@ -13,6 +13,9 @@ export { SUPABASE_URL } from "./lib/supabase-config";
 // Vista previa (etapa 0): rutas y títulos para postbuild.mjs.
 export { pantallas as pantallasPrevia, INDICE as INDICE_PREVIA } from "./pages/vista-previa/registro";
 export { ID_VISTA_PREVIA } from "./vista-previa";
+// Mi espacio propio y panel (etapa 3, con operacion.miEspacioPropio): rutas para postbuild.mjs.
+export { ID_PLATAFORMA } from "./plataforma";
+export { RUTAS_PLATAFORMA } from "./pages/plataforma/rutas";
 
 // url: ruta completa con la base, p. ej. "/rumbo-web/privacidad/".
 export function render(url: string): string {

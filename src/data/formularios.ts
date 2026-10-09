@@ -539,6 +539,8 @@ export const REVISA_CORREO = {
     titulo: "¿No te llegó?",
     texto: (remitente: string) =>
       `Revisa spam y promociones. El correo llega desde ${remitente}. Si tu programa está acordado y no llega, escríbenos.`,
+    // PROPUESTO: mientras el remitente del correo de acceso no esté decidido (9.2).
+    textoSinRemitente: "Revisa spam y promociones. Si tu programa está acordado y no llega, escríbenos.",
     boton: "Enviarme otro",
     espera: "Podrás pedir otro en un minuto.",
   },

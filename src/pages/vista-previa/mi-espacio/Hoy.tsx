@@ -10,32 +10,17 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Etiqueta from "../../../components/Etiqueta";
 import { BarraProgreso, ErrorBloque, Hoja, HojaAyuda, Icono, Tostada } from "../../../components/app";
-import {
-  AUSENCIA,
-  ESCENARIO_CERCANO,
-  ESCENARIO_COACH,
-  HOY,
-  ciclo,
-  fechaRevision,
-  focoDeLaSemana,
-  novedades,
-  ocurrenciasDel,
-  pendientesAnteriores,
-  semanaDelCiclo,
-  type Escenario,
-  type Ocurrencia,
-} from "../../../data/ejemplo-app";
+import { ESCENARIO_CERCANO, HOY, ocurrenciasDel, type Escenario, type Ocurrencia } from "../../../data/ejemplo-app";
 import { diaCorto, mayuscula, type Iso } from "../../../lib/fechas";
 import type { PropsPantalla } from "../registro";
 import {
   Cabeza,
   FilaOcurrencia,
-  R,
   RegionViva,
   conHorario,
   flexibles,
-  rutaAjuste,
   useAvisos,
+  useEspacio,
   usePrograma,
   type Cambios,
   type Progreso,
@@ -76,11 +61,23 @@ export const VARIANTES: Record<string, Variante> = {
 const VISIBLES_ANTERIORES = 3;
 
 export default function Hoy({ estado = "algunas" }: PropsPantalla) {
+  const esp = useEspacio();
+  // Mi espacio real: el día de hoy de la persona, con sus novedades y su preferencia de créditos.
+  if (esp.real) {
+    const variante: Variante = {
+      hoy: esp.hoy,
+      novedades: esp.novedades.length > 0,
+      ocultarCreditos: !esp.participante.mostrarCreditosEnHoy,
+      ausencia: !!esp.ausencia,
+    };
+    return <PantallaHoy variante={variante} />;
+  }
   return <PantallaHoy variante={VARIANTES[estado] ?? VARIANTES.algunas} />;
 }
 
 export function PantallaHoy({ variante }: { variante: Variante }) {
-  const esc = variante.esc ?? ESCENARIO_COACH;
+  const { esc: escDado, semanaDelCiclo, pendientesAnteriores, R } = useEspacio();
+  const esc = variante.esc ?? escDado;
   const { lista, progreso, registrar, hoy } = usePrograma({ hoy: variante.hoy, cambios: variante.cambios, base: esc.ocurrencias });
   const sinConexion = !!variante.sinConexion;
   const [errorBloque, setErrorBloque] = useState(!!variante.errorBloque);
@@ -97,9 +94,12 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
   const detalle = abierta ? lista.find((o) => o.id === abierta) : undefined;
 
   const anunciar = (p: Progreso) => setVivo(T_HOY.marcar.vivo(p.creditos, p.nivel.nivel, p.nivel.nombre));
+  // Error al guardar (4.5): el check ya volvió atrás; la tostada ofrece reintentar.
+  const fallo = (o: Ocurrencia, reintentar: () => void) => () =>
+    setTostada({ mensaje: T_HOY.marcar.error(o.titulo), accion: { texto: T_HOY.marcar.reintentar, onClick: reintentar } });
 
   // Marcar o desmarcar desde la fila, la hoja o «Ya la hice» (se registra en su día original).
-  const marcar = (o: Ocurrencia, marcada: boolean, desdeAnteriores = false) => {
+  const marcar = (o: Ocurrencia, marcada: boolean, desdeAnteriores = false): void => {
     registrar(o.id, marcada ? "hecha" : null, (p) => {
       anunciar(p);
       if (!marcada) {
@@ -113,17 +113,17 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
           ? T_HOY.marcar.completaste(1 + dia.bono)
           : T_HOY.marcar.marcaste(o.titulo);
       setTostada({ mensaje, accion: { texto: T_HOY.marcar.deshacer, onClick: () => marcar(o, false) } });
-    });
+    }, fallo(o, () => marcar(o, marcada, desdeAnteriores)));
   };
 
-  const dejar = (o: Ocurrencia) => {
+  const dejar = (o: Ocurrencia): void => {
     registrar(o.id, "dejada", (p) => {
       anunciar(p);
       setTostada({
         mensaje: T_ANTERIORES.dejada,
-        accion: { texto: T_HOY.marcar.deshacer, onClick: () => registrar(o.id, null, () => setTostada(null)) },
+        accion: { texto: T_HOY.marcar.deshacer, onClick: () => registrar(o.id, null, () => setTostada(null), fallo(o, () => dejar(o))) },
       });
-    });
+    }, fallo(o, () => dejar(o)));
   };
 
   const retomar = (o: Ocurrencia) => {
@@ -201,7 +201,15 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
       </footer>
 
       <Hoja abierta={!!detalle} onCerrar={() => setAbierta(null)} titulo={detalle?.titulo ?? ""} className="hoja--detalle">
-        {detalle && <Detalle o={detalle} hoy={hoy} enHoja sinConexion={sinConexion} onRegistrar={(e) => registrar(detalle.id, e, anunciar)} />}
+        {detalle && (
+          <Detalle
+            o={detalle}
+            hoy={hoy}
+            enHoja
+            sinConexion={sinConexion}
+            onRegistrar={(e) => registrar(detalle.id, e, anunciar, fallo(detalle, () => registrar(detalle.id, e, anunciar)))}
+          />
+        )}
       </Hoja>
       <HojaAyuda abierta={ayuda} onCerrar={() => setAyuda(false)} />
       <Tostada mensaje={tostada?.mensaje ?? null} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
@@ -214,6 +222,7 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
 // Encabezado: ojo «Semana 2 de 4», saludo, H1 «Hoy, martes 13.» y bajada según el día (4.4.2)
 
 function CabezaHoy({ hoy, semana, progreso, esc }: { hoy: Iso; semana: number; progreso: Progreso; esc: Escenario }) {
+  const { ciclo, fechaRevision } = useEspacio();
   const dia = progreso.dias.find((d) => d.fecha === hoy);
   const n = dia?.programadas ?? 0;
   const h = dia?.hechas ?? 0;
@@ -256,9 +265,9 @@ function CabezaHoy({ hoy, semana, progreso, esc }: { hoy: Iso; semana: number; p
 // ---------------------------------------------------------------------------
 // Novedades: 0 a 2 avisos info con enlace (4.4.3). Nunca un contador.
 
-const DESTINO_NOVEDAD = { semana: R.semanaPublicada, ajuste: R.ajusteLista, programa: R.semanaPublicada, accion: R.accion };
-
 function Novedades() {
+  const { novedades, R, servidor } = useEspacio();
+  const DESTINO_NOVEDAD = { semana: R.semanaPublicada, ajuste: R.ajusteLista, programa: R.semanaPublicada, accion: R.accion };
   return (
     <section className="me-novedades" aria-label={T_HOY.novedades.etiqueta}>
       {novedades.slice(0, 2).map((n) => (
@@ -266,7 +275,7 @@ function Novedades() {
           <Icono nombre="info" tamaño={20} className="aviso-icono" />
           <div className="me-novedad__cuerpo">
             <p>{n.texto}</p>
-            <Link to={DESTINO_NOVEDAD[n.destino]} className="enlace-flecha">
+            <Link to={n.ruta ?? DESTINO_NOVEDAD[n.destino]} className="enlace-flecha" onClick={() => servidor?.verNovedad(n.id)}>
               {n.enlace}
               <Icono nombre="arrow-right" tamaño={16} />
             </Link>
@@ -280,7 +289,9 @@ function Novedades() {
 // ---------------------------------------------------------------------------
 // «Tu foco esta semana» (4.4.4): si no hay foco, el bloque no se muestra.
 
-export function Foco({ semana, className, esc = ESCENARIO_COACH }: { semana: number; className?: string; esc?: Escenario }) {
+export function Foco({ semana, className, esc: escDado }: { semana: number; className?: string; esc?: Escenario }) {
+  const { esc: escContexto, focoDeLaSemana } = useEspacio();
+  const esc = escDado ?? escContexto;
   const foco = focoDeLaSemana(semana, esc.revisiones, esc.focoInicial);
   if (!foco) return null;
   return (
@@ -348,6 +359,7 @@ type AnterioresProps = {
 
 // Cada fila tiene una sola forma de marcar: «Ya la hice» (sin casilla, para no duplicar el control).
 export function Anteriores({ lista, hoy, carga, sinConexion, onYaLaHice, onRetomar, onDejar, onAbrir }: AnterioresProps) {
+  const { R, rutaAjuste } = useEspacio();
   const [todas, setTodas] = useState(false);
   const [menu, setMenu] = useState<string | null>(null);
   const [avisoCerrado, setAvisoCerrado] = useState(false);
@@ -462,6 +474,7 @@ export function Anteriores({ lista, hoy, carga, sinConexion, onYaLaHice, onRetom
 // Resumen de avance (4.4.6): ocultable desde Preferencias.
 
 export function ResumenAvance({ progreso }: { progreso: Progreso }) {
+  const { R } = useEspacio();
   const { nivel, siguiente, creditos, racha, bonoSiguiente } = progreso;
   // Destello de la etiqueta al subir de nivel (sin movimiento reducido no hay animación).
   const anterior = useRef(nivel.nivel);
@@ -508,10 +521,11 @@ export function ResumenAvance({ progreso }: { progreso: Progreso }) {
 // Con ausencia de Diego, la revisión de esta semana pasa al día en que vuelve (4.1.4).
 
 function ProximaRevision({ hoy, esc, ausencia }: { hoy: Iso; esc: Escenario; ausencia: boolean }) {
+  const { semanaDelCiclo, fechaRevision, ausencia: datosAusencia, R } = useEspacio();
   let n = semanaDelCiclo(hoy);
   if (fechaRevision(n, esc.diaRevision) < hoy) n += 1;
   let fecha = fechaRevision(n, esc.diaRevision);
-  if (ausencia && fecha <= AUSENCIA.hasta) fecha = AUSENCIA.vuelve;
+  if (ausencia && datosAusencia && fecha <= datosAusencia.hasta) fecha = datosAusencia.vuelve;
   const enviado = esc.registrosSemanales.some((r) => r.semana === n && r.enviadoEl);
 
   if (esc.plan === "cercano") {

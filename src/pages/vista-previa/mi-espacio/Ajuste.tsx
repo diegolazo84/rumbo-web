@@ -21,21 +21,11 @@ import {
   useFormulario,
   type ErrorResumen,
 } from "../../../components/form";
-import {
-  ESCENARIO_CERCANO,
-  ESCENARIO_COACH,
-  HOY,
-  ciclo,
-  fechaRevision,
-  ocurrenciasDel,
-  semanaDelCiclo,
-  type Escenario,
-  type SolicitudAjuste,
-} from "../../../data/ejemplo-app";
+import { ESCENARIO_CERCANO, HOY, ciclo, ocurrenciasDel, type Escenario, type SolicitudAjuste } from "../../../data/ejemplo-app";
 import { AJUSTE, LIMITES } from "../../../data/formularios";
 import { diaCorto, mayuscula, sumarDias, type Iso } from "../../../lib/fechas";
 import type { PropsPantalla } from "../registro";
-import { Cabeza, R } from "./comun";
+import { AlertaGuardar, Cabeza, useEspacio } from "./comun";
 import { T_AJUSTE, T_ANTERIORES } from "./textos";
 
 type Datos = { tipo: string; detalle: string };
@@ -49,11 +39,14 @@ const validar = (d: Datos) => {
 const idDe = (c: keyof Datos & string) => (c === "tipo" ? "ajuste-tipo" : "ajuste-detalle");
 
 // Próxima revisión semanal (hoy incluido) o, en cercano, la próxima videollamada después de hoy.
-function proximaRevision(hoy: Iso, esc: Escenario) {
-  const pasada = (f: Iso) => (esc.plan === "cercano" ? f <= hoy : f < hoy);
-  let n = semanaDelCiclo(hoy);
-  if (pasada(fechaRevision(n, esc.diaRevision))) n += 1;
-  return fechaRevision(n, esc.diaRevision);
+function useProximaRevision() {
+  const { semanaDelCiclo, fechaRevision } = useEspacio();
+  return (hoy: Iso, esc: Escenario) => {
+    const pasada = (f: Iso) => (esc.plan === "cercano" ? f <= hoy : f < hoy);
+    let n = Math.max(1, semanaDelCiclo(hoy));
+    if (pasada(fechaRevision(n, esc.diaRevision))) n += 1;
+    return fechaRevision(n, esc.diaRevision);
+  };
 }
 
 const textoTipo = (v: string) => AJUSTE.tipo.opciones.find((o) => o.valor === v)?.texto ?? v;
@@ -76,9 +69,11 @@ const ESCENARIOS: Record<string, Escenario> = {
 };
 
 export default function Ajuste({ estado = "formulario" }: PropsPantalla) {
-  const esc = ESCENARIOS[estado] ?? ESCENARIO_COACH;
-  const [enviadas, setEnviadas] = useState<SolicitudAjuste[]>(estado === "enviado" ? [ENVIADA_EJEMPLO] : []);
-  const [confirmada, setConfirmada] = useState(estado === "enviado");
+  const esp = useEspacio();
+  // Mi espacio real: el escenario de la persona; la lista sale de la base (se recarga al enviar).
+  const esc = esp.real ? esp.esc : (ESCENARIOS[estado] ?? esp.esc);
+  const [enviadas, setEnviadas] = useState<SolicitudAjuste[]>(!esp.real && estado === "enviado" ? [ENVIADA_EJEMPLO] : []);
+  const [confirmada, setConfirmada] = useState(!esp.real && estado === "enviado");
 
   return (
     <div className="me-pantalla me-pantalla--angosta me-ajuste">
@@ -88,7 +83,7 @@ export default function Ajuste({ estado = "formulario" }: PropsPantalla) {
         <FormularioAjuste
           esc={esc}
           onEnviar={(s) => {
-            setEnviadas((l) => [s, ...l]);
+            if (!esp.real) setEnviadas((l) => [s, ...l]);
             setConfirmada(true);
             requestAnimationFrame(() => {
               window.scrollTo({ top: 0 });
@@ -103,7 +98,9 @@ export default function Ajuste({ estado = "formulario" }: PropsPantalla) {
 }
 
 function Plazo({ esc, tipo, reordenar, onReordenar }: { esc: Escenario; tipo?: string; reordenar?: boolean; onReordenar?: (v: boolean) => void }) {
-  const fecha = diaCorto(proximaRevision(HOY, esc));
+  const { hoy, ciclo } = useEspacio();
+  const proximaRevision = useProximaRevision();
+  const fecha = diaCorto(proximaRevision(hoy, esc));
   const quedan = Math.max(0, ciclo.reordenamientosMax - esc.reordenamientosUsados);
   const plan = esc.plan;
   return (
@@ -140,7 +137,10 @@ function Plazo({ esc, tipo, reordenar, onReordenar }: { esc: Escenario; tipo?: s
 }
 
 function FormularioAjuste({ esc, onEnviar }: { esc: Escenario; onEnviar: (s: SolicitudAjuste) => void }) {
-  const ocurrencias = esc.ocurrencias;
+  const { hoy: HOY, R, servidor } = useEspacio();
+  const ocurrencias = esc.ocurrencias.filter((o) => o.vigente);
+  const [enviando, setEnviando] = useState(false);
+  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
   const f = useFormulario<Datos>({ tipo: "", detalle: "" }, validar, idDe);
   const [resumen, setResumen] = useState<ErrorResumen[]>([]);
   const [acciones, setAcciones] = useState<string[]>([]);
@@ -180,7 +180,7 @@ function FormularioAjuste({ esc, onEnviar }: { esc: Escenario; onEnviar: (s: Sol
             requestAnimationFrame(() => document.getElementById("resumen-errores")?.focus());
             return;
           }
-          onEnviar({
+          const nueva: SolicitudAjuste = {
             id: `nueva-${Date.now()}`,
             tipo: f.valores.tipo,
             acciones,
@@ -189,7 +189,16 @@ function FormularioAjuste({ esc, onEnviar }: { esc: Escenario; onEnviar: (s: Sol
             enviadaEl: HOY,
             estado: "enviada",
             respuesta: null,
-          });
+          };
+          if (!servidor) return onEnviar(nueva);
+          if (enviando) return;
+          setEnviando(true);
+          setErrorEnvio(null);
+          servidor
+            .pedirAjuste({ tipo: nueva.tipo, ocurrencias: acciones, desde, texto: nueva.detalle, pideReorden: reordenar })
+            .then((s) => onEnviar(s))
+            .catch((e: { estado?: number }) => setErrorEnvio(e?.estado === 429 ? T_AJUSTE.errores.demasiadas : T_AJUSTE.errores.envio))
+            .finally(() => setEnviando(false));
         }}
       >
         <ResumenErrores errores={resumen} />
@@ -266,8 +275,9 @@ function FormularioAjuste({ esc, onEnviar }: { esc: Escenario; onEnviar: (s: Sol
 
         <Plazo esc={esc} tipo={f.valores.tipo} reordenar={reordenar} onReordenar={setReordenar} />
 
+        {servidor && <AlertaGuardar texto={errorEnvio} />}
         <div className="me-envio">
-          <button type="submit" className="boton boton--primario">
+          <button type="submit" className="boton boton--primario" aria-disabled={enviando || undefined}>
             {AJUSTE.boton}
           </button>
           <NoEsChat />
@@ -278,6 +288,7 @@ function FormularioAjuste({ esc, onEnviar }: { esc: Escenario; onEnviar: (s: Sol
 }
 
 function Confirmacion({ esc }: { esc: Escenario }) {
+  const { R } = useEspacio();
   return (
     <div className="me-confirmacion">
       <Cabeza
@@ -311,6 +322,7 @@ const ETIQUETA_ESTADO: Record<SolicitudAjuste["estado"], { texto: string; varian
 };
 
 function ListaSolicitudes({ lista }: { lista: SolicitudAjuste[] }) {
+  const { R } = useEspacio();
   return (
     <section id="tus-solicitudes" className="me-bloque me-solicitudes" aria-labelledby="tus-solicitudes-titulo">
       <h2 id="tus-solicitudes-titulo" className="me-h2">

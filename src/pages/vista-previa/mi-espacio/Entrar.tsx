@@ -14,7 +14,7 @@ import { CampoTexto, Casilla, Envio, Formulario } from "../../../components/form
 import { participante } from "../../../data/ejemplo-app";
 import { ENLACE_VENCIDO, ENTRAR, LIMITES, REVISA_CORREO } from "../../../data/formularios";
 import type { PropsPantalla } from "../registro";
-import { Cabeza, EtiquetaEjemplo, R } from "./comun";
+import { Cabeza, EtiquetaEjemplo, useEspacio } from "./comun";
 
 // Remitente de ejemplo: el real depende de la decisión del correo (plataforma 9.2).
 const REMITENTE_EJEMPLO = "acceso@ejemplo.cl";
@@ -41,11 +41,23 @@ export default function Entrar({ estado = "correo" }: PropsPantalla) {
 // ---------------------------------------------------------------------------
 // 4.2.1 «Entrar»
 
-function PedirCodigo({ aviso }: { aviso?: string }) {
+// Mi espacio real (src/pages/plataforma/EntrarReal.tsx) pasa las funciones que hablan con
+// Supabase Auth; sin ellas, la pantalla simula el envío (vista previa).
+export type ResultadoPedir = "ok" | "limite" | "red";
+export type ResultadoVerificar = "ok" | "noCoincide" | "vencido" | "red";
+// Estado de la navegación entre «Entrar» y «Revisa tu correo» (nunca en la URL).
+export type EstadoIngreso = { correo?: string; compartido?: boolean; enviado?: boolean; aviso?: string; destino?: string } | null;
+
+type PropsPedir = { aviso?: string; alPedir?: (correo: string, compartido: boolean) => Promise<ResultadoPedir> };
+
+export function PedirCodigo({ aviso, alPedir }: PropsPedir) {
+  const { R } = useEspacio();
   const [tostada, setTostada] = useState<string | null>(aviso ?? null);
   const navegar = useNavigate();
   const ubicacion = useLocation();
-  const anterior = (ubicacion.state as { correo?: string } | null)?.correo ?? "";
+  const estadoNav = ubicacion.state as EstadoIngreso;
+  const anterior = estadoNav?.correo ?? "";
+  const [alerta, setAlerta] = useState<string | null>(null);
   const [correo, setCorreo] = useState(anterior);
   const [compartido, setCompartido] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,11 +80,19 @@ function PedirCodigo({ aviso }: { aviso?: string }) {
             return;
           }
           setError(null);
+          setAlerta(null);
           setEnviando(true);
-          temporizador.current = window.setTimeout(
-            () => navegar(R.revisaCorreo, { state: { correo: correo.trim(), compartido } }),
-            RETARDO_ENVIO,
-          );
+          const siguiente = () =>
+            navegar(R.revisaCorreo, { state: { correo: correo.trim(), compartido, enviado: true, destino: estadoNav?.destino } });
+          if (!alPedir) {
+            temporizador.current = window.setTimeout(siguiente, RETARDO_ENVIO);
+            return;
+          }
+          alPedir(correo.trim(), compartido).then((r) => {
+            setEnviando(false);
+            if (r === "ok") return siguiente();
+            setAlerta(r === "limite" ? ENTRAR.errores.limite : ENTRAR.errores.red);
+          });
         }}
       >
         <CampoTexto
@@ -98,7 +118,7 @@ function PedirCodigo({ aviso }: { aviso?: string }) {
         >
           {ENTRAR.compartido.etiqueta}
         </Casilla>
-        <Envio className="me-envio-ancho" texto={ENTRAR.boton} textoEnviando={ENTRAR.enviando} enviando={enviando} />
+        <Envio className="me-envio-ancho" texto={ENTRAR.boton} textoEnviando={ENTRAR.enviando} enviando={enviando} alerta={alerta} />
       </Formulario>
 
       <div className="me-ingreso__notas">
@@ -118,10 +138,18 @@ function PedirCodigo({ aviso }: { aviso?: string }) {
 // ---------------------------------------------------------------------------
 // 4.2.2 «Revisa tu correo»
 
-function RevisaCorreo() {
+type PropsRevisa = {
+  alVerificar?: (correo: string, codigo: string) => Promise<ResultadoVerificar>;
+  alReenviar?: (correo: string) => Promise<ResultadoPedir>;
+  remitente?: string | null; // null: el texto va sin remitente (Mi espacio real, mientras no se fije)
+};
+
+export function RevisaCorreo({ alVerificar, alReenviar, remitente = REMITENTE_EJEMPLO }: PropsRevisa) {
+  const { R } = useEspacio();
   const navegar = useNavigate();
   const ubicacion = useLocation();
-  const correo = (ubicacion.state as { correo?: string } | null)?.correo ?? participante.correo;
+  const estadoNav = ubicacion.state as EstadoIngreso;
+  const correo = estadoNav?.correo ?? participante.correo;
   const [codigo, setCodigo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -149,7 +177,7 @@ function RevisaCorreo() {
                 .flatMap((parte, i) => (i === 0 ? [parte] : [<strong key="correo" className="me-ingreso__correo">{correo}</strong>, parte]))}
             </p>
             <p>
-              <Link to={R.entrar} state={{ correo }} className="boton boton--terciario me-boton-izq">
+              <Link to={R.entrar} state={{ correo, destino: estadoNav?.destino }} className="boton boton--terciario me-boton-izq">
                 {REVISA_CORREO.cambiar}
               </Link>
             </p>
@@ -169,7 +197,16 @@ function RevisaCorreo() {
           }
           setError(null);
           setEnviando(true);
-          temporizadores.current.push(window.setTimeout(() => navegar(R.hoy), RETARDO_ENVIO));
+          if (!alVerificar) {
+            temporizadores.current.push(window.setTimeout(() => navegar(R.hoy), RETARDO_ENVIO));
+            return;
+          }
+          alVerificar(correo, codigo).then((r) => {
+            if (r === "ok") return; // la pantalla real navega
+            setEnviando(false);
+            setError(r === "vencido" ? REVISA_CORREO.errores.vencido : r === "red" ? ENTRAR.errores.red : REVISA_CORREO.errores.noCoincide);
+            campo.current?.focus();
+          });
         }}
       >
         <CampoTexto
@@ -207,7 +244,7 @@ function RevisaCorreo() {
           </h2>
           <EtiquetaEjemplo />
         </div>
-        <p>{REVISA_CORREO.noLlego.texto(REMITENTE_EJEMPLO)}</p>
+        <p>{remitente ? REVISA_CORREO.noLlego.texto(remitente) : REVISA_CORREO.noLlego.textoSinRemitente}</p>
         <div className="me-ingreso__reenvio">
           <button
             type="button"
@@ -217,6 +254,7 @@ function RevisaCorreo() {
             onClick={() => {
               if (espera) return;
               setEspera(true);
+              void alReenviar?.(correo);
               temporizadores.current.push(window.setTimeout(() => setEspera(false), ESPERA_REENVIO));
             }}
           >
@@ -234,7 +272,8 @@ function RevisaCorreo() {
 // ---------------------------------------------------------------------------
 // 4.2.3 Enlace vencido o ya usado
 
-function EnlaceVencido() {
+export function EnlaceVencido() {
+  const { R } = useEspacio();
   return (
     <div className="me-pantalla me-ingreso">
       <Cabeza

@@ -5,29 +5,18 @@ import { Link } from "react-router-dom";
 import { Acordeon } from "../../../components/Bloques";
 import Etiqueta from "../../../components/Etiqueta";
 import { BarraProgreso, ChipMeta, Icono, MetaTarjeta } from "../../../components/app";
-import {
-  HOY,
-  calcularProgreso,
-  ciclo,
-  cuentaComoHecha,
-  lunesDeSemana,
-  metas,
-  semanaDelCiclo,
-  type Meta,
-  type Ocurrencia,
-} from "../../../data/ejemplo-app";
-import { LIMITES } from "../../../data/formularios";
+import { calcularProgreso, cuentaComoHecha, type Meta, type Ocurrencia } from "../../../data/ejemplo-app";
 import { niveles, reglasCreditosTextos } from "../../../data/rumbo";
 import { diaCorto, mayuscula, type Iso } from "../../../lib/fechas";
-import { Cabeza, R, prepararLista } from "./comun";
+import { Cabeza, prepararLista, useEspacio } from "./comun";
 import { T_HOY, T_PROGRESO } from "./textos";
 
 const hechaHasta = (o: Ocurrencia, hoy: Iso) => o.vigente && o.fecha <= hoy;
 
 export default function Progreso() {
-  const hoy = HOY;
-  const lista = prepararLista({}, hoy);
-  const progreso = calcularProgreso(lista, hoy);
+  const { hoy, esc, ciclo, R, ventana, semanaDelCiclo, progreso: delServidor } = useEspacio();
+  const lista = prepararLista({}, hoy, esc.ocurrencias);
+  const progreso = delServidor ?? calcularProgreso(lista, hoy, ciclo.inicio);
   const semana = semanaDelCiclo(hoy);
   const hechasSemana = lista.filter((o) => o.semana === semana && hechaHasta(o, hoy) && cuentaComoHecha(o.registro));
 
@@ -40,7 +29,7 @@ export default function Progreso() {
           {T_PROGRESO.metas}
         </h2>
         <div className="me-metas">
-          {metas.map((m) => (
+          {esc.metas.map((m) => (
             <TarjetaMeta key={m.id} meta={m} lista={lista} hoy={hoy} />
           ))}
         </div>
@@ -122,7 +111,7 @@ export default function Progreso() {
                         <li key={t}>{t}</li>
                       ))}
                     <li>{T_PROGRESO.reglasExtra[0]}</li>
-                    <li>{T_PROGRESO.reglasExtra[1](LIMITES.diasRegistroTardio)}</li>
+                    <li>{T_PROGRESO.reglasExtra[1](ventana)}</li>
                   </ul>
                 ),
               },
@@ -143,6 +132,7 @@ export default function Progreso() {
 function TarjetaMeta({ meta, lista, hoy }: { meta: Meta; lista: Ocurrencia[]; hoy: Iso }) {
   const deMeta = lista.filter((o) => o.metaId === meta.id && hechaHasta(o, hoy));
   const hechas = deMeta.filter((o) => cuentaComoHecha(o.registro)).length;
+  const { ciclo, lunesDeSemana } = useEspacio();
   const id = `meta-${meta.id}`;
   const semanas = Array.from({ length: ciclo.semanas }, (_, i) => {
     const n = i + 1;

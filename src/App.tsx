@@ -10,9 +10,12 @@ import NoEncontrada from "./pages/NoEncontrada";
 import { PAGINA_404, paginaPorRuta, paginas, type PaginaId } from "./data/paginas";
 import { useRevelar } from "./revelar";
 import { esVistaPrevia } from "./vista-previa";
+import { esPlataforma } from "./plataforma";
 
 // Vista previa de la plataforma (etapa 0): porción aparte, con su propio marco, título y estilos.
 const VistaPrevia = lazy(() => import("./pages/vista-previa/VistaPrevia"));
+// Mi espacio propio y panel (etapa 3, solo con operacion.miEspacioPropio): porción aparte.
+const Plataforma = lazy(() => import("./pages/plataforma/Plataforma"));
 // Postular, estado y contacto (solo con operacion.formularioPropio) y Mi espacio: porción aparte, con sus estilos.
 const PaginaFormulario = lazy(() => import("./pages/formulario/PaginaFormulario"));
 const formulario = (pagina: "postular" | "estado" | "contacto" | "mi-espacio") => (
@@ -61,7 +64,7 @@ function AlCambiarDeRuta() {
   // El HTML prerenderizado ya trae <head> completo; al navegar dentro de la app
   // solo hay que mantener el título y la descripción al día.
   useEffect(() => {
-    if (esVistaPrevia(pathname)) return; // su título lo pone VistaPrevia.tsx
+    if (esVistaPrevia(pathname) || esPlataforma(pathname)) return; // su título lo ponen VistaPrevia.tsx y Plataforma.tsx
     const pagina = paginaPorRuta(pathname);
     document.title = pagina?.titulo ?? PAGINA_404.titulo;
     document
@@ -78,7 +81,9 @@ export default function App() {
   const id = paginaPorRuta(pathname)?.id;
   const conCta = id !== "ayuda" && id !== "postular";
 
-  if (esVistaPrevia(pathname)) {
+  // Vista previa y plataforma propia: porción aparte, con su propio marco.
+  const Aparte = esVistaPrevia(pathname) ? VistaPrevia : esPlataforma(pathname) ? Plataforma : null;
+  if (Aparte) {
     return (
       <>
         <a className="saltar" href="#contenido">
@@ -86,7 +91,7 @@ export default function App() {
         </a>
         <AlCambiarDeRuta />
         <Suspense fallback={null}>
-          <VistaPrevia />
+          <Aparte />
         </Suspense>
       </>
     );

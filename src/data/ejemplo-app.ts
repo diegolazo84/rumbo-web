@@ -256,6 +256,11 @@ export type Ocurrencia = {
   vigente: boolean;
   anulada?: { motivo: "ajuste" | "pausa"; en: Iso }; // solo si vigente es false (6.4)
   registro: EstadoRegistro | null;
+  // Solo en Mi espacio real: título de la meta copiado en la acción (6.4), explicación enviada
+  // en vez de foto y nota de quien acompaña al revisarla.
+  metaTitulo?: string;
+  explicacion?: string | null;
+  notaRevision?: string | null;
 };
 
 // Registros de la semana 1 y de la semana 2 hasta hoy («accion@fecha»).
@@ -490,7 +495,8 @@ export const solicitudesAjuste: SolicitudAjuste[] = [
   },
 ];
 
-export type Novedad = { id: string; texto: string; enlace: string; destino: "semana" | "ajuste" | "programa" | "accion" };
+// ruta (opcional): destino exacto (Mi espacio real: la semana o la acción de esa novedad).
+export type Novedad = { id: string; texto: string; enlace: string; destino: "semana" | "ajuste" | "programa" | "accion"; ruta?: string };
 export const novedades: Novedad[] = [
   { id: "n1", texto: "Tu coach respondió tu registro de la semana 1.", enlace: "Ver la revisión", destino: "semana" },
   { id: "n2", texto: "Respondimos tu solicitud de ajuste.", enlace: "Ver la respuesta", destino: "ajuste" },

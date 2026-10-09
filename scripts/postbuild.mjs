@@ -42,6 +42,7 @@ if (VERIFICACION_GOOGLE && !/^[\w-]+$/.test(VERIFICACION_GOOGLE)) {
 const ssr = await import(pathToFileURL(join(SSR, "entry-server.js")).href);
 const { render, paginas, PAGINA_404, IMAGEN_SOCIAL, LEMA, SUPABASE_URL } = ssr;
 const { renderPrevia, pantallasPrevia = [], INDICE_PREVIA, ID_VISTA_PREVIA } = ssr;
+const { RUTAS_PLATAFORMA = [], ID_PLATAFORMA } = ssr;
 // entry-server.tsx reexporta los datos operativos (6.1) para la puerta de lanzamiento y los reenvíos.
 const operacion = ssr.operacion ?? null;
 const ayuda = ssr.ayuda ?? null;
@@ -60,6 +61,11 @@ if (FORMULARIO_PROPIO) {
   }
 }
 const REENVIOS = reenviosActivos(operacion);
+// Mi espacio propio y panel (etapa 3): con el interruptor, también conectan con el proyecto.
+const MI_ESPACIO_PROPIO = Boolean(operacion?.miEspacioPropio);
+if (MI_ESPACIO_PROPIO && !/^https:\/\/[^/]+$/.test(SUPABASE_URL)) {
+  throw new Error(`operacion.miEspacioPropio necesita la URL https del proyecto de Supabase; hay «${SUPABASE_URL}».`);
+}
 
 // 11. Puerta de lanzamiento: sin estos datos la web se puede publicar, pero no difundir (sección 8).
 if (LANZAMIENTO) {
@@ -340,6 +346,31 @@ if (renderPrevia && INDICE_PREVIA) {
   }
 }
 
+// 5c. Mi espacio propio y panel (etapa 3, operacion.miEspacioPropio): cada ruta prerenderizada
+// con «Cargando…» (el ingreso, con su formulario), noindex y nofollow, sin canonical ni
+// analítica, fuera del sitemap. Se escribe después de las páginas: si hay una página pública en
+// /mi-espacio/ (aviso mientras el interruptor está apagado), el interruptor decide y la reemplaza.
+let totalPlataforma = 0;
+if (MI_ESPACIO_PROPIO) {
+  if (!ID_PLATAFORMA || !RUTAS_PLATAFORMA.length) throw new Error("postbuild: entry-server.tsx no reexporta las rutas de la plataforma.");
+  const hojas = hojasDe("src/pages/plataforma/Plataforma.tsx");
+  for (const r of RUTAS_PLATAFORMA) {
+    const url = BASE + r.ruta.replace(/^\//, "");
+    const head = cabeza({
+      titulo: r.titulo,
+      descripcion: r.marco === "panel" ? "Panel de Rumbo, solo para el equipo." : "Mi espacio de Rumbo: tu programa, tus acciones y tus revisiones.",
+      canonical: null,
+      indexable: false,
+      previa: true, // noindex, nofollow, sin analítica ni verificación
+      supabase: true,
+    });
+    const cuerpo = await renderPrevia(url);
+    if (/<script\b/i.test(cuerpo)) throw new Error(`El prerender de ${url} trae un <script> en línea.`);
+    escribir(r.ruta.replace(/^\//, ""), conEnlaces(armar(url, ID_PLATAFORMA, head, cuerpo), hojas));
+    totalPlataforma++;
+  }
+}
+
 // 6. Reenvíos (5.7): rutas de la plataforma o de la plataforma anterior. Conservan ?area=, ?apoyo= y #token.
 // Piel de la marca sin fuentes propias ni hoja externa: carga al instante.
 const ESTILO_REENVIO = `
@@ -419,6 +450,7 @@ writeFileSync(
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${paginas
   .filter((p) => p.indexable !== false)
+  .filter((p) => !(MI_ESPACIO_PROPIO && /^\/(mi-espacio|equipo)\//.test(p.ruta)))
   .map((p) => `  <url><loc>${SITE_URL}${p.ruta}</loc><lastmod>${p.revisada}</lastmod></url>`)
   .join("\n")}
 </urlset>
@@ -434,6 +466,7 @@ if (existsSync(join(DIST, ".vite"))) rmSync(join(DIST, ".vite"), { recursive: tr
 console.log(
   `postbuild: ${paginas.length} páginas + 404 + ${REENVIOS.reduce((n, r) => n + r.rutas.length, 0)} reenvíos para ${SITE_URL} (base ${BASE})` +
     `${totalPrevia ? ` + ${totalPrevia} de vista previa` : ""}` +
+    `${totalPlataforma ? ` + ${totalPlataforma} de Mi espacio y el panel` : ""}` +
     `${conAnalitica ? ", con analítica" : ""}${FORMULARIO_PROPIO ? `, formulario propio (${SUPABASE_URL})` : ""}` +
     `${LANZAMIENTO ? ", puerta de lanzamiento superada" : ""}`,
 );

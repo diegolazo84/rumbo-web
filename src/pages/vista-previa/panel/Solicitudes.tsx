@@ -8,8 +8,8 @@ import Etiqueta from "../../../components/Etiqueta";
 import { opcionesApoyo } from "../../../data/formularios";
 import { diaCorto } from "../../../lib/fechas";
 import type { PropsPantalla } from "../registro";
-import { Cabeza, EtiquetaArea, R, conId, venceTexto } from "./comun";
-import { HOY, sinPrimeraRespuesta, solicitudes, type Solicitud } from "./ejemplo";
+import { Cabeza, EtiquetaArea, conId, usePanel, useVence } from "./comun";
+import { sinPrimeraRespuesta, solicitudes as solicitudesEjemplo, type Solicitud } from "./ejemplo";
 import { ESTADO_SOLICITUD, SOLICITUDES } from "./textos";
 import { Segmentado } from "../../../components/app";
 
@@ -26,6 +26,8 @@ const FILTROS: Record<Filtro, (s: Solicitud) => boolean> = {
 export const textoApoyo = (apoyo: string) => opcionesApoyo.find((o) => o.valor === apoyo)?.titulo ?? apoyo;
 
 function Fila({ s }: { s: Solicitud }) {
+  const { R, hoy } = usePanel();
+  const venceTexto = useVence();
   const estado = s.tipo === "interes" ? ESTADO_SOLICITUD.interes : ESTADO_SOLICITUD[s.estado];
   const pendiente = sinPrimeraRespuesta(s);
   const vence = pendiente && s.responderAntes ? venceTexto(s.responderAntes) : null;
@@ -59,7 +61,7 @@ function Fila({ s }: { s: Solicitud }) {
         {vence && (
           <div>
             <dt>{SOLICITUDES.columnas.vence}</dt>
-            <dd className={s.responderAntes! < HOY ? "pa-vence--pasado" : undefined}>{vence}</dd>
+            <dd className={s.responderAntes! < hoy ? "pa-vence--pasado" : undefined}>{vence}</dd>
           </div>
         )}
       </dl>
@@ -68,6 +70,11 @@ function Fila({ s }: { s: Solicitud }) {
 }
 
 export default function Solicitudes(_: PropsPantalla) {
+  return <ListaSolicitudes solicitudes={solicitudesEjemplo} />;
+}
+
+// Bandeja con sus filtros (vista previa: datos de ejemplo; panel real: los de la base).
+export function ListaSolicitudes({ solicitudes }: { solicitudes: Solicitud[] }) {
   const [filtro, setFiltro] = useState<Filtro>("responder");
   const lista = solicitudes.filter(FILTROS[filtro]).sort((a, b) => (a.recibida + a.hora).localeCompare(b.recibida + b.hora));
   return (

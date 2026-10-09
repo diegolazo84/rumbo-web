@@ -3,7 +3,7 @@
 // pendiente, futura, semana-1 y cercano (Martín: «Resumen de tu videollamada» de la semana 1).
 // El registro es opcional; el borrador se guarda en este dispositivo. Con acompañamiento: la
 // revisión es escrita, en el día acordado; en Acompañamiento cercano, una videollamada.
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Aviso } from "../../../components/Bloques";
 import Etiqueta from "../../../components/Etiqueta";
 import { Icono, Segmentado } from "../../../components/app";
@@ -13,10 +13,7 @@ import {
   ESCENARIO_COACH,
   HOY,
   calcularProgreso,
-  ciclo,
   cuentaComoHecha,
-  fechaRevision,
-  semanaDelCiclo,
   type Carga,
   type Escenario,
   type Ocurrencia,
@@ -25,7 +22,8 @@ import {
 import { REGISTRO_SEMANAL } from "../../../data/formularios";
 import { diaCorto, type Iso } from "../../../lib/fechas";
 import type { PropsPantalla } from "../registro";
-import { Cabeza, R, prepararLista } from "./comun";
+import { AlertaGuardar, Cabeza, prepararLista, useEspacio } from "./comun";
+import type { DatosRegistroSemanal } from "./espacio";
 import { T_SEMANA } from "./textos";
 
 type Situacion = "sin-enviar" | "enviado" | "en-revision" | "publicada" | "pendiente" | "futura" | "semana-1";
@@ -59,10 +57,15 @@ const CAMBIOS_S1 = "Dejamos “Revisar la agenda” a las 19:00, cuando ya salis
 const VACIO = { carga: "" as Carga | "", funciono: "", costo: "", cambiar: "" };
 const clave = (n: number) => `rumbo-previa-registro-${n}`;
 
-export default function Semana({ estado = "sin-enviar" }: PropsPantalla) {
+export default function Semana(props: PropsPantalla) {
+  const { real } = useEspacio();
+  return real ? <SemanaReal /> : <SemanaPrevia {...props} />;
+}
+
+function SemanaPrevia({ estado = "sin-enviar" }: PropsPantalla) {
+  const { semanaDelCiclo } = useEspacio();
   const e = ESCENARIOS[estado] ?? ESCENARIOS["sin-enviar"];
   const esc = e.esc ?? ESCENARIO_COACH;
-  const cercano = esc.plan === "cercano";
   const actual = semanaDelCiclo(e.hoy);
   const [n, setN] = useState(e.n);
 
@@ -73,9 +76,100 @@ export default function Semana({ estado = "sin-enviar" }: PropsPantalla) {
   else if (esc.revisiones.some((r) => r.semana === n && r.publicadaEl)) situacion = "publicada";
   else situacion = n === actual ? "sin-enviar" : "pendiente";
 
+  const inicial: RegistroSemanal | null =
+    situacion === "publicada"
+      ? (esc.registrosSemanales.find((r) => r.semana === n) ?? null)
+      : esc.plan === "coach" && (situacion === "enviado" || situacion === "en-revision" || situacion === "pendiente")
+        ? REGISTRO_S2
+        : null;
+
+  return (
+    <MarcoSemana n={n} setN={setN} esc={esc}>
+      {situacion === "futura" ? (
+        <p className="me-calendario__vacio">{T_SEMANA.futura}</p>
+      ) : (
+        <ContenidoSemana
+          key={`${estado}-${n}`}
+          n={n}
+          hoy={e.hoy}
+          situacion={situacion}
+          esc={esc}
+          inicial={inicial}
+          cambios={esc.plan === "cercano" ? null : CAMBIOS_S1}
+        />
+      )}
+    </MarcoSemana>
+  );
+}
+
+// Mi espacio real: la situación sale de la base (registro enviado, revisión iniciada o publicada).
+function SemanaReal() {
+  const { hoy, esc, ciclo, semanaDelCiclo, lunesDeSemana, fechaRevision, semanasEnRevision, notasCambios, servidor } = useEspacio();
+  const actual = Math.min(Math.max(semanaDelCiclo(hoy), 1), ciclo.semanas);
+  const [n, setN] = useState(actual);
+  // ?n= después de hidratar (el HTML prerenderizado no conoce la búsqueda).
+  useEffect(() => {
+    const q = Number(new URLSearchParams(window.location.search).get("n"));
+    if (Number.isInteger(q) && q >= 1 && q <= ciclo.semanas) setN(q);
+  }, [ciclo.semanas]);
+  const elegir = (v: number) => {
+    setN(v);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("n", String(v));
+      window.history.replaceState(window.history.state, "", url);
+    } catch {
+      /* sin historial */
+    }
+  };
+
+  const registro = esc.registrosSemanales.find((r) => r.semana === n) ?? null;
+  let situacion: Situacion;
+  if (lunesDeSemana(n) > hoy) situacion = "futura";
+  else if (esc.revisiones.some((r) => r.semana === n && r.publicadaEl)) situacion = "publicada";
+  else if (semanasEnRevision.includes(n)) situacion = "en-revision";
+  else if (fechaRevision(n) < hoy) situacion = "pendiente";
+  else if (registro?.enviadoEl) situacion = "enviado";
+  else if (n === 1) situacion = "semana-1";
+  else situacion = "sin-enviar";
+
+  // Bloque 4: notas de las versiones publicadas después de la revisión de esta semana.
+  const desde = fechaRevision(n);
+  const hasta = fechaRevision(n + 1);
+  const cambios =
+    notasCambios
+      .filter((c) => c.version > 1 && c.nota && c.publicadoEl && c.publicadoEl >= desde && c.publicadoEl < hasta)
+      .map((c) => c.nota)
+      .join(" ") || null;
+
+  const guardar = servidor ? (datos: DatosRegistroSemanal) => servidor.guardarRegistroSemanal(n, datos, true) : undefined;
+
+  return (
+    <MarcoSemana n={n} setN={elegir} esc={esc}>
+      {situacion === "futura" ? (
+        <p className="me-calendario__vacio">{T_SEMANA.futura}</p>
+      ) : (
+        <ContenidoSemana
+          key={`${n}-${situacion}-${registro?.enviadoEl ?? ""}`}
+          n={n}
+          hoy={hoy}
+          situacion={situacion}
+          esc={esc}
+          inicial={registro}
+          cambios={cambios}
+          guardar={guardar}
+        />
+      )}
+    </MarcoSemana>
+  );
+}
+
+// Selector de semanas y encabezado (día de revisión y, en cercano, hora de la videollamada).
+function MarcoSemana({ n, setN, esc, children }: { n: number; setN: (n: number) => void; esc: Escenario; children: ReactNode }) {
+  const { ciclo, fechaRevision } = useEspacio();
+  const cercano = esc.plan === "cercano";
   const fecha = fechaRevision(n, esc.diaRevision);
   const bajada = cercano ? T_SEMANA.bajadaCercano : T_SEMANA.bajadaCoach;
-
   return (
     <div className="me-pantalla me-semana">
       <Segmentado
@@ -101,23 +195,23 @@ export default function Semana({ estado = "sin-enviar" }: PropsPantalla) {
           </p>
         }
       />
-
-      {situacion === "futura" ? (
-        <p className="me-calendario__vacio">{T_SEMANA.futura}</p>
-      ) : (
-        <ContenidoSemana key={`${estado}-${n}`} n={n} hoy={e.hoy} situacion={situacion} esc={esc} />
-      )}
+      {children}
     </div>
   );
 }
 
-function ContenidoSemana({ n, hoy, situacion, esc }: { n: number; hoy: Iso; situacion: Situacion; esc: Escenario }) {
-  const inicial: RegistroSemanal | null =
-    situacion === "publicada"
-      ? (esc.registrosSemanales.find((r) => r.semana === n) ?? null)
-      : esc.plan === "coach" && (situacion === "enviado" || situacion === "en-revision" || situacion === "pendiente")
-        ? REGISTRO_S2
-        : null;
+type PropsContenido = {
+  n: number;
+  hoy: Iso;
+  situacion: Situacion;
+  esc: Escenario;
+  inicial: RegistroSemanal | null;
+  cambios: string | null;
+  guardar?: (datos: DatosRegistroSemanal) => Promise<void>; // Mi espacio real
+};
+
+function ContenidoSemana({ n, hoy, situacion, esc, inicial, cambios, guardar }: PropsContenido) {
+  const { fechaRevision } = useEspacio();
   const [registro, setRegistro] = useState<RegistroSemanal | null>(inicial);
   const [editando, setEditando] = useState(false);
   const fecha = fechaRevision(n, esc.diaRevision);
@@ -128,7 +222,7 @@ function ContenidoSemana({ n, hoy, situacion, esc }: { n: number; hoy: Iso; situ
     <div className="me-semana__cuerpo">
       <div className="me-semana__principal">
       {/* Publicada: lo nuevo (respuesta y cambios) va primero; el registro queda cerrado debajo. */}
-      {situacion === "publicada" && <Respuesta n={n} esc={esc} />}
+      {situacion === "publicada" && <Respuesta n={n} esc={esc} cambios={cambios} />}
       <section className="tarjeta me-registro" aria-labelledby="registro-titulo">
         <div className="me-registro__cabeza">
           <h2 id="registro-titulo" className="me-h2">
@@ -148,6 +242,7 @@ function ContenidoSemana({ n, hoy, situacion, esc }: { n: number; hoy: Iso; situ
           <FormularioRegistro
             n={n}
             inicial={registro}
+            guardar={guardar}
             onEnviar={(r) => {
               setRegistro({ ...r, semana: n, enviadoEl: hoy });
               setEditando(false);
@@ -178,7 +273,17 @@ function ContenidoSemana({ n, hoy, situacion, esc }: { n: number; hoy: Iso; situ
 // ---------------------------------------------------------------------------
 // Bloque 1 · «Tu registro» (todo opcional)
 
-function FormularioRegistro({ n, inicial, onEnviar }: { n: number; inicial: RegistroSemanal | null; onEnviar: (r: Omit<RegistroSemanal, "semana" | "enviadoEl">) => void }) {
+type PropsFormulario = {
+  n: number;
+  inicial: RegistroSemanal | null;
+  guardar?: (datos: DatosRegistroSemanal) => Promise<void>;
+  onEnviar: (r: Omit<RegistroSemanal, "semana" | "enviadoEl">) => void;
+};
+
+function FormularioRegistro({ n, inicial, guardar, onEnviar }: PropsFormulario) {
+  const { R } = useEspacio();
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState(false);
   const [v, setV] = useState(() => (inicial ? { carga: inicial.carga ?? "", funciono: inicial.funciono, costo: inicial.costo, cambiar: inicial.cambiar } : VACIO));
   const [guardado, setGuardado] = useState(false);
 
@@ -227,12 +332,23 @@ function FormularioRegistro({ n, inicial, onEnviar }: { n: number; inicial: Regi
       largo
       className="me-registro__form"
       onSubmit={() => {
-        try {
-          localStorage.removeItem(clave(n));
-        } catch {
-          /* sin almacenamiento */
-        }
-        onEnviar({ carga: (v.carga || null) as Carga | null, funciono: v.funciono, costo: v.costo, cambiar: v.cambiar });
+        if (enviando) return;
+        const datos = { carga: (v.carga || null) as Carga | null, funciono: v.funciono, costo: v.costo, cambiar: v.cambiar };
+        const listo = () => {
+          try {
+            localStorage.removeItem(clave(n));
+          } catch {
+            /* sin almacenamiento */
+          }
+          onEnviar(datos);
+        };
+        if (!guardar) return listo();
+        setEnviando(true);
+        setError(false);
+        guardar(datos)
+          .then(listo)
+          .catch(() => setError(true))
+          .finally(() => setEnviando(false));
       }}
     >
       <p className="me-bloque__bajada">{T_SEMANA.sinEnviar}</p>
@@ -246,8 +362,9 @@ function FormularioRegistro({ n, inicial, onEnviar }: { n: number; inicial: Regi
       {texto("funciono")}
       {texto("costo")}
       {texto("cambiar")}
+      {guardar && <AlertaGuardar texto={error ? REGISTRO_SEMANAL.errorEnvio : null} />}
       <div className="me-registro__envio">
-        <button type="submit" className="boton boton--primario">
+        <button type="submit" className="boton boton--primario" aria-disabled={enviando || undefined}>
           {REGISTRO_SEMANAL.boton}
         </button>
         <p className="microcopia" role="status">
@@ -291,8 +408,9 @@ function RegistroLeido({ r }: { r: RegistroSemanal }) {
 // Bloque 2 · «Lo que marcaste» (automático): por meta, hasta hoy.
 
 function LoQueMarcaste({ n, hoy, esc }: { n: number; hoy: Iso; esc: Escenario }) {
+  const { ciclo, semanaDelCiclo, real, progreso: delServidor } = useEspacio();
   const lista = prepararLista({}, hoy, esc.ocurrencias);
-  const progreso = calcularProgreso(lista, hoy);
+  const progreso = (real && delServidor) || calcularProgreso(lista, hoy, ciclo.inicio);
   const de = (o: Ocurrencia) => o.semana === n && o.vigente && o.fecha <= hoy;
   const completos = progreso.dias.filter((d) => semanaDelCiclo(d.fecha) === n && d.estado === "completo").length;
   return (
@@ -320,7 +438,7 @@ function LoQueMarcaste({ n, hoy, esc }: { n: number; hoy: Iso; esc: Escenario })
 // ---------------------------------------------------------------------------
 // Bloques 3 y 4 · respuesta de tu coach y cambios en tu programa
 
-function Respuesta({ n, esc }: { n: number; esc: Escenario }) {
+function Respuesta({ n, esc, cambios }: { n: number; esc: Escenario; cambios: string | null }) {
   const r = esc.revisiones.find((x) => x.semana === n && x.publicadaEl);
   const cercano = esc.plan === "cercano";
   if (!r?.publicadaEl) return null;
@@ -354,10 +472,10 @@ function Respuesta({ n, esc }: { n: number; esc: Escenario }) {
         </div>
       </section>
       {/* Cambios en el programa: solo si la publicación los trae (la de Martín no cambió nada). */}
-      {!cercano && (
+      {cambios && (
         <section aria-labelledby={`cambios-${n}`}>
           <Aviso icono="info" titulo={<span id={`cambios-${n}`}>{T_SEMANA.cambios}</span>}>
-            {CAMBIOS_S1}
+            {cambios}
           </Aviso>
         </section>
       )}

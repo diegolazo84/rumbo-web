@@ -13,10 +13,17 @@ import { fechaLarga, mayuscula } from "../../../lib/fechas";
 import type { PropsPantalla } from "../registro";
 import { Cabeza } from "./comun";
 import { evidencias, type Evidencia } from "./ejemplo";
+import { textoError } from "./FichaSolicitud";
 import { FOTOS, T_PANEL } from "./textos";
 
 export default function Fotos({ estado }: PropsPantalla) {
-  const lista = estado === "vacio" ? [] : evidencias;
+  return <ListaEvidencias lista={estado === "vacio" ? [] : evidencias} />;
+}
+
+// Panel real: revisar_evidencia (aprobar suma el crédito; no aprobar exige nota).
+export type RevisarEvidencia = (id: string, aprobar: boolean, nota: string) => Promise<void>;
+
+export function ListaEvidencias({ lista, onRevisar, nota }: { lista: Evidencia[]; onRevisar?: RevisarEvidencia; nota?: string }) {
   return (
     <div className="pa-pantalla">
       <Cabeza ojo={FOTOS.ojo} titulo={FOTOS.titulo} />
@@ -24,10 +31,11 @@ export default function Fotos({ estado }: PropsPantalla) {
         <Icono nombre="lock" tamaño={20} className="aviso-icono" />
         <p>{FOTOS.fijo}</p>
       </div>
+      {nota && <p className="microcopia">{nota}</p>}
       {lista.length ? (
         <ul className="pa-filas">
           {lista.map((e) => (
-            <Item key={e.id} e={e} />
+            <Item key={e.id} e={e} onRevisar={onRevisar} />
           ))}
         </ul>
       ) : (
@@ -37,13 +45,28 @@ export default function Fotos({ estado }: PropsPantalla) {
   );
 }
 
-function Item({ e }: { e: Evidencia }) {
+function Item({ e, onRevisar }: { e: Evidencia; onRevisar?: RevisarEvidencia }) {
   const [estado, setEstado] = useState<"revision" | "aprobada" | "no_aprobada">("revision");
   const [rechazo, setRechazo] = useState(false);
   const [nota, setNota] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
   const [sinArchivo, setSinArchivo] = useState(false);
   const id = `ev-${e.id}`;
+  // Vista previa: solo cambia la etiqueta. Panel real: guarda y luego la cambia.
+  const revisar = async (aprobar: boolean) => {
+    setErrorEnvio(null);
+    if (onRevisar) {
+      try {
+        await onRevisar(e.id, aprobar, aprobar ? "" : nota.trim());
+      } catch (x) {
+        setErrorEnvio(textoError(x));
+        return;
+      }
+    }
+    setEstado(aprobar ? "aprobada" : "no_aprobada");
+    setRechazo(false);
+  };
   return (
     <li className="tarjeta pa-fila pa-evidencia" aria-labelledby={`${id}-titulo`}>
       <div className="pa-evidencia__cuerpo">
@@ -80,7 +103,7 @@ function Item({ e }: { e: Evidencia }) {
 
       {estado === "revision" && !rechazo && (
         <div className="acciones">
-          <button type="button" className="boton boton--primario" onClick={() => setEstado("aprobada")}>
+          <button type="button" className="boton boton--primario" onClick={() => void revisar(true)}>
             {FOTOS.aprobar}
           </button>
           <button type="button" className="boton boton--secundario" onClick={() => setRechazo(true)}>
@@ -107,8 +130,7 @@ function Item({ e }: { e: Evidencia }) {
               document.getElementById(`${id}-nota`)?.focus();
               return;
             }
-            setEstado("no_aprobada");
-            setRechazo(false);
+            void revisar(false);
           }}
         >
           <GrupoOpciones id={`${id}-plantillas`} leyenda={FOTOS.plantillasLeyenda} opcional>
@@ -150,6 +172,16 @@ function Item({ e }: { e: Evidencia }) {
         </form>
       )}
 
+      {onRevisar && (
+        <div role="alert" className="envio__alerta">
+          {errorEnvio && (
+            <p className="aviso aviso--error-envio">
+              <Icono nombre="info" tamaño={20} className="aviso-icono" />
+              <span>{errorEnvio}</span>
+            </p>
+          )}
+        </div>
+      )}
       {estado === "no_aprobada" && <p className="pa-respuesta">{nota}</p>}
     </li>
   );

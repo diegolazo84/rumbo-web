@@ -8,6 +8,7 @@ import { Icono } from "../../../components/app";
 import { areas, planes, type CategoriaId } from "../../../data/rumbo";
 import { diaCorto, sumarDias, type Iso } from "../../../lib/fechas";
 import { HOY, habilesEntre } from "./ejemplo";
+import { usePanel } from "./modo";
 import { T_PANEL, VENCE } from "./textos";
 // Estilos propios de este grupo (solo tokens de :root). Lo importan todas sus pantallas.
 import "../../../styles/vista-panel.css";
@@ -16,6 +17,7 @@ import "../../../styles/vista-panel.css";
 // Rutas de la vista previa entre pantallas del panel (los ?id= se leen tras hidratar)
 
 export { R, conId, ordenPorPlazo } from "./base";
+export { PanelContexto, usePanel, type ModoPanel, type RutasPanel } from "./modo";
 
 // Lee un parámetro de la búsqueda DESPUÉS de hidratar: el HTML prerenderizado no tiene búsqueda,
 // así que leerlo durante el primer render rompería la hidratación.
@@ -31,11 +33,17 @@ export function useParametro(nombre: string): string | null {
 // ---------------------------------------------------------------------------
 // Plazos (5.3): «hoy», «mañana», «el jueves 16», «pasó su plazo hace 1 día hábil»
 
-export function venceTexto(fecha: Iso, hoy: Iso = HOY): string {
-  if (fecha < hoy) return VENCE.paso(Math.max(1, habilesEntre(fecha, hoy)));
+export function venceTexto(fecha: Iso, hoy: Iso = HOY, habiles: (a: Iso, b: Iso) => number = habilesEntre): string {
+  if (fecha < hoy) return VENCE.paso(Math.max(1, habiles(fecha, hoy)));
   if (fecha === hoy) return VENCE.hoy;
   if (fecha === sumarDias(hoy, 1)) return VENCE.manana;
   return VENCE.el(diaCorto(fecha));
+}
+
+// El mismo texto con el «hoy» y los feriados del modo (vista previa o panel real).
+export function useVence() {
+  const { hoy, habiles } = usePanel();
+  return (fecha: Iso) => venceTexto(fecha, hoy, habiles);
 }
 
 // Orden de la cola: plazo pasado → hoy → mañana → después → sin plazo.
@@ -55,11 +63,12 @@ type CabezaProps = {
 };
 
 export function Cabeza({ ojo, titulo, antes, bajada, children }: CabezaProps) {
+  const { real } = usePanel();
   return (
     <header className="pa-cabeza">
       <div className="pa-cabeza__fila">
         {ojo ? <p className="ojo">{ojo}</p> : <span />}
-        <EtiquetaEjemplo />
+        {!real && <EtiquetaEjemplo />}
       </div>
       {antes}
       <h1 className="pa-h1">{titulo}</h1>
@@ -160,8 +169,9 @@ export function BotonCopiar({
 // ---------------------------------------------------------------------------
 // Descarga de un JSON de ejemplo («Exportar sus datos (JSON)»): se arma en el navegador.
 
-export function descargarJson(nombreArchivo: string, datos: unknown) {
-  const url = URL.createObjectURL(new Blob([JSON.stringify({ ejemplo: true, ...(datos as object) }, null, 2)], { type: "application/json" }));
+export function descargarJson(nombreArchivo: string, datos: unknown, ejemplo = true) {
+  const contenido = ejemplo ? { ejemplo: true, ...(datos as object) } : datos;
+  const url = URL.createObjectURL(new Blob([JSON.stringify(contenido, null, 2)], { type: "application/json" }));
   const a = document.createElement("a");
   a.href = url;
   a.download = nombreArchivo;

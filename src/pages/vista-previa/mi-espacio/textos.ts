@@ -252,6 +252,8 @@ export const T_DETALLE = {
   paraQue: "Para qué",
   atribucion: "Lo que nos contaste",
   pieAjuste: "¿Esta acción no calza con tu semana? ",
+  noEncontrada: "No encontramos esta acción.", // PROPUESTO (accion/?id= de otra persona o borrada)
+  irAlCalendario: "Ir a tu calendario", // PROPUESTO
   ajuste: "Pedir un ajuste",
   foto: {
     aviso:
@@ -269,6 +271,7 @@ export const T_DETALLE = {
     botonOtra: "Subir otra foto",
     depurada: (dias: number) => `La foto se borró a los ${dias} días de revisada, como dice nuestra política. El crédito se mantiene.`,
     miniatura: "Tu foto",
+    errorGuardar: "No pudimos guardarlo. Revisa tu conexión e inténtalo de nuevo; nada se perdió.", // PROPUESTO (como el de la foto, 4.9)
     dialogo: {
       titulo: "¿Eliminar esta foto?",
       texto: "Se borra de inmediato. Si estaba aprobada, se resta el crédito y se recalcula tu día.",
@@ -395,6 +398,10 @@ export const T_AJUSTE = {
     // PROPUESTO: la especificación no define los errores de este formulario.
     tipo: "Elige qué necesitas cambiar.",
     detalle: "Cuéntanos un poco más (mínimo 10 caracteres).",
+    // PROPUESTO: Mi espacio real, si no se pudo guardar la solicitud.
+    envio: "No pudimos enviar tu solicitud. Revisa tu conexión e inténtalo de nuevo; lo que escribiste sigue aquí.",
+    // PROPUESTO: tope de 5 solicitudes en 7 días (pedir_ajuste, 429).
+    demasiadas: "Ya enviaste varias solicitudes esta semana. Lo vemos todo junto en tu próxima revisión.",
   },
 } as const;
 
@@ -437,4 +444,32 @@ export const T_PREFERENCIAS = {
     volver: "Preferencias",
   },
   confirmacion: (fecha: string) => `Recibimos tu pedido. Lo haremos a más tardar el ${fecha} y te avisaremos por correo.`,
+  // PROPUESTO: Mi espacio real, si la base no devuelve una fecha límite.
+  confirmacionSinFecha: "Recibimos tu pedido. Te avisaremos por correo cuando esté hecho.",
+  // PROPUESTO: Mi espacio real, si no se pudo guardar.
+  errorGuardar: "No pudimos guardarlo. Revisa tu conexión e inténtalo de nuevo.",
+  // PROPUESTO: Mi espacio real, si no se pudo armar la descarga.
+  errorDescargar: "No pudimos preparar la descarga. Revisa tu conexión e inténtalo de nuevo.",
+} as const;
+
+// ---------------------------------------------------------------------------
+// 4.4.3 Novedades (Mi espacio real: las arma ProveedorEspacio con los datos de la base)
+
+export const T_NOVEDADES = {
+  revision: (n: number) => `Tu coach respondió tu registro de la semana ${n}.`,
+  verRevision: "Ver la revisión",
+  ajuste: "Respondimos tu solicitud de ajuste.",
+  verAjuste: "Ver la respuesta",
+  programa: (fecha: string) => `Hubo cambios en tu programa desde el ${fecha}.`,
+  verPrograma: "Ver qué cambió",
+  aprobada: (accion: string) => `Tu foto de “${accion}” fue aprobada · +1`,
+  rechazada: (accion: string) => `Tu foto de “${accion}” no se aprobó. Puedes subir otra.`,
+  verAccion: "Ver la acción",
+} as const;
+
+// Mi espacio real: la cuenta no tiene una ficha abierta (cerrada o eliminada). PROPUESTO.
+export const T_SIN_FICHA = {
+  titulo: "No encontramos un espacio abierto con este correo.",
+  texto: "Si tu programa terminó o crees que es un error, escríbenos y lo revisamos contigo.",
+  salir: "Salir",
 } as const;

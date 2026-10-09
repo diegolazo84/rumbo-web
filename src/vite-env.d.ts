@@ -4,6 +4,8 @@
 declare const __ANIO__: string;
 // FORMULARIO_PROPIO=1 al compilar (vite.config.ts). Fuera de Vite (pruebas) no existe.
 declare const __FORMULARIO_PROPIO__: boolean | undefined;
+// MI_ESPACIO_PROPIO=1 al compilar (vite.config.ts). Fuera de Vite (pruebas) no existe.
+declare const __MI_ESPACIO_PROPIO__: boolean | undefined;
 
 // Variables de compilación que lee el código (solo desde el entorno, no desde .env).
 interface ImportMetaEnv {

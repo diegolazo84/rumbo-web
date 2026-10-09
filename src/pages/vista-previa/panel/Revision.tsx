@@ -18,7 +18,29 @@ import type { PropsPantalla } from "../registro";
 import { Cabeza, R, Seccion } from "./comun";
 import { ajustes, evidencias, participantes, semanaMartin } from "./ejemplo";
 import { RegistroLectura, ResumenPorMeta } from "./FichaParticipante";
-import { AJUSTES, FOTOS, REVISION, T_PANEL } from "./textos";
+import { textoError } from "./FichaSolicitud";
+import { AJUSTES, FOTOS, PANEL_REAL, REVISION, T_PANEL } from "./textos";
+import { fechaLarga, type Iso } from "../../../lib/fechas";
+
+export type TextosRevision = { funciono: string; ajustamos: string; foco: string };
+
+// Lo que muestra la pantalla (vista previa: ejemplo; panel real: la base).
+export type DatosRevision = {
+  nombre: string;
+  semana: number;
+  semanas: number;
+  cercano: boolean;
+  porMeta: Parameters<typeof ResumenPorMeta>[0]["filas"];
+  diasCompletos: number;
+  dejadas: number;
+  registro: { carga: string | null; funciono: string; costo: string; cambiar: string } | null;
+  ajustes: { id: string; estado: string; detalle: string }[];
+  fotos: { id: string; accion: string; foto: boolean }[];
+  constructor: string; // «Abrir el constructor»
+  inicial?: TextosRevision;
+  publicadaEl?: Iso | null;
+  onPublicar?: (t: TextosRevision) => Promise<void>;
+};
 
 export default function Revision({ estado = "cercano" }: PropsPantalla) {
   const cercano = estado !== "sin-registro";
@@ -33,12 +55,34 @@ export default function Revision({ estado = "cercano" }: PropsPantalla) {
   const registro = cercano ? { ...semanaMartin.registro, carga: "pesada" } : null;
   const ajustesSemana = ajustes.filter((a) => a.participanteId === p.id);
   const fotos = cercano ? evidencias : [];
+  return (
+    <FormularioRevision
+      nombre={p.nombre}
+      semana={semana}
+      semanas={p.semanas}
+      cercano={cercano}
+      porMeta={porMeta}
+      diasCompletos={diasCompletos}
+      dejadas={dejadas}
+      registro={registro}
+      ajustes={ajustesSemana}
+      fotos={fotos}
+      constructor={R.constructor}
+    />
+  );
+}
 
-  const [funciono, setFunciono] = useState("");
-  const [ajustamos, setAjustamos] = useState("");
-  const [foco, setFoco] = useState("");
+export function FormularioRevision(d: DatosRevision) {
+  const { nombre, semana, cercano, porMeta, diasCompletos, dejadas, registro, fotos } = d;
+  const ajustesSemana = d.ajustes;
+  const p = { nombre, semanas: d.semanas };
+  const [funciono, setFunciono] = useState(d.inicial?.funciono ?? "");
+  const [ajustamos, setAjustamos] = useState(d.inicial?.ajustamos ?? "");
+  const [foco, setFoco] = useState(d.inicial?.foco ?? "");
   const [errores, setErrores] = useState<ErrorResumen[]>([]);
   const [publicada, setPublicada] = useState(false);
+  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
+  const [ocupado, setOcupado] = useState(false);
   const resumen = useRef<HTMLDivElement>(null);
   const errorDe = (id: string) => errores.find((e) => e.id === id)?.texto;
 
@@ -108,16 +152,30 @@ export default function Revision({ estado = "cercano" }: PropsPantalla) {
               <p>{REVISION.sinRegistro}</p>
             </div>
           )}
+          {d.publicadaEl && <p className="microcopia">{PANEL_REAL.revision.yaPublicada(fechaLarga(d.publicadaEl))}</p>}
           <form
             className="pa-form"
             noValidate
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               const err = validar();
               setErrores(err);
               if (err.length) {
                 window.requestAnimationFrame(() => resumen.current?.focus());
                 return;
+              }
+              if (d.onPublicar) {
+                if (ocupado) return;
+                setOcupado(true);
+                setErrorEnvio(null);
+                try {
+                  await d.onPublicar({ funciono: funciono.trim(), ajustamos: ajustamos.trim(), foco: foco.trim() });
+                } catch (x) {
+                  setErrorEnvio(textoError(x));
+                  return;
+                } finally {
+                  setOcupado(false);
+                }
               }
               setPublicada(true);
             }}
@@ -143,7 +201,7 @@ export default function Revision({ estado = "cercano" }: PropsPantalla) {
                 value={ajustamos}
                 onChange={(e) => setAjustamos(e.target.value)}
               />
-              <Link to={R.constructor} className="enlace-flecha">
+              <Link to={d.constructor} className="enlace-flecha">
                 {REVISION.ajustamos.constructor}
                 <Icono nombre="arrow-right" tamaño={16} />
               </Link>
@@ -160,11 +218,21 @@ export default function Revision({ estado = "cercano" }: PropsPantalla) {
                 if (errores.length) setErrores(validar(funciono, e.target.value));
               }}
             />
+            {d.onPublicar && (
+              <div role="alert" className="envio__alerta">
+                {errorEnvio && (
+                  <p className="aviso aviso--error-envio">
+                    <Icono nombre="info" tamaño={20} className="aviso-icono" />
+                    <span>{errorEnvio}</span>
+                  </p>
+                )}
+              </div>
+            )}
             <button type="submit" className="boton boton--primario">
               {REVISION.publicar}
             </button>
             <p role="status" className="microcopia">
-              {publicada ? REVISION.publicada : ""}
+              {publicada ? (d.onPublicar ? PANEL_REAL.revision.publicada : REVISION.publicada) : ""}
             </p>
           </form>
           <p className="pa-tenue">{REVISION.recordatorio}</p>

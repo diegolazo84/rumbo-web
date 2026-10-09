@@ -13,15 +13,12 @@ import {
   NOTA_FOTO_APROBADA,
   NOTA_FOTO_NO_APROBADA,
   cuentaComoHecha,
-  fechaRevision,
-  metaPorId,
-  semanaDelCiclo,
   type EstadoRegistro,
   type Ocurrencia,
 } from "../../../data/ejemplo-app";
 import { FOTO } from "../../../data/formularios";
 import { diaCorto, diaMes, duracionTexto, fechaLarga, mayuscula, sumarMinutos, type Iso } from "../../../lib/fechas";
-import { EtiquetaEjemplo, R, dentroDeVentana, rutaAjuste } from "./comun";
+import { EtiquetaEjemplo, useEspacio } from "./comun";
 import { T_CALENDARIO, T_COMUN, T_DETALLE } from "./textos";
 
 type Props = {
@@ -38,6 +35,7 @@ const fotoDelRegistro = (r: EstadoRegistro | null): FotoInicial =>
   r === "revision" ? "revision" : r === "aprobada" ? "aprobada" : r === "no_aprobada" ? "no-aprobada" : "sin";
 
 export default function Detalle({ o, hoy, enHoja, onRegistrar, fotoInicial, sinConexion }: Props) {
+  const { metaPorId, fechaRevision, semanaDelCiclo, dentroDeVentana, rutaAjuste } = useEspacio();
   const meta = metaPorId(o.metaId);
   const Sub = enHoja ? "h3" : "h2";
   const idNota = useId();
@@ -71,7 +69,7 @@ export default function Detalle({ o, hoy, enHoja, onRegistrar, fotoInicial, sinC
       </Etiqueta>
     );
   } else if (o.conFoto) {
-    control = <BloqueFoto inicial={fotoInicial ?? fotoDelRegistro(o.registro)} sinConexion={sinConexion} />;
+    control = <BloqueFoto o={o} inicial={fotoInicial ?? fotoDelRegistro(o.registro)} sinConexion={sinConexion} />;
   } else if (futura) {
     control = (
       <>
@@ -151,7 +149,7 @@ export default function Detalle({ o, hoy, enHoja, onRegistrar, fotoInicial, sinC
           <ChipMeta cat={o.categoria} />
           <EtiquetaEjemplo />
         </div>
-        <p className="microcopia">{T_DETALLE.meta(meta.titulo)}</p>
+        <p className="microcopia">{T_DETALLE.meta(meta.titulo || o.metaTitulo || "")}</p>
         {!enHoja && <h1 className="me-h1 me-h1--h2">{o.titulo}</h1>}
         <ul className="me-datos">
           <li>
@@ -226,14 +224,19 @@ export default function Detalle({ o, hoy, enHoja, onRegistrar, fotoInicial, sinC
 // ---------------------------------------------------------------------------
 // Foto privada (4.9). En la vista previa la foto no sale del navegador: se muestra con una URL
 // blob: local (la CSP de la vista previa la permite) y se borra al eliminarla.
+// En Mi espacio real (etapa 3) las fotos todavía no se suben (etapa 4: bucket, recompresión y
+// revisión): solo existe «No puedo subir una foto», que guarda la explicación con
+// registrar_evidencia y queda «En revisión», igual que una foto.
 
 type EstadoFoto = FotoInicial | "subiendo" | "explicar";
 const TIPOS = FOTO.accept.split(",");
 
-function BloqueFoto({ inicial, sinConexion }: { inicial: FotoInicial; sinConexion?: boolean }) {
+function BloqueFoto({ o, inicial, sinConexion }: { o: Ocurrencia; inicial: FotoInicial; sinConexion?: boolean }) {
+  const { servidor, R } = useEspacio();
+  const real = !!servidor;
   const [estado, setEstado] = useState<EstadoFoto>(inicial);
   const [url, setUrl] = useState<string | null>(null);
-  const [explicacion, setExplicacion] = useState<string | null>(null);
+  const [explicacion, setExplicacion] = useState<string | null>(o.explicacion ?? null);
   const [texto, setTexto] = useState("");
   const [errorTexto, setErrorTexto] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -279,6 +282,17 @@ function BloqueFoto({ inicial, sinConexion }: { inicial: FotoInicial; sinConexio
 
   const eliminar = () => {
     setConfirmar(false);
+    if (real) {
+      servidor
+        .eliminarEvidencia(o.id)
+        .then(() => {
+          setExplicacion(null);
+          setEstado("sin");
+          moverFoco();
+        })
+        .catch(() => setError(T_DETALLE.foto.errorGuardar));
+      return;
+    }
     if (url) URL.revokeObjectURL(url);
     setUrl(null);
     setEstado("sin");
@@ -289,6 +303,17 @@ function BloqueFoto({ inicial, sinConexion }: { inicial: FotoInicial; sinConexio
     const v = texto.trim();
     if (v.length < FOTO.explicacion.min) {
       setErrorTexto("Cuéntanos un poco más (mínimo 10 caracteres)."); // PROPUESTO (igual al de contacto)
+      return;
+    }
+    if (real) {
+      servidor
+        .registrarEvidencia(o.id, v)
+        .then(() => {
+          setExplicacion(v);
+          setEstado("revision");
+          moverFoco();
+        })
+        .catch(() => setErrorTexto(T_DETALLE.foto.errorGuardar));
       return;
     }
     setExplicacion(v);
@@ -308,7 +333,7 @@ function BloqueFoto({ inicial, sinConexion }: { inicial: FotoInicial; sinConexio
               <figure className="me-foto__nota">
                 <figcaption className="me-rotulo">{T_DETALLE.foto.notaCoach}</figcaption>
                 <blockquote>
-                  <p>{NOTA_FOTO_APROBADA}</p>
+                  <p>{real ? o.notaRevision : NOTA_FOTO_APROBADA}</p>
                 </blockquote>
               </figure>
             </div>
@@ -326,10 +351,15 @@ function BloqueFoto({ inicial, sinConexion }: { inicial: FotoInicial; sinConexio
           <div className="me-foto__texto" tabIndex={-1}>
             <Etiqueta variante="nota">{T_DETALLE.foto.noAprobada}</Etiqueta>
             <blockquote className="me-foto__explicacion">
-              <p>{NOTA_FOTO_NO_APROBADA}</p>
+              <p>{real ? o.notaRevision : NOTA_FOTO_NO_APROBADA}</p>
             </blockquote>
-            <p>{T_DETALLE.foto.subirOtra}</p>
+            {!real && <p>{T_DETALLE.foto.subirOtra}</p>}
             <div className="me-detalle__botones">
+              {real ? (
+                <button type="button" className="boton boton--terciario" onClick={() => setEstado("explicar")}>
+                  {T_DETALLE.foto.noPuedo}
+                </button>
+              ) : (
               <button
                 type="button"
                 className="boton boton--primario boton--ancho"
@@ -339,6 +369,7 @@ function BloqueFoto({ inicial, sinConexion }: { inicial: FotoInicial; sinConexio
                 <Icono nombre="camera" tamaño={20} />
                 {T_DETALLE.foto.botonOtra}
               </button>
+              )}
             </div>
             <input ref={archivo} type="file" accept={FOTO.accept} hidden onChange={elegir} tabIndex={-1} />
           </div>
@@ -347,6 +378,7 @@ function BloqueFoto({ inicial, sinConexion }: { inicial: FotoInicial; sinConexio
         {estado === "sin" && (
           <>
             <div className="me-detalle__botones">
+              {!real && (
               <button
                 type="button"
                 className="boton boton--primario boton--ancho"
@@ -356,6 +388,7 @@ function BloqueFoto({ inicial, sinConexion }: { inicial: FotoInicial; sinConexio
                 <Icono nombre="camera" tamaño={20} />
                 {T_DETALLE.foto.subir}
               </button>
+              )}
               <button type="button" className="boton boton--terciario" onClick={() => setEstado("explicar")}>
                 {T_DETALLE.foto.noPuedo}
               </button>
@@ -418,7 +451,7 @@ function BloqueFoto({ inicial, sinConexion }: { inicial: FotoInicial; sinConexio
             <div className="me-foto__texto">
               <Etiqueta variante="nota">{T_DETALLE.foto.enRevision}</Etiqueta>
               <p>{T_DETALLE.foto.suma}</p>
-              {!explicacion && (
+              {!explicacion && !real && (
                 <button type="button" className="boton boton--terciario me-boton-izq" onClick={() => setConfirmar(true)}>
                   {T_DETALLE.foto.eliminar}
                 </button>

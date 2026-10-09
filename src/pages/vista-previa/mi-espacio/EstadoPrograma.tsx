@@ -15,41 +15,34 @@ import CalendarioEjemplo from "../../../components/CalendarioEjemplo";
 import { Acordeon, Aviso, ListaCheck } from "../../../components/Bloques";
 import Etiqueta from "../../../components/Etiqueta";
 import { ChipMeta, EstadoVacio, Hoja, HojaAyuda, Icono, MetaTarjeta } from "../../../components/app";
-import {
-  calcularProgreso,
-  ciclo,
-  cuentaComoHecha,
-  metas,
-  ocurrenciasDel,
-  participante,
-  type Ocurrencia,
-} from "../../../data/ejemplo-app";
+import { calcularProgreso, ciclo as cicloEjemplo, cuentaComoHecha, ocurrenciasDel, type Ocurrencia } from "../../../data/ejemplo-app";
 import { LIMITES } from "../../../data/formularios";
 import { DIAS, diaCorto, fechaLarga, mayuscula, sumarDias, type Iso } from "../../../lib/fechas";
 import { recursosAyuda, reglasCreditosTextos } from "../../../data/rumbo";
 import type { PropsPantalla } from "../registro";
 import Detalle from "./Detalle";
-import { EtiquetaEjemplo, FilaOcurrencia, R, descargarDatos, prepararLista, rutaAjuste } from "./comun";
+import { EtiquetaEjemplo, FilaOcurrencia, prepararLista, useDescargarDatos, useEspacio } from "./comun";
 import { T_COMUN, T_ESTADOS, T_HOY, T_PROGRESO, nombrePlan } from "./textos";
 
 // «Hoy» de ejemplo antes de empezar: el jueves anterior al primer lunes del ciclo.
-const HOY_PREVIO: Iso = sumarDias(ciclo.inicio, -4);
+const HOY_PREVIO: Iso = sumarDias(cicloEjemplo.inicio, -4);
 // Pausa acordada de ejemplo: desde el lunes 12 hasta el lunes 26 de octubre.
 const PAUSA_DESDE: Iso = "2026-10-12";
 const PAUSA_HASTA: Iso = "2026-10-26";
 // Ciclo cerrado: el día siguiente al último del ciclo.
-const HOY_CERRADO: Iso = sumarDias(ciclo.fin, 1);
+const HOY_CERRADO: Iso = sumarDias(cicloEjemplo.fin, 1);
 
 // Ciclo 2 de ejemplo: el segundo lunes después del cierre del ciclo 1.
-const INICIO_CICLO_2: Iso = sumarDias(ciclo.fin, 8);
+const INICIO_CICLO_2: Iso = sumarDias(cicloEjemplo.fin, 8);
 
-const DIA_REVISION = DIAS[ciclo.diaRevision - 1]; // «jueves» (lunes a viernes no cambian en plural)
-
+// En Mi espacio real, el estado lo decide la ruta mi-espacio/ con el ciclo vigente (4.3).
 export default function EstadoPrograma({ estado = "preparacion" }: PropsPantalla) {
+  const { real, ciclo } = useEspacio();
   if (estado === "inicio-futuro") return <InicioFuturo />;
   if (estado === "pausa-pedida" || estado === "pausa-cuidado") return <Pausa cuidado={estado === "pausa-cuidado"} />;
   if (estado === "cerrado") return <Cerrado />;
-  if (estado === "ciclo-2") return <Preparacion cicloNuevo={{ numero: 2, inicio: INICIO_CICLO_2 }} />;
+  if (estado === "ciclo-2")
+    return <Preparacion cicloNuevo={real ? { numero: ciclo.numero, inicio: ciclo.inicio } : { numero: 2, inicio: INICIO_CICLO_2 }} />;
   return <Preparacion />;
 }
 
@@ -82,6 +75,9 @@ function ReglasCreditos() {
 // 4.3.1 Acordado, programa en preparación
 
 function Preparacion({ cicloNuevo }: { cicloNuevo?: { numero: number; inicio: Iso } }) {
+  const { ciclo, participante, esc, R, rutaAjuste } = useEspacio();
+  const metas = esc.metas;
+  const DIA_REVISION = DIAS[ciclo.diaRevision - 1]; // «jueves» (lunes a viernes no cambian en plural)
   const t = T_ESTADOS.preparacion;
   const inicio = cicloNuevo?.inicio ?? ciclo.inicio;
   const plan = nombrePlan(ciclo.plan);
@@ -118,7 +114,8 @@ function Preparacion({ cicloNuevo }: { cicloNuevo?: { numero: number; inicio: Is
               t.acordamos.plan(plan),
               revision,
               t.acordamos.ciclo(ciclo.semanas),
-              t.acordamos.metas(metas.map((m) => m.titulo).join(", ")),
+              // «Tus metas: …» solo si ya están cargadas (4.3.1).
+              ...(metas.length ? [t.acordamos.metas(metas.map((m) => m.titulo).join(", "))] : []),
             ]}
           />
         </section>
@@ -165,8 +162,10 @@ function Preparacion({ cicloNuevo }: { cicloNuevo?: { numero: number; inicio: Is
 // 4.3.2 Programa publicado, inicio futuro
 
 function InicioFuturo() {
+  const { real, hoy: hoyReal, ciclo, participante, esc, R } = useEspacio();
+  const hoy = real ? hoyReal : HOY_PREVIO;
   const t = T_ESTADOS.inicioFuturo;
-  const lista = prepararLista({}, HOY_PREVIO);
+  const lista = prepararLista({}, hoy, esc.ocurrencias);
   const primerDia = ocurrenciasDel(ciclo.inicio, lista);
   const [abierta, setAbierta] = useState<Ocurrencia | null>(null);
   const [ayuda, setAyuda] = useState(false);
@@ -183,7 +182,7 @@ function InicioFuturo() {
           </>
         }
         accion={
-          <Link to={R.calendario} className="boton boton--primario">
+          <Link to={real ? `${R.calendario}?vista=semana&fecha=${ciclo.inicio}` : R.calendario} className="boton boton--primario">
             {t.boton}
           </Link>
         }
@@ -198,7 +197,7 @@ function InicioFuturo() {
         <ul className="me-filas" aria-labelledby="estado-primer-dia">
           {primerDia.map((o) => (
             <li key={o.id}>
-              <FilaOcurrencia o={o} hoy={HOY_PREVIO} futura={t.nota} onAbrir={() => setAbierta(o)} />
+              <FilaOcurrencia o={o} hoy={hoy} futura={t.nota} onAbrir={() => setAbierta(o)} />
             </li>
           ))}
         </ul>
@@ -214,7 +213,7 @@ function InicioFuturo() {
       </footer>
 
       <Hoja abierta={!!abierta} onCerrar={() => setAbierta(null)} titulo={abierta?.titulo ?? ""} className="hoja--detalle">
-        {abierta && <Detalle o={abierta} hoy={HOY_PREVIO} enHoja onRegistrar={() => undefined} />}
+        {abierta && <Detalle o={abierta} hoy={hoy} enHoja onRegistrar={() => undefined} />}
       </Hoja>
       <HojaAyuda abierta={ayuda} onCerrar={() => setAyuda(false)} />
     </div>
@@ -226,6 +225,9 @@ function InicioFuturo() {
 // decidió que la pausa no la corta (9.3-5): aquí no se publica.
 
 function Pausa({ cuidado }: { cuidado: boolean }) {
+  const { real, ciclo, R } = useEspacio();
+  const desde = real ? ciclo.pausa?.desde : PAUSA_DESDE;
+  const hasta = real ? ciclo.pausa?.hasta : PAUSA_HASTA;
   const t = T_ESTADOS.pausa;
   const [ayuda, setAyuda] = useState(false);
   const acciones = (
@@ -280,8 +282,8 @@ function Pausa({ cuidado }: { cuidado: boolean }) {
           </>
         ) : (
           <>
-            <p>{t.pedida.desde(fechaLarga(PAUSA_DESDE))}</p>
-            <p>{t.pedida.hasta(fechaLarga(PAUSA_HASTA))}</p>
+            {desde && <p>{t.pedida.desde(fechaLarga(desde))}</p>}
+            {hasta && <p>{t.pedida.hasta(fechaLarga(hasta))}</p>}
           </>
         )}
       </EstadoVacio>
@@ -294,9 +296,14 @@ function Pausa({ cuidado }: { cuidado: boolean }) {
 // 4.3.5 Ciclo cerrado
 
 function Cerrado() {
+  const esp = useEspacio();
+  const { real, ciclo, participante, esc, R } = esp;
+  const descargarDatos = useDescargarDatos();
+  const hoy = real ? esp.hoy : HOY_CERRADO;
+  const metas = esc.metas;
   const t = T_ESTADOS.cerrado;
-  const lista = prepararLista({}, HOY_CERRADO);
-  const progreso = calcularProgreso(lista, HOY_CERRADO);
+  const lista = prepararLista({}, hoy, esc.ocurrencias);
+  const progreso = esp.progreso ?? calcularProgreso(lista, hoy, ciclo.inicio);
 
   return (
     <div className="me-pantalla me-estado">
@@ -306,7 +313,7 @@ function Cerrado() {
         antes={<FilaOjo ojo={t.ojo} />}
         accion={
           <>
-            <button type="button" className="boton boton--secundario" onClick={() => descargarDatos(HOY_CERRADO)}>
+            <button type="button" className="boton boton--secundario" onClick={() => void descargarDatos(hoy).catch(() => undefined)}>
               <Icono nombre="download" tamaño={20} />
               {t.descargar}
             </button>

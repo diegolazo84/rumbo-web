@@ -1,3 +1,8 @@
 /* Rumbo · panel de Diego (plataforma 5).
    Estilos propios de este grupo de pantallas; lo compartido vive en form.css y app.css.
-   Solo tokens de :root (styles.css): sin colores ni fuentes nuevas. */
+   Solo tokens de :root (styles.css): sin colores ni fuentes nuevas.
+   Las pantallas del panel traen vista-panel.css (comun.tsx); aquí va solo lo del panel real. */
+
+/* Segundo factor y pantallas cortas del panel real */
+.pa-pantalla--angosta { max-inline-size: 36rem; }
+.pa-qr { inline-size: 200px; block-size: 200px; background: var(--superficie); border-radius: var(--r-s); }
