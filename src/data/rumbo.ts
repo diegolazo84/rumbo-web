@@ -125,14 +125,14 @@ export const operacion = {
   canalRevisiones: null as string | null,
   canalRespuestas: null as string | null,
   plazoRespuestas: null as string | null,
-  formaDePago: null as string | null, // formato: «Por transferencia, una vez aceptadas las condiciones»
+  formaDePago: "Por transferencia bancaria, una vez aceptado el acuerdo y antes de que empiece tu ciclo; desde fuera de Chile, por PayPal" as string | null, // aprobado por Diego el 10 de octubre de 2026. Formato: «Por transferencia, una vez aceptadas las condiciones»
   documentoTributario: null as string | null, // formato: «una boleta de honorarios»
   preciosConImpuestos: false, // true cuando el contador confirme que $64.000 y $100.000 son el total con impuestos
   topePrecio: true, // compromiso: en Chile, el precio final con impuestos no supera el publicado
   // (el lanzamiento público exige preciosConImpuestos o topePrecio)
   // Con mayúscula inicial. Condiciones §11 y la pregunta «¿Puedo pausar o retirarme?» la muestran
   // tras «Si ya empezaste un ciclo:» y la pasan a minúscula (trasDosPuntos en preguntas.ts).
-  politicaTermino: null as string | null,
+  politicaTermino: "Puedes pedir una pausa de hasta 2 semanas, una vez por ciclo y sin costo. Si decides terminar antes, te devolvemos lo que pagaste por las semanas que aún no empiezan." as string | null, // aprobado por Diego el 10 de octubre de 2026
   conservacion: null as null | { tipo: string; plazo: string }[],
   // Desde dónde se puede participar (bloquea el lanzamiento público). encaje: ítem de «Es para ti si…»,
   // sin punto final. respuesta: pregunta «¿Puedo participar…?». condiciones: Condiciones §2, en tono de condición.
