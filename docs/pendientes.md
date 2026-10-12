@@ -22,7 +22,8 @@ Este repositorio es público: aquí no van datos personales ni documentos intern
   rotulado «Todavía no disponible».
 - Vigilancia diaria de la web real y de Supabase (`.github/workflows/vigilar-plataforma.yml`).
 - Documentos: `docs/supabase-pendientes.md`, `docs/verificacion-recorrido.md`,
-  `docs/eliminacion-cuentas.md` y `docs/metricas-negocio.md`.
+  `docs/eliminacion-cuentas.md`, `docs/metricas-negocio.md`,
+  `docs/publicar-versiones-legales.md` y `docs/respaldo-y-restauracion.md`.
 
 ## Solo Diego puede resolver
 
@@ -31,9 +32,8 @@ Este repositorio es público: aquí no van datos personales ni documentos intern
    (`ayuda.verificadoEl` en `src/data/rumbo.ts`; el 1455 solo si se confirma).
 3. Inicio de actividades en el SII y documento tributario antes del primer cobro.
 4. Verificar el nombre «Rumbo» en INAPI y nic.cl.
-5. Respaldos de Supabase (plan Pro o exportación manual).
+5. Respaldos de Supabase: plan Pro o el procedimiento manual de `docs/respaldo-y-restauracion.md`.
 6. Revisiones de Supabase de solo lectura (`docs/supabase-pendientes.md`).
 7. Recorrido completo con correo de prueba (`docs/verificacion-recorrido.md`).
-8. Cambiar la contraseña del Gmail de Rumbo.
-9. Dar de baja la portada antigua de Netlify.
-10. Dominio propio.
+8. Dar de baja la portada antigua de Netlify.
+9. Dominio propio.

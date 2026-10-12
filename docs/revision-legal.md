@@ -51,11 +51,6 @@ de difundir la web. Los textos vigentes están en `src/pages/Privacidad.tsx` (ve
 
 ## Antes de publicar la versión 1.2
 
-Ejecutar en Supabase, el mismo día que se publica (no lo hace la web sola):
-
-```sql
-update public.ajustes_operacion set version_privacidad = '1.2', version_condiciones = '1.2';
-```
-
-Si no se ejecuta, quien acepte un acuerdo quedará registrado con la versión 1.1 aunque haya
-leído la 1.2.
+Seguir `docs/publicar-versiones-legales.md`: cierra postulaciones un momento, publica la web y
+cambia las versiones en Supabase en una sola transacción, para que la versión registrada y el
+texto visible coincidan siempre. La web no cambia las versiones de la base por sí sola.

@@ -80,5 +80,4 @@ Si es mayor que 0, hay cuentas que quedaron tras una eliminación (ver `docs/eli
 | 3 | Plazos de conservación | `ajustes_operacion` | Tras revisión legal |
 | 4 | Versiones legales 1.2 | `ajustes_operacion` | El día que se publique |
 | 5 | Cabecera de la IP del cliente (comentario «VERIFICAR» en `01-funciones.sql`) | Prueba con una postulación | Sin confirmar |
-| 6 | Cambiar la contraseña del Gmail de Rumbo (se usó antes en Supabase) | Google | Pendiente |
-| 7 | Cron de GitHub «Vigilar la plataforma» activo | GitHub → Actions | Revisar cada 60 días sin actividad |
+| 6 | Cron de GitHub «Vigilar la plataforma» activo | GitHub → Actions | Revisar cada 60 días sin actividad |
