@@ -24,8 +24,14 @@ import {
 // Momento A (plataforma 7.1): con operacion.formularioPropio la política pasa a 1.1 y nombra a
 // Supabase, el enlace privado y el código derivado de la IP. La misma versión debe quedar en
 // ajustes_operacion.version_privacidad. Todo el momento A pasa por revisión legal (8.10).
+// Versión 1.2 (Etapa 0 de Rumbo 2.0): con Mi espacio propio (B) nombra a los proveedores reales
+// (GitHub, Supabase, Brevo y Google) y no a OpenAI; comunidad, ranking, fotos e IA quedan como
+// funciones que todavía no existen. ajustes_operacion.version_privacidad NO se cambia sola:
+// Diego la pasa a '1.2' el día que se publica. Los puntos «REVISIÓN LEGAL» están en
+// docs/revision-legal.md.
 const A = op.formularioPropio;
-const VERSION_PRIVACIDAD = { numero: A ? "1.1" : "1.0", fecha: VERSION_PUBLICADA.texto };
+const B = A && op.miEspacioPropio;
+const VERSION_PRIVACIDAD = { numero: B ? "1.2" : A ? "1.1" : "1.0", fecha: VERSION_PUBLICADA.texto };
 
 const RETIRAR = "Si retiras tu solicitud con tu enlace privado, la borramos de inmediato.";
 const ELIMINAR =
@@ -99,14 +105,11 @@ const secciones: Paso[] = [
                   </>,
                 ]),
             <>
-              <strong>Cuando participas en un ciclo:</strong> Los datos de la cuenta con la que inicias sesión; tu
-              programa (metas, acciones, horarios e instrucciones); lo que registras como hecho; créditos, niveles y
-              rachas; tus registros semanales y las respuestas de quien te acompaña; tus solicitudes de ajuste, y las
-              fotos de acciones que acordemos.
-            </>,
-            <>
-              <strong>Si participas en la comunidad:</strong> Tu alias, tus créditos en el ranking y tus publicaciones
-              en el foro.
+              <strong>Cuando participas en un ciclo:</strong>{" "}
+              {B ? "Tu correo, con el que entras a Mi espacio con un código" : "Los datos de la cuenta con la que inicias sesión"};
+              tu programa (metas, acciones, horarios e instrucciones); lo que registras como hecho y lo que escribes sobre
+              tus acciones; créditos, niveles y rachas; tus registros semanales y las respuestas de quien te acompaña, y tus
+              solicitudes de ajuste.
             </>,
             <>
               <strong>En la conversación inicial y en las revisiones:</strong> Tomamos notas breves para ajustar tu
@@ -120,7 +123,7 @@ const secciones: Paso[] = [
             </>,
           ]}
         />
-        <p>Te pedimos no incluir datos de otras personas en tus mensajes ni en tus fotos.</p>
+        <p>Te pedimos no incluir datos de otras personas en tus mensajes.</p>
       </>
     ),
   },
@@ -147,7 +150,6 @@ const secciones: Paso[] = [
               : []),
             "Acordar contigo el plan, el precio y las condiciones: porque tú lo solicitas, antes de un acuerdo.",
             "Preparar, publicar y ajustar tu programa, hacer las revisiones y calcular créditos y niveles: para cumplir lo que acordamos contigo.",
-            "Mostrar tu alias en el ranking y tus publicaciones en el foro: solo si tú lo activas.",
             "Emitir documentos tributarios cuando haya pagos: por obligación legal.",
           ]}
         />
@@ -186,20 +188,33 @@ const secciones: Paso[] = [
           items={puntuar([
             "GitHub (Estados Unidos), que aloja esta web",
             // Verificar que la infraestructura de la región sea la que Supabase declara (7.1).
+            // REVISIÓN LEGAL: razón social, país y contrato de tratamiento de datos de cada proveedor.
             ...(A
-              ? ["Supabase Inc. (Estados Unidos), que guarda tu solicitud y tus mensajes en servidores ubicados en São Paulo, Brasil"]
+              ? [
+                  `Supabase Inc. (Estados Unidos), que guarda ${B ? "tu solicitud, tu programa, tus registros y tus mensajes, y gestiona el ingreso a Mi espacio," : "tu solicitud y tus mensajes"} en servidores ubicados en São Paulo, Brasil`,
+                ]
+              : []),
+            ...(B
+              ? [
+                  "Brevo (Francia), que envía los correos con tu código de ingreso a Mi espacio",
+                  "Google (Estados Unidos), que provee el correo de Rumbo, con el que respondemos tus mensajes",
+                ]
               : []),
             // Cloudflare solo se nombra cuando Diego confirme la infraestructura de ChatGPT Sites (8.11).
-            rayas(
-              op.alojamientoVerificado
-                ? "OpenAI (Estados Unidos), que provee la plataforma de Rumbo mediante ChatGPT Sites —donde están tu solicitud, tu programa y tus fotos— y el inicio de sesión con ChatGPT. OpenAI usa a su vez proveedores de infraestructura, como Cloudflare, en Estados Unidos u otros países"
-                : "OpenAI (Estados Unidos), que provee la plataforma de Rumbo mediante ChatGPT Sites —donde están tu solicitud, tu programa y tus fotos— y el inicio de sesión con ChatGPT, y los proveedores de infraestructura que OpenAI utiliza",
-            ),
+            ...(B
+              ? []
+              : [
+                  rayas(
+                    op.alojamientoVerificado
+                      ? "OpenAI (Estados Unidos), que provee la plataforma de Rumbo mediante ChatGPT Sites —donde están tu solicitud, tu programa y tus fotos— y el inicio de sesión con ChatGPT. OpenAI usa a su vez proveedores de infraestructura, como Cloudflare, en Estados Unidos u otros países"
+                      : "OpenAI (Estados Unidos), que provee la plataforma de Rumbo mediante ChatGPT Sites —donde están tu solicitud, tu programa y tus fotos— y el inicio de sesión con ChatGPT, y los proveedores de infraestructura que OpenAI utiliza",
+                  ),
+                ]),
             "el servicio de videollamadas que usemos para la conversación inicial y las revisiones de Acompañamiento cercano, que te informaremos antes de usarlo",
             ...(ANALITICA ? ["Umami (Estados Unidos o Unión Europea), para estadísticas sin cookies"] : []),
           ])}
         />
-        <p>Al iniciar sesión con ChatGPT, OpenAI trata los datos de esa cuenta según su propia política.</p>
+        {!B && <p>Al iniciar sesión con ChatGPT, OpenAI trata los datos de esa cuenta según su propia política.</p>}
         <p>
           Con profesionales de salud, solo si tú lo pides y lo autorizas por escrito. Con autoridades, solo cuando la
           ley lo exija.
@@ -209,9 +224,9 @@ const secciones: Paso[] = [
   },
   {
     titulo: "Transferencias fuera de Chile",
-    // Base y garantías de la transferencia: las decide la revisión legal (7.1).
+    // REVISIÓN LEGAL: base y garantías de la transferencia (7.1).
     contenido: A
-      ? "Tu solicitud y tus mensajes se guardan en servidores ubicados en Brasil. Los proveedores son empresas de Estados Unidos y pueden guardar o procesar datos en Estados Unidos u otros países, que podrían no ofrecer un nivel de protección equivalente al chileno."
+      ? `${B ? "Tus datos" : "Tu solicitud y tus mensajes"} se guardan en servidores ubicados en Brasil. Los proveedores son empresas de Estados Unidos${B ? " y Francia" : ""} y pueden guardar o procesar datos en esos u otros países, que podrían no ofrecer un nivel de protección equivalente al chileno.`
       : "Estos proveedores pueden guardar o procesar datos en Estados Unidos u otros países, que podrían no ofrecer un nivel de protección equivalente al chileno.",
   },
   {
@@ -245,10 +260,7 @@ const secciones: Paso[] = [
                   "Quien opera Rumbo entra a sus herramientas con un segundo factor de verificación.",
                 ]
               : ["Tu solicitud se consulta con un enlace privado que solo tú recibes."]),
-            "Tu espacio requiere iniciar sesión.",
-            "Las fotos solo las ves tú y quien te acompaña en Rumbo, que las revisa. Nunca se publican.",
-            "El ranking muestra solo alias y créditos, nunca tu correo, tus fotos, tu calendario ni tus metas.",
-            "Las publicaciones del foro se revisan antes de mostrarse.",
+            B ? "Entras a tu espacio con un código de un solo uso que llega a tu correo." : "Tu espacio requiere iniciar sesión.",
             "Nunca te pediremos contraseñas.",
           ]}
         />
@@ -260,9 +272,9 @@ const secciones: Paso[] = [
     ),
   },
   {
-    titulo: "Comunidad y ranking",
+    titulo: "Funciones que todavía no existen",
     contenido:
-      "Participar es voluntario y solo se muestra tu alias. Puedes borrar tus publicaciones o retirarte cuando quieras, y tu alias deja de mostrarse.",
+      "La comunidad, el ranking semanal, las fotografías de acciones y el asistente con inteligencia artificial todavía no existen y hoy no tratan ningún dato. Antes de activar cualquiera de ellos, que serán opcionales, esta política dirá qué datos usan, para qué y con qué proveedores.",
   },
   {
     titulo: "Tus derechos",
@@ -333,7 +345,7 @@ export default function Privacidad() {
           <li>Pedimos solo lo necesario para revisar tu solicitud y acompañarte.</li>
           <li>No vendemos tus datos ni los usamos para publicidad.</li>
           <li>No necesitas contarnos diagnósticos ni enviarnos documentos de salud.</li>
-          <li>Tu calendario y tus fotos son privados.</li>
+          <li>Tu calendario y tu progreso son privados.</li>
           <li>Puedes pedir ver, corregir, llevarte o eliminar tus datos, y retirar tu autorización.</li>
         </ul>
       </Aviso>

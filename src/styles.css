@@ -985,6 +985,8 @@ html:not(.hidratado) .menu-boton { visibility: hidden; }
 .transparencia .etiqueta { align-self: flex-start; }
 /* En tres columnas, los títulos reservan dos líneas: las listas empiezan a la misma altura. */
 @media (min-width: 1024px) { .transparencia h3 { min-block-size: 2lh; } }
+/* «Lo que viene en Rumbo»: dos tarjetas (lanzamiento y etapas posteriores). */
+@media (min-width: 1024px) { .transparencia--dos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* ========================================================================
    6. Revelado al desplazar (2.5): solo con movimiento y tras hidratar

@@ -15,6 +15,7 @@ import {
   ayuda,
   categorias,
   esParaTi,
+  loQueViene,
   noEsParaTi,
   noIncluyeEn,
   operacion,
@@ -602,7 +603,9 @@ test("presupuesto de peso (dist/)", async () => {
   expect(readdirSync("dist/assets")).toEqual(expect.arrayContaining(cargados));
   const js = cargados.filter((f) => f.endsWith(".js")).reduce((t, f) => t + gz(f), 0);
   const css = cargados.filter((f) => f.endsWith(".css")).reduce((t, f) => t + gz(f), 0);
-  expect(js, "JS comprimido").toBeLessThan(110 * 1024);
+  // 111 KB desde la Etapa 0 de Rumbo 2.0 (antes 110): los textos de Privacidad y Condiciones 1.2 conviven con los del
+  // modo con los interruptores apagados, que el compilado no descarta.
+  expect(js, "JS comprimido").toBeLessThan(111 * 1024);
   expect(css, "CSS comprimido").toBeLessThan(12 * 1024);
   expect(html.length, "HTML de la portada").toBeLessThan(70 * 1024);
   const precargas = [...html.toString().matchAll(/rel="preload" href="[^"]*\/assets\/([^"]+)"/g)].map((m) => m[1]);
@@ -891,4 +894,43 @@ test("navegación interna entre páginas de lectura sin errores", async ({ page 
   await page.locator("main").getByRole("link", { name: "Volver al inicio" }).click();
   await expect(page.locator("h1")).toContainText("semana posible");
   expect(errores).toEqual([]);
+});
+
+// Etapa 0 de Rumbo 2.0: con Mi espacio propio, Privacidad nombra a los proveedores reales y
+// ninguna página presenta como disponible lo que todavía no existe («Lo que viene en Rumbo»).
+test.describe("Etapa 0: proveedores reales y funciones futuras rotuladas", () => {
+  test.skip(!(operacion.formularioPropio && operacion.miEspacioPropio), "solo con Mi espacio propio");
+
+  test("Privacidad 1.2 nombra a Supabase, Brevo y GitHub, y no a OpenAI ni ChatGPT", async ({ page }) => {
+    await page.goto("privacidad/");
+    const main = page.locator("main");
+    await expect(main).toContainText(/versión 1\.2/i);
+    for (const proveedor of ["GitHub", "Supabase", "Brevo"]) await expect(main).toContainText(proveedor);
+    await expect(main).not.toContainText(/ChatGPT|OpenAI/);
+    await expect(main).not.toContainText(/ranking muestra|publicaciones del foro se revisan/);
+    await expect(main).toContainText("todavía no existen");
+  });
+
+  test("Condiciones 1.2 marcan fotos, comunidad y ranking como no disponibles", async ({ page }) => {
+    await page.goto("condiciones/");
+    const main = page.locator("main");
+    await expect(main).toContainText(/versión 1\.2/i);
+    await expect(main).toContainText("todavía no están disponibles");
+    await expect(main).not.toContainText("Una foto en revisión no suma");
+    await expect(main).not.toContainText("Las publicaciones, de 10 a 400");
+  });
+
+  test("portada: «Lo que viene en Rumbo» rotulado y sin promesas en lo que existe", async ({ page }) => {
+    await page.goto("./");
+    const viene = page.locator("#lo-que-viene");
+    await expect(viene).toContainText("Lo que viene en Rumbo");
+    for (const item of [...loQueViene.lanzamiento, ...loQueViene.despues]) await expect(viene).toContainText(item);
+    await expect(viene.locator(".etiqueta")).toHaveText(["Todavía no disponible", "Más adelante"]);
+    await expect(viene.locator("a, button")).toHaveCount(0); // sin botones de contratación
+    await expect(viene).not.toContainText(/\b20\d\d\b/); // sin fechas de lanzamiento
+    await expect(page.locator(".ranking-tarjeta")).toContainText("Todavía no disponible");
+    const recibes = page.locator(".transparencia").first();
+    await expect(recibes).not.toContainText(/foro|ranking|foto/i);
+    await expect(page.locator("main")).not.toContainText(/comunidad es opcional|comunidad solo muestra/);
+  });
 });
