@@ -1,8 +1,11 @@
 name: Vigilar la plataforma
 
-# Todos los botones de la web llevan a la plataforma de Rumbo (ChatGPT Sites, en beta).
-# Si deja de responder, este workflow abre un issue con la etiqueta «plataforma»; si ya hay
-# uno abierto, lo comenta; cuando vuelve a responder, lo comenta y lo cierra (6.10).
+# Revisa cada día la web publicada (GitHub Pages) y el proyecto de Supabase con la clave
+# pública (anon): las páginas que usa un participante y que la base responde. Si algo falla,
+# abre un issue con la etiqueta «plataforma»; si ya hay uno abierto, lo comenta; cuando todo
+# vuelve a responder, lo comenta y lo cierra (6.10).
+# Con la clave pública no se ve si fallan las tareas programadas (cron) ni el envío de correos:
+# eso se revisa a mano con docs/supabase-pendientes.md.
 # GitHub desactiva los cron de repositorios públicos sin actividad durante 60 días:
 # para reactivarlo, Actions → «Vigilar la plataforma» → «Enable workflow».
 on:
@@ -19,25 +22,40 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Revisar /postular, /contacto y /estado
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: src/lib/supabase-config.ts
+          sparse-checkout-cone-mode: false
+
+      - name: Revisar la web y Supabase
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          PLATAFORMA: ${{ vars.PLATAFORMA || 'https://rumbo-acompanamiento-diego.diegolazo84.chatgpt.site' }}
+          WEB: ${{ vars.WEB_PUBLICA || 'https://diegolazo84.github.io/rumbo-web' }}
         run: |
+          # URL y clave pública salen del mismo archivo que usa la web (no son secretas).
+          SUPABASE_URL=$(sed -n 's/^const URL_PROYECTO = "\(.*\)";/\1/p' src/lib/supabase-config.ts)
+          ANON=$(grep -o 'eyJ[A-Za-z0-9._-]*' src/lib/supabase-config.ts | head -1)
           fallas=""
-          for ruta in /postular /contacto /estado; do
-            codigo=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 --retry 2 --retry-all-errors "$PLATAFORMA$ruta" || true)
-            echo "$ruta → ${codigo:-sin respuesta}"
-            if [ "$codigo" != "200" ]; then
-              fallas="${fallas}- \`${ruta}\` respondió \`${codigo:-sin respuesta}\`"$'\n'
+          revisar() { # $1 = nombre, $2 = código esperado, resto = argumentos de curl
+            local nombre="$1" esperado="$2"; shift 2
+            local codigo
+            codigo=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 --retry 2 --retry-all-errors "$@" || true)
+            echo "$nombre → ${codigo:-sin respuesta}"
+            if [ "$codigo" != "$esperado" ]; then
+              fallas="${fallas}- ${nombre} respondió \`${codigo:-sin respuesta}\`"$'\n'
             fi
+          }
+          for ruta in / /postular/ /estado/ /contacto/ /mi-espacio/ /equipo/ /privacidad/ /condiciones/ /ayuda/; do
+            revisar "web \`${ruta}\`" 200 "$WEB$ruta"
           done
+          revisar "Supabase: inicio de sesión (auth/v1/health)" 200 -H "apikey: $ANON" "$SUPABASE_URL/auth/v1/health"
+          revisar "Supabase: base de datos (rpc ping)" 200 -X POST -H "apikey: $ANON" -H "Content-Type: application/json" -d '{}' "$SUPABASE_URL/rest/v1/rpc/ping"
 
           abierto=$(gh issue list --label plataforma --state open --limit 1 --json number --jq '.[0].number // empty')
 
           if [ -n "$fallas" ]; then
-            cuerpo="Revisión del $(TZ=America/Santiago date '+%d-%m-%Y %H:%M') (hora de Chile) en ${PLATAFORMA}:"$'\n\n'"${fallas}"$'\n'"Detalle: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            cuerpo="Revisión del $(TZ=America/Santiago date '+%d-%m-%Y %H:%M') (hora de Chile):"$'\n\n'"${fallas}"$'\n'"Detalle: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
             if [ -n "$abierto" ]; then
               gh issue comment "$abierto" --body "$cuerpo"
             else

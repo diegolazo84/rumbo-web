@@ -47,4 +47,11 @@ select 'etapa 3: soy_equipo y mi_contexto, solo con sesión',
                      and has_function_privilege('authenticated', p.oid, 'execute')
                      and not has_function_privilege('anon', p.oid, 'execute')) = 2
              and exists (select 1 from pg_trigger where tgname = 'vincular_ficha')
-            then 'ok' else 'FALLA: falta pegar 07-etapa3.sql' end;
+            then 'ok' else 'FALLA: falta pegar 07-etapa3.sql' end
+union all
+-- 08-avisos-ntfy.sql: avisos por ntfy en JSON, que nadie fuera de la base puede ejecutar.
+select 'avisos por ntfy (08)',
+       case when (select prosrc like '%''click''%' from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                   where n.nspname = 'privado' and p.proname = 'avisar')
+             and not has_function_privilege('anon', 'privado.avisar(text, text)', 'execute')
+            then 'ok' else 'FALLA: falta pegar 08-avisos-ntfy.sql' end;
