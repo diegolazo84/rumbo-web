@@ -56,18 +56,20 @@ restauración.
      --dbname "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
    ```
 
-4. Comparar conteos. Correr esta consulta en producción (solo lectura) y en la local; deben
-   coincidir:
+4. Comparar conteos de TODAS las tablas. Correr esta consulta en producción (solo lectura) y
+   en la local, y pegar ambos resultados lado a lado; cada fila debe coincidir:
 
    ```sql
-   select 'solicitudes' t, count(*) from public.solicitudes
-   union all select 'participantes', count(*) from public.participantes
-   union all select 'ciclos', count(*) from public.ciclos
-   union all select 'registros', count(*) from public.registros
-   union all select 'registros_semanales', count(*) from public.registros_semanales
-   union all select 'revisiones', count(*) from public.revisiones
-   union all select 'cuentas', count(*) from auth.users;
+   select n.nspname || '.' || c.relname as tabla,
+          (xpath('/row/c/text()', query_to_xml(format('select count(*) as c from %I.%I', n.nspname, c.relname), false, true, '')))[1]::text::bigint as filas
+     from pg_class c join pg_namespace n on n.oid = c.relnamespace
+    where c.relkind = 'r' and n.nspname in ('public', 'privado', 'auth')
+    order by 1;
    ```
+
+   Si alguna tabla falta o tiene otro número, el respaldo no está completo: no se da por bueno.
+   (Excepción: si alguien postuló o escribió después del respaldo, producción puede tener más
+   filas en esas tablas. Para evitar dudas, correr la consulta en producción justo al respaldar.)
 
 5. Correr `supabase/verificacion.sql` en la local: debe decir «ok».
 6. Apagar y borrar: `supabase stop --no-backup` y eliminar los `.sql` descifrados.

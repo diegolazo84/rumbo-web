@@ -27,12 +27,13 @@ Este repositorio es público: aquí no van datos personales ni documentos intern
 
 ## Solo Diego puede resolver
 
+0. Activar los avisos de postulación con ntfy (`docs/avisos.md`): hoy no llega ningún aviso.
 1. Revisión legal de Privacidad y Condiciones (`docs/revision-legal.md`).
 2. Verificar los números de Ayuda inmediata en los sitios oficiales y dar la fecha
    (`ayuda.verificadoEl` en `src/data/rumbo.ts`; el 1455 solo si se confirma).
 3. Inicio de actividades en el SII y documento tributario antes del primer cobro.
 4. Verificar el nombre «Rumbo» en INAPI y nic.cl.
-5. Respaldos de Supabase: plan Pro o el procedimiento manual de `docs/respaldo-y-restauracion.md`.
+5. Respaldo manual semanal y restauración de prueba (`docs/respaldo-y-restauracion.md`), elegido el 12 de octubre.
 6. Revisiones de Supabase de solo lectura (`docs/supabase-pendientes.md`).
 7. Recorrido completo con correo de prueba (`docs/verificacion-recorrido.md`).
 8. Dar de baja la portada antigua de Netlify.

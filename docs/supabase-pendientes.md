@@ -75,8 +75,8 @@ Si es mayor que 0, hay cuentas que quedaron tras una eliminación (ver `docs/eli
 
 | # | Qué | Dónde | Estado |
 |---|---|---|---|
-| 1 | Claves de aviso (Resend o ntfy) | Vault | Sin confirmar |
-| 2 | Respaldos: plan Pro (USD 25/mes, copia diaria) o exportación manual semanal gratis | Settings → Billing / Database → Backups | Decisión de Diego |
+| 1 | Avisos de postulación: no hay claves (verificado el 12 de octubre). Activar con ntfy | `docs/avisos.md` | Pendiente |
+| 2 | Respaldo manual semanal (decisión de Diego del 12 de octubre) | `docs/respaldo-y-restauracion.md` | Primera copia y prueba pendientes |
 | 3 | Plazos de conservación | `ajustes_operacion` | Tras revisión legal |
 | 4 | Versiones legales 1.2 | `ajustes_operacion` | El día que se publique |
 | 5 | Cabecera de la IP del cliente (comentario «VERIFICAR» en `01-funciones.sql`) | Prueba con una postulación | Sin confirmar |
