@@ -8,8 +8,9 @@ import { BarraProgreso, ChipMeta, Icono, MetaTarjeta } from "../../../components
 import { calcularProgreso, cuentaComoHecha, type Meta, type Ocurrencia } from "../../../data/ejemplo-app";
 import { niveles, reglasCreditosTextos } from "../../../data/rumbo";
 import { diaCorto, mayuscula, type Iso } from "../../../lib/fechas";
-import { Cabeza, prepararLista, useEspacio } from "./comun";
-import { T_HOY, T_PROGRESO } from "./textos";
+import { prepararLista, useEspacio } from "./comun";
+import { TarjetaPronto, TituloSeccion } from "./Seccion";
+import { T_HOY, T_LOGROS_PRONTO, T_PROGRESO, T_SECCIONES } from "./textos";
 
 const hechaHasta = (o: Ocurrencia, hoy: Iso) => o.vigente && o.fecha <= hoy;
 
@@ -22,7 +23,7 @@ export default function Progreso() {
 
   return (
     <div className="me-pantalla me-progreso">
-      <Cabeza ojo={T_PROGRESO.ojo} titulo={T_PROGRESO.titulo} bajada={T_PROGRESO.bajada} />
+      <TituloSeccion titulo={T_SECCIONES.logros} icono="award" ojo={T_PROGRESO.ojo} bajada={T_PROGRESO.bajada} ejemplo />
 
       <section className="me-bloque" aria-labelledby="progreso-metas">
         <h2 id="progreso-metas" className="sr-only">
@@ -124,12 +125,15 @@ export default function Progreso() {
           </Link>
         </section>
       </div>
+
+      <TarjetaPronto id="logros-pronto" titulo={T_LOGROS_PRONTO.titulo} items={T_LOGROS_PRONTO.items} />
     </div>
   );
 }
 
 // Tarjeta de meta: categoría, nombre, «para qué», barra hasta hoy, semanas e hitos.
-function TarjetaMeta({ meta, lista, hoy }: { meta: Meta; lista: Ocurrencia[]; hoy: Iso }) {
+// sinAvance (Mi plan → Mis metas): solo qué, para qué e hitos; el avance queda en Mis logros.
+export function TarjetaMeta({ meta, lista, hoy, sinAvance }: { meta: Meta; lista: Ocurrencia[]; hoy: Iso; sinAvance?: boolean }) {
   const deMeta = lista.filter((o) => o.metaId === meta.id && hechaHasta(o, hoy));
   const hechas = deMeta.filter((o) => cuentaComoHecha(o.registro)).length;
   const { ciclo, lunesDeSemana } = useEspacio();
@@ -152,7 +156,7 @@ function TarjetaMeta({ meta, lista, hoy }: { meta: Meta; lista: Ocurrencia[]; ho
           <q>{meta.paraQue}</q>
         </p>
       )}
-      {hechas ? (
+      {sinAvance ? null : hechas ? (
         <>
           <BarraProgreso
             valor={hechas}

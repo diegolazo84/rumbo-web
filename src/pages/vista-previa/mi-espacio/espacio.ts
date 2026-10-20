@@ -16,11 +16,17 @@ export type Progreso = ReturnType<typeof calcularProgreso>;
 // ---------------------------------------------------------------------------
 // Rutas entre pantallas
 
+// Rumbo 2.0 (etapa 2): `calendario` es Mi plan, `semana` es Mi acompañamiento y `progreso` es
+// Mis logros (las claves se mantienen para no tocar cada pantalla; cambian las rutas).
 export type RutasEspacio = {
   hoy: string;
   calendario: string;
+  metas: string;
   progreso: string;
   semana: string;
+  comunidad: string;
+  loQueViene: string;
+  misDatos: string;
   ajuste: string;
   preferencias: string;
   salir: string;
@@ -41,16 +47,26 @@ export type RutasEspacio = {
 };
 
 export const R_PREVIA: RutasEspacio = {
-  ...RUTAS_MI_ESPACIO,
+  hoy: RUTAS_MI_ESPACIO.rumbo,
+  calendario: RUTAS_MI_ESPACIO.plan,
+  metas: rutaPrevia("mi-espacio/plan/metas/"),
+  progreso: RUTAS_MI_ESPACIO.logros,
+  semana: RUTAS_MI_ESPACIO.acompanamiento,
+  comunidad: RUTAS_MI_ESPACIO.comunidad,
+  loQueViene: RUTAS_MI_ESPACIO.loQueViene,
+  misDatos: RUTAS_MI_ESPACIO.misDatos,
+  ajuste: RUTAS_MI_ESPACIO.ajuste,
+  preferencias: RUTAS_MI_ESPACIO.preferencias,
+  salir: RUTAS_MI_ESPACIO.salir,
   postular: RUTAS_PUBLICAS.postular,
   entrar: rutaPrevia("mi-espacio/entrar/"),
   revisaCorreo: rutaPrevia("mi-espacio/entrar/revisa-tu-correo/"),
-  calendarioDia: rutaPrevia("mi-espacio/calendario/dia/"),
-  calendarioMes: rutaPrevia("mi-espacio/calendario/mes/"),
-  accion: rutaPrevia("mi-espacio/accion/"),
-  creditos: rutaPrevia("mi-espacio/progreso/creditos/"),
-  semanaPublicada: rutaPrevia("mi-espacio/semana/publicada/"),
-  semanaEnviado: rutaPrevia("mi-espacio/semana/enviado/"),
+  calendarioDia: rutaPrevia("mi-espacio/plan/dia/"),
+  calendarioMes: rutaPrevia("mi-espacio/plan/mes/"),
+  accion: rutaPrevia("mi-espacio/plan/accion/"),
+  creditos: rutaPrevia("mi-espacio/logros/creditos/"),
+  semanaPublicada: rutaPrevia("mi-espacio/acompanamiento/publicada/"),
+  semanaEnviado: rutaPrevia("mi-espacio/acompanamiento/enviado/"),
   ajusteLista: `${RUTAS_MI_ESPACIO.ajuste}#tus-solicitudes`,
   eliminar: rutaPrevia("mi-espacio/preferencias/eliminar/"),
   ayuda: rutaPrevia("mi-espacio/ayuda/"),
@@ -61,22 +77,26 @@ export const R_PREVIA: RutasEspacio = {
 // Rutas reales (plataforma 2.1). Los identificadores van en la búsqueda (?id=, ?n=), nunca en la ruta.
 export const R_REAL: RutasEspacio = {
   hoy: "/mi-espacio/",
-  calendario: "/mi-espacio/calendario/",
-  progreso: "/mi-espacio/progreso/",
-  semana: "/mi-espacio/semana/",
-  ajuste: "/mi-espacio/ajuste/",
+  calendario: "/mi-espacio/plan/",
+  metas: "/mi-espacio/plan/metas/",
+  progreso: "/mi-espacio/logros/",
+  semana: "/mi-espacio/acompanamiento/",
+  comunidad: "/mi-espacio/comunidad/",
+  loQueViene: "/mi-espacio/lo-que-viene/",
+  misDatos: "/mi-espacio/preferencias/#mis-datos",
+  ajuste: "/mi-espacio/plan/ajuste/",
   preferencias: "/mi-espacio/preferencias/",
   salir: "/mi-espacio/entrar/?salir=1",
   postular: "/postular/",
   entrar: "/mi-espacio/entrar/",
   revisaCorreo: "/mi-espacio/entrar/",
-  calendarioDia: "/mi-espacio/calendario/?vista=dia",
-  calendarioMes: "/mi-espacio/calendario/?vista=mes",
-  accion: "/mi-espacio/accion/",
-  creditos: "/mi-espacio/progreso/creditos/",
-  semanaPublicada: "/mi-espacio/semana/",
-  semanaEnviado: "/mi-espacio/semana/",
-  ajusteLista: "/mi-espacio/ajuste/#tus-solicitudes",
+  calendarioDia: "/mi-espacio/plan/?vista=dia",
+  calendarioMes: "/mi-espacio/plan/?vista=mes",
+  accion: "/mi-espacio/plan/accion/",
+  creditos: "/mi-espacio/logros/creditos/",
+  semanaPublicada: "/mi-espacio/acompanamiento/",
+  semanaEnviado: "/mi-espacio/acompanamiento/",
+  ajusteLista: "/mi-espacio/plan/ajuste/#tus-solicitudes",
   eliminar: "/mi-espacio/preferencias/eliminar/",
   ayuda: "/mi-espacio/ayuda/",
   privacidad: "/privacidad/",

@@ -4,7 +4,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { paginas } from "../src/data/paginas";
 import { operacion } from "../src/data/rumbo";
-import { FRASES_PROHIBIDAS, atributosVisibles, buscarFrases, buscarMarcadores, textoVisible } from "../scripts/marcadores.mjs";
+import { FRASES_PROHIBIDAS, SOLO_ROTULO_MI_ESPACIO, atributosVisibles, buscarFrases, buscarMarcadores, textoVisible } from "../scripts/marcadores.mjs";
 import { reenviosActivos } from "../scripts/reenvios.mjs";
 
 const relativa = (ruta: string) => ruta.replace(/^\//, "") || "./";
@@ -31,6 +31,8 @@ test.describe("marcadores y frases prohibidas", () => {
 
       const legible = [textoVisible(html), ...atributosVisibles(html).map((a) => a.valor)].join(" \n ");
       expect(buscarFrases(legible)).toEqual([]);
+      // «Próximamente» solo existe como rótulo dentro de Mi espacio, nunca en la web pública.
+      expect(buscarFrases(legible, SOLO_ROTULO_MI_ESPACIO)).toEqual([]);
       // «Cloudflare» solo en Privacidad §6, y solo con el alojamiento confirmado (aceptación 23).
       const cloudflarePermitido = d.nombre === "/privacidad/" && operacion.alojamientoVerificado;
       if (!cloudflarePermitido) expect(buscarFrases(legible, ["Cloudflare"])).toEqual([]);

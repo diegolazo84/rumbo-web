@@ -29,7 +29,9 @@ import { T_SEMANA } from "./textos";
 type Situacion = "sin-enviar" | "enviado" | "en-revision" | "publicada" | "pendiente" | "futura" | "semana-1";
 type Caso = { hoy: Iso; n: number; situacion: Situacion; esc?: Escenario };
 
-const ESCENARIOS: Record<string, Caso> = {
+// Caso de cada estado de la vista previa: lo usa también Mi acompañamiento (Acompanamiento.tsx)
+// para que sus tarjetas y la semana muestren el mismo día y la misma persona.
+export const ESCENARIOS: Record<string, Caso> = {
   "sin-enviar": { hoy: HOY, n: 2, situacion: "sin-enviar" },
   enviado: { hoy: HOY, n: 2, situacion: "enviado" },
   "en-revision": { hoy: "2026-10-15", n: 2, situacion: "en-revision" },
@@ -182,6 +184,8 @@ function MarcoSemana({ n, setN, esc, children }: { n: number; setN: (n: number) 
       />
 
       <Cabeza
+        nivel={2}
+        ejemplo={false}
         ojo={T_SEMANA.ojo}
         titulo={T_SEMANA.titulo(n, ciclo.semanas)}
         bajada={

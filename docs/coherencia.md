@@ -113,7 +113,10 @@ Niveles: 1 Inicio (0), 2 Impulso (10), 3 Ritmo (25), 4 Constancia (50), 5 Trayec
   servicio y no cambia ningún calendario sin confirmación de la persona.
 - **Especialistas:** «Todavía no disponible» / «hoy no lo ofrecemos». En la plataforma queda por
   corregir el texto «Especialistas cuando haga falta» (sección 8).
-- No se usan «Próximamente», «lista de espera», «Plan solo plataforma con IA» ni «Más presencia».
+- No se usan «lista de espera», «Plan solo plataforma con IA» ni «Más presencia».
+- «Próximamente» solo como rótulo (`.etiqueta--pronto`) dentro de Mi espacio, junto a funciones
+  que todavía no existen (Rumbo 2.0, etapa 2, aprobado por Diego el 20-10-2026). En la web pública
+  se sigue usando «Todavía no disponible» / «Más adelante».
 
 ## Textos de crisis
 

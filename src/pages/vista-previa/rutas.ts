@@ -1,5 +1,5 @@
 // Rutas de la vista previa (etapa 0, plataforma 2.1 y 10). Imitan las rutas reales bajo
-// /vista-previa/ («/vista-previa/mi-espacio/calendario/» ↔ «/mi-espacio/calendario/»).
+// /vista-previa/ («/vista-previa/mi-espacio/plan/» ↔ «/mi-espacio/plan/»).
 // Las pantallas importan desde aquí (no desde registro.ts) para enlazarse entre sí.
 // Se borra entera al pasar a la etapa 3.
 
@@ -8,14 +8,19 @@ export const PREVIA = "/vista-previa/";
 // "mi-espacio/progreso/" → "/vista-previa/mi-espacio/progreso/"
 export const rutaPrevia = (ruta = "") => PREVIA + ruta.replace(/^\/+/, "");
 
-// Destinos de la estructura de Mi espacio (EstructuraApp, prop `rutas`).
+// Destinos de la estructura de Mi espacio (EstructuraApp, prop `rutas`): las cinco secciones de
+// Rumbo 2.0 (etapa 2) y las filas del menú de la cabecera. `hoy` es la portada de Mi espacio.
 export const RUTAS_MI_ESPACIO = {
   hoy: rutaPrevia("mi-espacio/"),
-  calendario: rutaPrevia("mi-espacio/calendario/"),
-  progreso: rutaPrevia("mi-espacio/progreso/"),
-  semana: rutaPrevia("mi-espacio/semana/"),
-  ajuste: rutaPrevia("mi-espacio/ajuste/"),
+  rumbo: rutaPrevia("mi-espacio/"),
+  plan: rutaPrevia("mi-espacio/plan/"),
+  acompanamiento: rutaPrevia("mi-espacio/acompanamiento/"),
+  comunidad: rutaPrevia("mi-espacio/comunidad/"),
+  logros: rutaPrevia("mi-espacio/logros/"),
+  ajuste: rutaPrevia("mi-espacio/plan/ajuste/"),
   preferencias: rutaPrevia("mi-espacio/preferencias/"),
+  misDatos: rutaPrevia("mi-espacio/preferencias/#mis-datos"),
+  loQueViene: rutaPrevia("mi-espacio/lo-que-viene/"),
   salir: rutaPrevia("mi-espacio/entrar/saliste/"),
 } as const;
 

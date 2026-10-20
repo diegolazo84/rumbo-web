@@ -36,11 +36,13 @@ type CabezaProps = {
   children?: ReactNode;
   className?: string;
   ejemplo?: boolean; // false solo donde nada es dato de ejemplo (Ayuda inmediata)
+  nivel?: 1 | 2; // 2: bajo el título de la sección (Rumbo 2.0), el H1 pasa a H2 con el mismo estilo
 };
 
-export function Cabeza({ ojo, antes, titulo, tamaño = "h2", bajada, children, className, ejemplo: conEjemplo = true }: CabezaProps) {
+export function Cabeza({ ojo, antes, titulo, tamaño = "h2", bajada, children, className, ejemplo: conEjemplo = true, nivel = 1 }: CabezaProps) {
   const { real } = useEspacio();
   const ejemplo = conEjemplo && !real;
+  const H = nivel === 1 ? "h1" : "h2";
   return (
     <header className={["me-cabeza", className].filter(Boolean).join(" ")}>
       {(ojo || ejemplo) && (
@@ -50,7 +52,7 @@ export function Cabeza({ ojo, antes, titulo, tamaño = "h2", bajada, children, c
         </div>
       )}
       {antes}
-      <h1 className={`me-h1 me-h1--${tamaño}`}>{titulo}</h1>
+      <H className={`me-h1 me-h1--${tamaño}`}>{titulo}</H>
       {bajada && <div className="me-cabeza__bajada">{typeof bajada === "string" ? <p>{bajada}</p> : bajada}</div>}
       {children}
     </header>

@@ -6,7 +6,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { paginas } from "../src/data/paginas";
 import { INDICE, pantallas, type PantallaPrevia } from "../src/pages/vista-previa/registro";
-import { atributosVisibles, buscarFrases, buscarMarcadores, textoVisible } from "../scripts/marcadores.mjs";
+import { SOLO_ROTULO_MI_ESPACIO, atributosVisibles, buscarFrases, buscarMarcadores, textoVisible } from "../scripts/marcadores.mjs";
 import { POSTULAR, validarPostular } from "../src/data/formularios";
 import { TEXTOS_CARGA } from "../src/components/app/Bloques";
 
@@ -290,17 +290,17 @@ test.describe("Mi espacio: interacción y texto", () => {
   });
 
   // M6: ocultar los créditos los quita de Hoy, no de Progreso.
-  test("créditos ocultos en Hoy, visibles en Progreso", async ({ page }) => {
+  test("créditos ocultos en Mi Rumbo, visibles en Mis logros", async ({ page }) => {
     await abrir(page, "mi-espacio/hoy/creditos-ocultos/");
     await expect(page.locator(".me-resumen")).toHaveCount(0);
     await expect(page.locator("main")).not.toContainText("créditos para llegar a");
-    await abrir(page, "mi-espacio/progreso/");
+    await abrir(page, "mi-espacio/logros/");
     await expect(page.locator(".me-creditos .me-resumen__creditos")).toHaveText(/^\d+ créditos?$/);
   });
 
   // M4: cada celda del mes tiene un nombre completo y nunca dice «0 hechas».
   test("las celdas del mes se nombran con fecha y estado", async ({ page }) => {
-    await abrir(page, "mi-espacio/calendario/mes/");
+    await abrir(page, "mi-espacio/plan/mes/");
     const nombres = await page.locator(".me-mes__celda:not(.me-mes__celda--vacia)").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label") ?? ""));
     expect(nombres.length).toBe(31);
     for (const n of nombres) {
@@ -311,14 +311,23 @@ test.describe("Mi espacio: interacción y texto", () => {
   });
 
   // M3 y M9: en el DOM vivo de Mi espacio no aparece ninguna palabra prohibida (1.4) ni «IA».
-  test("Mi espacio no usa palabras prohibidas ni menciona IA", async ({ page }) => {
+  // Rumbo 2.0, etapa 2: «Próximamente» solo como rótulo (.etiqueta--pronto) y la IA solo dentro de
+  // las tarjetas «Próximamente» (.tarjeta--pronto), nombrada como función futura.
+  test("Mi espacio no usa palabras prohibidas ni menciona IA fuera de «Próximamente»", async ({ page }) => {
     const hallazgos: string[] = [];
+    const sin = (selector: string) =>
+      page.evaluate((sel) => {
+        const copia = document.body.cloneNode(true) as HTMLElement;
+        copia.querySelectorAll(`${sel}, script, style, [hidden], dialog:not([open])`).forEach((n) => n.remove());
+        return copia.textContent ?? "";
+      }, selector);
     for (const p of pantallas.filter((x) => x.grupo === "mi-espacio")) {
       await page.goto(relativa(p.ruta));
       await esperarHidratacion(page);
       const texto = await page.locator("body").innerText();
       for (const h of buscarFrases(texto)) hallazgos.push(`${p.ruta}: ${h}`);
-      for (const h of buscarFrases(texto, ["IA", "inteligencia artificial"])) hallazgos.push(`${p.ruta}: ${h}`);
+      for (const h of buscarFrases(await sin(".etiqueta--pronto"), SOLO_ROTULO_MI_ESPACIO)) hallazgos.push(`${p.ruta}: ${h}`);
+      for (const h of buscarFrases(await sin(".tarjeta--pronto"), ["IA", "inteligencia artificial"])) hallazgos.push(`${p.ruta}: ${h}`);
     }
     expect(hallazgos).toEqual([]);
   });
@@ -357,7 +366,7 @@ test.describe("zoom de 200 %", () => {
   test.beforeEach(({}, info) => {
     test.skip(info.project.name !== "escritorio", "zoom de escritorio");
   });
-  for (const r of ["postular/", "estado/recibida/", "mi-espacio/", "mi-espacio/calendario/", "mi-espacio/semana/", "equipo/", "equipo/solicitud/"]) {
+  for (const r of ["postular/", "estado/recibida/", "mi-espacio/", "mi-espacio/plan/", "mi-espacio/acompanamiento/", "equipo/", "equipo/solicitud/"]) {
     test(`sin desborde ni contenido tapado: ${r}`, async ({ page }) => {
       await page.setViewportSize({ width: 640, height: 400 });
       await abrir(page, r);
@@ -374,7 +383,7 @@ test.describe("sin JavaScript", () => {
   test.beforeEach(({}, info) => {
     test.skip(info.project.name !== "escritorio", "basta un proyecto");
   });
-  for (const r of ["postular/", "estado/recibida/", "mi-espacio/", "mi-espacio/calendario/", "equipo/"]) {
+  for (const r of ["postular/", "estado/recibida/", "mi-espacio/", "mi-espacio/plan/", "equipo/"]) {
     test(`se lee el contenido: ${r}`, async ({ page }) => {
       await page.goto(ruta(r));
       await expect(page.locator("main h1")).toBeVisible();

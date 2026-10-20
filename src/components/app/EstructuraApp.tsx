@@ -16,16 +16,19 @@ import { BarraInferior, DESTINOS_MI_ESPACIO, DESTINOS_PANEL, Lateral, ListaMas, 
 export const TEXTOS_ESTRUCTURA = {
   miEspacio: "Mi espacio",
   panel: "Panel",
-  logoMiEspacio: "Mi espacio, Hoy",
+  logoMiEspacio: "Mi espacio, inicio",
   logoPanel: "Panel, Hoy",
   mas: "Más",
+  menu: "Menú",
   ajuste: "Pedir un ajuste",
   preferencias: "Preferencias",
+  misDatos: "Mis datos",
+  loQueViene: "Lo que viene en Rumbo",
   salir: "Salir",
 } as const;
 
-// Rutas de cada destino. Mi espacio: hoy, calendario, progreso, semana, ajuste, preferencias,
-// salir. Panel: hoy, solicitudes, participantes, revisar, mas.
+// Rutas de cada destino. Mi espacio: rumbo, plan, acompanamiento, comunidad, logros, ajuste,
+// preferencias, misDatos, loQueViene, salir. Panel: hoy, solicitudes, participantes, revisar, mas.
 export type RutasApp = Record<string, string>;
 
 type Props = {
@@ -40,6 +43,10 @@ type Props = {
   rutaWeb?: string; // «Volver a la web»
   children: ReactNode;
 };
+
+// Raíces de las cinco secciones de Mi espacio (Rumbo 2.0): su nombre ya es el H1 de la pantalla,
+// así que la cabecera móvil no lo repite. En las subpáginas (Acción, Créditos…) sí se muestra.
+const SECCIONES_RAIZ = new Set(["Mi Rumbo", "Mi plan", "Mi acompañamiento", "Comunidad", "Mis logros", "Lo que viene en Rumbo"]);
 
 const ES_TEXTO = "textarea, input:not([type]), input[type=text], input[type=email], input[type=search]";
 
@@ -78,19 +85,21 @@ export default function EstructuraApp({
   const base = miEspacio ? DESTINOS_MI_ESPACIO : DESTINOS_PANEL;
   const destinos: DestinoNav[] = base.map((d) => ({
     ...d,
-    // En Mi espacio «Más» es una hoja (sin ruta); en el panel es una página.
-    href: miEspacio && d.id === "mas" ? undefined : rutas[d.id],
+    href: rutas[d.id],
     contador: miEspacio ? undefined : contadores[d.id],
   }));
   const etiqueta = miEspacio ? TEXTOS_ESTRUCTURA.miEspacio : TEXTOS_ESTRUCTURA.panel;
 
+  // Menú de la cabecera de Mi espacio (Rumbo 2.0, etapa 2): lo que antes era «Más» en la barra.
   const filasMas: FilaMas[] = [
     { id: "ajuste", texto: TEXTOS_ESTRUCTURA.ajuste, icono: "sliders-horizontal", href: rutas.ajuste },
     { id: "preferencias", texto: TEXTOS_ESTRUCTURA.preferencias, icono: "settings", href: rutas.preferencias },
+    { id: "datos", texto: TEXTOS_ESTRUCTURA.misDatos, icono: "download", href: rutas.misDatos },
+    { id: "lo-que-viene", texto: TEXTOS_ESTRUCTURA.loQueViene, icono: "sparkles", href: rutas.loQueViene },
     { id: "ayuda", texto: TEXTOS_FORM.ayudaInmediata, icono: "phone", onClick: () => setAyuda(true) },
     { id: "web", texto: TEXTOS_CABECERA.volver, icono: "arrow-up-right", href: rutaWeb, separadorAntes: true },
     { id: "salir", texto: TEXTOS_ESTRUCTURA.salir, icono: "log-out", href: rutas.salir },
-  ];
+  ].filter((f) => f.href || f.onClick) as FilaMas[];
 
   const pieLateral = miEspacio ? (
     <>
@@ -106,6 +115,12 @@ export default function EstructuraApp({
           {TEXTOS_ESTRUCTURA.preferencias}
         </Link>
       )}
+      {rutas.loQueViene && (
+        <Link to={rutas.loQueViene} className="enlace-util">
+          <Icono nombre="sparkles" tamaño={16} />
+          {TEXTOS_ESTRUCTURA.loQueViene}
+        </Link>
+      )}
       <button type="button" className="enlace-util" aria-haspopup="dialog" onClick={() => setAyuda(true)}>
         <Icono nombre="phone" tamaño={16} />
         {TEXTOS_FORM.ayudaInmediata}
@@ -116,12 +131,14 @@ export default function EstructuraApp({
   return (
     <div className={`app app--${tipo}${sinNavegacion ? " app--sin-navegacion" : ""}`}>
       <EncabezadoApp
-        inicio={rutas.hoy ?? rutaWeb}
+        inicio={(miEspacio ? rutas.rumbo : rutas.hoy) ?? rutaWeb}
         etiquetaLogo={miEspacio ? TEXTOS_ESTRUCTURA.logoMiEspacio : TEXTOS_ESTRUCTURA.logoPanel}
-        seccion={seccion}
+        seccion={miEspacio && seccion && SECCIONES_RAIZ.has(seccion) ? undefined : seccion}
         onAyuda={miEspacio ? () => setAyuda(true) : undefined}
         ayudaAbierta={ayuda}
         rutaWeb={rutaWeb}
+        onMenu={miEspacio && !sinNavegacion ? () => setMas(true) : undefined}
+        menuAbierto={mas}
       />
       {banda}
       <div className="app__cuerpo">
@@ -144,7 +161,7 @@ export default function EstructuraApp({
         />
       )}
       {miEspacio && !sinNavegacion && (
-        <Hoja abierta={mas} onCerrar={() => setMas(false)} titulo={TEXTOS_ESTRUCTURA.mas} className="hoja--mas">
+        <Hoja abierta={mas} onCerrar={() => setMas(false)} titulo={TEXTOS_ESTRUCTURA.menu} className="hoja--mas">
           <ListaMas filas={filasMas} onElegir={() => setMas(false)} />
         </Hoja>
       )}

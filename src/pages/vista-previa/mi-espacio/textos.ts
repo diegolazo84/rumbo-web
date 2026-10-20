@@ -22,7 +22,7 @@ export const T_COMUN = {
   ejemplo: "Ejemplo",
   pedirAjuste: "Pedir un ajuste",
   ayudaInmediata: "Ayuda inmediata",
-  verMiProgreso: "Ver mi progreso",
+  verMiProgreso: "Ver mis logros",
   cerrar: "Cerrar",
 } as const;
 
@@ -124,7 +124,7 @@ export const T_HOY = {
     maximo: "Nivel máximo",
     bono: (b: number) => `Bono por día completo: +${b}`,
     racha: (r: number) => `${r} ${plural(r, "día completo seguido", "días completos seguidos")}`,
-    enlace: "Ver mi progreso",
+    enlace: "Ver mis logros",
   },
   revision: {
     titulo: "Tu próxima revisión",
@@ -285,8 +285,8 @@ export const T_DETALLE = {
 // 4.10 Progreso e historial de créditos
 
 export const T_PROGRESO = {
-  ojo: "Progreso",
-  titulo: "Lo que vas avanzando.",
+  ojo: "Lo que vas avanzando",
+  titulo: "Mis logros",
   bajada: "Muestra lo que registraste. No mide todo lo que hiciste ni lo que vales.",
   metas: "Tus metas",
   barraMeta: (h: number, n: number) => `${h} de ${n} acciones programadas hasta hoy`,
@@ -313,10 +313,10 @@ export const T_PROGRESO = {
 } as const;
 
 export const T_CREDITOS = {
-  ojo: "Progreso",
+  ojo: "Mis logros",
   // La especificación no fija el H1 del historial: se usa el texto del enlace que lleva aquí.
   titulo: "El detalle de tus créditos.",
-  volver: "Progreso",
+  volver: "Mis logros",
   dia: (dia: string, c: number) => `${dia} · +${c}`,
   sinAcciones: (dia: string) => `${dia} · sin acciones programadas · la racha sigue`,
   fotoEnRevision: (dia: string) => `${dia} · foto en revisión · la racha espera`,
@@ -472,4 +472,127 @@ export const T_SIN_FICHA = {
   titulo: "No encontramos un espacio abierto con este correo.",
   texto: "Si tu programa terminó o crees que es un error, escríbenos y lo revisamos contigo.",
   salir: "Salir",
+} as const;
+
+// ---------------------------------------------------------------------------
+// Rumbo 2.0, etapa 2: cinco secciones (Mi Rumbo, Mi plan, Mi acompañamiento, Comunidad y Mis
+// logros) y «Lo que viene en Rumbo». PROPUESTO y aprobado por Diego el 20-10-2026. Lo que todavía
+// no existe va rotulado «Próximamente»: sin botones, sin enlaces de compra y sin fechas.
+
+export const T_SECCIONES = {
+  rumbo: "Mi Rumbo",
+  plan: "Mi plan",
+  acompanamiento: "Mi acompañamiento",
+  comunidad: "Comunidad",
+  logros: "Mis logros",
+  loQueViene: "Lo que viene en Rumbo",
+  proximamente: "Próximamente",
+} as const;
+
+// Resumen del día en Mi Rumbo: solo las acciones programadas para hoy (nunca las futuras).
+export const T_RESUMEN_DIA = {
+  etiqueta: (h: number, n: number) => `Hoy: ${h} de ${acciones(n)} ${plural(n, "hecha", "hechas")}.`,
+  corto: (h: number, n: number) => `${h} de ${n} hoy`,
+  sinAcciones: "Sin acciones para hoy",
+} as const;
+
+export const T_PLAN = {
+  pestanas: "Vistas de Mi plan",
+  calendario: "Calendario",
+  metas: "Mis metas",
+  metasBajada: "Lo que quieres lograr en este ciclo y para qué. Tu avance está en Mis logros.",
+  metasVacio: "Tus metas aparecerán aquí cuando tu programa esté publicado.",
+  verAvance: "Ver mi avance",
+  ajusteTitulo: "¿Tu semana cambió?",
+  ajusteTexto: "Pide un ajuste y lo revisamos contigo. Tu plan se adapta a tu vida, no al revés.",
+} as const;
+
+export const T_ACOMPANAMIENTO = {
+  ojo: "Lo que nos diferencia",
+  bajadaCoach: "Una persona del equipo de Rumbo lee tu semana, te responde por escrito y ajusta tu plan contigo.",
+  bajadaCercano: "Una persona del equipo de Rumbo conversa contigo cada semana por videollamada y ajusta tu plan contigo.",
+  resumen: "Tu acompañamiento esta semana",
+  quien: {
+    titulo: "Quién te acompaña",
+    equipo: "El equipo de Rumbo",
+    escrita: (dia: string) => `Revisión semanal por escrito los ${dia}, aquí en tu espacio.`,
+    videollamada: (dia: string, hora: string) => `Videollamada semanal los ${dia} a las ${hora} (hora de Chile), con un resumen escrito aquí.`,
+  },
+  acuerdos: {
+    titulo: "Acuerdos de la semana",
+    foco: "Tu foco",
+    ajustamos: "Lo que ajustamos",
+    inicial: "Tu foco para empezar",
+  },
+  proxima: {
+    titulo: "Próxima revisión",
+    escrita: "Por escrito, aquí en tu espacio",
+    videollamada: (hora: string) => `Videollamada a las ${hora} (hora de Chile)`,
+    registroEnviado: "Tu registro ya está enviado.",
+    registroPendiente: "Si alcanzas, escribe antes tu registro. Es opcional.",
+    escribir: "Escribir mi registro",
+  },
+  observaciones: {
+    titulo: "Observaciones de tu coach",
+    deSemana: (n: number) => `De tu revisión de la semana ${n}`,
+    leer: "Leer la revisión completa",
+    sinRevision: (dia: string) => `Tu coach publicará su primera revisión el ${dia}.`,
+  },
+  acordamos: "Lo que acordamos",
+  semanas: "Tus semanas",
+  semanasBajada: "Tu registro y la revisión de cada semana del ciclo.",
+  pronto: {
+    titulo: "Lo que viene en tu acompañamiento",
+    items: [
+      { titulo: "Ficha de tu coach", texto: "Quién te acompaña y su experiencia, cuando tengas un coach asignado." },
+      { titulo: "Asistente de Rumbo", texto: "Te ayudará a preparar tu registro y a entender tu revisión. Tu coach siempre revisa lo que propone." },
+    ],
+  },
+} as const;
+
+export const T_COMUNIDAD = {
+  ojo: "Próximamente",
+  bajada: "Un espacio moderado para compartir avances con otras personas que también están ordenando lo que les importa.",
+  como: "Cómo funcionará",
+  reglas: [
+    "Participas con un alias: tu nombre real no se muestra.",
+    "Nada se publica sin que tú lo apruebes. Tu plan, tus registros y tus fotos son privados.",
+    "Participar es voluntario y puedes salir cuando quieras.",
+    "Un ranking semanal voluntario por cumplimiento relativo: compara cuánto hiciste de lo que tenías programado, no horas ni créditos acumulados.",
+    "Moderación humana y reglas de convivencia publicadas antes de abrir.",
+  ],
+  cuando: "Abriremos la comunidad cuando haya participantes y moderación suficientes. Mientras tanto, tu acompañamiento sigue igual.",
+  verMas: "Ver todo lo que viene en Rumbo",
+} as const;
+
+export const T_LOGROS_PRONTO = {
+  titulo: "Lo que viene en Mis logros",
+  items: ["Gráfico de tu cumplimiento semanal", "Reconocimientos por tu constancia", "Ranking semanal voluntario, en la comunidad"],
+} as const;
+
+// Tarjetas de «Lo que viene en Rumbo» en Mi espacio. Coinciden con loQueViene de data/rumbo.ts
+// (la portada); aquí van con su descripción. Ninguna es un enlace ni tiene fecha.
+export const T_LO_QUE_VIENE = {
+  bajada: "Funciones en las que estamos trabajando. Todavía no están disponibles: las verás en tu espacio cuando funcionen y estén probadas.",
+  grupos: [
+    {
+      titulo: "Para el lanzamiento",
+      items: [
+        { titulo: "Comunidad con foro moderado", texto: "Comparte avances con un alias, solo si quieres." },
+        { titulo: "Ranking semanal voluntario", texto: "Por cumplimiento relativo a tu propio plan, con participación opcional." },
+        { titulo: "Fotografías opcionales y privadas", texto: "Respalda una acción con una foto que solo ve tu coach." },
+        { titulo: "Asistente con inteligencia artificial", texto: "Propone ideas para tu plan y tu registro. Tu coach revisa y aprueba." },
+      ],
+    },
+    {
+      titulo: "Más adelante",
+      items: [
+        { titulo: "Marketplace de especialistas", texto: "Sesiones con profesionales verificados de distintas áreas." },
+        { titulo: "Premios y recompensas", texto: "Beneficios por tu constancia, con criterios iguales para todos los planes." },
+        { titulo: "Inteligencia artificial avanzada", texto: "Análisis más profundos de tus patrones y tu evolución." },
+        { titulo: "Aplicación móvil", texto: "Una aplicación para iOS y Android." },
+      ],
+    },
+  ],
+  nota: "No tienen fecha todavía. No necesitas hacer nada para recibirlas.",
 } as const;

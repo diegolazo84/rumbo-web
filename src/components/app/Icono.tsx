@@ -117,7 +117,14 @@ const trazosPlataforma = {
       <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
     </>
   ),
-  // Solo en el panel mientras la comunidad no exista (3.1).
+  // Mis logros (Rumbo 2.0, etapa 2).
+  award: (
+    <>
+      <path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526" />
+      <circle cx="12" cy="8" r="6" />
+    </>
+  ),
+  // Panel y sección Comunidad de Mi espacio (la comunidad aún no existe: «Próximamente»).
   users: (
     <>
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />

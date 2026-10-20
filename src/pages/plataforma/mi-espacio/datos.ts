@@ -275,6 +275,16 @@ export function armarProgreso(progreso: FilaProgreso | null, dias: FilaDia[], li
     const d = porFecha.get(fecha);
     const delDia = lista.filter((o) => o.fecha === fecha && o.vigente);
     const dejadas = delDia.filter((o) => o.registro === "dejada").length;
+    // Día sin fila todavía (la base recalcula a las 01:15 de Chile y al marcar): si tiene acciones
+    // vigentes, se cuentan desde las ocurrencias y sus registros, con las mismas reglas
+    // (Mi Rumbo no debe decir «sin acciones» un día que sí las tiene).
+    if (!d) {
+      const calculado = base.dias.find((x) => x.fecha === fecha);
+      if (calculado?.programadas) {
+        resultado.push(calculado);
+        continue;
+      }
+    }
     if (!d || !d.programadas) {
       resultado.push({ fecha, programadas: 0, hechas: 0, enRevision: 0, dejadas, estado: "sin_acciones", bono: 0, creditos: 0, racha: d?.racha ?? 0 });
       continue;
