@@ -79,5 +79,5 @@ Si es mayor que 0, hay cuentas que quedaron tras una eliminación (ver `docs/eli
 | 2 | Respaldo manual semanal (decisión de Diego del 12 de octubre) | `docs/respaldo-y-restauracion.md` | Primera copia y prueba pendientes |
 | 3 | Plazos de conservación | `ajustes_operacion` | Tras revisión legal |
 | 4 | Versiones legales 1.2 | `ajustes_operacion` | El día que se publique |
-| 5 | Cabecera de la IP del cliente (comentario «VERIFICAR» en `01-funciones.sql`) | Prueba con una postulación | Sin confirmar |
+| 5 | Cabecera de la IP del cliente (comentario «VERIFICAR» en `supabase/migrations/20261008000001_funciones.sql`) | Prueba con una postulación | Sin confirmar |
 | 6 | Cron de GitHub «Vigilar la plataforma» activo | GitHub → Actions | Revisar cada 60 días sin actividad |

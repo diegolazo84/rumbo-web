@@ -2,7 +2,7 @@
 // cola real, ficha de solicitud (acuerdo, cerrar, nuevo enlace, crear su espacio), constructor
 // (metas, acciones, guardar y publicar), revisión semanal, ajustes, fotos y Más. Solo corre con
 // el interruptor encendido (MI_ESPACIO_PROPIO=1). Supabase nunca se toca: page.route responde
-// Auth y PostgREST con una base en memoria; sin aal2 no se ve ninguna fila (como 02-rls.sql) y
+// Auth y PostgREST con una base en memoria; sin aal2 no se ve ninguna fila (como migrations/20261008000002_rls.sql) y
 // las RPC de admin responden «sesion:no_autorizado». Las políticas de verdad las prueba la base
 // local de CI (pruebas/base/rls.mjs).
 import AxeBuilder from "@axe-core/playwright";
@@ -260,7 +260,7 @@ async function simular(page: Page, base: Base, { equipo = true, factores = [] as
     const tabla = partes[2];
     llamadas.push({ tipo: "tabla", metodo, nombre: tabla, url: req.url(), cuerpo, aal });
     base[tabla] ??= [];
-    // Sin aal2, las políticas no muestran ni dejan escribir nada (02-rls.sql).
+    // Sin aal2, las políticas no muestran ni dejan escribir nada (migrations/20261008000002_rls.sql).
     const filas = aal === "aal2" ? base[tabla] : [];
     if (metodo === "GET") {
       const r = filtrar(filas, url.searchParams);

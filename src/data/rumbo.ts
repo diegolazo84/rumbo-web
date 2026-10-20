@@ -30,9 +30,9 @@ export const FORMULARIO_EXTERNO = !PROPIO;
 // Interruptor D8 de la plataforma (2.4, etapa 3): Mi espacio (/mi-espacio/…) y el panel
 // (/equipo/…) en esta web, con Supabase. Mientras sea `false`, nada público cambia. Diego lo
 // enciende cuando el SMTP propio esté configurado en Supabase (9.5) y el SQL de la etapa 3
-// (supabase/07-etapa3.sql) esté pegado. MI_ESPACIO_PROPIO=1 en el entorno lo fuerza encendido
+// (migrations/20261008000009_etapa3.sql) esté pegado. MI_ESPACIO_PROPIO=1 en el entorno lo fuerza encendido
 // sin tocar este archivo (al compilar, por vite.config.ts, y al correr las pruebas).
-const MI_ESPACIO_PROPIO = true; // encendido el 9 de octubre de 2026: SMTP, plantilla y 07-etapa3.sql listos en Supabase
+const MI_ESPACIO_PROPIO = true; // encendido el 9 de octubre de 2026: SMTP, plantilla y migrations/20261008000009_etapa3.sql listos en Supabase
 const MI_ESPACIO_FORZADO =
   typeof __MI_ESPACIO_PROPIO__ !== "undefined"
     ? __MI_ESPACIO_PROPIO__ === true
