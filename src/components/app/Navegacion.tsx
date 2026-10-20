@@ -16,15 +16,29 @@ export type DestinoNav = {
   // Rótulo visible con corte silábico (guion suave) para la barra inferior: a 320 px un rótulo
   // largo pasa a dos líneas en vez de encimarse. El nombre accesible sigue siendo `texto`.
   corte?: string;
+  // Nombre completo para la barra lateral de escritorio, donde sí cabe («Mi acompañamiento»).
+  largo?: string;
 };
 
-// Destinos de Mi espacio (4.1.2). El href lo pone quien monta la estructura (ruta real o vista previa).
+// Destinos de Mi espacio (Rumbo 2.0, etapa 2): cinco secciones. «Más» ya no está en la barra:
+// Preferencias, Mis datos, «Lo que viene en Rumbo» y Salir van en el menú de la cabecera.
+// El href lo pone quien monta la estructura (ruta real o vista previa).
+// Rótulos cortos en la barra (opción B, evaluada a 320, 360 y 390 px): el nombre accesible es
+// el mismo texto visible (WCAG 2.5.3) y el nombre completo de la sección es el H1 de cada pantalla.
+export const ROTULOS_BARRA = {
+  A: { rumbo: "Mi Rumbo", plan: "Mi plan", acompanamiento: "Acompañamiento", comunidad: "Comunidad", logros: "Mis logros" },
+  B: { rumbo: "Inicio", plan: "Plan", acompanamiento: "Apoyo", comunidad: "Comunidad", logros: "Logros" },
+} as const;
+// «Apoyo» en vez de «Acompañamiento» (evaluado contra «Coach» a 320, 360 y 390 px): cabe en una
+// línea a cualquier ancho, retoma el lema («Avanza con apoyo») y no sugiere un coach individual
+// asignado. La barra lateral y el H1 siguen diciendo «Mi acompañamiento».
+const R = ROTULOS_BARRA.B;
 export const DESTINOS_MI_ESPACIO: Omit<DestinoNav, "href">[] = [
-  { id: "hoy", texto: "Hoy", icono: "sun" },
-  { id: "calendario", texto: "Calendario", icono: "calendar-days", corte: "Calen\u00ADdario" },
-  { id: "progreso", texto: "Progreso", icono: "flag", corte: "Pro\u00ADgreso" },
-  { id: "semana", texto: "Semana", icono: "message-circle" },
-  { id: "mas", texto: "Más", icono: "menu" },
+  { id: "rumbo", texto: R.rumbo, icono: "compass", largo: "Mi Rumbo" },
+  { id: "plan", texto: R.plan, icono: "calendar-days", largo: "Mi plan" },
+  { id: "acompanamiento", texto: R.acompanamiento, icono: "message-circle", largo: "Mi acompañamiento" },
+  { id: "comunidad", texto: R.comunidad, icono: "users", corte: "Comu\u00ADnidad", largo: "Comunidad" },
+  { id: "logros", texto: R.logros, icono: "award", largo: "Mis logros" },
 ];
 
 // Destinos del panel (5.2).
@@ -113,7 +127,7 @@ export function Lateral({ etiqueta, destinos, activo, novedades = [], pie }: Pro
           .filter((d) => d.href)
           .map((d) => (
             <li key={d.id}>
-              <Item destino={d} activo={activo} novedad={novedades.includes(d.id)} />
+              <Item destino={d.largo ? { ...d, texto: d.largo, corte: undefined } : d} activo={activo} novedad={novedades.includes(d.id)} />
             </li>
           ))}
       </ul>
@@ -122,8 +136,8 @@ export function Lateral({ etiqueta, destinos, activo, novedades = [], pie }: Pro
   );
 }
 
-// Filas de la hoja «Más» (52 px): «Pedir un ajuste» · «Preferencias» · «Ayuda inmediata» ·
-// separador · «Volver a la web» · «Salir».
+// Filas de la hoja del menú (52 px): «Pedir un ajuste» · «Preferencias» · «Mis datos» ·
+// «Lo que viene en Rumbo» · separador · «Volver a la web» · «Salir».
 export type FilaMas = { id: string; texto: string; icono: NombreIconoApp; href?: string; onClick?: () => void; separadorAntes?: boolean };
 
 export function ListaMas({ filas, onElegir }: { filas: FilaMas[]; onElegir?: () => void }) {

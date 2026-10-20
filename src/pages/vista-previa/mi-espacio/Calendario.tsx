@@ -24,7 +24,6 @@ import {
 } from "../../../lib/fechas";
 import type { PropsPantalla } from "../registro";
 import {
-  EtiquetaEjemplo,
   FilaOcurrencia,
   RegionViva,
   conHorario,
@@ -35,7 +34,8 @@ import {
   type Progreso,
 } from "./comun";
 import Detalle from "./Detalle";
-import { T_CALENDARIO, T_COMUN, T_HOY } from "./textos";
+import { AjustePlan, PestanasPlan, TituloSeccion } from "./Seccion";
+import { T_CALENDARIO, T_COMUN, T_HOY, T_SECCIONES } from "./textos";
 
 type Vista = "dia" | "semana" | "mes";
 
@@ -139,6 +139,9 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
 
   return (
     <div className="me-pantalla me-calendario">
+      <TituloSeccion titulo={T_SECCIONES.plan} icono="calendar-days" ejemplo>
+        <PestanasPlan activa="calendario" />
+      </TituloSeccion>
       <div className="me-calendario__barra">
         <Segmentado
           leyenda={T_CALENDARIO.leyendaVistas}
@@ -148,7 +151,6 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
           valor={vista}
           onCambio={(v) => setVista(v as Vista)}
         />
-        <EtiquetaEjemplo />
       </div>
 
       <div className="me-calendario__nav">
@@ -156,7 +158,7 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
           <Icono nombre="chevron-left" tamaño={24} />
           <span className="sr-only">{T_CALENDARIO.anterior[vista]}</span>
         </button>
-        <h1 className="me-h1 me-h1--h3 me-calendario__titulo" tabIndex={-1} ref={titulo} aria-live="polite">
+        <h2 className="me-h1 me-h1--h3 me-calendario__titulo" tabIndex={-1} ref={titulo} aria-live="polite">
           {textoTitulo}
           {vista === "dia" && esRevision(fecha) && (
             <>
@@ -164,7 +166,7 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
               <span className="sr-only">{T_CALENDARIO.diaRevision}</span>
             </>
           )}
-        </h1>
+        </h2>
         <button type="button" className="boton-icono me-flecha" onClick={() => paso(1)}>
           <Icono nombre="chevron-right" tamaño={24} />
           <span className="sr-only">{T_CALENDARIO.siguiente[vista]}</span>
@@ -214,6 +216,7 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
           <Detalle o={detalle} hoy={hoy} enHoja onRegistrar={(e) => registrar(detalle.id, e, anunciar, fallo(detalle, () => registrar(detalle.id, e, anunciar)))} />
         )}
       </Hoja>
+      <AjustePlan />
       <Tostada mensaje={tostada?.mensaje ?? null} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
       <RegionViva texto={vivo} />
     </div>

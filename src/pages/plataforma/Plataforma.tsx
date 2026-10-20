@@ -3,8 +3,8 @@
 // pública. Las pantallas son las de la vista previa en modo real (EspacioContexto y
 // PanelContexto); aquí solo se elige el marco y la pantalla según la ruta.
 // postbuild.mjs prerenderiza cada ruta con «Cargando…» (y el formulario de ingreso), noindex.
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { EstructuraApp } from "../../components/app";
 import { rutaPlataforma, type RutaPlataforma } from "./rutas";
 import { ESPACIO_PREVIA, EspacioContexto, R_REAL, type Espacio } from "../vista-previa/mi-espacio/espacio";
@@ -59,6 +59,13 @@ function MarcoCargando({ ruta }: { ruta: RutaPlataforma }) {
   );
 }
 
+// En el HTML prerenderizado se ve «Cargando…»; al hidratar, reemplaza la entrada del historial.
+function Redirigir({ a, ruta }: { a: string; ruta: RutaPlataforma }) {
+  const [listo, setListo] = useState(false);
+  useEffect(() => setListo(true), []);
+  return listo ? <Navigate to={a} replace /> : <MarcoCargando ruta={ruta} />;
+}
+
 function NoExiste() {
   return (
     <EstructuraApp tipo="mi-espacio" rutas={{}} sinNavegacion>
@@ -73,13 +80,15 @@ function NoExiste() {
 }
 
 export default function Plataforma() {
-  const { pathname } = useLocation();
+  const { pathname, search, hash } = useLocation();
   const ruta = rutaPlataforma(pathname);
   useEffect(() => {
     document.title = ruta?.titulo ?? `${T_PLATAFORMA.noExiste.replace(/\.$/, "")} · Rumbo`;
   }, [ruta]);
 
   if (!ruta) return <NoExiste />;
+  // Ruta anterior a la etapa 2: a la sección nueva, con la misma búsqueda y ancla.
+  if (ruta.redirige) return <Redirigir a={ruta.redirige + search + hash} ruta={ruta} />;
   return (
     <EspacioContexto.Provider value={ESPACIO_VACIO}>
       {ruta.marco === "ingreso" ? (

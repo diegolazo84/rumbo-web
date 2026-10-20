@@ -2,6 +2,8 @@
 // no lleva el CTA comercial.
 // - Móvil: logo «rumbo.» (enlace al inicio de la app) · título de la sección en --t-xs 600 ·
 //   botón phone «Ayuda inmediata» de 44×44 (el texto visible aparece desde 480 px) que abre la hoja.
+// - Mi espacio (Rumbo 2.0, etapa 2): botón «Menú» de 44×44 que abre la hoja con Preferencias,
+//   Mis datos, «Lo que viene en Rumbo», «Volver a la web» y Salir (antes, «Más» en la barra).
 // - Escritorio (≥1024 px): logo a la izquierda; a la derecha «Ayuda inmediata» y «Volver a la web».
 import { Link } from "react-router-dom";
 import Icono from "./Icono";
@@ -9,6 +11,7 @@ import Icono from "./Icono";
 export const TEXTOS_CABECERA = {
   ayuda: "Ayuda inmediata",
   volver: "Volver a la web",
+  menu: "Menú",
 } as const;
 
 type Props = {
@@ -18,9 +21,11 @@ type Props = {
   onAyuda?: () => void; // sin onAyuda no se muestra el botón (p. ej. en el panel)
   ayudaAbierta?: boolean;
   rutaWeb?: string; // «Volver a la web» (escritorio); null para ocultarlo
+  onMenu?: () => void; // sin onMenu no se muestra el botón «Menú» (panel e ingreso)
+  menuAbierto?: boolean;
 };
 
-export default function EncabezadoApp({ inicio, etiquetaLogo, seccion, onAyuda, ayudaAbierta, rutaWeb = "/" }: Props) {
+export default function EncabezadoApp({ inicio, etiquetaLogo, seccion, onAyuda, ayudaAbierta, rutaWeb = "/", onMenu, menuAbierto }: Props) {
   return (
     <header className="cabecera cabecera-app">
       <div className="cabecera-app__fila">
@@ -45,6 +50,18 @@ export default function EncabezadoApp({ inicio, etiquetaLogo, seccion, onAyuda, 
             <Link to={rutaWeb} className="enlace-util cabecera-app__web">
               {TEXTOS_CABECERA.volver}
             </Link>
+          )}
+          {onMenu && (
+            <button
+              type="button"
+              className="cabecera-app__menu"
+              aria-haspopup="dialog"
+              aria-expanded={!!menuAbierto}
+              onClick={onMenu}
+            >
+              <Icono nombre="menu" tamaño={24} />
+              <span className="sr-only">{TEXTOS_CABECERA.menu}</span>
+            </button>
           )}
         </div>
       </div>

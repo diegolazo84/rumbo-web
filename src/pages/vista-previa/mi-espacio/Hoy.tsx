@@ -26,7 +26,8 @@ import {
   type Progreso,
 } from "./comun";
 import Detalle from "./Detalle";
-import { T_ANTERIORES, T_COMUN, T_HOY } from "./textos";
+import { TituloSeccion } from "./Seccion";
+import { T_ANTERIORES, T_COMUN, T_HOY, T_RESUMEN_DIA, T_SECCIONES } from "./textos";
 
 type Variante = {
   hoy: Iso;
@@ -76,7 +77,7 @@ export default function Hoy({ estado = "algunas" }: PropsPantalla) {
 }
 
 export function PantallaHoy({ variante }: { variante: Variante }) {
-  const { esc: escDado, semanaDelCiclo, pendientesAnteriores, R } = useEspacio();
+  const { esc: escDado, semanaDelCiclo, pendientesAnteriores, R, ciclo } = useEspacio();
   const esc = variante.esc ?? escDado;
   const { lista, progreso, registrar, hoy } = usePrograma({ hoy: variante.hoy, cambios: variante.cambios, base: esc.ocurrencias });
   const sinConexion = !!variante.sinConexion;
@@ -140,6 +141,7 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
   return (
     <div className="me-pantalla me-hoy">
       <div className="me-hoy__cabeza">
+        <TituloSeccion titulo={T_SECCIONES.rumbo} icono="compass" ojo={T_HOY.ojo(semana, ciclo.semanas)} ejemplo />
         <CabezaHoy hoy={hoy} semana={semana} progreso={progreso} esc={esc} />
         {variante.novedades && <Novedades />}
       </div>
@@ -222,7 +224,7 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
 // Encabezado: ojo «Semana 2 de 4», saludo, H1 «Hoy, martes 13.» y bajada según el día (4.4.2)
 
 function CabezaHoy({ hoy, semana, progreso, esc }: { hoy: Iso; semana: number; progreso: Progreso; esc: Escenario }) {
-  const { ciclo, fechaRevision } = useEspacio();
+  const { fechaRevision } = useEspacio();
   const dia = progreso.dias.find((d) => d.fecha === hoy);
   const n = dia?.programadas ?? 0;
   const h = dia?.hechas ?? 0;
@@ -240,11 +242,13 @@ function CabezaHoy({ hoy, semana, progreso, esc }: { hoy: Iso; semana: number; p
 
   return (
     <Cabeza
-      ojo={T_HOY.ojo(semana, ciclo.semanas)}
+      nivel={2}
+      ejemplo={false}
       antes={<p className="me-saludo">{T_HOY.saludo(esc.participante.nombre)}</p>}
       titulo={T_HOY.titulo(diaCorto(hoy))}
       bajada={
         <>
+          <ResumenDia hechas={h} programadas={n} />
           <p>
             {bajada}
             {esRevision && ` ${textoRevision}`}
@@ -263,11 +267,73 @@ function CabezaHoy({ hoy, semana, progreso, esc }: { hoy: Iso; semana: number; p
 }
 
 // ---------------------------------------------------------------------------
+// Resumen del día (Rumbo 2.0, etapa 2): hechas sobre programadas de hoy, con los datos del día
+// (progreso_diario en Mi espacio real). Nunca cuenta acciones de días futuros ni muestra un
+// porcentaje. Un segmento por acción (hasta 12; con más, una barra continua). Sin acciones hoy:
+// un estado neutro, sin números.
+
+const MAX_SEGMENTOS = 12;
+
+export function ResumenDia({ hechas, programadas }: { hechas: number; programadas: number }) {
+  if (!programadas) {
+    return (
+      <p className="me-dia-resumen me-dia-resumen--vacio">
+        <Icono nombre="sun" tamaño={16} />
+        {T_RESUMEN_DIA.sinAcciones}
+      </p>
+    );
+  }
+  const h = Math.min(hechas, programadas);
+  const completo = h === programadas;
+  return (
+    <div className={completo ? "me-dia-resumen es-completo" : "me-dia-resumen"} role="img" aria-label={T_RESUMEN_DIA.etiqueta(h, programadas)}>
+      {programadas <= MAX_SEGMENTOS ? (
+        <span className="me-dia-resumen__segmentos" aria-hidden="true">
+          {Array.from({ length: programadas }, (_, i) => (
+            <span key={i} className={i < h ? "me-dia-resumen__seg es-hecho" : "me-dia-resumen__seg"} />
+          ))}
+        </span>
+      ) : (
+        <span className="me-dia-resumen__barra" aria-hidden="true">
+          <span style={{ inlineSize: `${(h / programadas) * 100}%` }} />
+        </span>
+      )}
+      <span className="me-dia-resumen__texto" aria-hidden="true">
+        {completo && <Icono nombre="check" tamaño={16} />}
+        {T_RESUMEN_DIA.corto(h, programadas)}
+      </span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Novedades: 0 a 2 avisos info con enlace (4.4.3). Nunca un contador.
+// Con dos o más, van juntas en un solo aviso compacto (una fila enlazada por novedad) para que
+// las acciones del día suban en la pantalla sin perder el acceso directo a cada una.
 
 function Novedades() {
   const { novedades, R, servidor } = useEspacio();
   const DESTINO_NOVEDAD = { semana: R.semanaPublicada, ajuste: R.ajusteLista, programa: R.semanaPublicada, accion: R.accion };
+  const lista = novedades.slice(0, 2);
+  if (lista.length >= 2)
+    return (
+      <section className="aviso me-novedades me-novedades--compactas" aria-label={T_HOY.novedades.etiqueta}>
+        <Icono nombre="info" tamaño={20} className="aviso-icono" />
+        <ul className="me-novedades__lista">
+          {lista.map((n) => (
+            <li key={n.id}>
+              <Link to={n.ruta ?? DESTINO_NOVEDAD[n.destino]} className="me-novedades__fila" onClick={() => servidor?.verNovedad(n.id)}>
+                <span>{n.texto}</span>{" "}
+                <span className="me-novedades__enlace">
+                  {n.enlace}
+                  <Icono nombre="arrow-right" tamaño={16} />
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
   return (
     <section className="me-novedades" aria-label={T_HOY.novedades.etiqueta}>
       {novedades.slice(0, 2).map((n) => (

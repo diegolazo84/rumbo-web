@@ -61,6 +61,21 @@
 @media (hover: hover) {
   .cabecera-app__ayuda:hover { background: var(--niebla); }
 }
+/* Menú de Mi espacio (Rumbo 2.0): abre la hoja con Preferencias, Mis datos, Lo que viene y Salir. */
+.cabecera-app__menu {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 44px;
+  block-size: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--tinta);
+  cursor: pointer;
+}
+.cabecera-app__menu[aria-expanded="true"] { background: var(--niebla); color: var(--bosque); }
+@media (hover: hover) { .cabecera-app__menu:hover { background: var(--niebla); color: var(--bosque); } }
 
 .app__cuerpo { flex: 1; min-inline-size: 0; }
 @media (min-width: 1024px) {

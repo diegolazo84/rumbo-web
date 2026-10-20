@@ -15,10 +15,14 @@ export const PATRONES = [
   { nombre: "lorem", re: /lorem/i },
 ];
 
+// «Próximamente» (Rumbo 2.0, etapa 2, aprobado por Diego el 20-10-2026): solo como rótulo
+// (.etiqueta--pronto) dentro de Mi espacio, junto a funciones que todavía no existen. Sigue
+// fuera de la web pública (marcadores.spec.ts) y de cualquier otro texto de Mi espacio.
+export const SOLO_ROTULO_MI_ESPACIO = ["Próximamente"];
+
 // Frases que no aparecen en ningún lugar (aceptación 23) y lenguaje de salud
 // prohibido «en ningún contexto» (glosario 5.0).
 export const FRASES_PROHIBIDAS = [
-  "Próximamente",
   "lista de espera",
   "Plan solo plataforma con IA",
   "Más presencia",

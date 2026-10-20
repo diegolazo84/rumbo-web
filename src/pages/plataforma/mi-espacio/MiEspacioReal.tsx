@@ -22,7 +22,10 @@ import EstadoPrograma from "../../vista-previa/mi-espacio/EstadoPrograma";
 import Hoy from "../../vista-previa/mi-espacio/Hoy";
 import Preferencias from "../../vista-previa/mi-espacio/Preferencias";
 import ProgresoPantalla from "../../vista-previa/mi-espacio/Progreso";
-import Semana from "../../vista-previa/mi-espacio/Semana";
+import Acompanamiento from "../../vista-previa/mi-espacio/Acompanamiento";
+import Comunidad from "../../vista-previa/mi-espacio/Comunidad";
+import LoQueViene from "../../vista-previa/mi-espacio/LoQueViene";
+import MisMetas from "../../vista-previa/mi-espacio/MisMetas";
 import { T_SIN_FICHA } from "../../vista-previa/mi-espacio/textos";
 import { armarAusencia, armarDatos, armarNovedades, hoyEn, type Contexto, type Filas } from "./datos";
 
@@ -307,7 +310,10 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
     };
   }, [estado, vistas, servidor]);
 
-  const novedades = espacio ? [...new Set(espacio.novedades.map((n) => (n.destino === "ajuste" ? "mas" : n.destino === "accion" ? "calendario" : "semana")))] : [];
+  // Punto de novedad: respuestas a ajustes y acciones en Mi plan; revisiones en Mi acompañamiento.
+  const novedades = espacio
+    ? [...new Set(espacio.novedades.map((n) => (n.destino === "ajuste" || n.destino === "accion" ? "plan" : "acompanamiento")))]
+    : [];
   const banda = !enLinea ? (
     <BandaSinConexion />
   ) : espacio?.ausencia ? (
@@ -350,12 +356,15 @@ function armarNovedadesSeguras(e: { filas: Filas; ctx: Contexto }, lista: Parame
 }
 
 const RUTAS_NAV = {
-  hoy: R_REAL.hoy,
-  calendario: R_REAL.calendario,
-  progreso: R_REAL.progreso,
-  semana: R_REAL.semana,
+  rumbo: R_REAL.hoy,
+  plan: R_REAL.calendario,
+  acompanamiento: R_REAL.semana,
+  comunidad: R_REAL.comunidad,
+  logros: R_REAL.progreso,
   ajuste: R_REAL.ajuste,
   preferencias: R_REAL.preferencias,
+  misDatos: R_REAL.misDatos,
+  loQueViene: R_REAL.loQueViene,
   salir: R_REAL.salir,
 };
 
@@ -367,18 +376,24 @@ function PantallaReal({ ruta, espacio }: { ruta: RutaPlataforma; espacio: Espaci
   switch (ruta.ruta) {
     case "/mi-espacio/":
       return <Inicio espacio={espacio} />;
-    case "/mi-espacio/calendario/":
+    case "/mi-espacio/plan/":
       return <Calendario />;
-    case "/mi-espacio/accion/":
+    case "/mi-espacio/plan/metas/":
+      return <MisMetas />;
+    case "/mi-espacio/plan/accion/":
       return <DetalleAccion />;
-    case "/mi-espacio/progreso/":
-      return <ProgresoPantalla />;
-    case "/mi-espacio/progreso/creditos/":
-      return <Creditos />;
-    case "/mi-espacio/semana/":
-      return <Semana />;
-    case "/mi-espacio/ajuste/":
+    case "/mi-espacio/plan/ajuste/":
       return <Ajuste />;
+    case "/mi-espacio/acompanamiento/":
+      return <Acompanamiento />;
+    case "/mi-espacio/comunidad/":
+      return <Comunidad />;
+    case "/mi-espacio/logros/":
+      return <ProgresoPantalla />;
+    case "/mi-espacio/logros/creditos/":
+      return <Creditos />;
+    case "/mi-espacio/lo-que-viene/":
+      return <LoQueViene />;
     case "/mi-espacio/preferencias/":
       return <Preferencias />;
     case "/mi-espacio/preferencias/eliminar/":

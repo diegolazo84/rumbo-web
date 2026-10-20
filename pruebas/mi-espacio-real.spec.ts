@@ -222,7 +222,7 @@ test.beforeEach(({}, info) => {
 
 test("sin sesión, Mi espacio lleva al ingreso; con el código entra a Hoy", async ({ page }) => {
   const llamadas = await simular(page, baseInicial());
-  await page.goto("mi-espacio/calendario/");
+  await page.goto("mi-espacio/plan/");
   await expect(page.locator("h1")).toHaveText("Entra a tu espacio.");
   await hidratar(page);
   await page.locator("#entrar-correo").fill("ana@correo.cl");
@@ -241,7 +241,7 @@ test("sin sesión, Mi espacio lleva al ingreso; con el código entra a Hoy", asy
   await page.locator("#entrar-codigo").fill("123456");
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   // Vuelve a la ruta que se estaba abriendo.
-  await page.waitForURL(/\/mi-espacio\/calendario\/$/);
+  await page.waitForURL(/\/mi-espacio\/plan\/$/);
   await expect(page.getByText("Escribir 30 minutos").first()).toBeVisible();
 });
 
@@ -258,7 +258,8 @@ test("Hoy real: sin «Ejemplo», marcar llama a marcar_accion y los créditos vi
   await conSesion(page);
   const llamadas = await simular(page, baseInicial());
   await page.goto("mi-espacio/");
-  await expect(page.locator("h1")).toHaveText("Hoy, martes 13.");
+  await expect(page.locator("h1")).toHaveText("Mi Rumbo");
+  await expect(page.getByRole("heading", { level: 2, name: "Hoy, martes 13." })).toBeVisible();
   await hidratar(page);
   await expect(page.getByText("Hola, Ana.")).toBeVisible();
   await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
@@ -268,9 +269,12 @@ test("Hoy real: sin «Ejemplo», marcar llama a marcar_accion y los créditos vi
   await sinViolaciones(page);
 
   const casilla = page.getByRole("checkbox", { name: "Marcar “Escribir 30 minutos” como hecha" });
+  // Resumen del día: solo las acciones de hoy (1), nunca las de días futuros.
+  await expect(page.getByRole("img", { name: "Hoy: 0 de 1 acción hecha." })).toBeVisible();
   await casilla.check();
   await expect(casilla).toBeChecked();
   await expect(creditos).toHaveText("4 créditos");
+  await expect(page.getByRole("img", { name: "Hoy: 1 de 1 acción hecha." })).toBeVisible();
   const m = llamadas.filter((l) => l.nombre === "marcar_accion");
   expect(m).toHaveLength(1);
   expect(m[0].cuerpo).toEqual({ p_ocurrencia: `o-${HOY}`, p_version: "completa" });
@@ -310,9 +314,10 @@ test("programa en preparación: el borrador no se ve", async ({ page }) => {
 test("registro semanal y solicitud de ajuste van a sus RPC", async ({ page }) => {
   await conSesion(page);
   const llamadas = await simular(page, baseInicial());
-  await page.goto("mi-espacio/semana/");
+  await page.goto("mi-espacio/acompanamiento/");
   await hidratar(page);
-  await expect(page.locator("h1")).toHaveText("Semana 2 de 4.");
+  await expect(page.locator("h1")).toHaveText("Mi acompañamiento");
+  await expect(page.getByRole("heading", { level: 2, name: "Semana 2 de 4." })).toBeVisible();
   await page.locator("#registro-funciono").fill("Escribir temprano.");
   await page.getByRole("button", { name: "Enviar mi registro" }).click();
   await expect.poll(() => llamadas.filter((l) => l.nombre === "guardar_registro_semanal").length).toBe(1);
@@ -321,7 +326,7 @@ test("registro semanal y solicitud de ajuste van a sus RPC", async ({ page }) =>
   expect(g.cuerpo.p_enviar).toBe(true);
   expect((g.cuerpo.p as Record<string, string>).funciono).toBe("Escribir temprano.");
 
-  await page.goto("mi-espacio/ajuste/");
+  await page.goto("mi-espacio/plan/ajuste/");
   await expect(page.locator("h1")).toHaveText("¿Qué necesitas cambiar?");
   await hidratar(page);
   await page.locator('input[name="ajuste-tipo"][value="carga"]').check();
@@ -330,6 +335,66 @@ test("registro semanal y solicitud de ajuste van a sus RPC", async ({ page }) =>
   await expect(page.locator("h1")).toHaveText("Recibimos tu solicitud de ajuste.");
   const a = llamadas.find((l) => l.nombre === "pedir_ajuste")!;
   expect((a.cuerpo.p as Record<string, unknown>).tipo).toBe("carga");
+});
+
+// Rumbo 2.0, etapa 2: las rutas anteriores llevan a la sección nueva con su búsqueda.
+test("rutas anteriores: semana, progreso, calendario y ajuste redirigen a las secciones nuevas", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial());
+  const casos: [string, RegExp, string][] = [
+    ["mi-espacio/semana/?n=1", /\/mi-espacio\/acompanamiento\/\?n=1$/, "Mi acompañamiento"],
+    ["mi-espacio/progreso/", /\/mi-espacio\/logros\/$/, "Mis logros"],
+    ["mi-espacio/progreso/creditos/", /\/mi-espacio\/logros\/creditos\/$/, "El detalle de tus créditos."],
+    ["mi-espacio/calendario/?vista=mes", /\/mi-espacio\/plan\/\?vista=mes$/, "Mi plan"],
+    ["mi-espacio/ajuste/#tus-solicitudes", /\/mi-espacio\/plan\/ajuste\/#tus-solicitudes$/, "¿Qué necesitas cambiar?"],
+    ["mi-espacio/accion/?id=o-2026-10-12", /\/mi-espacio\/plan\/accion\/\?id=o-2026-10-12$/, "Escribir 30 minutos"],
+  ];
+  for (const [antes, despues, h1] of casos) {
+    const r = await page.goto(antes);
+    expect(r?.status(), antes).toBe(200);
+    await page.waitForURL(despues);
+    await expect(page.locator("h1"), antes).toHaveText(h1);
+  }
+});
+
+test("descargar mis datos llama a exportar_mis_datos y baja el archivo", async ({ page }) => {
+  await conSesion(page);
+  const llamadas = await simular(page, baseInicial(), { exportar_mis_datos: () => ({ perfil: { nombre: "Ana Pérez" } }) });
+  await page.goto("mi-espacio/preferencias/");
+  await hidratar(page);
+  const [descarga] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Descargar mis datos" }).click()]);
+  expect(descarga.suggestedFilename()).toBe("mis-datos-rumbo.json");
+  expect(llamadas.some((l) => l.nombre === "exportar_mis_datos")).toBe(true);
+});
+
+test("Mi espacio real nunca muestra «Ejemplo» ni el aviso de la vista previa", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial());
+  for (const r of ["mi-espacio/", "mi-espacio/acompanamiento/", "mi-espacio/comunidad/", "mi-espacio/logros/", "mi-espacio/plan/metas/", "mi-espacio/lo-que-viene/"]) {
+    await page.goto(r);
+    await hidratar(page);
+    await expect(page.locator("main h1"), r).toBeVisible();
+    await expect(page.getByText("Ejemplo", { exact: true }), r).toHaveCount(0);
+    await expect(page.getByText(/datos de ejemplo|Vista previa de la plataforma/), r).toHaveCount(0);
+  }
+});
+
+// Rumbo 2.0, etapa 2: Mi acompañamiento muestra solo lo que existe en la base.
+test("Mi acompañamiento real: foco inicial y fecha de la primera revisión, sin inventar observaciones", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial());
+  await page.goto("mi-espacio/acompanamiento/");
+  await hidratar(page);
+  await expect(page.locator("h1")).toHaveText("Mi acompañamiento");
+  await expect(page.getByRole("heading", { name: "Quién te acompaña" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Próxima revisión" })).toBeVisible();
+  await expect(page.locator(".me-acomp__resumen")).toContainText("jueves 15");
+  // Intro de cercanía y, debajo, la modalidad real del plan (sin atención permanente).
+  await expect(page.locator(".me-acomp__intro")).toContainText("No tienes que avanzar solo.");
+  await expect(page.locator(".me-titulo-seccion__bajada")).toContainText(/una vez por semana/);
+  // Sin revisión publicada: no hay «Observaciones de tu coach» con texto inventado.
+  await expect(page.getByText("De tu revisión de la semana")).toHaveCount(0);
+  await sinViolaciones(page);
 });
 
 test("salir cierra la sesión de este dispositivo", async ({ page }) => {
