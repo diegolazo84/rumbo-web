@@ -70,6 +70,7 @@ export type DatosConstructor = {
   elegida?: string; // acción abierta al entrar
   semanaInicial?: number;
   servidor?: ServidorConstructor;
+  alPublicar?: () => void; // panel real: al cerrar la hoja tras publicar, vuelve a leer la base
 };
 
 const LIMITE_NOTA_CAMBIOS = 600; // nota_cambios (6.4)
@@ -300,7 +301,8 @@ function Editor({ d }: { d: DatosConstructor }) {
   };
 
   // Guarda el borrador en la base (panel real). Devuelve si quedó guardado.
-  const guardar = async (): Promise<boolean> => {
+  // desdeBoton: «Guardar borrador» siempre confirma, aunque no haya cambios pendientes.
+  const guardar = async (desdeBoton = false): Promise<boolean> => {
     if (!d.servidor) return true;
     if (!metas.every(metaValida)) {
       setError(PANEL_REAL.constructor.erroresMeta);
@@ -319,7 +321,13 @@ function Editor({ d }: { d: DatosConstructor }) {
       setError(PANEL_REAL.constructor.erroresAccion(incompleta.titulo.trim(), incompleta.desde, faltan));
       return false;
     }
-    if (!sucio) return true;
+    if (!sucio) {
+      if (desdeBoton) {
+        setError(null);
+        setAviso(PANEL_REAL.constructor.alDia);
+      }
+      return true;
+    }
     setOcupado(true);
     setError(null);
     try {
@@ -361,7 +369,7 @@ function Editor({ d }: { d: DatosConstructor }) {
         )}
         <div className="acciones">
           {real && (
-            <button type="button" className="boton boton--secundario" aria-disabled={ocupado ? true : undefined} onClick={() => void guardar()}>
+            <button type="button" className="boton boton--secundario" aria-disabled={ocupado ? true : undefined} onClick={() => void guardar(true)}>
               {PANEL_REAL.constructor.guardar}
             </button>
           )}
@@ -390,9 +398,14 @@ function Editor({ d }: { d: DatosConstructor }) {
               </p>
             )}
           </div>
-          <p role="status" className="microcopia">
-            {aviso}
-          </p>
+          <div role="status" className="pa-constructor__estado">
+            {aviso && (
+              <p className="aviso">
+                <Icono nombre="check" tamaño={20} className="aviso-icono" />
+                <span>{aviso}</span>
+              </p>
+            )}
+          </div>
         </>
       )}
 
@@ -584,7 +597,7 @@ function Editor({ d }: { d: DatosConstructor }) {
         </div>
       )}
 
-      <Publicar abierta={publicar} onCerrar={() => setPublicar(false)} d={d} metas={metas} acciones={acciones} cruces={mapa.size > 0} />
+      <Publicar abierta={publicar} onCerrar={() => setPublicar(false)} onPublicado={d.alPublicar} d={d} metas={metas} acciones={acciones} cruces={mapa.size > 0} />
     </>
   );
 }
@@ -860,7 +873,8 @@ function VistaPrevia({
 
 function Publicar({
   abierta,
-  onCerrar,
+  onCerrar: cerrar,
+  onPublicado,
   d,
   metas,
   acciones,
@@ -868,6 +882,7 @@ function Publicar({
 }: {
   abierta: boolean;
   onCerrar: () => void;
+  onPublicado?: () => void;
   d: DatosConstructor;
   metas: MetaB[];
   acciones: AccionB[];
@@ -885,6 +900,12 @@ function Publicar({
   const [base, setBase] = useState<RevisionBase | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [publicado, setPublicado] = useState(false);
+  // Tras publicar, el borrador ya no existe: al cerrar, el panel real vuelve a leer la base.
+  const onCerrar = () => {
+    cerrar();
+    if (publicado) onPublicado?.();
+  };
   const metasOk = metas.length > 0 && metas.every((m) => acciones.some((a) => a.metaId === m.id));
   const instruccionesOk = acciones.every((a) => a.instrucciones.trim().length >= LIMITES.instrucciones.min);
   const crucesBase = (base?.cruces ?? 0) > 0;
@@ -937,6 +958,7 @@ function Publicar({
           try {
             const n = await servidor.publicar({ vigencia, aceptar: compatibles, nota: nota.trim(), foco: foco.trim() });
             setHecho(PANEL_REAL.constructor.publicado(n));
+            setPublicado(true);
           } catch (x) {
             setError(textoError(x));
           } finally {

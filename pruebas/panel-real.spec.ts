@@ -481,6 +481,9 @@ test("constructor: crear el borrador, meta y acción, guardar y publicar", async
   await page.locator("#accion-instrucciones").fill("Abre tu agenda y anota tres prioridades.");
   await page.getByRole("button", { name: "Guardar borrador" }).click();
   await expect(page.getByText("Borrador guardado.")).toBeVisible();
+  // Sin cambios, «Guardar borrador» igual confirma.
+  await page.getByRole("button", { name: "Guardar borrador" }).click();
+  await expect(page.getByText("El borrador ya está guardado: no hay cambios pendientes.")).toBeVisible();
   expect(base.metas.find((m) => m.titulo === "Ordenar mi semana")).toMatchObject({ programa_id: "g3", participante_id: "p2", categoria: "proyecto", orden: 0 });
   expect(base.acciones.find((a) => a.titulo === "Planificar la semana")).toMatchObject({ programa_id: "g3", dias: [1], duracion_min: 10, semana_desde: 1, semanas: 1 });
   await sinViolaciones(page);
@@ -498,6 +501,10 @@ test("constructor: crear el borrador, meta y acción, guardar y publicar", async
     p_nota_cambios: null,
     p_foco_inicial: "Empieza por lo más importante.",
   });
+  // Al cerrar, el editor ya no queda sobre un programa publicado: se vuelve a leer la base.
+  await hoja.getByRole("button", { name: "Cerrar" }).click();
+  await expect(page.getByText(/La versión 1 está publicada y la persona ya la ve\./)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Crear el borrador" })).toBeVisible();
 });
 
 test("constructor: una acción incompleta se ve, se abre al guardar y dice qué le falta", async ({ page }, info) => {

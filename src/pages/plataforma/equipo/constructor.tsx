@@ -5,7 +5,8 @@
 // navegador); la base solo deja escribir mientras el programa es borrador.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CategoriaId } from "../../../data/rumbo";
-import { datos } from "../../../lib/supabase";
+import { datos, ErrorBase } from "../../../lib/supabase";
+import { Icono } from "../../../components/app";
 import Carga from "../../vista-previa/mi-espacio/Carga";
 import { Cabeza, conId, usePanel } from "../../vista-previa/panel/comun";
 import { PantallaConstructor, type AccionB, type MetaB, type ProgramaLectura, type ServidorConstructor } from "../../vista-previa/panel/Constructor";
@@ -107,7 +108,13 @@ function ContenidoConstructor({ p, c }: { p: FilaParticipantePanel; c: FilaCiclo
   const borradorId = leido?.borrador?.id ?? null;
   const servidor = useMemo<ServidorConstructor | undefined>(() => {
     if (!borradorId) return undefined;
-    return {
+    // Si la base dice que el programa ya no es borrador (se publicó aquí o en otra pestaña),
+    // se vuelve a leer: la pantalla pasa a «Crear el borrador» con la versión publicada.
+    const siYaNoEsBorrador = (e: unknown): never => {
+      if (e instanceof ErrorBase && e.codigo === "no_es_borrador") void leer();
+      throw e;
+    };
+    const s: ServidorConstructor = {
       guardar: async (metas, acciones) => {
         const g = guardados.current;
         const accionesQuitadas = [...g.acciones].filter((x) => !acciones.some((a) => a.id === x));
@@ -167,11 +174,16 @@ function ContenidoConstructor({ p, c }: { p: FilaParticipantePanel; c: FilaCiclo
             p_foco_inicial: foco || null,
           }),
         ) as number;
-        await recargar();
+        await recargar().catch(() => undefined); // publicado igual: no se reintenta por esto
         return n;
       },
     };
-  }, [borradorId, sb, p.id, recargar]);
+    return {
+      guardar: (m, a) => s.guardar(m, a).catch(siYaNoEsBorrador),
+      revisar: () => s.revisar(),
+      publicar: (x) => s.publicar(x).catch(siYaNoEsBorrador),
+    };
+  }, [borradorId, sb, p.id, recargar, leer]);
 
   if (error) return <Carga estado="error" alReintentar={() => void leer()} />;
   if (!leido) return <Carga estado="cargando" />;
@@ -181,6 +193,12 @@ function ContenidoConstructor({ p, c }: { p: FilaParticipantePanel; c: FilaCiclo
     return (
       <div className="pa-pantalla">
         <Cabeza ojo={C.ojo} titulo={C.titulo(nombre)} bajada={PANEL_REAL.constructor.crearAyuda} />
+        {leido.publicada && (
+          <p className="aviso">
+            <Icono nombre="check" tamaño={20} className="aviso-icono" />
+            <span>{PANEL_REAL.constructor.yaPublicado(leido.publicada.version)}</span>
+          </p>
+        )}
         <Alerta texto={errorCrear} />
         <div className="acciones">
           <button
@@ -216,6 +234,7 @@ function ContenidoConstructor({ p, c }: { p: FilaParticipantePanel; c: FilaCiclo
       acciones={leido.acciones.map(aAccionB)}
       semanaInicial={Math.min(semanaDelCiclo(c, hoy) ?? 1, c.semanas)}
       servidor={servidor}
+      alPublicar={() => void leer()}
     />
   );
 }
