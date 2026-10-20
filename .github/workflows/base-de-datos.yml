@@ -66,7 +66,9 @@ jobs:
           PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
         run: |
           set -euo pipefail
-          supabase db diff --db-url "$PGURL" -s public,privado --output-format json > diff.json
+          supabase --version
+          supabase db diff --db-url "$PGURL" -s public,privado --output-format json > diff.json 2> diff.err \
+            || { cat diff.json diff.err; echo "::error::supabase db diff no pudo ejecutarse"; exit 1; }
           jq -r '"motor: " + .engine' diff.json
           if [ -n "$(jq -r '.diff' diff.json | tr -d '[:space:]')" ]; then
             jq -r '.diff' diff.json; echo "::error::supabase db diff encontró diferencias"; exit 1
