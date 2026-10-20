@@ -3,7 +3,7 @@
 // por día) · panel derecho con el formulario de la acción. En el teléfono muestra «El constructor
 // se usa en un computador…» y el programa publicado.
 // - Revisión de carga y solapamientos en vivo: la suma por día es informativa y nunca bloquea; un
-//   solapamiento marca ambas acciones y bloquea publicar salvo «Sí, son compatibles».
+//   solapamiento marca ambas acciones y se avisa al publicar, sin bloquear (se publica aceptándolo).
 // - «Vista previa» punteada con las filas de Mi espacio; «Publicar» abre la lista de comprobación.
 // Vista previa: todo en memoria, no se guarda ni se publica nada. El borrador es la v2 del
 // programa de Camila (ejemplo-app.ts) con dos cambios de ejemplo: «Escribir 3 ideas» pasa del
@@ -15,7 +15,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Etiqueta from "../../../components/Etiqueta";
 import { ChipMeta, FilaAccion, Hoja, Icono, LeyendaMetas, Segmentado } from "../../../components/app";
-import { Casilla, CampoArea, CampoSelect, CampoTexto, GrupoOpciones, Opcion } from "../../../components/form";
+import { CampoArea, CampoSelect, CampoTexto, GrupoOpciones, Opcion } from "../../../components/form";
 import { LIMITES } from "../../../data/formularios";
 import { HOY, ciclo, metas as metasPublicadas, programa } from "../../../data/ejemplo-app";
 import { categorias, type CategoriaId } from "../../../data/rumbo";
@@ -278,7 +278,9 @@ function Editor({ d }: { d: DatosConstructor }) {
     const id = idNuevo(real, "n", acciones.length + 1);
     setAcciones((l) => [
       ...l,
-      { id, metaId: metaSel, titulo: "", hora: null, duracion: 10, dias: [], desde: semana, durante: 1, instrucciones: "", versionCorta: "", conFoto: false },
+      // Por defecto la acción se repite hasta el fin del ciclo (máx. 4 semanas): así no
+      // «desaparece» al pasar a la semana siguiente.
+      { id, metaId: metaSel, titulo: "", hora: null, duracion: 10, dias: [], desde: semana, durante: Math.min(LIMITES.semanasRutina.max, d.semanas - semana + 1), instrucciones: "", versionCorta: "", conFoto: false },
     ]);
     setSel(id);
   };
@@ -895,7 +897,6 @@ function Publicar({
   const [vigencia, setVigencia] = useState<Iso>(manana);
   const [nota, setNota] = useState("");
   const [foco, setFoco] = useState("");
-  const [compatibles, setCompatibles] = useState(false);
   const [hecho, setHecho] = useState<string | null>(null);
   const [base, setBase] = useState<RevisionBase | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -909,9 +910,10 @@ function Publicar({
   const metasOk = metas.length > 0 && metas.every((m) => acciones.some((a) => a.metaId === m.id));
   const instruccionesOk = acciones.every((a) => a.instrucciones.trim().length >= LIMITES.instrucciones.min);
   const crucesBase = (base?.cruces ?? 0) > 0;
-  const crucesOk = (!hayCruces && !crucesBase) || compatibles;
+  // Varias acciones a la misma hora se permiten: se avisa y se publican aceptando el cruce.
+  const hayAlgunCruce = hayCruces || crucesBase;
   const vigenciaOk = vigencia >= minimo;
-  const listo = metasOk && instruccionesOk && crucesOk && vigenciaOk && !hecho;
+  const listo = metasOk && instruccionesOk && vigenciaOk && !hecho;
   const v = d.version;
 
   // Al abrir (panel real): la base revisa solapamientos y carga del borrador ya guardado.
@@ -956,7 +958,7 @@ function Publicar({
           setOcupado(true);
           setError(null);
           try {
-            const n = await servidor.publicar({ vigencia, aceptar: compatibles, nota: nota.trim(), foco: foco.trim() });
+            const n = await servidor.publicar({ vigencia, aceptar: hayAlgunCruce, nota: nota.trim(), foco: foco.trim() });
             setHecho(PANEL_REAL.constructor.publicado(n));
             setPublicado(true);
           } catch (x) {
@@ -970,7 +972,6 @@ function Publicar({
           <Item ok>{`${C.publicar.inicio}: ${fechaLarga(d.inicio)}`}</Item>
           <Item ok={metasOk}>{C.publicar.metas}</Item>
           <Item ok={instruccionesOk}>{C.publicar.instrucciones}</Item>
-          <Item ok={crucesOk}>{C.publicar.cruces}</Item>
         </ul>
         {base && (
           <div className="pa-pila pa-pila--chica">
@@ -978,10 +979,11 @@ function Publicar({
             {base.carga && <p className="microcopia">{PANEL_REAL.constructor.cargaBase(base.carga.minutos, fechaLarga(base.carga.fecha))}</p>}
           </div>
         )}
-        {(hayCruces || crucesBase) && (
-          <Casilla id="pub-compatibles" checked={compatibles} onChange={(e) => setCompatibles(e.target.checked)}>
-            {C.cruces.compatibles}
-          </Casilla>
+        {hayAlgunCruce && (
+          <p className="aviso">
+            <Icono nombre="info" tamaño={20} className="aviso-icono" />
+            <span>{C.cruces.permitidos}</span>
+          </p>
         )}
         <CampoTexto
           id="pub-vigencia"

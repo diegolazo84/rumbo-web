@@ -359,6 +359,7 @@ export const CONSTRUCTOR = {
   cruces: {
     aviso: (n: number) => `${n} solapamiento${n === 1 ? "" : "s"}`, // (vista previa)
     compatibles: "Sí, son compatibles",
+    permitidos: "Hay acciones a la misma hora. Se publican igual: revisa que la persona pueda hacerlas juntas o cambia una de hora.",
   },
   vistaPrevia: "Vista previa",
   cerrarVistaPrevia: "Volver al constructor", // (vista previa)

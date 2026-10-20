@@ -485,7 +485,7 @@ test("constructor: crear el borrador, meta y acción, guardar y publicar", async
   await page.getByRole("button", { name: "Guardar borrador" }).click();
   await expect(page.getByText("El borrador ya está guardado: no hay cambios pendientes.")).toBeVisible();
   expect(base.metas.find((m) => m.titulo === "Ordenar mi semana")).toMatchObject({ programa_id: "g3", participante_id: "p2", categoria: "proyecto", orden: 0 });
-  expect(base.acciones.find((a) => a.titulo === "Planificar la semana")).toMatchObject({ programa_id: "g3", dias: [1], duracion_min: 10, semana_desde: 1, semanas: 1 });
+  expect(base.acciones.find((a) => a.titulo === "Planificar la semana")).toMatchObject({ programa_id: "g3", dias: [1], duracion_min: 10, semana_desde: 1, semanas: 4 });
   await sinViolaciones(page);
 
   await page.getByRole("button", { name: "Publicar" }).click();
@@ -536,6 +536,40 @@ test("constructor: una acción incompleta se ve, se abre al guardar y dice qué 
   await expect(sinDia).toHaveCount(0);
   await page.getByRole("button", { name: "Guardar borrador" }).click();
   await expect(page.getByText("Borrador guardado.")).toBeVisible();
+});
+
+test("constructor: acciones de dos metas a la misma hora, en todas las semanas, y se publica avisando el cruce", async ({ page }, info) => {
+  test.skip(info.project.name !== "escritorio", "el constructor es de escritorio (5.6)");
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/constructor/?id=p2");
+  await hidratar(page);
+  await page.getByRole("button", { name: "Crear el borrador" }).click();
+  for (const [meta, accion] of [["Meta A", "Acción A"], ["Meta B", "Acción B"]]) {
+    await page.getByRole("button", { name: "Nueva meta" }).click();
+    await page.locator("#meta-titulo").fill(meta);
+    await page.getByRole("button", { name: "Nueva acción" }).click();
+    await page.locator("#accion-titulo").fill(accion);
+    await page.getByRole("radio", { name: "Con horario" }).check();
+    await page.locator('input[name="accion-dias"][value="1"]').check();
+    await page.locator("#accion-instrucciones").fill("Hacerlo.");
+  }
+  // Las dos siguen en la semana 1 y también en la 3 (duran hasta el fin del ciclo).
+  const semana = page.locator(".pa-constructor__semana");
+  for (const n of ["Semana 1", "Semana 3"]) {
+    await page.getByRole("radio", { name: n }).check();
+    await expect(semana.locator(".pa-bloque__titulo", { hasText: "Acción A" })).toBeVisible();
+    await expect(semana.locator(".pa-bloque__titulo", { hasText: "Acción B" })).toBeVisible();
+  }
+  await page.getByRole("button", { name: "Publicar" }).click();
+  const hoja = page.getByRole("dialog");
+  await expect(hoja.getByText(/Hay acciones a la misma hora\. Se publican igual/)).toBeVisible();
+  await hoja.locator("#pub-foco").fill("Empieza por lo más importante.");
+  await hoja.getByRole("button", { name: "Publicar" }).click();
+  await expect(hoja.getByText(/Programa publicado/)).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "publicar_programa")!.cuerpo).toMatchObject({ p_aceptar_solapamientos: true });
+  expect(base.acciones.filter((a) => a.programa_id === "g3").map((a) => a.titulo).sort()).toEqual(["Acción A", "Acción B"]);
 });
 
 test("revisión semanal: abrirla la inicia y publicar guarda los tres campos", async ({ page }) => {
