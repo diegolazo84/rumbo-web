@@ -14,8 +14,11 @@ archivos numerados con fecha (`AAAAMMDDhhmmss_nombre.sql`) que se aplican en ese
 
 ## La línea base
 
-Los 11 archivos de la línea base son los mismos que se pegaron entre el 8 y el 12 de octubre de
-2026, sin cambiar una línea, en el orden en que se pegaron:
+Los 11 primeros archivos son los mismos que se pegaron entre el 8 y el 12 de octubre de 2026,
+sin cambiar una línea, en el orden en que se pegaron. El número 12 recoge lo que la comparación
+del 20 de octubre encontró en producción y no estaba en el repositorio: RLS activado por Supabase
+en `privado.correos_equipo`, `privado.limites` y `privado.sales`, y `privado.avisar` sin un
+comentario. En producción ya está así: **no se pega**, solo se registra.
 
 | Versión | Archivo | Antes se llamaba |
 |---|---|---|
@@ -30,6 +33,7 @@ Los 11 archivos de la línea base son los mismos que se pegaron entre el 8 y el 
 | 20261008000008 | `20261008000008_feriados.sql` | `feriados-2026-2027.sql` |
 | 20261008000009 | `20261008000009_etapa3.sql` | `07-etapa3.sql` |
 | 20261012000000 | `20261012000000_avisos_ntfy.sql` | `08-avisos-ntfy.sql` |
+| 20261020000000 | `20261020000000_alinear_produccion.sql` | (nuevo, ver abajo) |
 
 Fuera de `migrations/` quedan las herramientas que no cambian la estructura:
 `verificacion.sql`, `historial-migraciones.sql`, `restaurar-antes.sql` y `restaurar-despues.sql`.
@@ -103,7 +107,7 @@ Guarda la respuesta (captura o texto): es el estado «antes» para revertir el P
 Solo cuando el Paso A dijo «sin historial» o «tabla vacía», el Paso B salió sin diferencias (o
 solo la esperada) y Diego lo autorizó por escrito.
 
-**Qué registros se crean.** 11 filas en `supabase_migrations.schema_migrations`, una por versión
+**Qué registros se crean.** 12 filas en `supabase_migrations.schema_migrations`, una por versión
 de la tabla de arriba, con `version`, `name` y `statements` (el texto del archivo). Si el esquema
 o la tabla no existían, la herramienta los crea. **No se ejecuta el contenido de los archivos**: no
 cambia ninguna tabla, función, permiso ni dato de Rumbo.
@@ -116,22 +120,22 @@ de este paso, y la respuesta guardada del Paso A.
 **Registro** (con `DBURL` cargada como en el Paso B, dentro de la carpeta del repositorio):
 
 ```
-supabase migration repair --status applied 20261008000000 20261008000001 20261008000002 20261008000003 20261008000004 20261008000005 20261008000006 20261008000007 20261008000008 20261008000009 20261012000000 --db-url "$DBURL"
+supabase migration repair --status applied 20261008000000 20261008000001 20261008000002 20261008000003 20261008000004 20261008000005 20261008000006 20261008000007 20261008000008 20261008000009 20261012000000 20261020000000 --db-url "$DBURL"
 supabase migration list --db-url "$DBURL"
 unset DBURL
 ```
 
-`migration list` debe mostrar las 11 versiones con la misma fecha en las columnas Local y Remote.
+`migration list` debe mostrar las 12 versiones con la misma fecha en las columnas Local y Remote.
 Luego, en el SQL Editor, `supabase/historial-migraciones.sql` debe decir
-`historial: 20261008000000 esquema, …, 20261012000000 avisos_ntfy`.
+`historial: 20261008000000 esquema, …, 20261020000000 alinear_produccion`.
 
 **Cómo revertir solo esos registros.**
 
 ```
-supabase migration repair --status reverted 20261008000000 20261008000001 20261008000002 20261008000003 20261008000004 20261008000005 20261008000006 20261008000007 20261008000008 20261008000009 20261012000000 --db-url "$DBURL"
+supabase migration repair --status reverted 20261008000000 20261008000001 20261008000002 20261008000003 20261008000004 20261008000005 20261008000006 20261008000007 20261008000008 20261008000009 20261012000000 20261020000000 --db-url "$DBURL"
 ```
 
-Borra únicamente esas 11 filas del historial (probado en la base local: la tabla queda vacía y
+Borra únicamente esas 12 filas del historial (probado en la base local: la tabla queda vacía y
 nada más cambia). Si el Paso A había dicho «no existe el esquema supabase_migrations», se puede
 dejar el esquema vacío (no afecta a nada) o quitarlo en el SQL Editor con
 `drop schema supabase_migrations cascade;`, solo en ese caso.
