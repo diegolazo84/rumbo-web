@@ -311,3 +311,7 @@
 
 /* Leyenda oculta del control segmentado: form.css le da float e inline-size: 100 % a toda
    leyenda de .segmentado, y eso pisa .sr-only (desborde horizontal). Se corrige solo aquí. */
+
+/* Constructor: confirmación de guardado, visible junto a la barra. */
+.pa-constructor__estado:empty { display: none; }
+.pa-constructor__estado .aviso { margin-block-start: var(--e-3); }
