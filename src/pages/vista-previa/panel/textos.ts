@@ -606,7 +606,10 @@ export const PANEL_REAL = {
     cargaBase: (min: number, fecha: string) => `Según la base, el día más cargado es el ${fecha}, con ${min} min.`,
     crucesBase: (n: number) => (n ? `La base encuentra ${n} solapamiento${n === 1 ? "" : "s"}.` : "La base no encuentra solapamientos."),
     erroresMeta: "Cada meta necesita un título de 2 a 80 caracteres.",
-    erroresAcciones: "Revisa las acciones: falta título, días, duración o instrucciones.",
+    erroresAccion: (titulo: string, semana: number, faltan: string[]) =>
+      `Falta completar la acción ${titulo ? `«${titulo}»` : "sin título"} (semana ${semana}): ${faltan.join(", ")}. Te la dejamos abierta.`,
+    campos: { titulo: "título", dias: "días", duracion: "duración de 5 a 240 minutos", instrucciones: "instrucciones" },
+    sinDias: "Sin día asignado",
   },
   revision: {
     publicada: "Revisión publicada. La persona la ve en Mi espacio.",

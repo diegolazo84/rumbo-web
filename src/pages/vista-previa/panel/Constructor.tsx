@@ -242,6 +242,7 @@ function Editor({ d }: { d: DatosConstructor }) {
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState("");
+  const [mostrarErrores, setMostrarErrores] = useState(false);
   const mapa = useMemo(() => cruces(acciones), [acciones]);
   const pares = [...mapa.values()].reduce((s, x) => s + x.size, 0) / 2;
   const accion = acciones.find((a) => a.id === sel);
@@ -305,8 +306,17 @@ function Editor({ d }: { d: DatosConstructor }) {
       setError(PANEL_REAL.constructor.erroresMeta);
       return false;
     }
-    if (!acciones.every(accionValida)) {
-      setError(PANEL_REAL.constructor.erroresAcciones);
+    // Una acción incompleta puede no verse (sin días u otra semana): se abre y se marcan sus campos.
+    const incompleta = acciones.find((a) => !accionValida(a));
+    if (incompleta) {
+      const faltan = (Object.entries(errorDe(incompleta)) as [keyof ReturnType<typeof errorDe>, string | null][])
+        .filter(([, e]) => e)
+        .map(([c]) => PANEL_REAL.constructor.campos[c]);
+      setMetaSel(incompleta.metaId);
+      setSemana(incompleta.desde);
+      setSel(incompleta.id);
+      setMostrarErrores(true);
+      setError(PANEL_REAL.constructor.erroresAccion(incompleta.titulo.trim(), incompleta.desde, faltan));
       return false;
     }
     if (!sucio) return true;
@@ -315,6 +325,7 @@ function Editor({ d }: { d: DatosConstructor }) {
     try {
       await d.servidor.guardar(metas, acciones);
       setSucio(false);
+      setMostrarErrores(false);
       setAviso(PANEL_REAL.constructor.guardado);
       return true;
     } catch (e) {
@@ -506,6 +517,36 @@ function Editor({ d }: { d: DatosConstructor }) {
                 </div>
               );
             })}
+            {delaSemana.some((a) => !a.dias.length) && (
+              <div className="pa-dia" role="group" aria-labelledby="dia-sin">
+                <div className="pa-dia__cabeza">
+                  <h3 id="dia-sin" className="pa-dia__nombre">
+                    {PANEL_REAL.constructor.sinDias}
+                  </h3>
+                </div>
+                <ul className="pa-dia__acciones">
+                  {delaSemana
+                    .filter((a) => !a.dias.length)
+                    .map((a) => (
+                      <li key={a.id}>
+                        <button
+                          type="button"
+                          className={["pa-bloque", a.id === sel && "es-elegida"].filter(Boolean).join(" ")}
+                          data-cat={catDe(a.metaId)}
+                          aria-pressed={a.id === sel}
+                          onClick={() => setSel(a.id)}
+                        >
+                          <span className="pa-bloque__hora">{a.hora ?? C.accion.flexible}</span>
+                          <span className="pa-bloque__texto">
+                            <span className="pa-bloque__titulo">{a.titulo || C.accion.nueva}</span>
+                            <span className="microcopia">{duracionTexto(a.duracion)}</span>
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            )}
             <button type="button" className="boton boton--secundario" aria-disabled={metaSel ? undefined : true} onClick={nueva}>
               <Icono nombre="plus" tamaño={20} />
               {C.accion.nueva}
@@ -526,6 +567,7 @@ function Editor({ d }: { d: DatosConstructor }) {
                   acciones={acciones}
                   semanas={d.semanas}
                   cercano={d.cercano}
+                  mostrarErrores={mostrarErrores}
                   onCambio={cambiarAccion}
                 />
                 {real && (
@@ -626,6 +668,7 @@ function FormAccion({
   acciones,
   semanas,
   cercano,
+  mostrarErrores,
   onCambio,
 }: {
   accion: AccionB;
@@ -633,12 +676,13 @@ function FormAccion({
   acciones: AccionB[];
   semanas: number;
   cercano: boolean;
+  mostrarErrores?: boolean;
   onCambio: (c: Partial<AccionB>) => void;
 }) {
   const [tocados, setTocados] = useState<Set<string>>(new Set());
   const tocar = (c: string) => setTocados((s) => new Set(s).add(c));
   const e = errorDe(a);
-  const err = (c: keyof typeof e) => (tocados.has(c) ? e[c] : null);
+  const err = (c: keyof typeof e) => (mostrarErrores || tocados.has(c) ? e[c] : null);
   const conFotoSemana = acciones.filter((x) => x.conFoto).length;
   return (
     <form className="pa-form" noValidate onSubmit={(ev) => ev.preventDefault()}>

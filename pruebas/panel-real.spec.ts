@@ -500,6 +500,37 @@ test("constructor: crear el borrador, meta y acción, guardar y publicar", async
   });
 });
 
+test("constructor: una acción incompleta se ve, se abre al guardar y dice qué le falta", async ({ page }, info) => {
+  test.skip(info.project.name !== "escritorio", "el constructor es de escritorio (5.6)");
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/constructor/?id=p2");
+  await hidratar(page);
+  await page.getByRole("button", { name: "Crear el borrador" }).click();
+  await page.getByRole("button", { name: "Nueva meta" }).click();
+  await page.locator("#meta-titulo").fill("Ordenar mi semana");
+  await page.getByRole("button", { name: "Nueva acción" }).click();
+  await page.locator("#accion-titulo").fill("Planificar la semana");
+  await page.locator('input[name="accion-dias"][value="1"]').check();
+  await page.locator("#accion-instrucciones").fill("Abre tu agenda y anota tres prioridades.");
+  // Una segunda acción queda vacía (sin días): igual aparece en la semana.
+  await page.getByRole("button", { name: "Nueva acción" }).click();
+  const sinDia = page.getByRole("group", { name: "Sin día asignado" });
+  await expect(sinDia).toBeVisible();
+  await page.getByRole("button", { name: /Planificar la semana/ }).click();
+  await page.getByRole("button", { name: "Guardar borrador" }).click();
+  await expect(page.getByText(/Falta completar la acción sin título \(semana 1\): título, días, instrucciones\./)).toBeVisible();
+  await expect(page.locator("#accion-titulo")).toHaveValue("");
+  await expect(page.getByText("Elige al menos un día.")).toBeVisible();
+  expect(base.acciones.some((a) => a.titulo === "Planificar la semana")).toBe(false);
+  // Al quitarla, se guarda.
+  await page.getByRole("button", { name: "Eliminar acción" }).click();
+  await expect(sinDia).toHaveCount(0);
+  await page.getByRole("button", { name: "Guardar borrador" }).click();
+  await expect(page.getByText("Borrador guardado.")).toBeVisible();
+});
+
 test("revisión semanal: abrirla la inicia y publicar guarda los tres campos", async ({ page }) => {
   await preparar(page, "aal2", VERIFICADO);
   const base = baseInicial();
