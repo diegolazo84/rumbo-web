@@ -25,7 +25,7 @@ begin
       body := jsonb_build_object('from', 'Rumbo <onboarding@resend.dev>', 'to', v_destino,
                                  'subject', p_asunto, 'text', p_cuerpo));
   elsif v_ntfy is not null then
-    v_enlace := substring(p_cuerpo from '(https://\S+)'); 
+    v_enlace := substring(p_cuerpo from '(https://\S+)');
     perform net.http_post(
       url := 'https://ntfy.sh',
       headers := jsonb_build_object('Content-Type', 'application/json'),
