@@ -347,6 +347,7 @@ test("rutas anteriores: semana, progreso, calendario y ajuste redirigen a las se
     ["mi-espacio/progreso/creditos/", /\/mi-espacio\/logros\/creditos\/$/, "El detalle de tus créditos."],
     ["mi-espacio/calendario/?vista=mes", /\/mi-espacio\/plan\/\?vista=mes$/, "Mi plan"],
     ["mi-espacio/ajuste/#tus-solicitudes", /\/mi-espacio\/plan\/ajuste\/#tus-solicitudes$/, "¿Qué necesitas cambiar?"],
+    ["mi-espacio/accion/?id=o-2026-10-12", /\/mi-espacio\/plan\/accion\/\?id=o-2026-10-12$/, "Escribir 30 minutos"],
   ];
   for (const [antes, despues, h1] of casos) {
     const r = await page.goto(antes);
@@ -354,6 +355,16 @@ test("rutas anteriores: semana, progreso, calendario y ajuste redirigen a las se
     await page.waitForURL(despues);
     await expect(page.locator("h1"), antes).toHaveText(h1);
   }
+});
+
+test("descargar mis datos llama a exportar_mis_datos y baja el archivo", async ({ page }) => {
+  await conSesion(page);
+  const llamadas = await simular(page, baseInicial(), { exportar_mis_datos: () => ({ perfil: { nombre: "Ana Pérez" } }) });
+  await page.goto("mi-espacio/preferencias/");
+  await hidratar(page);
+  const [descarga] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Descargar mis datos" }).click()]);
+  expect(descarga.suggestedFilename()).toBe("mis-datos-rumbo.json");
+  expect(llamadas.some((l) => l.nombre === "exportar_mis_datos")).toBe(true);
 });
 
 // Rumbo 2.0, etapa 2: Mi acompañamiento muestra solo lo que existe en la base.
