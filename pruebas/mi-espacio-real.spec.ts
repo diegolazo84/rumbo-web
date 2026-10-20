@@ -95,7 +95,7 @@ function baseInicial({ conPrograma = true } = {}): Base {
   };
 }
 
-// Visibilidad como en 02-rls.sql: lo de p1 y nunca un borrador ni sus metas.
+// Visibilidad como en migrations/20261008000002_rls.sql: lo de p1 y nunca un borrador ni sus metas.
 function visibles(base: Base, tabla: string): Fila[] {
   const filas = base[tabla] ?? [];
   const borradores = new Set((base.programas ?? []).filter((p) => p.estado === "borrador").map((p) => p.id));

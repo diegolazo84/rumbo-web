@@ -3,7 +3,7 @@
 -- Por qué: un proyecto nuevo de Supabase da permisos a anon y authenticated sobre todo lo que
 -- se crea en public. El respaldo trae los permisos que se dieron, pero no los que se quitaron,
 -- así que sin esto lo restaurado quedaría más abierto que producción (lo detectó la primera
--- restauración de prueba, el 12 de octubre de 2026). Mismas reglas que 00-esquema.sql.
+-- restauración de prueba, el 12 de octubre de 2026). Mismas reglas que migrations/20261008000000_esquema.sql.
 
 create extension if not exists citext   with schema extensions;
 create extension if not exists pgcrypto with schema extensions;

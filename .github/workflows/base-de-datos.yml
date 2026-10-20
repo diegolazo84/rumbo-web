@@ -1,8 +1,9 @@
 name: Base de datos
 
-# Aplica supabase/*.sql sobre un Supabase local, en el mismo orden que Diego los pega,
-# y exige que verificacion.sql diga «ok» en todas las filas. Después prueba la RLS de la
-# etapa 3 con la API como la usa el navegador (pruebas/base/rls.mjs).
+# Aplica supabase/migrations/ en orden sobre un Supabase local, como Diego los pega en el SQL
+# Editor, y exige que verificacion.sql diga «ok» en todas las filas. Luego compara esa base con
+# las migraciones usando la herramienta oficial (`supabase db diff`), prueba la API y la RLS
+# (pruebas/base/rls.mjs) y, al final, comprueba que las dos revisiones detectan cambios.
 on:
   pull_request:
     paths: ["supabase/**", "pruebas/base/**", ".github/workflows/base-de-datos.yml", "package-lock.json"]
@@ -45,9 +46,9 @@ jobs:
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
         run: |
-          for f in 00-esquema 01-funciones 02-rls 03-storage 04-auth 05-avisos 06-cron semillas feriados-2026-2027 07-etapa3 08-avisos-ntfy; do
-            echo "::group::$f.sql"
-            psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "supabase/$f.sql"
+          for f in supabase/migrations/*.sql; do
+            echo "::group::$f"
+            psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$f"
             echo "::endgroup::"
           done
       - name: Verificación
@@ -56,6 +57,23 @@ jobs:
         run: |
           psql "$PGURL" -v ON_ERROR_STOP=1 -At -F ' | ' -f supabase/verificacion.sql | tee verificacion.txt
           if grep -v '| ok$' verificacion.txt; then echo "::error::verificacion.sql tiene filas que no dicen ok"; exit 1; fi
+      # Etapa 1: la herramienta oficial arma una base aparte desde supabase/migrations/ y la compara
+      # con la base de arriba (pegada como en producción). Debe salir vacía: si no, el repositorio y
+      # la forma de aplicar no coinciden. Es el mismo comando que Diego corre contra producción
+      # (docs/migraciones.md). Solo public y privado: storage, auth y cron los cubre verificacion.sql.
+      - name: Comparar con supabase db diff
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          set -euo pipefail
+          supabase --version
+          supabase db diff --db-url "$PGURL" -s public,privado --output-format json > diff.json 2> diff.err \
+            || { cat diff.json diff.err; echo "::error::supabase db diff no pudo ejecutarse"; exit 1; }
+          jq -r '"motor: " + .engine' diff.json
+          if [ -n "$(jq -r '.diff' diff.json | tr -d '[:space:]')" ]; then
+            jq -r '.diff' diff.json; echo "::error::supabase db diff encontró diferencias"; exit 1
+          fi
+          echo "sin diferencias"
       # Humo de la API tal como la usa el navegador (plataforma 6.6): PostgREST con la clave anon.
       # Envía una solicitud válida, la lee con el mismo token y comprueba que la tabla no se lee
       # directo. La clave sale de `supabase status`; nunca se usa una clave de servicio.
@@ -133,3 +151,30 @@ jobs:
           export API_URL="${API_URL:-http://127.0.0.1:54321}"
           export ANON_KEY="${ANON_KEY:-${PUBLISHABLE_KEY:-}}"
           node pruebas/base/rls.mjs
+
+      # Etapa 1: las dos revisiones deben detectar cambios hechos a mano. Va al final porque altera
+      # la base local de prueba (nunca producción).
+      - name: Las revisiones detectan cambios
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          set -euo pipefail
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q <<'SQL'
+          grant select on public.solicitudes to anon;
+          create index prueba_ci on public.areas (nombre);
+          create or replace function privado.tareas_por_hora() returns void
+            language plpgsql security definer set search_path = '' as $$ begin null; end $$;
+          select cron.alter_job((select jobid from cron.job where jobname = 'rumbo-por-hora'), schedule := '6 * * * *');
+          alter policy evid_ver on storage.objects using (true);
+          insert into storage.buckets (id, name) values ('prueba-ci', 'prueba-ci');
+          drop trigger al_crear_usuario on auth.users;
+          SQL
+          supabase db diff --db-url "$PGURL" -s public,privado --output-format json | jq -r '.diff' > diff.sql
+          for buscado in 'GRANT SELECT ON TABLE "public"."solicitudes" TO "anon"' 'prueba_ci' 'privado.tareas_por_hora'; do
+            grep -qF "$buscado" diff.sql || { cat diff.sql; echo "::error::db diff no detectó: $buscado"; exit 1; }
+          done
+          psql "$PGURL" -At -F ' | ' -f supabase/verificacion.sql > verificacion.txt
+          FALLAS=$(grep -c '^etapa 1: .* | FALLA' verificacion.txt || true)
+          cat verificacion.txt
+          if [ "$FALLAS" != 4 ]; then echo "::error::verificacion.sql detectó $FALLAS de 4 cambios"; exit 1; fi
+          echo "las dos revisiones detectaron todos los cambios"

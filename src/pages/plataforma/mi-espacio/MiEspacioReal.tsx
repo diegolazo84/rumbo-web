@@ -75,7 +75,7 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
   const progs = datos(programas) as Filas["programas"];
   const ids = progs.map((p) => p.id);
   const metas = ids.length ? (datos(await sb.from("metas").select(COLUMNAS.meta).in("programa_id", ids)) as Filas["metas"]) : [];
-  // mi_contexto (07-etapa3.sql): si todavía no está, se calcula aquí con las mismas reglas.
+  // mi_contexto (migrations/20261008000009_etapa3.sql): si todavía no está, se calcula aquí con las mismas reglas.
   const c = contexto.error ? null : (contexto.data as { hoy?: Iso; dias_registro_tardio?: number; semanas_en_revision?: number[] } | null);
   const ctx: Contexto = {
     hoy: c?.hoy ?? hoyEn(participante.zona_horaria),

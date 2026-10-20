@@ -4,8 +4,8 @@
 // - la persona ve exactamente su programa publicado; nunca el borrador ni sus metas ni las acciones;
 // - otra persona no ve nada de ella ni puede marcar sus acciones;
 // - el equipo sin segundo factor (aal1) no lee solicitudes ni administra; con TOTP (aal2) sí;
-// - anon no lee tablas ni ejecuta las funciones de 07-etapa3.sql;
-// - una ficha creada para una cuenta que ya existía queda vinculada (07-etapa3.sql).
+// - anon no lee tablas ni ejecuta las funciones de migrations/20261008000009_etapa3.sql;
+// - una ficha creada para una cuenta que ya existía queda vinculada (migrations/20261008000009_etapa3.sql).
 // Las cuentas de prueba usan contraseña solo aquí (base local y efímera; la web no las usa).
 // Uso: API_URL=http://127.0.0.1:54321 ANON_KEY=… PGURL=postgresql://… node pruebas/base/rls.mjs
 import assert from "node:assert/strict";

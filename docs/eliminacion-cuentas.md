@@ -9,7 +9,7 @@ La eliminación desde el panel tiene 3 pasos (especificación 6.11):
 
 1. Borrar las fotos del participante en el bucket `evidencias` (hoy no hay fotos: la subida
    está apagada).
-2. `public.eliminar_participante(id)` (`supabase/01-funciones.sql`): anonimiza la solicitud
+2. `public.eliminar_participante(id)` (`supabase/migrations/20261008000001_funciones.sql`): anonimiza la solicitud
    (nombre, correo, meta, acuerdo, etc. quedan vacíos y el estado pasa a `retirada`) y borra la
    fila de `participantes`; en cascada se borran ciclos, programas, metas, acciones, registros,
    progreso, registros semanales, revisiones y solicitudes de ajuste. Deja una fila en

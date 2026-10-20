@@ -20,7 +20,7 @@ mensajes, peticiones de datos ni solicitudes de reordenar la semana.
 ## Pasos (los haces tú, cuando decidas)
 
 1. **Instala la app ntfy** en tu teléfono (App Store o Google Play; es gratis).
-2. **Pega `supabase/08-avisos-ntfy.sql`** en Supabase → SQL Editor → New query → Run. Mejora el
+2. **Pega `supabase/migrations/20261012000000_avisos_ntfy.sql`** en Supabase → SQL Editor → New query → Run. Mejora el
    formato del aviso y hace que al tocarlo se abra el panel. No cambia datos.
 3. **Crea el tema secreto en Vault**, en una consulta nueva:
 
