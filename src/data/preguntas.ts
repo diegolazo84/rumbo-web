@@ -171,7 +171,7 @@ const fabricas: Fabrica[] = [
     grupo: "cuenta",
     pregunta: "¿Qué hacen con lo que les cuento?",
     respuesta: [
-      "Lo usamos solo para revisar tu solicitud y acompañarte. No vendemos tus datos ni los usamos para publicidad, y no necesitas contarnos diagnósticos. Tu calendario y tus fotos son privados, y la comunidad solo muestra tu alias. Puedes pedir ver, corregir o eliminar tus datos. Los detalles están en ",
+      "Lo usamos solo para revisar tu solicitud y acompañarte. No vendemos tus datos ni los usamos para publicidad, y no necesitas contarnos diagnósticos. Tu calendario y tu progreso son privados. Puedes pedir ver, corregir o eliminar tus datos. Los detalles están en ",
       { texto: "Privacidad", href: "/privacidad/", tipo: "interno" },
       ".",
     ],

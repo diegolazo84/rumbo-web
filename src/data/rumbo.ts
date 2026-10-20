@@ -243,9 +243,14 @@ export const enMiEspacio = [
   // «Registro semanal» es lo que escribe la persona; «revisión semanal», lo que hace su coach (docs/coherencia.md).
   "Registro semanal escrito: lo que anotas, la respuesta de tu coach y el siguiente foco",
   "Solicitud de ajustes cuando tu semana cambia",
-  "Acciones con foto privada, en Acompañamiento cercano y si se acuerdan",
-  "Comunidad opcional: foro moderado y ranking por alias",
 ];
+
+// «Lo que viene en Rumbo» (portada): nada de esto existe todavía. Sin fechas ni botones de
+// contratación; cada ítem pasa a enMiEspacio solo cuando funcione y esté probado.
+export const loQueViene = {
+  lanzamiento: ["Comunidad con foro moderado", "Ranking semanal voluntario", "Fotografías opcionales y privadas", "Asistente con inteligencia artificial"],
+  despues: ["Marketplace de especialistas", "Premios y recompensas", "Inteligencia artificial avanzada", "Aplicación móvil"],
+};
 export const seAcuerdaContigo = [
   "El día de tu revisión semanal, de lunes a viernes, y, en Acompañamiento cercano, la hora de tu videollamada (en hora de Chile)",
   "La duración del programa según tu meta: 4, 8 o 12 semanas. En el piloto empezamos con un ciclo de 4 semanas; continuar se acuerda al cerrarlo.",
@@ -488,13 +493,11 @@ export const reglasCreditos = {
   bonoRacha7: 4, // 7 días programados completos seguidos: 2× el bono
 };
 
-// Reglas en palabras (portada, «Progreso y comunidad»). Los números salen de reglasCreditos.
+// Reglas en palabras (portada, «Progreso»). Los números salen de reglasCreditos.
 export const reglasCreditosTextos = (r = reglasCreditos) => [
   t("+{porAccion} crédito por cada acción y +{bonoDiaCompleto} extra cuando completas todas las acciones programadas del día.", r),
   t("Con {diasRachaMedia} días completos seguidos, ese bono sube a +{bonoRacha3}; con {diasRachaLarga}, a +{bonoRacha7}. Si la racha se corta, vuelve a +{bonoDiaCompleto}.", r),
   "Un día sin acciones programadas no corta la racha.",
-  "Las acciones con foto son privadas y suman solo cuando quien te acompaña las aprueba.",
-  "El foro y el ranking son opcionales y solo muestran tu alias. Las publicaciones se revisan antes de mostrarse, y puedes borrar lo tuyo o retirarte cuando quieras.",
 ];
 
 export const niveles = [

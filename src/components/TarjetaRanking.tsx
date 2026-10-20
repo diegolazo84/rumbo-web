@@ -1,13 +1,17 @@
 // Tarjeta de ranking de ejemplo y barra de nivel (3.14). Nombres ficticios, rotulados.
+// El ranking todavía no existe: va rotulado «Todavía no disponible» y compara el cumplimiento
+// de la propia semana (porcentaje), no créditos acumulados. Los niveles sí existen hoy.
 import { estados, niveles, nivelPara } from "../data/rumbo";
 import { Acordeon } from "./Bloques";
-import Etiqueta from "./Etiqueta";
+import Etiqueta, { EtiquetaEstado } from "./Etiqueta";
 
 // Créditos de «tú» en el ejemplo.
 const CREDITOS_EJEMPLO = 18;
+// Porcentaje de las acciones programadas de la semana que se completaron.
+const CUMPLIMIENTO_TU = 75;
 const FILAS = [
-  { alias: "luna_andina", creditos: 42 },
-  { alias: "pasito_a_pasito", creditos: 37 },
+  { alias: "luna_andina", cumplimiento: 90 },
+  { alias: "pasito_a_pasito", cumplimiento: 80 },
 ];
 
 export default function TarjetaRanking() {
@@ -19,21 +23,24 @@ export default function TarjetaRanking() {
 
   return (
     <div className="tarjeta tarjeta--producto ranking-tarjeta">
-      <Etiqueta variante={estados.ejemploIlustrativo.variante}>{estados.ejemploIlustrativo.texto}</Etiqueta>
+      <div className="fila-futura-etiquetas">
+        <EtiquetaEstado estado="noDisponible" />
+        <Etiqueta variante={estados.ejemploIlustrativo.variante}>{estados.ejemploIlustrativo.texto}</Etiqueta>
+      </div>
       <div>
-        <h3>Ranking de la comunidad</h3>
-        <p className="ranking-bajada">Opcional. Solo se ven alias y créditos.</p>
+        <h3>Ranking semanal</h3>
+        <p className="ranking-bajada">Voluntario. Compara cuánto cumpliste de tu semana. Solo se ven alias.</p>
       </div>
       <ol className="ranking">
         {FILAS.map((f) => (
           <li key={f.alias}>
             <span>{f.alias}</span>
-            <span className="ranking-creditos">{f.creditos} créditos</span>
+            <span className="ranking-creditos">{f.cumplimiento} %</span>
           </li>
         ))}
         <li className="ranking-tu">
           <span>tú</span>
-          <span className="ranking-creditos">{CREDITOS_EJEMPLO} créditos</span>
+          <span className="ranking-creditos">{CUMPLIMIENTO_TU} %</span>
         </li>
       </ol>
       <div className="ranking-nivel">

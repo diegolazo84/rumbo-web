@@ -32,8 +32,12 @@ import {
 // Momento A (plataforma 7.2): con operacion.formularioPropio pasa a 1.1 y §3 describe el
 // formulario propio y el enlace privado. La misma versión debe quedar en
 // ajustes_operacion.version_condiciones (es la que se registra al aceptar el acuerdo).
+// Versión 1.2 (Etapa 0 de Rumbo 2.0): con Mi espacio propio (B), fotos, comunidad y ranking
+// quedan como «todavía no disponibles». ajustes_operacion.version_condiciones NO se cambia
+// sola: Diego la pasa a '1.2' el día que se publica (docs/revision-legal.md).
 const A = op.formularioPropio;
-const VERSION_CONDICIONES = { numero: A ? "1.1" : "1.0", fecha: VERSION_PUBLICADA.texto };
+const B = A && op.miEspacioPropio;
+const VERSION_CONDICIONES = { numero: B ? "1.2" : A ? "1.1" : "1.0", fecha: VERSION_PUBLICADA.texto };
 
 const ACEPTACION =
   "La aceptación depende de que el piloto pueda ayudarte con tu meta y de nuestra capacidad en esta etapa.";
@@ -186,18 +190,14 @@ const secciones: Paso[] = [
         </p>
         <p>
           {t(
-            "Créditos: +{porAccion} por acción completada y +{bonoDiaCompleto} por completar todas las acciones programadas de un día. Con {diasRachaMedia} días completos seguidos ese bono sube a +{bonoRacha3}, y con {diasRachaLarga}, a +{bonoRacha7}. Un día sin acciones programadas no corta la racha. Una foto en revisión no suma hasta que se aprueba. Los créditos no son dinero, no se canjean y no evalúan a la persona.",
+            "Créditos: +{porAccion} por acción completada y +{bonoDiaCompleto} por completar todas las acciones programadas de un día. Con {diasRachaMedia} días completos seguidos ese bono sube a +{bonoRacha3}, y con {diasRachaLarga}, a +{bonoRacha7}. Un día sin acciones programadas no corta la racha. Los créditos no son dinero, no se canjean y no evalúan a la persona.",
             reglasCreditos,
           )}
         </p>
         <p>
-          Fotos de acciones (solo en Acompañamiento cercano y si las acordamos): son privadas; se aceptan JPG, PNG o
-          WebP de hasta 4 MB. Las revisamos para aprobarlas o rechazarlas con una nota. No pedimos fotos de tu cuerpo,
-          fotos íntimas, documentos ni fotos de otras personas.
-        </p>
-        <p>
-          Comunidad: el foro y el ranking son opcionales y solo muestran tu alias. Las publicaciones, de 10 a 400
-          caracteres y hasta 3 al día, se revisan antes de mostrarse. Puedes borrar lo tuyo o retirarte cuando quieras.
+          Fotografías de acciones, comunidad (foro moderado) y ranking semanal: todavía no están disponibles. Cuando
+          existan serán opcionales; las fotografías serán privadas y el ranking, voluntario y basado en el cumplimiento de
+          tu propia semana. Antes de abrirlos publicaremos sus reglas en estas condiciones.
         </p>
       </>
     ),

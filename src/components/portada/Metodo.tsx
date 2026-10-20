@@ -54,7 +54,7 @@ const esperar: { icono: NombreIcono; titulo: string; texto: string }[] = [
     icono: "lock",
     titulo: "Lo tuyo es privado.",
     texto:
-      "Tu calendario y tus fotos solo los ves tú y quien te acompaña en Rumbo. La comunidad es opcional y solo muestra tu alias.",
+      "Tu calendario y tu progreso solo los ves tú y quien te acompaña en Rumbo.",
   },
 ];
 

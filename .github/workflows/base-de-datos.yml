@@ -45,7 +45,7 @@ jobs:
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
         run: |
-          for f in 00-esquema 01-funciones 02-rls 03-storage 04-auth 05-avisos 06-cron semillas feriados-2026-2027 07-etapa3; do
+          for f in 00-esquema 01-funciones 02-rls 03-storage 04-auth 05-avisos 06-cron semillas feriados-2026-2027 07-etapa3 08-avisos-ntfy; do
             echo "::group::$f.sql"
             psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "supabase/$f.sql"
             echo "::endgroup::"

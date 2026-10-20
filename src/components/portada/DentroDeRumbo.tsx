@@ -1,7 +1,8 @@
 // Capítulo 4: Dentro de Rumbo (5.2). Papel: qué existe hoy y qué no (transparencia) y,
-// tras el separador, progreso y comunidad. Sin CTA: los planes vienen a continuación.
-import { reglasCreditosTextos } from "../../data/rumbo";
+// tras el separador, progreso y «Lo que viene en Rumbo». Sin CTA: los planes vienen a continuación.
+import { loQueViene, reglasCreditosTextos } from "../../data/rumbo";
 import { Encabezado, ListaCheck } from "../Bloques";
+import { EtiquetaEstado } from "../Etiqueta";
 import TarjetaRanking from "../TarjetaRanking";
 import Transparencia from "../Transparencia";
 
@@ -34,10 +35,10 @@ export default function DentroDeRumbo() {
         <div id="comunidad" className="comunidad">
           <div className="comunidad-texto" data-revelar="">
             <Encabezado
-              ojo="Progreso y comunidad"
+              ojo="Progreso"
               titulo={
                 <>
-                  Cada paso cuenta. <span className="frase">Tú decides cuáles compartes.</span>
+                  Cada paso cuenta. <span className="frase">Y lo ves avanzar.</span>
                 </>
               }
             >
@@ -47,10 +48,32 @@ export default function DentroDeRumbo() {
               </p>
             </Encabezado>
             <ListaCheck items={reglasCreditosTextos()} />
-            <p className="microcopia">La comunidad es solo para participantes del piloto. No hay chat.</p>
           </div>
           <div className="comunidad-ranking" data-revelar="">
             <TarjetaRanking />
+          </div>
+        </div>
+
+        <hr className="separador" />
+        {/* «Lo que viene en Rumbo»: rotulado como no disponible, sin fechas ni botones de contratación. */}
+        <div id="lo-que-viene">
+          <Encabezado
+            revelar
+            ojo="Lo que viene en Rumbo"
+            titulo="Lo que estamos construyendo."
+            bajada="Nada de esto está disponible todavía. Cada parte se abre solo cuando funcione y esté probada."
+          />
+          <div className="transparencia transparencia--dos" data-revelar="">
+            <article className="tarjeta tarjeta--pronto">
+              <EtiquetaEstado estado="noDisponible" />
+              <h3>Para el lanzamiento</h3>
+              <ListaCheck tipo="neutra" items={loQueViene.lanzamiento} />
+            </article>
+            <article className="tarjeta tarjeta--pronto">
+              <EtiquetaEstado estado="masAdelante" />
+              <h3>En etapas posteriores</h3>
+              <ListaCheck tipo="neutra" items={loQueViene.despues} />
+            </article>
           </div>
         </div>
       </div>
