@@ -308,10 +308,32 @@ export function ResumenDia({ hechas, programadas }: { hechas: number; programada
 
 // ---------------------------------------------------------------------------
 // Novedades: 0 a 2 avisos info con enlace (4.4.3). Nunca un contador.
+// Con dos o más, van juntas en un solo aviso compacto (una fila enlazada por novedad) para que
+// las acciones del día suban en la pantalla sin perder el acceso directo a cada una.
 
 function Novedades() {
   const { novedades, R, servidor } = useEspacio();
   const DESTINO_NOVEDAD = { semana: R.semanaPublicada, ajuste: R.ajusteLista, programa: R.semanaPublicada, accion: R.accion };
+  const lista = novedades.slice(0, 2);
+  if (lista.length >= 2)
+    return (
+      <section className="aviso me-novedades me-novedades--compactas" aria-label={T_HOY.novedades.etiqueta}>
+        <Icono nombre="info" tamaño={20} className="aviso-icono" />
+        <ul className="me-novedades__lista">
+          {lista.map((n) => (
+            <li key={n.id}>
+              <Link to={n.ruta ?? DESTINO_NOVEDAD[n.destino]} className="me-novedades__fila" onClick={() => servidor?.verNovedad(n.id)}>
+                <span>{n.texto}</span>{" "}
+                <span className="me-novedades__enlace">
+                  {n.enlace}
+                  <Icono nombre="arrow-right" tamaño={16} />
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
   return (
     <section className="me-novedades" aria-label={T_HOY.novedades.etiqueta}>
       {novedades.slice(0, 2).map((n) => (

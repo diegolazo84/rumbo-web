@@ -27,13 +27,16 @@ export type DestinoNav = {
 // el mismo texto visible (WCAG 2.5.3) y el nombre completo de la sección es el H1 de cada pantalla.
 export const ROTULOS_BARRA = {
   A: { rumbo: "Mi Rumbo", plan: "Mi plan", acompanamiento: "Acompañamiento", comunidad: "Comunidad", logros: "Mis logros" },
-  B: { rumbo: "Inicio", plan: "Plan", acompanamiento: "Acompañamiento", comunidad: "Comunidad", logros: "Logros" },
+  B: { rumbo: "Inicio", plan: "Plan", acompanamiento: "Apoyo", comunidad: "Comunidad", logros: "Logros" },
 } as const;
+// «Apoyo» en vez de «Acompañamiento» (evaluado contra «Coach» a 320, 360 y 390 px): cabe en una
+// línea a cualquier ancho, retoma el lema («Avanza con apoyo») y no sugiere un coach individual
+// asignado. La barra lateral y el H1 siguen diciendo «Mi acompañamiento».
 const R = ROTULOS_BARRA.B;
 export const DESTINOS_MI_ESPACIO: Omit<DestinoNav, "href">[] = [
   { id: "rumbo", texto: R.rumbo, icono: "compass", largo: "Mi Rumbo" },
   { id: "plan", texto: R.plan, icono: "calendar-days", largo: "Mi plan" },
-  { id: "acompanamiento", texto: R.acompanamiento, icono: "message-circle", corte: "Acompa\u00ADñamiento", largo: "Mi acompañamiento" },
+  { id: "acompanamiento", texto: R.acompanamiento, icono: "message-circle", largo: "Mi acompañamiento" },
   { id: "comunidad", texto: R.comunidad, icono: "users", corte: "Comu\u00ADnidad", largo: "Comunidad" },
   { id: "logros", texto: R.logros, icono: "award", largo: "Mis logros" },
 ];

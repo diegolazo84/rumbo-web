@@ -123,6 +123,18 @@ test.describe("«Próximamente»: sin botones de compra, sin fechas y sin datos 
   });
 });
 
+test("Mi Rumbo: con dos novedades van juntas en un aviso compacto, cada una con su enlace", async ({ page }) => {
+  await abrir(page, "mi-espacio/");
+  const aviso = page.locator(".me-novedades--compactas");
+  await expect(aviso.getByRole("link")).toHaveCount(2);
+  await expect(aviso.getByRole("link", { name: /Ver la revisión/ })).toBeVisible();
+  await expect(aviso.getByRole("link", { name: /Ver la respuesta/ })).toBeVisible();
+  // Las acciones de hoy empiezan más arriba que con dos avisos separados.
+  const caja = await aviso.boundingBox();
+  expect(caja!.height).toBeLessThan(200);
+  await sinViolaciones(page);
+});
+
 test("Mi acompañamiento: quién te acompaña, acuerdos, próxima revisión y observaciones", async ({ page }) => {
   await abrir(page, "mi-espacio/acompanamiento/publicada/");
   for (const t of ["Quién te acompaña", "Acuerdos de la semana", "Próxima revisión", "Observaciones de tu coach"])

@@ -34,7 +34,12 @@ export default function Acompanamiento({ estado = "sin-enviar" }: PropsPantalla)
         titulo={T_SECCIONES.acompanamiento}
         icono="message-circle"
         ojo={T.ojo}
-        bajada={cercano ? T.bajadaCercano : T.bajadaCoach}
+        bajada={
+          <>
+            <p className="me-acomp__intro">{T.intro}</p>
+            <p>{cercano ? T.bajadaCercano : T.bajadaCoach}</p>
+          </>
+        }
         ejemplo
       />
 

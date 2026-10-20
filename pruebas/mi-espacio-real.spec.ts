@@ -367,6 +367,18 @@ test("descargar mis datos llama a exportar_mis_datos y baja el archivo", async (
   expect(llamadas.some((l) => l.nombre === "exportar_mis_datos")).toBe(true);
 });
 
+test("Mi espacio real nunca muestra «Ejemplo» ni el aviso de la vista previa", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial());
+  for (const r of ["mi-espacio/", "mi-espacio/acompanamiento/", "mi-espacio/comunidad/", "mi-espacio/logros/", "mi-espacio/plan/metas/", "mi-espacio/lo-que-viene/"]) {
+    await page.goto(r);
+    await hidratar(page);
+    await expect(page.locator("main h1"), r).toBeVisible();
+    await expect(page.getByText("Ejemplo", { exact: true }), r).toHaveCount(0);
+    await expect(page.getByText(/datos de ejemplo|Vista previa de la plataforma/), r).toHaveCount(0);
+  }
+});
+
 // Rumbo 2.0, etapa 2: Mi acompañamiento muestra solo lo que existe en la base.
 test("Mi acompañamiento real: foco inicial y fecha de la primera revisión, sin inventar observaciones", async ({ page }) => {
   await conSesion(page);
@@ -377,6 +389,9 @@ test("Mi acompañamiento real: foco inicial y fecha de la primera revisión, sin
   await expect(page.getByRole("heading", { name: "Quién te acompaña" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Próxima revisión" })).toBeVisible();
   await expect(page.locator(".me-acomp__resumen")).toContainText("jueves 15");
+  // Intro de cercanía y, debajo, la modalidad real del plan (sin atención permanente).
+  await expect(page.locator(".me-acomp__intro")).toContainText("No tienes que avanzar solo.");
+  await expect(page.locator(".me-titulo-seccion__bajada")).toContainText(/una vez por semana/);
   // Sin revisión publicada: no hay «Observaciones de tu coach» con texto inventado.
   await expect(page.getByText("De tu revisión de la semana")).toHaveCount(0);
   await sinViolaciones(page);

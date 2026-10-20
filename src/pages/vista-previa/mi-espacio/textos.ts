@@ -509,8 +509,13 @@ export const T_PLAN = {
 
 export const T_ACOMPANAMIENTO = {
   ojo: "Lo que nos diferencia",
-  bajadaCoach: "Una persona del equipo de Rumbo lee tu semana, te responde por escrito y ajusta tu plan contigo.",
-  bajadaCercano: "Una persona del equipo de Rumbo conversa contigo cada semana por videollamada y ajusta tu plan contigo.",
+  intro:
+    "No tienes que avanzar solo. En Rumbo cuentas con acompañamiento humano para revisar tus avances, superar dificultades y adaptar tu plan a lo que realmente necesitas.",
+  // Frecuencia y modalidad reales de cada plan (src/data/rumbo.ts). Sin atención permanente.
+  bajadaCoach:
+    "En tu plan, una persona del equipo de Rumbo lee tu semana y te responde por escrito una vez por semana, aquí en tu espacio. Entre revisiones puedes pedir un ajuste a tu plan.",
+  bajadaCercano:
+    "En tu plan, conversas una vez por semana con una persona del equipo de Rumbo en una videollamada de 20 minutos, y recibes un resumen escrito aquí. Entre revisiones puedes pedir un ajuste a tu plan.",
   resumen: "Tu acompañamiento esta semana",
   quien: {
     titulo: "Quién te acompaña",
@@ -552,15 +557,17 @@ export const T_ACOMPANAMIENTO = {
 
 export const T_COMUNIDAD = {
   ojo: "Próximamente",
-  bajada: "Un espacio moderado para compartir avances con otras personas que también están ordenando lo que les importa.",
-  como: "Cómo funcionará",
-  reglas: [
-    "Participas con un alias: tu nombre real no se muestra.",
-    "Nada se publica sin que tú lo apruebes. Tu plan, tus registros y tus fotos son privados.",
-    "Participar es voluntario y puedes salir cuando quieras.",
-    "Un ranking semanal voluntario por cumplimiento relativo: compara cuánto hiciste de lo que tenías programado, no horas ni créditos acumulados.",
-    "Moderación humana y reglas de convivencia publicadas antes de abrir.",
+  bajada:
+    "Avanzar se siente distinto cuando otras personas entienden el esfuerzo. La comunidad será un lugar para compartir tus avances y conectar con quienes también están ordenando lo que les importa.",
+  beneficiosTitulo: "Lo que podrás hacer",
+  beneficios: [
+    "Celebrar tus avances, grandes o pequeños, con personas que saben lo que cuesta.",
+    "Contar lo que te está costando y leer cómo lo resuelven otras personas.",
+    "Sentirte parte de un grupo que avanza, cada persona a su ritmo.",
   ],
+  // Garantías resumidas: es como la estamos diseñando, no algo que ya funcione.
+  privacidad:
+    "La estamos diseñando para que participes solo si quieres, con un alias y con moderación de nuestro equipo. Tu plan y tus registros seguirán siendo privados.",
   cuando: "Abriremos la comunidad cuando haya participantes y moderación suficientes. Mientras tanto, tu acompañamiento sigue igual.",
   verMas: "Ver todo lo que viene en Rumbo",
 } as const;
