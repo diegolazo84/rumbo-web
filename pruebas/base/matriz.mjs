@@ -62,6 +62,7 @@ const TABLAS = {
   invitaciones_equipo: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   pagos: { leer: "propio", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   videollamadas: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
+  recordatorios: { leer: "propio", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   registros_semanales: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   programas: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // sin borradores
   metas: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // solo de programas publicados
@@ -78,7 +79,7 @@ const FUNCIONES = {
   persona: [
     "soy_equipo", "mi_contexto", "marcar_accion", "desmarcar_accion", "dejar_pasar", "registrar_evidencia", "eliminar_evidencia",
     "guardar_registro_semanal", "pedir_ajuste", "actualizar_preferencias", "pedir_derecho", "exportar_mis_datos", "mi_coach",
-    "adjuntar_foto", "quitar_foto",
+    "adjuntar_foto", "quitar_foto", "guardar_recordatorios",
   ],
   "equipo-error": [
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
@@ -191,6 +192,7 @@ insert into public.videollamadas (participante_id, ciclo_id, semana, programada_
   select c.participante_id, c.id, 1, now() + interval '2 days', 'https://meet.example.com/ci' from public.ciclos c
    where c.participante_id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}')
   on conflict (ciclo_id, semana) do nothing;
+insert into public.recordatorios (participante_id) values ('${ROLES.A.ficha}'), ('${ROLES.B.ficha}') on conflict do nothing;
 `);
 
 let pasos = 0;
@@ -647,6 +649,53 @@ paso("fotos: opcionales en cualquier acción, solo en las propias; la acción qu
   exigir(exp.ok && Number(exp.salida) >= 1, `la copia de mis datos no incluye las videollamadas: ${exp.error ?? exp.salida}`);
 }
 paso("videollamadas: solo en el plan cercano; las agenda y anota el coach de la persona, con enlace https y aviso");
+
+// D1 · Recordatorios: cada persona elige los suyos; la base los crea a su hora, sin repetir y nunca en pausa.
+{
+  const guarda = como(ROLES.A, `select public.guardar_recordatorios(true, false, 8) \\g /dev/null
+    select acciones_del_dia::int || ' ' || registro_semanal::int || ' ' || hora from public.recordatorios`);
+  exigir(guarda.ok && ultima(guarda) === "1 0 8", `A no pudo guardar sus recordatorios: ${guarda.error ?? ultima(guarda)}`);
+  const hora = como(ROLES.A, "select public.guardar_recordatorios(true, true, 3)");
+  exigir(!hora.ok && /hora/.test(hora.error), "se aceptó un recordatorio a las 3 de la mañana");
+  const cicloA = deA.p_ciclo;
+  // Escenario: «hoy» es el martes de la semana 1 del ciclo de A, la revisión es el miércoles y A tiene
+  // una acción hoy sin marcar y el registro semanal sin enviar.
+  const escenario = `set session_replication_role = replica;
+    update public.ciclos set estado = 'activo', dia_revision = 3 where id = '${cicloA}';
+    update public.recordatorios set acciones_del_dia = true, registro_semanal = true, hora = 20 where participante_id = '${ROLES.A.ficha}';
+    delete from public.avisos where participante_id = '${ROLES.A.ficha}';
+    delete from public.registros_semanales where ciclo_id = '${cicloA}' and semana = 1;
+    delete from public.registros where ocurrencia_id = (select id from public.ocurrencias where participante_id = '${ROLES.A.ficha}' order by fecha limit 1);
+    update public.ocurrencias set fecha = (select inicio + 1 from public.ciclos where id = '${cicloA}'), vigente = true
+     where id = (select id from public.ocurrencias where participante_id = '${ROLES.A.ficha}' order by fecha limit 1)
+       and not exists (select 1 from public.ocurrencias o2, public.ocurrencias o1 where o1.id = (select id from public.ocurrencias
+         where participante_id = '${ROLES.A.ficha}' order by fecha limit 1) and o2.accion_id = o1.accion_id and o2.id <> o1.id
+         and o2.fecha = (select inicio + 1 from public.ciclos where id = '${cicloA}'));
+    set session_replication_role = origin;`;
+  const hoy = `(select inicio + 1 from public.ciclos where id = '${cicloA}')`;
+  const tipos = `select coalesce(string_agg(tipo, ',' order by tipo), '-') from public.avisos where participante_id = '${ROLES.A.ficha}'`;
+  const r1 = psql(`begin; ${escenario}
+    select privado.enviar_recordatorios(20, ${hoy}) \\g /dev/null
+    ${tipos};
+    select privado.enviar_recordatorios(20, ${hoy});
+    select privado.enviar_recordatorios(21, ${hoy} + 1);
+    rollback;`);
+  const [creados, repetidos, otraHora] = (r1.salida ?? "").split("\n");
+  exigir(r1.ok && creados === "recordatorio_acciones,recordatorio_registro", `no se crearon los dos recordatorios de A: ${r1.error ?? creados}`);
+  exigir(repetidos === "0", `los recordatorios se repitieron el mismo día: ${repetidos}`);
+  exigir(otraHora === "0", `llegaron recordatorios a una hora que A no eligió: ${otraHora}`);
+  const pausa = psql(`begin; ${escenario}
+    update public.ciclos set estado = 'pausado', pausa_motivo = 'pedida', pausa_desde = ${hoy} where id = '${cicloA}';
+    select privado.enviar_recordatorios(20, ${hoy}); rollback;`);
+  exigir(pausa.ok && pausa.salida === "0", `llegaron recordatorios con el ciclo en pausa: ${pausa.error ?? pausa.salida}`);
+  const apagado = psql(`begin; ${escenario}
+    update public.recordatorios set acciones_del_dia = false, registro_semanal = false where participante_id = '${ROLES.A.ficha}';
+    select privado.enviar_recordatorios(20, ${hoy}); rollback;`);
+  exigir(apagado.ok && apagado.salida === "0", `llegaron recordatorios apagados: ${apagado.error ?? apagado.salida}`);
+  const persona = como(ROLES.A, "select privado.enviar_recordatorios()");
+  exigir(!persona.ok && persona.codigo === DENEGADO, "una persona puede disparar los recordatorios");
+}
+paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan a su hora, una vez al día y nunca en pausa");
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
 
