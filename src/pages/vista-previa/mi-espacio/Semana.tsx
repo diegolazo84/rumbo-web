@@ -227,7 +227,7 @@ function ContenidoSemana({ n, hoy, situacion, esc, inicial, cambios, guardar }: 
       <div className="me-semana__principal">
       {/* Publicada: lo nuevo (respuesta y cambios) va primero; el registro queda cerrado debajo. */}
       {situacion === "publicada" && <Respuesta n={n} esc={esc} cambios={cambios} />}
-      <section className="tarjeta me-registro" aria-labelledby="registro-titulo">
+      <section id="tu-registro" className="tarjeta me-registro" aria-labelledby="registro-titulo">
         <div className="me-registro__cabeza">
           <h2 id="registro-titulo" className="me-h2">
             {T_SEMANA.registro}

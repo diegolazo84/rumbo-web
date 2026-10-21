@@ -678,7 +678,6 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 .me-titulo-seccion__ojo { font: 600 var(--t-micro)/1.2 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--terracota-texto); }
 .me-titulo-seccion__bajada { max-inline-size: var(--medida); font-size: var(--t-base); line-height: 1.55; color: var(--tinta-suave); }
 .me-titulo-seccion__bajada > * + * { margin-block-start: var(--e-2); }
-.me-acomp__intro { color: var(--tinta); font-weight: 500; }
 
 /* Pestañas de Mi plan: subrayado (distinto del control segmentado Día · Semana · Mes). */
 .me-pestanas ul { display: flex; gap: var(--e-5); list-style: none; border-block-end: 1px solid var(--linea); }
@@ -742,18 +741,64 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 .me-comunidad__privacidad .icono { margin-block-start: 2px; }
 
 /* Mi acompañamiento ---------------------------------------------------------------------- */
-.me-acomp__resumen { display: grid; gap: var(--e-4); }
-@media (min-width: 720px) { .me-acomp__resumen { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.me-acomp__tarjeta { display: grid; gap: var(--e-3); align-content: start; padding: var(--e-5); border-radius: var(--r-m); }
-.me-acomp__tarjeta.es-destacada { border-color: var(--bosque); background: var(--niebla); }
-.me-acomp__tarjeta.es-destacada .icono-mosaico { background: var(--superficie); }
-.me-acomp__tarjeta-cabeza { display: flex; align-items: center; gap: 12px; }
-.me-acomp__tarjeta-titulo { font: 600 var(--t-base)/1.3 var(--sans); color: var(--tinta); }
-.me-acomp__dato { font: 600 var(--t-h3)/1.25 var(--serif); color: var(--bosque); }
-.me-acomp__plan { font: 600 var(--t-xs)/1.3 var(--sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--terracota-texto); }
-.me-acomp__acuerdo { display: grid; gap: var(--e-1); }
-.me-acomp__cita { color: var(--tinta); }
+/* Mi acompañamiento (referencia visual v2): «Tu coach» con el mensaje de la semana, dos botones,
+   la próxima revisión y el historial. En escritorio, dos columnas como Mi Rumbo. */
+.me-acomp { gap: var(--e-5); }
+.me-acomp__cabeza { display: grid; gap: var(--e-2); justify-items: start; }
+.me-acomp__h1 { margin: 0; font: 600 var(--t-saludo)/1.08 var(--serif); letter-spacing: -0.015em; color: var(--bosque); }
+.me-acomp__intro { max-inline-size: 32ch; font-size: var(--t-lead); line-height: 1.4; color: var(--tinta-suave); }
+.me-acomp__principal, .me-acomp__lado { display: grid; gap: var(--e-4); align-content: start; }
+.me-coach { display: grid; gap: var(--e-4); padding: var(--e-4); border-radius: var(--r-l); background: var(--papel-hondo); }
+.me-coach__cabeza { display: flex; align-items: center; gap: var(--e-4); }
+.me-avatar--xl { inline-size: 64px; block-size: 64px; }
+.me-coach__quien { display: grid; gap: 2px; font-size: var(--t-xs); color: var(--tinta-suave); }
+.me-coach__titulo { font: 600 var(--t-h3)/1.2 var(--serif); color: var(--bosque); }
+.me-coach__plan { font-size: var(--t-xs); line-height: 1.5; color: var(--tinta-suave); }
+.me-coach__plan strong { color: var(--tinta); }
+.me-coach__mensaje { display: grid; gap: var(--e-2); padding: var(--e-4); border-radius: var(--r-m); background: var(--superficie); }
+.me-coach__mensaje-cabeza { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.me-coach__rotulo { margin: 0; font: 600 var(--t-xs)/1.3 var(--sans); color: var(--terracota-texto); }
+.me-coach__fecha { margin-inline-start: auto; font-size: var(--t-micro); color: var(--tinta-suave); }
+.me-coach__cita { color: var(--tinta); }
+.me-acomp__botones { display: grid; gap: var(--e-3); }
+.me-acomp__botones .boton { inline-size: 100%; justify-content: center; gap: 10px; }
+.me-proxima { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: start; gap: var(--e-3); padding: var(--e-4); border-radius: var(--r-m); background: var(--papel-hondo); }
+.me-proxima__icono { display: grid; place-items: center; inline-size: 44px; block-size: 44px; border-radius: var(--r-full); background: var(--superficie); color: var(--bosque); }
+.me-proxima__texto { display: grid; gap: 2px; font-size: var(--t-s); line-height: 1.45; color: var(--tinta-suave); }
+.me-proxima__titulo { font: 600 var(--t-base)/1.3 var(--sans); color: var(--tinta); }
+.me-proxima__fecha { font: 600 var(--t-h3)/1.25 var(--serif); color: var(--bosque); }
+.me-proxima .microcopia { margin-block-start: var(--e-2); }
+.me-acomp-historial { display: grid; gap: var(--e-3); }
+.me-acomp-historial__titulo { font: 600 var(--t-base)/1.3 var(--sans); color: var(--tinta); }
+.me-acomp-historial__lista { display: grid; gap: var(--e-3); margin: 0; padding: 0; list-style: none; }
+.me-acomp-historial__item { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: start; gap: var(--e-3); padding: var(--e-4); border-radius: var(--r-m); background: var(--superficie); box-shadow: var(--sombra-1); }
+.me-acomp-historial__icono { display: grid; place-items: center; inline-size: 40px; block-size: 40px; border-radius: var(--r-full); background: var(--salvia-suave); color: var(--bosque); }
+.me-acomp-historial__texto { display: grid; gap: 4px; font-size: var(--t-s); line-height: 1.45; color: var(--tinta); }
+.me-acomp-historial__texto .etiqueta { vertical-align: middle; }
+.me-acomp__paisaje { inline-size: calc(100% + 2 * var(--gutter)); max-inline-size: none; block-size: auto; aspect-ratio: 440 / 84; margin-inline: calc(-1 * var(--gutter)); }
+@media (min-width: 1024px) {
+  .me-acomp {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    grid-template-areas:
+      "cabeza    cabeza"
+      "principal lado"
+      "semanas   semanas"
+      "pronto    pronto"
+      "paisaje   paisaje";
+    column-gap: var(--e-6);
+    align-items: start;
+  }
+  .me-acomp__cabeza { grid-area: cabeza; }
+  .me-acomp__principal { grid-area: principal; }
+  .me-acomp__lado { grid-area: lado; }
+  .me-acomp__semanas { grid-area: semanas; }
+  .me-acomp > .me-pronto { grid-area: pronto; }
+  .me-acomp__paisaje { grid-area: paisaje; inline-size: 100%; margin-inline: 0; }
+  .me-coach { padding: var(--e-5); }
+  .me-acomp__botones { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .me-acomp__semanas { scroll-margin-block-start: calc(var(--cabecera-alto) + var(--e-4)); }
+#tu-registro { scroll-margin-block-start: calc(var(--cabecera-alto) + var(--e-4)); }
 
 /* Comunidad y «Lo que viene en Rumbo» ------------------------------------------------------ */
 .me-lqv { display: grid; gap: var(--e-4); list-style: none; }

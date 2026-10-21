@@ -588,45 +588,49 @@ export const T_PLAN = {
   ajusteTexto: "Pide un ajuste y lo revisamos contigo. Tu plan se adapta a tu vida, no al revés.",
 } as const;
 
+// Mi acompañamiento (referencia visual v2, 21-oct-2026): una persona te acompaña, pero sin
+// prometer chat ni disponibilidad permanente. Frecuencia y modalidad reales de cada plan
+// (src/data/rumbo.ts). «Tu coach» con avatar genérico hasta que exista la asignación (etapa 4A).
 export const T_ACOMPANAMIENTO = {
-  ojo: "Lo que nos diferencia",
-  intro:
-    "No tienes que avanzar solo. En Rumbo cuentas con acompañamiento humano para revisar tus avances, superar dificultades y adaptar tu plan a lo que realmente necesitas.",
-  // Frecuencia y modalidad reales de cada plan (src/data/rumbo.ts). Sin atención permanente.
-  bajadaCoach:
-    "En tu plan, una persona del equipo de Rumbo lee tu semana y te responde por escrito una vez por semana, aquí en tu espacio. Entre revisiones puedes pedir un ajuste a tu plan.",
-  bajadaCercano:
-    "En tu plan, conversas una vez por semana con una persona del equipo de Rumbo en una videollamada de 20 minutos, y recibes un resumen escrito aquí. Entre revisiones puedes pedir un ajuste a tu plan.",
-  resumen: "Tu acompañamiento esta semana",
-  quien: {
-    titulo: "Quién te acompaña",
-    equipo: "El equipo de Rumbo",
+  intro: "No tienes que hacerlo solo. Estamos aquí para apoyarte.",
+  coach: {
+    titulo: "Tu coach",
+    quien: "Te acompaña en este proceso",
     escrita: (dia: string) => `Revisión semanal por escrito los ${dia}, aquí en tu espacio.`,
-    videollamada: (dia: string, hora: string) => `Videollamada semanal los ${dia} a las ${hora} (hora de Chile), con un resumen escrito aquí.`,
+    videollamada: (dia: string, hora: string) => `Videollamada semanal de 20 minutos los ${dia} a las ${hora} (hora de Chile), con un resumen escrito aquí.`,
   },
-  acuerdos: {
-    titulo: "Acuerdos de la semana",
-    foco: "Tu foco",
-    ajustamos: "Lo que ajustamos",
-    inicial: "Tu foco para empezar",
+  mensaje: {
+    rotulo: "Mensaje de esta semana",
+    inicial: "Para empezar",
+    nuevo: "Nuevo",
+  },
+  botones: {
+    costando: "Me está costando",
+    escribir: "Escribir mi registro",
+    escribirOpcional: "Escribir mi registro (opcional)",
+    ver: "Ver mi registro",
   },
   proxima: {
     titulo: "Próxima revisión",
-    escrita: "Por escrito, aquí en tu espacio",
-    videollamada: (hora: string) => `Videollamada a las ${hora} (hora de Chile)`,
+    escrita: "Por escrito, aquí en tu espacio.",
+    videollamada: (hora: string) => `Videollamada a las ${hora} (hora de Chile), con un resumen escrito aquí.`,
     registroEnviado: "Tu registro ya está enviado.",
     registroPendiente: "Si alcanzas, escribe antes tu registro. Es opcional.",
-    escribir: "Escribir mi registro",
+    noEsChat: "Tu coach lee lo que escribes y te responde en cada revisión. No es un chat.",
   },
-  observaciones: {
-    titulo: "Observaciones de tu coach",
-    deSemana: (n: number) => `De tu revisión de la semana ${n}`,
-    leer: "Leer la revisión completa",
-    sinRevision: (dia: string) => `Tu coach publicará su primera revisión el ${dia}.`,
+  historial: {
+    titulo: "Historial reciente",
+    revision: (n: number, conRegistro: boolean) =>
+      conRegistro ? `Tu coach respondió tu registro de la semana ${n}.` : `Tu coach publicó tu revisión de la semana ${n}.`,
+    verRevision: "Ver la revisión",
+    ajusteRespondido: "Respondimos tu solicitud de ajuste.",
+    ajusteSinCambios: "Revisamos tu solicitud de ajuste.",
+    ajustePendiente: "Enviaste una solicitud de ajuste. La estamos revisando.",
+    verRespuesta: "Ver la respuesta",
+    verSolicitud: "Ver tu solicitud",
+    vacio: (dia: string) => `Aquí verás las respuestas de tu coach. Tu primera revisión llega el ${dia}.`,
+    vacioSinFecha: "Aquí verás las respuestas de tu coach.",
   },
-  acordamos: "Lo que acordamos",
-  semanas: "Tus semanas",
-  semanasBajada: "Tu registro y la revisión de cada semana del ciclo.",
   pronto: {
     titulo: "Lo que viene en tu acompañamiento",
     items: [

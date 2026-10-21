@@ -386,14 +386,16 @@ test("Mi acompañamiento real: foco inicial y fecha de la primera revisión, sin
   await page.goto("mi-espacio/acompanamiento/");
   await hidratar(page);
   await expect(page.locator("h1")).toHaveText("Mi acompañamiento");
-  await expect(page.getByRole("heading", { name: "Quién te acompaña" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tu coach", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Próxima revisión" })).toBeVisible();
-  await expect(page.locator(".me-acomp__resumen")).toContainText("jueves 15");
-  // Intro de cercanía y, debajo, la modalidad real del plan (sin atención permanente).
-  await expect(page.locator(".me-acomp__intro")).toContainText("No tienes que avanzar solo.");
-  await expect(page.locator(".me-titulo-seccion__bajada")).toContainText(/una vez por semana/);
-  // Sin revisión publicada: no hay «Observaciones de tu coach» con texto inventado.
-  await expect(page.getByText("De tu revisión de la semana")).toHaveCount(0);
+  await expect(page.locator(".me-proxima")).toContainText("Jueves 15 de octubre");
+  // Intro de cercanía y la modalidad real del plan (sin atención permanente ni chat).
+  await expect(page.locator(".me-acomp__intro")).toContainText("No tienes que hacerlo solo.");
+  await expect(page.locator(".me-coach__plan")).toContainText(/Revisión semanal por escrito/);
+  await expect(page.locator(".me-proxima")).toContainText("No es un chat.");
+  // Sin revisión publicada, el historial lo dice sin inventar observaciones.
+  await expect(page.locator(".me-acomp-historial")).toContainText("Aquí verás las respuestas de tu coach.");
+  await expect(page.locator(".me-avatar img")).toHaveCount(0);
   await sinViolaciones(page);
 });
 
