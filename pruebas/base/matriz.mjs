@@ -711,10 +711,31 @@ paso("videollamadas: solo en el plan cercano; las agenda y anota el coach de la 
     update public.recordatorios set acciones_del_dia = false, registro_semanal = false where participante_id = '${ROLES.A.ficha}';
     select privado.enviar_recordatorios(20, ${hoy}); rollback;`);
   exigir(apagado.ok && apagado.salida === "0", `llegaron recordatorios apagados: ${apagado.error ?? apagado.salida}`);
+  // D3 · Por correo (Brevo): sin claves en el Vault no sale nada; con claves, un correo por recordatorio, solo a quien lo eligió.
+  const cola = "(select count(*) from net.http_request_queue where url = 'https://api.brevo.com/v3/smtp/email')";
+  const conCorreo = `update public.recordatorios set por_correo = true where participante_id = '${ROLES.A.ficha}';`;
+  const claves = "select vault.create_secret('clave-de-prueba', 'brevo_api_key') \\g /dev/null\n select vault.create_secret('rumbo-ci@example.com', 'correo_remitente') \\g /dev/null\n";
+  const sinClaves = psql(`begin; ${escenario} ${conCorreo} select ${cola} \\g /dev/null
+    select privado.enviar_recordatorios(20, ${hoy}) \\g /dev/null
+    select ${cola}; rollback;`);
+  const antesCola = sql(`select ${cola}`);
+  exigir(sinClaves.ok && sinClaves.salida === antesCola, `sin claves de Brevo se encoló un correo: ${sinClaves.error ?? sinClaves.salida}`);
+  const correoA = sql(`select correo from public.participantes where id = '${ROLES.A.ficha}'`);
+  const conClaves = psql(`begin; ${escenario} ${conCorreo} ${claves}
+    select privado.enviar_recordatorios(20, ${hoy}) \\g /dev/null
+    select count(*) || ' ' || bool_and(convert_from(body, 'utf8') like '%${correoA}%' and headers->>'api-key' = 'clave-de-prueba')
+      from net.http_request_queue where url = 'https://api.brevo.com/v3/smtp/email'; rollback;`);
+  exigir(conClaves.ok && conClaves.salida === `${Number(antesCola) + 2} true`, `con claves no salieron los 2 correos a A: ${conClaves.error ?? conClaves.salida}`);
+  const sinElegir = psql(`begin; ${escenario} ${claves}
+    select privado.enviar_recordatorios(20, ${hoy}) \\g /dev/null
+    select ${cola}; rollback;`);
+  exigir(sinElegir.ok && sinElegir.salida === antesCola, `se envió un correo a quien no lo eligió: ${sinElegir.error ?? sinElegir.salida}`);
+  const elige = como(ROLES.A, "select public.guardar_recordatorios(true, true, 9, true) \\g /dev/null\n select por_correo::int from public.recordatorios");
+  exigir(elige.ok && ultima(elige) === "1", `A no pudo elegir recibir los recordatorios por correo: ${elige.error ?? ultima(elige)}`);
   const persona = como(ROLES.A, "select privado.enviar_recordatorios()");
   exigir(!persona.ok && persona.codigo === DENEGADO, "una persona puede disparar los recordatorios");
 }
-paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan a su hora, una vez al día y nunca en pausa");
+paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan a su hora, una vez al día y nunca en pausa; por correo solo con claves y a quien lo eligió");
 
 // C3 · Evolución: resume lo que hay en la base; la ve la persona, su coach y el dueño.
 {
