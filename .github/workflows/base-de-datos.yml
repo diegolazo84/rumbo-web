@@ -160,7 +160,7 @@ jobs:
           PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
         run: node pruebas/base/matriz.mjs
 
-      # La matriz debe fallar ante 5 errores típicos de permisos hechos a mano, y volver a pasar
+      # La matriz debe fallar ante 6 errores típicos de permisos hechos a mano, y volver a pasar
       # al deshacerlos. Solo en la base local de prueba.
       - name: La matriz detecta fugas de permisos
         env:
@@ -172,13 +172,17 @@ jobs:
           create policy prueba_ci_escribir on public.ciclos for update to authenticated using (true);
           grant execute on function public.crear_espacio(uuid) to anon;
           create table public.prueba_ci (id int);
+          create or replace function privado.gestiona(p_participante uuid) returns boolean
+          language sql stable security definer set search_path = '' as $$
+            select privado.es_dueno() or privado.es_coach();
+          $$;
           create or replace function privado.es_admin() returns boolean
           language sql stable security definer set search_path = '' as $$
             select exists (select 1 from public.equipo e where e.user_id = auth.uid());
           $$;
           SQL
           if node pruebas/base/matriz.mjs > matriz.txt 2>&1; then cat matriz.txt; echo "::error::la matriz no detectó los cambios"; exit 1; fi
-          for buscado in 'public.prueba_ci no tiene RLS' 'funciones que anon ejecuta' 'persona A lee public.participantes: ve' 'persona A en public.ciclos: modificar alcanza filas' 'equipo sin segundo factor lee public.solicitudes'; do
+          for buscado in 'public.prueba_ci no tiene RLS' 'funciones que anon ejecuta' 'persona A lee public.participantes: ve' 'persona A en public.ciclos: modificar alcanza filas' 'equipo sin segundo factor lee public.solicitudes' 'coach Y lee public.ciclos: ve'; do
             grep -qF "$buscado" matriz.txt || { cat matriz.txt; echo "::error::la matriz no detectó: $buscado"; exit 1; }
           done
           psql "$PGURL" -v ON_ERROR_STOP=1 -q <<'SQL'
@@ -187,13 +191,34 @@ jobs:
           revoke execute on function public.crear_espacio(uuid) from anon;
           drop table public.prueba_ci;
           create or replace function privado.es_admin() returns boolean
+          language sql stable security definer set search_path = '' as $$ select privado.es_dueno(); $$;
+          create or replace function privado.gestiona(p_participante uuid) returns boolean
           language sql stable security definer set search_path = '' as $$
-            select coalesce(auth.jwt()->>'aal', 'aal1') = 'aal2'
-               and exists (select 1 from public.equipo e where e.user_id = auth.uid());
+            select privado.es_dueno()
+                or (privado.es_coach() and exists (select 1 from public.participantes p
+                                                    where p.id = p_participante and p.coach_id = auth.uid()));
           $$;
           SQL
           node pruebas/base/matriz.mjs > /dev/null || { echo "::error::la base no volvió a su estado"; exit 1; }
-          echo "la matriz detectó los 5 cambios"
+          echo "la matriz detectó los 6 cambios"
+
+      # A1: el archivo para deshacer deja la base exactamente como antes de A1 (la herramienta
+      # oficial compara con las migraciones sin A1: diferencia vacía). Luego se vuelve a aplicar
+      # A1, para que el paso siguiente parta de la base completa.
+      - name: Deshacer A1 deja la base como antes
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          set -euo pipefail
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f supabase/deshacer/20261022000000_roles_coach.sql
+          mv supabase/migrations/20261022000000_roles_coach.sql "$RUNNER_TEMP/"
+          supabase db diff --db-url "$PGURL" -s public,privado --output-format json > deshacer.json
+          mv "$RUNNER_TEMP/20261022000000_roles_coach.sql" supabase/migrations/
+          if [ -n "$(jq -r '.diff' deshacer.json | tr -d '[:space:]')" ]; then
+            jq -r '.diff' deshacer.json; echo "::error::deshacer A1 no dejó la base como antes"; exit 1
+          fi
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f supabase/migrations/20261022000000_roles_coach.sql
+          echo "deshacer A1: la base quedó como antes, y A1 se volvió a aplicar"
 
       # Etapa 1: las dos revisiones deben detectar cambios hechos a mano. Va al final porque altera
       # la base local de prueba (nunca producción).
@@ -221,3 +246,4 @@ jobs:
           cat verificacion.txt
           if [ "$FALLAS" != 4 ]; then echo "::error::verificacion.sql detectó $FALLAS de 4 cambios"; exit 1; fi
           echo "las dos revisiones detectaron todos los cambios"
+
