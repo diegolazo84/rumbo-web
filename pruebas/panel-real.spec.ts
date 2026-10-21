@@ -676,3 +676,42 @@ test("Más: postulaciones y cuenta con sus factores", async ({ page }) => {
   await expect.poll(() => base.ajustes_operacion[0].postulaciones_abiertas).toBe(false);
   await expect(seccion.getByText("Guardado.")).toBeVisible();
 });
+
+test("contacto: lo resuelto o respondido se puede volver a abrir", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  base.peticiones_derechos = [
+    { id: "pet1", recibida_en: "2026-10-10T12:00:00Z", origen: "contacto", participante_id: null, correo: "eva@correo.cl", tipo: "acceso", detalle: null, fecha_limite: "2026-11-09", estado: "abierta", respuesta: null },
+  ];
+  await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/contacto/");
+  await hidratar(page);
+  await expect(page.locator("h1")).toHaveText("Contacto y derechos.");
+  await expect(page.getByText("Consultas generales que llegan por el formulario de contacto.")).toBeVisible();
+  await page.getByRole("button", { name: "Marcar como respondido" }).click();
+  await expect.poll(() => base.mensajes_contacto[0].estado).toBe("respondido");
+  await page.getByRole("button", { name: "Volver a abrir" }).click();
+  await expect.poll(() => base.mensajes_contacto[0].estado).toBe("nuevo");
+  expect(base.mensajes_contacto[0].respondido_en).toBeNull();
+  await page.getByRole("button", { name: "Marcar como resuelta" }).click();
+  await expect.poll(() => base.peticiones_derechos[0].estado).toBe("resuelta");
+  await page.getByRole("button", { name: "Volver a abrir" }).click();
+  await expect.poll(() => base.peticiones_derechos[0].estado).toBe("abierta");
+  expect(base.peticiones_derechos[0].resuelta_en).toBeNull();
+  await sinViolaciones(page);
+});
+
+test("contacto: al cargar, lo cerrado queda plegado aparte", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  base.mensajes_contacto.push({ id: "msj2", creado_en: "2026-10-09T12:00:00Z", motivo: "otro", nombre: "Rosa", correo: "rosa@correo.cl", mensaje: "Gracias por la respuesta de ayer.", estado: "archivado" });
+  await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/contacto/");
+  await hidratar(page);
+  const plegado = page.locator("details.pa-cerrados");
+  await expect(plegado.locator("summary")).toHaveText("Respondidos y archivados (1)");
+  await expect(page.getByText("Gracias por la respuesta de ayer.")).toBeHidden();
+  await plegado.locator("summary").click();
+  await plegado.getByRole("button", { name: "Volver a abrir" }).click();
+  await expect.poll(() => base.mensajes_contacto[1].estado).toBe("nuevo");
+});
