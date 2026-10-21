@@ -11,7 +11,7 @@ import type { EstadoRegistro, SolicitudAjuste } from "../../../data/ejemplo-app"
 import type { Iso } from "../../../lib/fechas";
 import { datos, supabase, type Cliente } from "../../../lib/supabase";
 import type { RutaPlataforma } from "../rutas";
-import { ESPACIO_PREVIA, EspacioContexto, R_REAL, type Ausencia, type Espacio, type Progreso, type Servidor } from "../../vista-previa/mi-espacio/espacio";
+import { ESPACIO_PREVIA, EspacioContexto, R_REAL, type Ausencia, type CoachEspacio, type Espacio, type VideollamadaEspacio, type Progreso, type Servidor } from "../../vista-previa/mi-espacio/espacio";
 import Ajuste from "../../vista-previa/mi-espacio/Ajuste";
 import AyudaInmediata from "../../vista-previa/mi-espacio/AyudaInmediata";
 import Calendario from "../../vista-previa/mi-espacio/Calendario";
@@ -50,7 +50,7 @@ const COLUMNAS = {
   ajuste: "id,creada_en,tipo,ocurrencias,desde,texto,estado,respuesta,cuenta_como_reorden,respondida_en",
 } as const;
 
-type Leido = { filas: Filas; ctx: Contexto; ausencia: Ausencia | null };
+type Leido = { filas: Filas; ctx: Contexto; ausencia: Ausencia | null; coach: CoachEspacio | null; videollamadas: VideollamadaEspacio[] };
 
 async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> {
   const participante = datos(
@@ -61,7 +61,7 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
     await sb.from("ciclos").select(COLUMNAS.ciclo).eq("participante_id", participante.id).order("numero", { ascending: false }).limit(1).maybeSingle(),
   ) as Filas["ciclo"] | null;
   if (!ciclo) return "sin-ficha";
-  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones] =
+  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas] =
     await Promise.all([
       sb.from("programas").select(COLUMNAS.programa).eq("ciclo_id", ciclo.id).neq("estado", "borrador").order("version"),
       sb.from("ocurrencias").select(COLUMNAS.ocurrencia).eq("ciclo_id", ciclo.id).order("fecha").limit(5000),
@@ -74,6 +74,9 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
       sb.from("planes").select("id,reordenes_por_ciclo"),
       sb.rpc("mi_contexto"),
       sb.rpc("estado_postulaciones"),
+      // A3 y C2: si la migración todavía no está en la base, «Tu coach» queda genérico y sin videollamadas.
+      sb.rpc("mi_coach"),
+      sb.from("videollamadas").select("semana,programada_para,enlace,estado").eq("ciclo_id", ciclo.id).order("semana"),
     ]);
   const progs = datos(programas) as Filas["programas"];
   const ids = progs.map((p) => p.id);
@@ -103,7 +106,20 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
     },
     ctx,
     ausencia: armarAusencia(aus),
+    coach: armarCoach(coach.error ? null : coach.data),
+    videollamadas: llamadas.error ? [] : armarVideollamadas(llamadas.data),
   };
+}
+
+function armarCoach(d: unknown): CoachEspacio | null {
+  const c = d as { nombre?: string | null; presentacion?: string | null } | null;
+  const nombre = c?.nombre?.trim();
+  return nombre ? { nombre, presentacion: c?.presentacion?.trim() || null } : null;
+}
+
+function armarVideollamadas(d: unknown): VideollamadaEspacio[] {
+  const filas = (Array.isArray(d) ? d : []) as { semana: number; programada_para: string; enlace: string; estado: VideollamadaEspacio["estado"] }[];
+  return filas.map((f) => ({ semana: f.semana, programadaPara: f.programada_para, enlace: f.enlace, estado: f.estado }));
 }
 
 // Después de marcar: solo lo que cambia (registros y progreso).
@@ -306,6 +322,8 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
       notasCambios: d.notasCambios,
       semanasEnRevision: estado.ctx.semanasEnRevision,
       ausencia: estado.ausencia,
+      coach: estado.coach,
+      videollamadas: estado.videollamadas,
       servidor,
     };
   }, [estado, vistas, servidor]);

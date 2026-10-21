@@ -749,67 +749,146 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 .me-comunidad__privacidad .icono { margin-block-start: 2px; }
 
 /* Mi acompañamiento ---------------------------------------------------------------------- */
-/* Mi acompañamiento (referencia visual v2): «Tu coach» con el mensaje de la semana, dos botones,
-   la próxima revisión y el historial. En escritorio, dos columnas como Mi Rumbo. */
-.me-acomp { gap: var(--e-6); }
-.me-acomp__cabeza { display: grid; gap: var(--e-2); justify-items: start; }
-.me-acomp__h1 { margin: 0; font: 600 var(--t-saludo)/1.08 var(--serif); letter-spacing: -0.015em; color: var(--bosque); }
-.me-acomp__intro { max-inline-size: 32ch; font-size: var(--t-lead); line-height: 1.4; color: var(--tinta-suave); }
-.me-acomp__principal, .me-acomp__lado { display: grid; gap: var(--e-4); align-content: start; }
-.me-coach { display: grid; gap: var(--e-4); padding: var(--e-4); border-radius: var(--r-l); background: var(--papel-hondo); }
-.me-coach__cabeza { display: flex; align-items: center; gap: var(--e-4); }
-.me-avatar--xl { inline-size: 64px; block-size: 64px; }
-.me-coach__quien { display: grid; gap: 2px; font-size: var(--t-xs); color: var(--tinta-suave); }
-.me-coach__titulo { font: 600 var(--t-h3)/1.2 var(--serif); color: var(--bosque); }
-.me-coach__mensaje { display: grid; gap: var(--e-3); padding: var(--e-4) var(--e-5) var(--e-5); border-radius: var(--r-m); background: var(--superficie); }
-.me-coach__mensaje-cabeza { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
-.me-coach__rotulo { margin: 0; font: 600 var(--t-xs)/1.3 var(--sans); color: var(--terracota-texto); }
-.me-coach__fecha { margin-inline-start: auto; font-size: var(--t-micro); color: var(--tinta-suave); }
-.me-coach__cita { font: italic 500 var(--t-lead)/1.4 var(--serif); color: var(--bosque); }
-.me-acomp__botones { display: grid; gap: var(--e-3); }
-.me-acomp__botones .boton { inline-size: 100%; justify-content: center; gap: 10px; }
-.me-proxima { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: start; gap: var(--e-3); padding: var(--e-4); border-radius: var(--r-m); background: var(--papel-hondo); }
+/* Referencia de ChatGPT (21-oct-2026): portada con paisaje y título encima, tu coach con su nota
+   escrita a mano, cuatro acciones (la primera en bosque), esta semana con los siete días y la
+   próxima revisión al lado, y el historial. En móvil, lo mismo apilado y las acciones en 2 × 2. */
+.mano { font-family: "Caveat Variable", "Segoe Print", "Bradley Hand", cursive; font-weight: 500; }
+.me-acomp { gap: var(--e-5); }
+.me-acomp > .etiqueta { justify-self: start; }
+
+/* Portada */
+.me-acomp-portada {
+  position: relative;
+  display: grid;
+  align-content: end;
+  gap: var(--e-3);
+  min-block-size: 260px;
+  margin-inline: calc(-1 * var(--gutter));
+  margin-block-start: calc(-1 * var(--e-5));
+  padding: var(--e-7) var(--gutter) var(--e-5);
+  overflow: hidden;
+  isolation: isolate;
+  color: var(--sobre-oscuro);
+}
+.me-acomp-portada__fondo { position: absolute; inset: 0; z-index: -2; inline-size: 100%; block-size: 100%; }
+.me-acomp-portada::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgb(22 54 40 / 0) 30%, rgb(22 54 40 / 0.55) 100%); }
+.me-acomp-portada__texto { display: grid; gap: var(--e-2); }
+.me-acomp-portada__h1 { margin: 0; font: 600 var(--t-saludo)/1.05 var(--serif); letter-spacing: -0.015em; color: var(--superficie); text-shadow: 0 1px 12px rgb(22 54 40 / 0.35); }
+.me-acomp-portada__bajada { max-inline-size: 34ch; font-size: var(--t-base); line-height: 1.4; color: var(--superficie); text-shadow: 0 1px 8px rgb(22 54 40 / 0.45); }
+.me-acomp-portada__mano { display: none; }
+.me-acomp-portada__boton { justify-self: start; gap: 8px; background: var(--bosque); box-shadow: var(--sombra-2); }
+@media (min-width: 1024px) {
+  .me-acomp-portada {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: ". boton" "texto mano";
+    align-content: space-between;
+    align-items: end;
+    min-block-size: 300px;
+    margin: 0;
+    padding: var(--e-5) var(--e-6) var(--e-6);
+    border-radius: var(--r-l);
+  }
+  .me-acomp-portada__texto { grid-area: texto; }
+  .me-acomp-portada__boton { grid-area: boton; align-self: start; justify-self: end; }
+  .me-acomp-portada__mano { grid-area: mano; display: block; max-inline-size: 11ch; margin: 0 clamp(120px, 15vw, 200px) var(--e-4) 0; font-size: var(--t-saludo); line-height: 1.05; color: var(--superficie); transform: rotate(-6deg); text-shadow: 0 1px 8px rgb(22 54 40 / 0.4); }
+}
+
+/* Tu coach */
+.me-coach { display: grid; gap: var(--e-5); padding: var(--e-5); border-radius: var(--r-l); background: var(--crema); box-shadow: var(--sombra-1); }
+.me-coach__persona { display: grid; grid-template-columns: 80px minmax(0, 1fr); align-items: start; gap: var(--e-4); }
+.me-coach__avatar { display: grid; place-items: center; inline-size: 80px; block-size: 80px; border-radius: var(--r-full); background: var(--bosque); color: var(--sobre-oscuro); border: 4px solid var(--superficie); box-shadow: var(--sombra-1); }
+.me-coach__avatar--letras { background: var(--salvia-suave); color: var(--bosque); font: 600 var(--t-h3)/1 var(--serif); }
+.me-coach__quien { display: grid; gap: 2px; }
+.me-coach__rotulo-coach { font-size: var(--t-xs); color: var(--tinta-suave); }
+.me-coach__titulo { font: 600 var(--t-h3)/1.15 var(--serif); color: var(--bosque); }
+.me-coach__presentacion { margin-block-start: var(--e-1); max-inline-size: 44ch; font-size: var(--t-xs); line-height: 1.5; color: var(--tinta-suave); }
+.me-coach__mensaje { display: grid; gap: var(--e-2); margin: 0; padding: var(--e-4) var(--e-5); border-radius: var(--r-s); background: var(--superficie); box-shadow: var(--sombra-2); transform: rotate(-1deg); }
+.me-coach__rotulo { font: 600 var(--t-micro)/1.3 var(--sans); color: var(--terracota-texto); }
+.me-coach__cita { margin: 0; font-size: var(--t-h3); line-height: 1.25; color: var(--bosque); }
+.me-coach__pie { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 10px; font-size: var(--t-micro); color: var(--tinta-suave); }
+.me-coach__firma { margin-inline-end: auto; font-weight: 600; color: var(--tinta); }
+.me-coach__corazon { color: var(--terracota); fill: var(--terracota-suave); }
+@media (min-width: 1024px) {
+  .me-coach { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: var(--e-6); padding: var(--e-6); }
+  .me-coach__mensaje { padding: var(--e-5) var(--e-6); }
+}
+
+/* Cuatro acciones */
+.me-acomp-acciones ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--e-3); margin: 0; padding: 0; list-style: none; }
+@media (min-width: 1024px) { .me-acomp-acciones ul { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--e-4); } }
+.me-acomp-accion {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 4px;
+  inline-size: 100%;
+  block-size: 100%;
+  min-block-size: 132px;
+  padding: var(--e-4);
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  background: var(--superficie);
+  color: var(--tinta-suave);
+  font: inherit;
+  font-size: var(--t-xs);
+  line-height: 1.4;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s var(--curva), box-shadow 0.15s var(--curva);
+}
+.me-acomp-accion__icono { margin-block-end: var(--e-3); color: var(--bosque); }
+.me-acomp-accion__titulo { font: 600 var(--t-base)/1.25 var(--serif); color: var(--bosque); }
+.me-acomp-accion--destacada { border-color: var(--bosque); background: var(--bosque); color: var(--sobre-oscuro-suave); }
+.me-acomp-accion--destacada .me-acomp-accion__icono, .me-acomp-accion--destacada .me-acomp-accion__titulo { color: var(--sobre-oscuro); }
+@media (hover: hover) {
+  .me-acomp-accion:hover { border-color: var(--linea-fuerte); box-shadow: var(--sombra-1); }
+  .me-acomp-accion--destacada:hover { background: var(--bosque-hondo); }
+}
+
+/* Esta semana + próxima revisión */
+.me-acomp__fila { display: grid; gap: var(--e-4); }
+@media (min-width: 1024px) { .me-acomp__fila { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); align-items: stretch; gap: var(--e-4); } }
+.me-acomp-semana { display: grid; align-content: space-between; gap: var(--e-4); padding: var(--e-5); border-radius: var(--r-l); background: var(--superficie); box-shadow: var(--sombra-1); }
+.me-acomp-semana__cabeza { display: grid; gap: var(--e-3); }
+@media (min-width: 600px) { .me-acomp-semana__cabeza { grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: var(--e-6); } }
+.me-acomp-semana__titulo { font: 600 var(--t-h3)/1.2 var(--serif); color: var(--bosque); }
+.me-acomp-semana__rango { font-size: var(--t-xs); color: var(--tinta-suave); }
+.me-acomp-semana__avance { display: grid; gap: 8px; font-size: var(--t-xs); color: var(--tinta-suave); }
+.me-acomp-semana__barra { display: block; block-size: 8px; border-radius: var(--r-full); background: var(--niebla); overflow: hidden; }
+.me-acomp-semana__barra > span { display: block; block-size: 100%; border-radius: inherit; background: var(--proyecto); }
+.me-acomp-semana__dias { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin: 0; padding: 0; list-style: none; }
+.me-acomp-dia { display: grid; justify-items: center; gap: 4px; padding-block: 8px; border-radius: var(--r-s); font-size: var(--t-micro); color: var(--tinta-suave); }
+.me-acomp-dia[aria-current="date"] { background: var(--crema); outline: 1px solid var(--linea); outline-offset: -1px; }
+.me-acomp-dia__circulo { display: grid; place-items: center; inline-size: 32px; block-size: 32px; border-radius: var(--r-full); border: 2px solid var(--linea-fuerte); background: var(--superficie); color: var(--sobre-categoria); }
+.me-acomp-dia--completo .me-acomp-dia__circulo { border-color: var(--bosque); background: var(--bosque); }
+.me-acomp-dia--parcial .me-acomp-dia__circulo { border-color: var(--bosque); background: linear-gradient(90deg, var(--niebla) 50%, var(--superficie) 50%); }
+.me-acomp-dia--futuro .me-acomp-dia__circulo, .me-acomp-dia--sin .me-acomp-dia__circulo { border-style: dashed; border-color: var(--linea); background: var(--papel); }
+.me-acomp-dia__nombre { font-weight: 600; color: var(--tinta); }
+.me-acomp-semana__plan { justify-self: end; }
+
+.me-proxima { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: start; gap: var(--e-3); padding: var(--e-5); border-radius: var(--r-l); background: var(--papel-hondo); scroll-margin-block-start: calc(var(--cabecera-alto) + var(--e-4)); }
 .me-proxima__icono { display: grid; place-items: center; inline-size: 44px; block-size: 44px; border-radius: var(--r-full); background: var(--superficie); color: var(--bosque); }
-.me-proxima__texto { display: grid; gap: 2px; font-size: var(--t-s); line-height: 1.45; color: var(--tinta-suave); }
-.me-proxima__titulo { font: 600 var(--t-base)/1.3 var(--sans); color: var(--tinta); }
+.me-proxima__texto { display: grid; gap: 2px; font-size: var(--t-xs); line-height: 1.45; color: var(--tinta-suave); }
+.me-proxima__titulo { font: 600 var(--t-s)/1.3 var(--sans); color: var(--tinta); }
 .me-proxima__fecha { font: 600 var(--t-h3)/1.25 var(--serif); color: var(--bosque); }
 .me-proxima__modalidad { margin-block-end: var(--e-2); font-weight: 600; color: var(--tinta); }
+.me-proxima__botones { display: flex; flex-wrap: wrap; gap: 8px; margin-block-start: var(--e-3); }
+.me-proxima__botones .boton { gap: 8px; }
 .me-proxima .microcopia { margin-block-start: var(--e-2); }
+
+/* Historial */
 .me-acomp-historial { display: grid; gap: var(--e-3); }
-.me-acomp-historial__titulo { font: 600 var(--t-base)/1.3 var(--sans); color: var(--tinta); }
+.me-acomp-historial__titulo { font: 600 var(--t-h3)/1.2 var(--serif); color: var(--bosque); }
 .me-acomp-historial__lista { display: grid; gap: var(--e-3); margin: 0; padding: 0; list-style: none; }
+@media (min-width: 1024px) { .me-acomp-historial__lista { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .me-acomp-historial__item { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: start; gap: var(--e-3); padding: var(--e-4); border-radius: var(--r-m); background: var(--superficie); box-shadow: var(--sombra-1); }
 .me-acomp-historial__icono { display: grid; place-items: center; inline-size: 40px; block-size: 40px; border-radius: var(--r-full); background: var(--salvia-suave); color: var(--bosque); }
 .me-acomp-historial__texto { display: grid; gap: 2px; font-size: var(--t-s); line-height: 1.45; color: var(--tinta); }
 .me-acomp-historial__tipo { font-weight: 600; }
 .me-acomp-historial__estado { margin-block-end: var(--e-1); font-size: var(--t-xs); color: var(--tinta-suave); }
-/* Cierre: una frase cálida (no una tarjeta) y el paisaje, secundario. */
-.me-acomp__cierre { display: grid; justify-items: center; gap: var(--e-4); text-align: center; }
-.me-acomp__cierre .voz { max-inline-size: 32ch; color: var(--bosque); }
-.me-acomp__paisaje { inline-size: calc(100% + 2 * var(--gutter)); max-inline-size: none; block-size: auto; aspect-ratio: 440 / 84; margin-inline: calc(-1 * var(--gutter)); }
-@media (min-width: 1024px) {
-  .me-acomp {
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-    grid-template-areas:
-      "cabeza    cabeza"
-      "principal lado"
-      "semanas   semanas"
-      "pronto    pronto"
-      "cierre    cierre";
-    column-gap: var(--e-6);
-    row-gap: var(--e-7);
-    align-items: start;
-  }
-  .me-acomp__cabeza { grid-area: cabeza; }
-  .me-acomp__principal { grid-area: principal; }
-  .me-acomp__lado { grid-area: lado; }
-  .me-acomp__semanas { grid-area: semanas; }
-  .me-acomp > .me-pronto { grid-area: pronto; }
-  .me-acomp__cierre { grid-area: cierre; }
-  .me-acomp__paisaje { inline-size: 100%; max-inline-size: 560px; margin-inline: auto; }
-  .me-coach { padding: var(--e-5); }
-  .me-acomp__botones { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
+
+.me-acomp__cierre { justify-self: center; max-inline-size: 32ch; text-align: center; color: var(--bosque); }
 .me-acomp__semanas { scroll-margin-block-start: calc(var(--cabecera-alto) + var(--e-4)); }
 #tu-registro { scroll-margin-block-start: calc(var(--cabecera-alto) + var(--e-4)); }
 

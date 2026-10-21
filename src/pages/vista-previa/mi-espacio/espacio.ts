@@ -126,6 +126,18 @@ export type ParticipanteEspacio = { nombre: string; correo: string; zonaHoraria:
 
 export type Ausencia = { hasta: Iso; vuelve: Iso; texto: string; banda: string };
 
+// Coach asignado (A3, mi_coach): solo nombre y presentación. Sin foto ni disponibilidad hasta que
+// existan en la base. null: sin coach asignado, o la función todavía no está en la base.
+export type CoachEspacio = { nombre: string; presentacion: string | null };
+
+// Videollamada semanal del plan cercano (C2, tabla videollamadas): la agenda el coach.
+export type VideollamadaEspacio = {
+  semana: number;
+  programadaPara: string; // timestamptz
+  enlace: string;
+  estado: "programada" | "realizada" | "no_asistio" | "cancelada";
+};
+
 export type NotaCambios = { version: number; nota: string; publicadoEl: Iso | null };
 
 export type DatosRegistroSemanal = { carga: string | null; funciono: string; costo: string; cambiar: string };
@@ -162,6 +174,8 @@ export type Espacio = {
   notasCambios: NotaCambios[];
   semanasEnRevision: number[]; // revisión iniciada y aún no publicada (6.4: iniciada_en)
   ausencia: Ausencia | null;
+  coach: CoachEspacio | null;
+  videollamadas: VideollamadaEspacio[];
   servidor: Servidor | null;
 };
 
@@ -182,6 +196,9 @@ export const ESPACIO_PREVIA: Espacio = {
   notasCambios: [],
   semanasEnRevision: [],
   ausencia: E.AUSENCIA,
+  // Vista previa: sin nombre de coach (no se inventa) y sin videollamadas agendadas.
+  coach: null,
+  videollamadas: [],
   servidor: null,
 };
 

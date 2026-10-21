@@ -3,14 +3,54 @@
 //   · paisaje  → bienvenida de Mi Rumbo (pequeña, a la derecha del saludo)
 //   · colinas  → pie de la tarjeta «Tu acompañamiento»
 //   · brote    → celebración de un nuevo nivel y estados vacíos
+//   · atardecer → portada de Mi acompañamiento mientras no llegue la fotografía de la referencia
+//                 de ChatGPT (cordillera al atardecer y una persona sentada mirando el valle)
 // Los colores vienen de clases (.il-*) con tokens en app.css, sin estilos en línea.
 
-type Nombre = "paisaje" | "colinas" | "brote";
+type Nombre = "paisaje" | "colinas" | "brote" | "atardecer";
 
 type Props = { nombre: Nombre; className?: string };
 
 export default function Ilustracion({ nombre, className }: Props) {
   const clases = ["ilustracion", `ilustracion--${nombre}`, className].filter(Boolean).join(" ");
+  if (nombre === "atardecer")
+    return (
+      <svg className={clases} viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+        <defs>
+          <linearGradient id="il-at-cielo" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#6F7F86" />
+            <stop offset="0.38" stopColor="#C99A86" />
+            <stop offset="0.72" stopColor="#F0C59B" />
+            <stop offset="1" stopColor="#F6DEBF" />
+          </linearGradient>
+          <radialGradient id="il-at-sol" cx="0.66" cy="0.62" r="0.36">
+            <stop offset="0" stopColor="#FFE7BF" stopOpacity="0.95" />
+            <stop offset="0.35" stopColor="#F7C78F" stopOpacity="0.55" />
+            <stop offset="1" stopColor="#F7C78F" stopOpacity="0" />
+          </radialGradient>
+          <linearGradient id="il-at-bruma" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#F6DEBF" stopOpacity="0" />
+            <stop offset="1" stopColor="#F6DEBF" stopOpacity="0.7" />
+          </linearGradient>
+        </defs>
+        <rect width="1200" height="420" fill="url(#il-at-cielo)" />
+        <rect width="1200" height="420" fill="url(#il-at-sol)" />
+        <path fill="#A98A86" opacity="0.55" d="M0 230 L70 190 L120 205 L190 150 L240 172 L300 118 L350 150 L410 96 L470 140 L520 120 L585 168 L640 132 L700 176 L760 140 L820 178 L880 150 L950 190 L1010 160 L1080 196 L1140 170 L1200 190 V420 H0Z" />
+        <path fill="#F3E3E0" opacity="0.6" d="M300 118 L322 133 L314 140 L338 142 L350 150 L330 152 Z M410 96 L436 116 L425 121 L452 128 L470 140 L440 137 Z M640 132 L662 147 L652 151 L680 160 L700 176 L668 166 Z" />
+        <path fill="#8C6E72" opacity="0.75" d="M0 262 L90 226 L160 244 L250 200 L330 236 L420 196 L500 232 L580 210 L660 246 L750 214 L840 250 L930 222 L1020 256 L1110 230 L1200 248 V420 H0Z" />
+        <rect y="220" width="1200" height="110" fill="url(#il-at-bruma)" />
+        <path fill="#5E5257" opacity="0.85" d="M0 300 L110 268 L210 290 L320 256 L430 292 L540 270 L640 300 L760 276 L870 304 L980 282 L1090 306 L1200 290 V420 H0Z" />
+        <path fill="#3B3B3C" d="M0 352 C140 322 260 330 380 344 S620 360 760 340 C860 326 900 300 960 296 C1020 292 1090 312 1200 322 V420 H0Z" />
+        <path fill="#2A2B2C" d="M880 420 C900 356 940 318 1000 306 C1060 296 1120 300 1200 312 V420Z" />
+        <g fill="#232425">
+          <circle cx="1018" cy="236" r="11" />
+          <path d="M1004 248 C1000 262 1000 280 1006 296 L1034 296 C1038 282 1036 262 1030 248 Z" />
+          <path d="M1006 290 L976 300 C968 303 966 312 974 314 L1010 306 Z" />
+          <path d="M1030 292 L1058 304 C1064 307 1062 316 1055 316 L1024 306 Z" />
+          <path d="M1006 258 C996 270 990 282 992 292 L1000 292 C1000 282 1006 272 1012 264 Z" />
+        </g>
+      </svg>
+    );
   if (nombre === "brote")
     return (
       <svg className={clases} viewBox="0 0 120 120" aria-hidden="true" focusable="false">
