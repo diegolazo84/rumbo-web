@@ -94,6 +94,16 @@
   /* 11. Movimiento */
   --dur-1: 120ms; --dur-2: 200ms; --dur-3: 320ms; --dur-4: 600ms;
   --curva: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* 12. Colores de meta en el constructor del panel (uno por meta, en orden) */
+  --meta-0: #158B83; --meta-0-texto: #11716A; --meta-0-fondo: #E3EFEA;
+  --meta-1: #3973C5; --meta-1-texto: #3265AD; --meta-1-fondo: #E7ECF2;
+  --meta-2: #B77B16; --meta-2-texto: #895C10; --meta-2-fondo: #F6EDDD;
+  --meta-3: #B85A2E; --meta-3-texto: #9A4522; --meta-3-fondo: #F3E0D2;
+  --meta-4: #8A4F9E; --meta-4-texto: #74418A; --meta-4-fondo: #F0E6F3;
+  --meta-5: #5E8A2E; --meta-5-texto: #4A6E22; --meta-5-fondo: #E9F0DF;
+  --meta-6: #B8476A; --meta-6-texto: #9C3A59; --meta-6-fondo: #F6E3EA;
+  --meta-7: #5B6B7A; --meta-7-texto: #4A5866; --meta-7-fondo: #E8ECEF;
 }
 @media (min-width: 600px)  { :root { --gutter: 1.5rem; } }
 @media (min-width: 1024px) { :root { --gutter: 2.5rem; --cabecera-alto: 4.5rem; } }

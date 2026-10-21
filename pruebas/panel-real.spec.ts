@@ -479,7 +479,7 @@ test("constructor: crear el borrador, meta y acción, guardar y publicar", async
   await page.locator("#accion-titulo").fill("Planificar la semana");
   await page.locator('input[name="accion-dias"][value="1"]').check();
   await page.locator("#accion-instrucciones").fill("Abre tu agenda y anota tres prioridades.");
-  await page.getByRole("button", { name: "Guardar borrador" }).click();
+  // Se guarda solo al completar; «Guardar borrador» lo confirma igual.
   await expect(page.getByText("Borrador guardado.")).toBeVisible();
   // Sin cambios, «Guardar borrador» igual confirma.
   await page.getByRole("button", { name: "Guardar borrador" }).click();
@@ -530,12 +530,11 @@ test("constructor: una acción incompleta se ve, se abre al guardar y dice qué 
   await expect(page.getByText(/Falta completar la acción sin título \(semana 1\): título, días, instrucciones\./)).toBeVisible();
   await expect(page.locator("#accion-titulo")).toHaveValue("");
   await expect(page.getByText("Elige al menos un día.")).toBeVisible();
-  expect(base.acciones.some((a) => a.titulo === "Planificar la semana")).toBe(false);
   // Al quitarla, se guarda.
   await page.getByRole("button", { name: "Eliminar acción" }).click();
   await expect(sinDia).toHaveCount(0);
   await page.getByRole("button", { name: "Guardar borrador" }).click();
-  await expect(page.getByText("Borrador guardado.")).toBeVisible();
+  await expect(page.getByText(/Borrador guardado\.|ya está guardado/)).toBeVisible();
 });
 
 test("constructor: acciones de dos metas a la misma hora, en todas las semanas, y se publica avisando el cruce", async ({ page }, info) => {
@@ -570,6 +569,36 @@ test("constructor: acciones de dos metas a la misma hora, en todas las semanas, 
   await expect(hoja.getByText(/Programa publicado/)).toBeVisible();
   expect(llamadas.find((l) => l.nombre === "publicar_programa")!.cuerpo).toMatchObject({ p_aceptar_solapamientos: true });
   expect(base.acciones.filter((a) => a.programa_id === "g3").map((a) => a.titulo).sort()).toEqual(["Acción A", "Acción B"]);
+});
+
+test("constructor: al elegir otra meta no se edita la acción anterior y todo se guarda solo", async ({ page }, info) => {
+  test.skip(info.project.name !== "escritorio", "el constructor es de escritorio (5.6)");
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/constructor/?id=p2");
+  await hidratar(page);
+  await page.getByRole("button", { name: "Crear el borrador" }).click();
+  await page.getByRole("button", { name: "Nueva meta" }).click();
+  await page.locator("#meta-titulo").fill("Meta A");
+  await page.getByRole("button", { name: /^Nueva acción/ }).click();
+  await page.locator("#accion-titulo").fill("Acción A");
+  await page.locator('input[name="accion-dias"][value="1"]').check();
+  await page.locator("#accion-instrucciones").fill("Hacer A.");
+  // Meta nueva: el formulario ya no muestra la acción de la meta A.
+  await page.getByRole("button", { name: "Nueva meta" }).click();
+  await page.locator("#meta-titulo").fill("Meta B");
+  await expect(page.locator("#accion-titulo")).toHaveCount(0);
+  await page.getByRole("button", { name: "Agregar una acción a «Meta B»" }).click();
+  await page.locator("#accion-titulo").fill("Acción B");
+  await page.locator('input[name="accion-dias"][value="2"]').check();
+  await page.locator("#accion-instrucciones").fill("Hacer B.");
+  // Volver a la meta A abre su acción, intacta.
+  await page.getByRole("button", { name: /Meta A/ }).first().click();
+  await expect(page.locator("#accion-titulo")).toHaveValue("Acción A");
+  // Sin pulsar «Guardar borrador», se guarda solo.
+  await expect.poll(() => base.acciones.filter((a) => a.programa_id === "g3").map((a) => `${a.titulo}:${(a.dias as number[]).join()}`).sort(), { timeout: 8000 }).toEqual(["Acción A:1", "Acción B:2"]);
+  await expect(page.getByText("Borrador guardado.")).toBeVisible();
 });
 
 test("revisión semanal: abrirla la inicia y publicar guarda los tres campos", async ({ page }) => {

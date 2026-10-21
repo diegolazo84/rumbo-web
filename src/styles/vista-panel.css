@@ -315,3 +315,21 @@
 /* Constructor: confirmación de guardado, visible junto a la barra. */
 .pa-constructor__estado:empty { display: none; }
 .pa-constructor__estado .aviso { margin-block-start: var(--e-3); }
+
+/* Constructor: un color por meta (en orden), en la lista de metas, la semana y el resumen.
+   Pisa el color de la categoría, también en los elementos con data-cat de adentro. */
+[data-meta-color="0"], [data-meta-color="0"][data-cat], [data-meta-color="0"] [data-cat] { --cat: var(--meta-0); --cat-texto: var(--meta-0-texto); --cat-fondo: var(--meta-0-fondo); }
+[data-meta-color="1"], [data-meta-color="1"][data-cat], [data-meta-color="1"] [data-cat] { --cat: var(--meta-1); --cat-texto: var(--meta-1-texto); --cat-fondo: var(--meta-1-fondo); }
+[data-meta-color="2"], [data-meta-color="2"][data-cat], [data-meta-color="2"] [data-cat] { --cat: var(--meta-2); --cat-texto: var(--meta-2-texto); --cat-fondo: var(--meta-2-fondo); }
+[data-meta-color="3"], [data-meta-color="3"][data-cat], [data-meta-color="3"] [data-cat] { --cat: var(--meta-3); --cat-texto: var(--meta-3-texto); --cat-fondo: var(--meta-3-fondo); }
+[data-meta-color="4"], [data-meta-color="4"][data-cat], [data-meta-color="4"] [data-cat] { --cat: var(--meta-4); --cat-texto: var(--meta-4-texto); --cat-fondo: var(--meta-4-fondo); }
+[data-meta-color="5"], [data-meta-color="5"][data-cat], [data-meta-color="5"] [data-cat] { --cat: var(--meta-5); --cat-texto: var(--meta-5-texto); --cat-fondo: var(--meta-5-fondo); }
+[data-meta-color="6"], [data-meta-color="6"][data-cat], [data-meta-color="6"] [data-cat] { --cat: var(--meta-6); --cat-texto: var(--meta-6-texto); --cat-fondo: var(--meta-6-fondo); }
+[data-meta-color="7"], [data-meta-color="7"][data-cat], [data-meta-color="7"] [data-cat] { --cat: var(--meta-7); --cat-texto: var(--meta-7-texto); --cat-fondo: var(--meta-7-fondo); }
+
+/* Constructor: la categoría se distingue por símbolo y nombre (el color es de la meta). */
+.pa-cat { display: inline-flex; align-items: center; gap: 4px; inline-size: fit-content; padding: 0 6px; border: 1px solid var(--linea); border-radius: var(--r-full); background: var(--papel); font-size: var(--t-xs); font-weight: 600; color: var(--tinta-suave); }
+.pa-cat__simbolo { color: var(--tinta); }
+/* El color de la meta llena la tarjeta (fondo suave y barra ancha); la elegida se marca con el borde. */
+.pa-bloque[data-meta-color], .pa-metas__item[data-meta-color] { background: var(--cat-fondo); box-shadow: inset 6px 0 0 var(--cat); }
+.pa-bloque[data-meta-color].es-elegida, .pa-metas__item[data-meta-color].es-elegida { border-color: var(--tinta); border-width: 2px; }
