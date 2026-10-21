@@ -35,7 +35,7 @@ legal de Diego).
 | 17 | Red de especialistas | inexistente | Modelo comercial, verificación, reservas, pagos | decisión, externo | — |
 | 18 | Videollamada del plan cercano | parcial | Enlace, asistencia y notas | #8 | — |
 | 19 | Pagos | inexistente | Registro manual; después pago en línea | #9; SII | — |
-| 20 | «Lo que viene» desde la base | simulada | Tabla de módulos | #8, migración | — |
+| 20 | «Lo que viene» desde la base | parcial: tabla de módulos desarrollada (A4) | Que «Lo que viene» y cada sección lean la tabla; pantalla del dueño para cambiar estados | migración, diseño | A4 |
 | 21 | App instalable con avisos | parcial | Service worker | — | — |
 | 22 | Acciones medibles y plantillas | inexistente | Cantidades y plantillas | migración | — |
 | 23 | WhatsApp | inexistente | Después de correo y avisos en el teléfono | #12; externo **pagado** | — |

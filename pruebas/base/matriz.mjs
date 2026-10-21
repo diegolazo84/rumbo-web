@@ -31,7 +31,7 @@ if (!PGURL) throw new Error("Falta PGURL.");
 // Lo esperado
 
 // coach: qué hace un coach con sus participantes («suyos»), «propia» (su fila y la del dueño) o «nada».
-// leer: «todos» (catálogo, también anon) · «equipo» (solo equipo con aal2) ·
+// leer: «todos» (catálogo, también anon) · «con-sesion» (todas las filas, solo con sesión) · «equipo» (solo equipo con aal2) ·
 //       «propio» (cada persona ve exactamente sus filas; el equipo con aal2, todas) ·
 //       «propio-filtrado» (cada persona ve solo parte de sus filas, p. ej. lo publicado).
 // escribir: «equipo» (el equipo con aal2 escribe directo) · «funciones» (nadie escribe directo).
@@ -40,6 +40,7 @@ const TABLAS = {
   planes: { leer: "todos", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
   niveles: { leer: "todos", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
   reglas_creditos: { leer: "todos", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
+  modulos: { leer: "con-sesion", escribir: "funciones", coach: { leer: "con-sesion", escribir: "nada" } },
   feriados: { leer: "todos", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
   ajustes_operacion: { leer: "equipo", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
   solicitudes: { leer: "equipo", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
@@ -75,9 +76,10 @@ const FUNCIONES = {
   ],
   "equipo-error": [
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
-    "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion",
+    "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion", "cambiar_modulo",
   ],
   equipo: ["mi_rol_equipo", "actualizar_mi_perfil"],
+  "con-sesion": ["modulo_visible"],
   "equipo-vacio": ["solapamientos", "carga_prevista"],
 };
 // Funciones de privado que authenticated necesita porque las usan las políticas de RLS.
@@ -203,7 +205,7 @@ exigir(vistas.length === 0, `hay vistas sin declarar (las vistas se saltan la RL
 const ejecutables = (esquema, rol) =>
   lista(`select distinct p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = '${esquema}' and has_function_privilege('${rol}', p.oid, 'execute') order by 1`);
-const declaradasAuth = [...FUNCIONES.anon, ...FUNCIONES.persona, ...FUNCIONES["equipo-error"], ...FUNCIONES["equipo-vacio"], ...FUNCIONES.equipo].sort();
+const declaradasAuth = [...FUNCIONES.anon, ...FUNCIONES.persona, ...FUNCIONES["equipo-error"], ...FUNCIONES["equipo-vacio"], ...FUNCIONES.equipo, ...FUNCIONES["con-sesion"]].sort();
 const igual = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
 const dif = (a, b) => `sobran: ${a.filter((x) => !b.includes(x)).join(", ") || "—"}; faltan: ${b.filter((x) => !a.includes(x)).join(", ") || "—"}`;
 const anonPuede = ejecutables("public", "anon");
@@ -228,6 +230,8 @@ for (const [t, regla] of Object.entries(TABLAS)) {
     const n = vistos.n ?? 0;
     const que = `${rol.nombre} lee public.${t}`;
     if (regla.leer === "todos") exigir(n === total, `${que}: ve ${n} de ${total} (catálogo: debe ver todo)`);
+    else if (regla.leer === "con-sesion")
+      exigir(n === (clave === "anon" ? 0 : total), `${que}: ve ${n} de ${total} (con sesión: todo; sin sesión: nada)`);
     else if (rol.coach) {
       if (regla.coach.leer === "suyos") {
         const suyas = Number(sql(`select count(*) from public.${t} x where ${duenoDe(t, "x")} in ${enLista(rol.suyos)}`));
@@ -418,6 +422,23 @@ sql(`update public.equipo set nombre = 'Coach Y' where user_id = '${ROLES.Y.uid}
 const personaEdita = como(ROLES.A, `select public.actualizar_mi_perfil('{"nombre": "Intruso"}'::jsonb)`);
 exigir(!personaEdita.ok && /no_autorizado/.test(personaEdita.error), "una persona participante edita perfiles del equipo");
 paso("perfil del coach: cada coach edita el suyo; cada participante ve solo a su coach, sin datos de contacto");
+
+// A4 · Módulos: solo el dueño cambia estados; no se habilita sin probar ni es operativo sin respaldo.
+const estadoDe = (c) => sql(`select estado from public.modulos where clave = '${c}'`);
+const habilitarSinProbar = como(ROLES.aal2, "select public.cambiar_modulo('comunidad', 'habilitado')");
+exigir(!habilitarSinProbar.ok && /sin_probar/.test(habilitarSinProbar.error), `se habilita un módulo sin probar: ${habilitarSinProbar.error ?? "funcionó"}`);
+const pasos4 = como(ROLES.aal2, `select public.cambiar_modulo('comunidad', 'probado');
+  select public.cambiar_modulo('comunidad', 'habilitado');
+  select public.modulo_visible('comunidad')`);
+exigir(pasos4.ok && ultima(pasos4) === "t", `el dueño no pudo probar y habilitar un módulo: ${pasos4.error ?? ultima(pasos4)}`);
+const sinRespaldo = como(ROLES.aal2, `select public.cambiar_modulo('comunidad', 'probado'); select public.cambiar_modulo('comunidad', 'operativo')`);
+exigir(!sinRespaldo.ok && /respaldo:requerido/.test(sinRespaldo.error), "se marca operativo un módulo sin respaldo");
+const coachCambia = como(ROLES.X, "select public.cambiar_modulo('comunidad', 'planificado')");
+exigir(!coachCambia.ok && /no_autorizado/.test(coachCambia.error), "un coach cambia el estado de un módulo");
+const personaVe = como(ROLES.A, "select public.modulo_visible('comunidad')");
+exigir(personaVe.ok && personaVe.salida === "f", "un módulo planificado aparece como visible");
+exigir(estadoDe("comunidad") === "planificado", "las pruebas de módulos dejaron cambios");
+paso("módulos: solo el dueño cambia estados; no se habilita sin probar ni se marca operativo sin respaldo");
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
 
