@@ -205,6 +205,9 @@
   }
   .lateral .nav-app__icono { inline-size: 44px; block-size: 32px; }
   .lateral .nav-app__contador { margin-inline-start: auto; }
+  /* Referencia de ChatGPT (21-oct-2026): el destino activo es una pastilla bosque con texto claro. */
+  .lateral .nav-app__item[aria-current="page"] { background: var(--bosque); color: var(--sobre-oscuro); }
+  .lateral .nav-app__item[aria-current="page"] .nav-app__icono { background: transparent; }
   .lateral__pie { display: grid; gap: 4px; justify-items: start; }
   .lateral__pie hr { justify-self: stretch; margin-block: var(--e-2); }
   .lateral__pie .boton { margin-block-end: var(--e-2); }

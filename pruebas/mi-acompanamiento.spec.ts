@@ -1,7 +1,8 @@
-// Mi acompañamiento con la referencia visual v2 y los textos exactos de Diego (21-oct-2026):
-// «Tu coach» genérico, el mensaje de la semana (foco real del coach), «Me está costando»,
-// «Escribir mi registro», la próxima revisión, el historial, «Así fue tu semana» y el cierre,
-// todo con datos que ya existen. Corre sobre la vista previa.
+// Mi acompañamiento con la referencia de ChatGPT (21-oct-2026, 21:35 UTC): portada, «Tu coach»
+// (genérico en la vista previa), el mensaje de la semana (foco real del coach), cuatro acciones,
+// «Esta semana», la próxima revisión según el plan, el historial, «Así fue tu semana» y el cierre,
+// todo con datos que ya existen. Corre sobre la vista previa; el coach y la videollamada reales,
+// en mi-espacio-real.spec.ts.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { revisiones } from "../src/data/ejemplo-app";
@@ -29,11 +30,12 @@ test.use({ reducedMotion: "reduce" });
 test("tu coach sin nombre ni foto, con el foco real de la última revisión como mensaje y sin «Nuevo»", async ({ page }) => {
   await abrir(page, "publicada/");
   await expect(page.locator("h1")).toHaveText("Mi acompañamiento");
-  await expect(page.locator(".me-acomp__intro")).toHaveText(T.intro);
+  await expect(page.locator(".me-acomp-portada__bajada")).toHaveText(T.portada.bajada);
   const coach = page.locator(".me-coach");
   await expect(coach.getByRole("heading", { name: T.coach.titulo, exact: true })).toBeVisible();
   await expect(coach).toContainText(T.coach.quien);
-  await expect(coach.locator(".me-avatar img")).toHaveCount(0);
+  await expect(coach.locator("img")).toHaveCount(0);
+  await expect(coach.locator(".me-coach__firma")).toHaveCount(0);
   await expect(coach).not.toContainText("Diego");
   await expect(coach.locator(".me-coach__rotulo")).toHaveText(T.mensaje.rotulo);
   const foco = revisiones.find((r) => r.semana === 1)!.foco;
@@ -44,9 +46,37 @@ test("tu coach sin nombre ni foto, con el foco real de la última revisión como
   await sinViolaciones(page);
 });
 
-test("«Me está costando» abre la misma hoja de Mi Rumbo; «Escribir mi registro» abre el formulario", async ({ page }) => {
+test("cuatro acciones: registrar, me está costando, la revisión escrita y solicitar un ajuste", async ({ page }) => {
+  await abrir(page, "publicada/");
+  const acciones = page.locator(".me-acomp-acciones li");
+  await expect(acciones).toHaveCount(4);
+  await expect(acciones.nth(0)).toContainText(T.acciones.registrar.titulo);
+  await expect(acciones.nth(1)).toContainText(T.acciones.costando.titulo);
+  // Plan con acompañamiento (por escrito): la tercera es la revisión, nunca agendar una videollamada.
+  await expect(acciones.nth(2)).toContainText(T.acciones.revision.titulo);
+  await expect(acciones.nth(2).getByRole("link")).toHaveAttribute("href", /#lo-que-vimos$/);
+  await expect(page.locator(".me-acomp-acciones")).not.toContainText(/videollamada/i);
+  await expect(acciones.nth(3).getByRole("link")).toHaveAttribute("href", /\/mi-espacio\/plan\/ajuste\/$/);
+  // Plan cercano sin enlace todavía: la videollamada la agenda el coach.
+  await abrir(page, "cercano/");
+  await expect(acciones.nth(2)).toContainText(T.acciones.videollamada.titulo);
+  await expect(acciones.nth(2)).toContainText(T.acciones.videollamada.sinEnlace);
+  await expect(page.getByRole("button", { name: /Agendar|Reprogramar/ })).toHaveCount(0);
+  await sinViolaciones(page);
+});
+
+test("esta semana: acciones hechas de la semana y un círculo por día", async ({ page }) => {
   await abrir(page, "");
-  await page.getByRole("button", { name: T.botones.costando }).click();
+  const semana = page.locator(".me-acomp-semana");
+  await expect(semana.getByRole("heading", { name: T.semana.titulo })).toBeVisible();
+  await expect(semana.locator(".me-acomp-dia")).toHaveCount(7);
+  await expect(semana.locator(".me-acomp-dia[aria-current=date]")).toHaveCount(1);
+  await expect(semana.locator(".me-acomp-semana__avance p")).toHaveText(/^\d+ de \d+ acci(ón completada|ones completadas)$/);
+});
+
+test("«Me está costando» abre la misma hoja de Mi Rumbo; «Escribir a mi coach» abre el formulario", async ({ page }) => {
+  await abrir(page, "");
+  await page.locator(".me-acomp-acciones").getByRole("button", { name: new RegExp(T.acciones.costando.titulo) }).click();
   const hoja = page.getByRole("dialog", { name: T_COSTANDO.titulo });
   await expect(hoja).toBeVisible();
   await expect(hoja).toContainText(T_COSTANDO.ajuste.titulo);
@@ -56,7 +86,7 @@ test("«Me está costando» abre la misma hoja de Mi Rumbo; «Escribir mi regist
   await expect(hoja).not.toBeVisible();
   await expect(page.locator("#tu-registro")).toContainText(T_SEMANA.invitacion);
   await expect(page.locator("#registro-funciono")).toHaveCount(0);
-  const escribir = page.locator(".me-acomp__botones").getByRole("link", { name: T.botones.escribir });
+  const escribir = page.locator(".me-acomp-portada").getByRole("link", { name: T.portada.escribir });
   await expect(escribir).toHaveAttribute("href", "#tu-registro");
   await escribir.click();
   await expect(page.locator("#registro-funciono")).toBeVisible();
@@ -79,7 +109,7 @@ test("registro ya enviado: «Lo que compartiste» muestra sus respuestas reales"
   const seccion = page.locator("#tu-registro");
   await expect(seccion).toContainText("La pausa de la tarde");
   await expect(seccion.getByRole("button", { name: T_SEMANA.editar })).toBeVisible();
-  await expect(page.locator(".me-acomp__botones").getByRole("link", { name: T.botones.escribir })).toBeVisible();
+  await expect(page.locator(".me-acomp-acciones").getByRole("link", { name: new RegExp(T.acciones.registrar.titulo) })).toHaveAttribute("href", "#tu-registro");
 });
 
 test("próxima revisión real: fecha, modalidad contratada y explicación según el programa", async ({ page }) => {
@@ -91,7 +121,8 @@ test("próxima revisión real: fecha, modalidad contratada y explicación según
   await expect(proxima).toContainText(T.proxima.noEsChat);
   await abrir(page, "cercano/");
   await expect(page.locator(".me-proxima__modalidad")).toHaveText(T.proxima.videollamada("19:00"));
-  await expect(page.locator(".me-proxima")).toContainText(T.proxima.explicaVideollamada);
+  // Sin enlace todavía: lo agenda el coach (C2), la persona no puede agendar ni reprogramar.
+  await expect(page.locator(".me-proxima")).toContainText(T.proxima.sinEnlace);
   await sinViolaciones(page);
 });
 
@@ -140,11 +171,10 @@ test("semana 1, sin revisiones: foco inicial y fecha de la primera revisión, si
   await expect(page.locator(".me-semana__sin-revision")).toHaveText(T_SEMANA.sinRevision);
 });
 
-test("cierre: frase breve antes del paisaje", async ({ page }) => {
+test("cierre: frase breve, sin tarjetas «Próximamente»", async ({ page }) => {
   await abrir(page, "");
-  const cierre = page.locator(".me-acomp__cierre");
-  await expect(cierre).toContainText(T.cierre);
-  await expect(cierre.locator(".me-acomp__paisaje")).toHaveCount(1);
+  await expect(page.locator(".me-acomp__cierre")).toHaveText(T.cierre);
+  await expect(page.locator(".me-acomp .me-pronto")).toHaveCount(0);
 });
 
 test("barra inferior: no tapa nada de Mi acompañamiento al desplazar", async ({ page, isMobile }) => {

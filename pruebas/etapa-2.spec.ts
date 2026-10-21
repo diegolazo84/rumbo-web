@@ -143,8 +143,7 @@ test("Mi acompañamiento: tu coach, mensaje de la semana, próxima revisión e h
   for (const t of ["Tu coach", "Un mensaje para ti esta semana", "Próxima revisión", "Historial reciente"])
     await expect(page.getByRole("heading", { name: t, exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Así fue tu semana" })).toBeVisible();
-  // El asistente y la ficha del coach todavía no existen: solo «Próximamente», sin botones.
-  await expect(page.locator(".me-pronto")).toContainText("Asistente de Rumbo");
-  await expect(page.locator(".me-pronto button")).toHaveCount(0);
+  // Sin tarjetas «Próximamente» en lugar de funciones: el coach real llega de mi_coach.
+  await expect(page.locator(".me-acomp .me-pronto")).toHaveCount(0);
   await sinViolaciones(page);
 });

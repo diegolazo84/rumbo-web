@@ -391,12 +391,54 @@ test("Mi acompañamiento real: foco inicial y fecha de la primera revisión, sin
   await expect(page.getByRole("heading", { name: "Próxima revisión" })).toBeVisible();
   await expect(page.locator(".me-proxima")).toContainText("Jueves 15 de octubre");
   // Intro de cercanía y la modalidad real del plan (sin atención permanente ni chat).
-  await expect(page.locator(".me-acomp__intro")).toContainText("Un espacio para compartir cómo vas");
+  await expect(page.locator(".me-acomp-portada__bajada")).toHaveText("No tienes que hacerlo solo. Estamos contigo en este camino.");
   await expect(page.locator(".me-proxima__modalidad")).toHaveText("Revisión por escrito");
   await expect(page.locator(".me-proxima")).toContainText("Este espacio no es un chat de respuesta inmediata.");
   // Sin revisión publicada, el historial lo dice sin inventar observaciones.
   await expect(page.locator(".me-acomp-historial")).toContainText("Aquí verás las respuestas de tu coach.");
-  await expect(page.locator(".me-avatar img")).toHaveCount(0);
+  await expect(page.locator(".me-coach img")).toHaveCount(0);
+  // Sin coach asignado (mi_coach no responde): «Tu coach» genérico, sin nombre inventado.
+  await expect(page.locator(".me-coach__titulo")).toHaveText("Tu coach");
+  await expect(page.locator(".me-coach__rotulo-coach")).toHaveCount(0);
+  await sinViolaciones(page);
+});
+
+// Referencia de ChatGPT: el nombre y la presentación del coach llegan de mi_coach (A3) y, en el
+// plan cercano, la videollamada de la semana de la tabla videollamadas (C2). Nada más.
+test("Mi acompañamiento real: coach asignado y videollamada agendada por el coach", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.ciclos[0].plan_id = "cercano";
+  base.ciclos[0].hora_videollamada = "19:00:00";
+  base.videollamadas = [
+    { participante_id: "p1", ciclo_id: "c1", semana: 1, programada_para: "2026-10-08T22:00:00Z", enlace: "https://meet.example.org/s1", estado: "realizada" },
+    { participante_id: "p1", ciclo_id: "c1", semana: 2, programada_para: "2026-10-15T23:30:00Z", enlace: "https://meet.example.org/s2", estado: "programada" },
+  ];
+  base.revisiones.push({ participante_id: "p1", ciclo_id: "c1", semana: 1, tipo: "videollamada", que_funciono: "Las mañanas te funcionaron.", que_ajustamos: null, foco: "Una cosa a la vez.", iniciada_en: "2026-10-08T22:30:00Z", publicada_en: "2026-10-08T23:00:00Z" });
+  const llamadas = await simular(page, base, { mi_coach: () => ({ nombre: "Diego Muñoz", presentacion: "Acompaño procesos de cambio de hábitos." }) });
+  await page.goto("mi-espacio/acompanamiento/");
+  await hidratar(page);
+  const coach = page.locator(".me-coach");
+  await expect(coach.locator(".me-coach__titulo")).toHaveText("Diego Muñoz");
+  await expect(coach.locator(".me-coach__rotulo-coach")).toHaveText("Tu coach");
+  await expect(coach).toContainText("Acompaño procesos de cambio de hábitos.");
+  await expect(coach.locator(".me-coach__avatar")).toHaveText("DM");
+  await expect(coach.locator(".me-coach__cita")).toContainText("Una cosa a la vez.");
+  await expect(coach.locator(".me-coach__firma")).toHaveText("Diego Muñoz, tu coach");
+  // Sin «En línea» ni foto: no existen en la base.
+  await expect(coach).not.toContainText("En línea");
+  // La videollamada de la semana 2: hora de Chile (20:30) y el enlace que dejó el coach.
+  const proxima = page.locator(".me-proxima");
+  await expect(proxima.locator(".me-proxima__modalidad")).toHaveText("Videollamada · 20 min · 20:30 (hora de Chile)");
+  await expect(proxima.getByRole("link", { name: /Unirme a la videollamada/ })).toHaveAttribute("href", "https://meet.example.org/s2");
+  await expect(page.locator(".me-acomp-acciones").getByRole("link", { name: /Mi videollamada/ })).toHaveAttribute("href", "https://meet.example.org/s2");
+  // La de la semana 1 ya se anotó: queda en el historial con su estado real.
+  await expect(page.locator(".me-acomp-historial")).toContainText("Videollamada de la semana 1");
+  await expect(page.locator(".me-acomp-historial")).toContainText("Realizada el jueves 8");
+  // No hay forma de agendar ni reprogramar desde aquí: la agenda el coach.
+  await expect(page.getByRole("button", { name: /Agendar|Reprogramar/ })).toHaveCount(0);
+  expect(llamadas.some((l) => l.tipo === "rpc" && l.nombre === "mi_coach")).toBe(true);
+  expect(llamadas.some((l) => l.tipo === "tabla" && l.nombre === "videollamadas" && l.url.includes("ciclo_id=eq.c1"))).toBe(true);
   await sinViolaciones(page);
 });
 

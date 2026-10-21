@@ -608,15 +608,40 @@ export const T_PLAN = {
 // Mi acompañamiento (referencia visual v2 y textos exactos de Diego, 21-oct-2026). Le habla a la
 // persona; sin prometer chat ni disponibilidad permanente. «Tu coach» con avatar genérico hasta
 // que exista la asignación de coaches (etapa 4A).
+// Mi acompañamiento con la referencia de ChatGPT (21-oct-2026, 21:35 UTC). Los textos de la
+// portada, de las cuatro acciones y de «Esta semana» son los de la imagen; donde la imagen
+// promete algo que no existe (perfil del coach, «En línea», agendar o reprogramar desde aquí),
+// se usa el texto de la función real (ver docs/inventario-funciones.md, fila 2).
 export const T_ACOMPANAMIENTO = {
-  intro: "Un espacio para compartir cómo vas, qué te está costando y qué podemos ajustar juntos.",
+  portada: {
+    bajada: "No tienes que hacerlo solo. Estamos contigo en este camino.",
+    mano: "Pequeños pasos también te llevan lejos.",
+    escribir: "Escribir a mi coach",
+  },
   coach: {
     titulo: "Tu coach",
     quien: "Te acompaña a avanzar a tu ritmo",
+    sinNombre: "Te acompaña en tu proceso, revisa lo que compartes y te ayuda a ajustar el plan cuando lo necesites.",
   },
   mensaje: {
     rotulo: "Un mensaje para ti esta semana",
     inicial: "Para empezar",
+    firma: (nombre: string) => `${nombre}, tu coach`,
+  },
+  acciones: {
+    titulo: "Lo que puedes hacer",
+    registrar: { titulo: "Registrar mi semana", texto: "Cuéntale a tu coach cómo te fue" },
+    costando: { titulo: "Me está costando", texto: "Pide apoyo o un ajuste" },
+    videollamada: { titulo: "Mi videollamada", texto: "Hablen en vivo", conEnlace: "Unirme a la videollamada", sinEnlace: "Tu coach te enviará el enlace" },
+    revision: { titulo: "Leer mi revisión", texto: "Lo que tu coach vio en tu semana", sinRevision: (dia: string) => `Tu primera revisión es el ${dia}` },
+    ajuste: { titulo: "Solicitar un ajuste", texto: "Propón un cambio en tu plan" },
+  },
+  semana: {
+    titulo: "Esta semana",
+    completadas: (hechas: number, total: number) => `${hechas} de ${total} ${total === 1 ? "acción completada" : "acciones completadas"}`,
+    sinAcciones: "Esta semana no tienes acciones programadas.",
+    dia: { completo: "todas hechas", parcial: "algunas hechas", pendiente: "sin registrar", futuro: "todavía no llega", sin: "sin acciones" },
+    verPlan: "Ver mi plan",
   },
   botones: {
     costando: "Me está costando",
@@ -625,21 +650,29 @@ export const T_ACOMPANAMIENTO = {
   proxima: {
     titulo: "Próxima revisión",
     escrita: "Revisión por escrito",
-    videollamada: (hora: string) => `Videollamada de 20 minutos · ${hora} (hora de Chile)`,
+    videollamada: (hora: string) => `Videollamada · 20 min · ${hora} (hora de Chile)`,
     explicaEscrita: "Puedes contarnos cómo te fue en tu registro. Tu coach lo revisará en la fecha indicada.",
     explicaVideollamada: "Nos encontraremos en tu sesión programada para revisar tus avances y ajustar lo que necesites.",
+    sinEnlace: "Tu coach agenda la videollamada y te avisa con el enlace.",
+    unirme: "Unirme a la videollamada",
+    nuevaVentana: " (se abre en otra ventana)",
+    detalles: "Ver detalles",
     noEsChat: "Este espacio no es un chat de respuesta inmediata.",
   },
   historial: {
     titulo: "Historial reciente",
     revision: (n: number) => `Revisión de la semana ${n}`,
     ajuste: "Solicitud de ajuste",
+    videollamada: (n: number) => `Videollamada de la semana ${n}`,
     estados: {
       publicada: "Publicada",
       enviada: "Enviada",
       en_revision: "En revisión",
       respondida: "Respondida",
       sin_cambios: "Revisada sin cambios",
+      realizada: "Realizada",
+      no_asistio: "No se realizó",
+      cancelada: "Cancelada",
     },
     fecha: (estado: string, dia: string) => `${estado} el ${dia}`,
     enRevision: (dia: string) => `En revisión · enviada el ${dia}`,
@@ -650,13 +683,6 @@ export const T_ACOMPANAMIENTO = {
     vacioSinFecha: "Aquí verás las respuestas de tu coach.",
   },
   cierre: "No tienes que resolverlo todo hoy. Seguimos avanzando contigo.",
-  pronto: {
-    titulo: "Lo que viene en tu acompañamiento",
-    items: [
-      { titulo: "Ficha de tu coach", texto: "Quién te acompaña y su experiencia, cuando tengas un coach asignado." },
-      { titulo: "Asistente de Rumbo", texto: "Te ayudará a preparar tu registro y a entender tu revisión. Tu coach siempre revisa lo que propone." },
-    ],
-  },
 } as const;
 
 export const T_COMUNIDAD = {
