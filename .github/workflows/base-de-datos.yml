@@ -212,12 +212,22 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/apartadas"
+          # A veces el contenedor de comparación anterior aún no suelta el puerto 54320: solo en ese
+          # caso se espera y se reintenta (hasta 3 veces). Cualquier otro error falla de inmediato.
+          diferencias() {
+            for intento in 1 2 3; do
+              if supabase db diff --db-url "$PGURL" -s public,privado --output-format json > deshacer.json 2> deshacer.err; then return 0; fi
+              cat deshacer.err
+              grep -q "address already in use" deshacer.err && [ "$intento" -lt 3 ] || return 1
+              echo "puerto ocupado; reintento $((intento + 1)) en 15 s"; sleep 15
+            done
+          }
           for d in $(ls supabase/deshacer/*.sql | sort -r); do
             m="supabase/migrations/$(basename "$d")"
             [ -f "$m" ] || { echo "::error::$d no corresponde a ninguna migración"; exit 1; }
             psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$d"
             mv "$m" "$RUNNER_TEMP/apartadas/"
-            supabase db diff --db-url "$PGURL" -s public,privado --output-format json > deshacer.json
+            diferencias
             if [ -n "$(jq -r '.diff' deshacer.json | tr -d '[:space:]')" ]; then
               jq -r '.diff' deshacer.json; echo "::error::$d no dejó la base como antes"; exit 1
             fi
