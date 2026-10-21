@@ -13,4 +13,5 @@ lighthouse/
 # Salidas de las pruebas de base de datos
 matriz.txt
 deshacer.json
-deshacer.err
+*.json.err
+cambios.json
