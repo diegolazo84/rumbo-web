@@ -31,7 +31,8 @@ if (!PGURL) throw new Error("Falta PGURL.");
 // Lo esperado
 
 // coach: qué hace un coach con sus participantes («suyos»), «propia» (su fila y la del dueño) o «nada».
-// leer: «todos» (catálogo, también anon) · «con-sesion» (todas las filas, solo con sesión) · «equipo» (solo equipo con aal2) ·
+// leer: «todos» (catálogo, también anon) · «con-sesion» (todas las filas, solo con sesión) ·
+//       «destinatario» (cada cuenta ve solo las filas dirigidas a ella) · «equipo» (solo equipo con aal2) ·
 //       «propio» (cada persona ve exactamente sus filas; el equipo con aal2, todas) ·
 //       «propio-filtrado» (cada persona ve solo parte de sus filas, p. ej. lo publicado).
 // escribir: «equipo» (el equipo con aal2 escribe directo) · «funciones» (nadie escribe directo).
@@ -40,6 +41,7 @@ const TABLAS = {
   planes: { leer: "todos", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
   niveles: { leer: "todos", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
   reglas_creditos: { leer: "todos", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
+  avisos: { leer: "destinatario", escribir: "funciones", coach: { leer: "destinatario", escribir: "nada" } },
   modulos: { leer: "con-sesion", escribir: "funciones", coach: { leer: "con-sesion", escribir: "nada" } },
   feriados: { leer: "todos", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
   ajustes_operacion: { leer: "equipo", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
@@ -79,7 +81,7 @@ const FUNCIONES = {
     "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion", "cambiar_modulo",
   ],
   equipo: ["mi_rol_equipo", "actualizar_mi_perfil"],
-  "con-sesion": ["modulo_visible"],
+  "con-sesion": ["modulo_visible", "marcar_avisos_leidos"],
   "equipo-vacio": ["solapamientos", "carga_prevista"],
 };
 // Funciones de privado que authenticated necesita porque las usan las políticas de RLS.
@@ -230,7 +232,12 @@ for (const [t, regla] of Object.entries(TABLAS)) {
     const n = vistos.n ?? 0;
     const que = `${rol.nombre} lee public.${t}`;
     if (regla.leer === "todos") exigir(n === total, `${que}: ve ${n} de ${total} (catálogo: debe ver todo)`);
-    else if (regla.leer === "con-sesion")
+    else if (regla.leer === "destinatario") {
+      const suyas = rol.uid ? Number(sql(`select count(*) from public.${t} where destinatario = '${rol.uid}'`)) : 0;
+      const ajenas = rol.uid ? (contar(rol, `public.${t} where destinatario <> '${rol.uid}'`).n ?? 0) : n;
+      exigir(ajenas === 0, `${que}: ve ${ajenas} filas dirigidas a otra cuenta`);
+      exigir(n === suyas, `${que}: ve ${n} de sus ${suyas} filas`);
+    } else if (regla.leer === "con-sesion")
       exigir(n === (clave === "anon" ? 0 : total), `${que}: ve ${n} de ${total} (con sesión: todo; sin sesión: nada)`);
     else if (rol.coach) {
       if (regla.coach.leer === "suyos") {
@@ -439,6 +446,30 @@ const personaVe = como(ROLES.A, "select public.modulo_visible('comunidad')");
 exigir(personaVe.ok && personaVe.salida === "f", "un módulo planificado aparece como visible");
 exigir(estadoDe("comunidad") === "planificado", "las pruebas de módulos dejaron cambios");
 paso("módulos: solo el dueño cambia estados; no se habilita sin probar ni se marca operativo sin respaldo");
+
+// A5 · Avisos sincronizados: los crea la base, cada cuenta ve y marca solo los suyos.
+const avisosDe = (r, tipo, leidos = false) =>
+  Number(sql(`select count(*) from public.avisos where destinatario = '${r.uid}' and tipo = '${tipo}' ${leidos ? "" : "and leido_en is null"}`));
+// pedir_ajuste admite 5 por semana; las corridas anteriores de la matriz cuentan, así que se envejecen.
+sql(`set session_replication_role = replica; update public.solicitudes_ajuste set creada_en = creada_en - interval '8 days' where participante_id = '${ROLES.A.ficha}'`);
+const antesAjuste = avisosDe(ROLES.X, "ajuste_pedido");
+const antesY = avisosDe(ROLES.Y, "ajuste_pedido");
+const pide = confirmado(ROLES.A, `select public.pedir_ajuste('{"tipo": "horarios", "texto": "Prueba de CI: necesito otro horario."}'::jsonb)`);
+exigir(pide.ok, `persona A no pudo pedir un ajuste: ${pide.error}`);
+exigir(avisosDe(ROLES.X, "ajuste_pedido") === antesAjuste + 1, "el coach X no recibió el aviso del ajuste que pidió A");
+exigir(avisosDe(ROLES.Y, "ajuste_pedido") === antesY, "el coach Y recibió un aviso de una persona que no acompaña");
+const antesReg = avisosDe(ROLES.X, "registro_enviado");
+const envia = confirmado(ROLES.A, `select public.guardar_registro_semanal(2::smallint, '{"carga": "justa", "funciono": "Prueba de CI."}'::jsonb, true)`);
+exigir(!envia.ok || avisosDe(ROLES.X, "registro_enviado") === antesReg + 1, "el coach X no recibió el aviso del registro semanal de A");
+const textos = sql(`select string_agg(titulo, ' | ') from public.avisos where participante_id = '${ROLES.A.ficha}'`);
+exigir(!/Prueba de CI/.test(textos), "un aviso copia texto escrito por una persona");
+const ajenaMarca = confirmado(ROLES.Y, `select public.marcar_avisos_leidos(array(select id from public.avisos where destinatario = '${ROLES.X.uid}'))`);
+exigir(ajenaMarca.ok && ajenaMarca.salida === "0" && avisosDe(ROLES.X, "ajuste_pedido") > 0, "un coach marcó como leídos los avisos de otro");
+const marca = confirmado(ROLES.X, "select public.marcar_avisos_leidos()");
+exigir(marca.ok && Number(marca.salida) > 0, `coach X no pudo marcar sus avisos: ${marca.error ?? marca.salida}`);
+// Otra sesión (otro dispositivo) de X ve lo mismo: ya no quedan sin leer.
+exigir((contar(ROLES.X, "public.avisos where leido_en is null").n ?? -1) === 0, "lo leído no quedó leído para la otra sesión de X");
+paso("avisos: los crea la base, llegan a quien corresponde y lo leído queda leído en todos los dispositivos");
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
 
