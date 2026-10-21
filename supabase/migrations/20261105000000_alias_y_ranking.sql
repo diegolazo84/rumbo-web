@@ -5,7 +5,8 @@
 --    Solo entra quien tuvo acciones esa semana. Empates comparten el puesto.
 --  · Lo ven quienes participan en él y el equipo con TOTP. No muestra nombres ni cifras de acciones.
 --  · Resguardo de privacidad: con menos de 3 participantes no se muestra (con 2 se sabría quién es quién).
--- Antes de activarlo, la política de privacidad debe describirlo (hoy dice que aún no existe).
+-- Para las personas solo funciona con el módulo «ranking» habilitado (lo decide el dueño, A4).
+-- Antes de habilitarlo, la política de privacidad debe describirlo (hoy dice que aún no existe).
 
 create table public.alias (
   participante_id uuid primary key references public.participantes(id) on delete cascade,
@@ -48,6 +49,7 @@ declare v_yo uuid := privado.mi_participante_id();
 begin
   if v_yo is null then perform privado.error('sesion','sin_ficha','403'); end if;
   if p_participar is null then perform privado.error('ranking','invalido'); end if;
+  if p_participar and not public.modulo_visible('ranking') then perform privado.error('ranking','no_disponible','409'); end if;
   update public.alias set en_ranking = p_participar,
          ranking_aceptado_en = case when p_participar then now() else ranking_aceptado_en end,
          actualizado_en = now()
@@ -65,6 +67,7 @@ declare
   v_equipo boolean := privado.es_dueno() or privado.es_coach();
 begin
   if extract(isodow from v_lunes) <> 1 then perform privado.error('semana','invalida'); end if;
+  if not v_equipo and not public.modulo_visible('ranking') then perform privado.error('ranking','no_disponible','409'); end if;
   if not v_equipo and not exists (select 1 from public.alias a where a.participante_id = v_yo and a.en_ranking) then
     perform privado.error('ranking','no_participa','403');
   end if;

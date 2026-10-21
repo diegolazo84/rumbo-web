@@ -795,6 +795,7 @@ paso("medibles y plantillas: la cantidad se anota en lo propio ya marcado y no c
   // Semana fija (lunes 5 de enero de 2026): A cumple 100 %, B y una tercera persona C, 50 %.
   const lunes = "'2026-01-05'::date";
   const semana = (conC) => `reset role; set session_replication_role = replica;
+    update public.modulos set estado = 'habilitado' where clave = 'ranking';
     update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
     delete from public.progreso_diario where fecha between ${lunes} and ${lunes} + 6;
     insert into public.progreso_diario (participante_id, fecha, programadas, hechas, en_revision, creditos_acciones, bono, racha)
@@ -823,6 +824,10 @@ paso("medibles y plantillas: la cantidad se anota en lo propio ya marcado y no c
   exigir(!martes.ok && /semana/.test(martes.error), "se pidió el ranking de una semana que no parte el lunes");
   const anon = como(ROLES.anon, "select count(*) from public.ranking_semanal()");
   exigir(!anon.ok && anon.codigo === DENEGADO, "sin sesión se ve el ranking");
+  const apagado = como(ROLES.A, `select count(*) from public.ranking_semanal(${lunes})`);
+  exigir(!apagado.ok && /no_disponible/.test(apagado.error), "una persona ve el ranking sin que el dueño lo haya habilitado");
+  const entrar = como(ROLES.A, "select public.participar_en_ranking(true)");
+  exigir(!entrar.ok && /no_disponible/.test(entrar.error), "una persona entra al ranking sin que el dueño lo haya habilitado");
 }
 paso("ranking: voluntario, solo con alias, por % de la semana; con menos de 3 no se muestra; quien sale deja de verlo");
 
