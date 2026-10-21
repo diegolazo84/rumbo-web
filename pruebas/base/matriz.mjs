@@ -35,7 +35,8 @@ if (!PGURL) throw new Error("Falta PGURL.");
 // leer: «todos» (catálogo, también anon) · «con-sesion» (todas las filas, solo con sesión) ·
 //       «destinatario» (cada cuenta ve solo las filas dirigidas a ella) · «equipo» (solo equipo con aal2) ·
 //       «propio» (cada persona ve exactamente sus filas; el equipo con aal2, todas) ·
-//       «propio-filtrado» (cada persona ve solo parte de sus filas, p. ej. lo publicado).
+//       «propio-filtrado» (cada persona ve solo parte de sus filas, p. ej. lo publicado) ·
+//       «partes» (cada persona ve exactamente sus filas; el equipo, ninguna: privado entre las partes).
 // escribir: «equipo» (el equipo con aal2 escribe directo) · «funciones» (nadie escribe directo).
 const TABLAS = {
   areas: { leer: "todos", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
@@ -79,6 +80,10 @@ const TABLAS = {
   especialistas: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   especialistas_credenciales: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   especialistas_servicios: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  vinculos_especialista: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
+  reservas_especialista: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
+  recomendaciones_especialista: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
+  mensajes_especialista: { leer: "partes", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   plantillas_accion: { leer: "equipo", escribir: "funciones", coach: { leer: "todas", escribir: "nada" } },
   registros_semanales: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   programas: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // sin borradores
@@ -102,6 +107,7 @@ const FUNCIONES = {
     "aceptar_reglas_comunidad", "publicar_en_comunidad", "borrar_mi_publicacion", "reportar_publicacion", "comunidad_publicaciones",
     "mis_reconocimientos", "mis_beneficios",
     "ia_guardar_consentimiento", "ia_retirar_consentimiento", "ia_preguntar", "mis_consultas_ia",
+    "autorizar_especialista", "retirar_especialista", "pedir_reserva", "cancelar_reserva", "enviar_mensaje_especialista",
   ],
   "equipo-error": [
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
@@ -112,13 +118,15 @@ const FUNCIONES = {
     "ia_pedir_borrador", "ia_revisar", "guardar_ia_config", "ia_gasto",
     "invitar_especialista", "revisar_credencial", "decidir_especialista", "guardar_config_especialistas", "guardar_especialidad",
     "guardar_perfil_especialista", "agregar_credencial", "guardar_servicio_especialista", "enviar_perfil_a_revision",
+    "responder_reserva", "agendar_reserva", "anotar_reserva", "mis_participantes_especialista", "especialista_seguimiento",
+    "recomendar", "comisiones_especialistas",
   ],
   equipo: ["mi_rol_equipo", "actualizar_mi_perfil", "guardar_plantilla"],
   "con-sesion": ["aceptar_invitacion_especialista", "especialistas_publicados", "ia_disponible", "modulo_visible", "marcar_avisos_leidos", "aceptar_invitacion_equipo"],
   "equipo-vacio": ["solapamientos", "carga_prevista", "bandeja_seguimiento", "ia_bandeja"],
 };
 // Funciones de privado que authenticated necesita porque las usan las políticas de RLS.
-const PRIVADO_EJECUTABLES = ["es_admin", "es_dueno", "es_coach", "gestiona", "puede_moderar", "foto_permitida", "mi_participante_id"];
+const PRIVADO_EJECUTABLES = ["mi_especialista_id", "es_admin", "es_dueno", "es_coach", "gestiona", "puede_moderar", "foto_permitida", "mi_participante_id"];
 // Del coach: las usa con sus participantes; con los de otro coach, «sin autorización».
 const DEL_COACH = ["publicar_programa", "nuevo_borrador", "revisar_evidencia", "solapamientos", "carga_prevista", "ver_postulacion",
   "programar_videollamada", "anotar_videollamada", "ia_pedir_borrador", "ia_revisar"];
@@ -240,6 +248,17 @@ insert into public.especialistas (id, correo, nombre, estado) values ('00000000-
   on conflict do nothing;
 insert into public.especialistas_credenciales (especialista_id, tipo, descripcion) values ('00000000-0000-0000-0000-0000000e5e01', 'titulo', 'Título de prueba de CI');
 insert into public.especialistas_servicios (especialista_id, nombre, duracion_min, modalidad) values ('00000000-0000-0000-0000-0000000e5e01', 'Sesión de prueba', 45, 'en_linea');
+insert into public.vinculos_especialista (participante_id, especialista_id)
+  values ('${ROLES.A.ficha}', '00000000-0000-0000-0000-0000000e5e01'), ('${ROLES.B.ficha}', '00000000-0000-0000-0000-0000000e5e01') on conflict do nothing;
+insert into public.reservas_especialista (participante_id, especialista_id, servicio_id, origen)
+  select p.id, s.especialista_id, s.id, 'rumbo' from public.especialistas_servicios s, public.participantes p
+   where s.especialista_id = '00000000-0000-0000-0000-0000000e5e01' and p.id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}')
+     and not exists (select 1 from public.reservas_especialista r where r.participante_id = p.id);
+insert into public.recomendaciones_especialista (participante_id, especialista_id, texto)
+  values ('${ROLES.A.ficha}', '00000000-0000-0000-0000-0000000e5e01', 'Recomendación de prueba de CI.'),
+         ('${ROLES.B.ficha}', '00000000-0000-0000-0000-0000000e5e01', 'Recomendación de prueba de CI.');
+insert into public.mensajes_especialista (participante_id, especialista_id, de_especialista, texto)
+  values ('${ROLES.A.ficha}', '00000000-0000-0000-0000-0000000e5e01', false, 'Hola'), ('${ROLES.B.ficha}', '00000000-0000-0000-0000-0000000e5e01', true, 'Hola');
 insert into public.recordatorios (participante_id) values ('${ROLES.A.ficha}'), ('${ROLES.B.ficha}') on conflict do nothing;
 `);
 
@@ -306,6 +325,8 @@ for (const [t, regla] of Object.entries(TABLAS)) {
       exigir(n === suyas, `${que}: ve ${n} de sus ${suyas} filas`);
     } else if (regla.leer === "con-sesion")
       exigir(n === (clave === "anon" ? 0 : total), `${que}: ve ${n} de ${total} (con sesión: todo; sin sesión: nada)`);
+    else if (regla.leer === "partes" && (rol.coach || ["anon", "aal1", "aal2", "Xaal1"].includes(clave)))
+      exigir(n === 0, `${que}: ve ${n} filas (privado entre las partes: el equipo no lo ve)`);
     else if (rol.coach) {
       if (regla.coach.leer === "suyos") {
         const suyas = Number(sql(`select count(*) from public.${t} x where ${duenoDe(t, "x")} in ${enLista(rol.suyos)}`));
@@ -1229,6 +1250,79 @@ paso("asistente de IA: apagado sin clave y sin módulo; con consentimiento y sol
   exigir(comision.ok && ultima(comision) === "15.00 0", `la comisión inicial no es 15 % por validar: ${comision.error ?? ultima(comision)}`);
 }
 paso("especialistas: invita el dueño; perfil con credenciales verificadas y publicación aprobada; al cambiar vuelve a revisión; no ven el programa");
+
+// E4 · Especialistas: vínculo autorizado, reservas, seguimiento, recomendaciones, mensajes privados y comisión.
+{
+  const S = { nombre: "especialista S", uid: uid("especialista-s@example.com"), aal: "aal2" };
+  const SID = "00000000-0000-0000-0000-0000000e5e02";
+  const SRV = "00000000-0000-0000-0000-0000000e5e03";
+  const abrir = (reservas = true) => `reset role;
+    insert into public.especialistas (id, user_id, correo, nombre, estado, profesion, especialidades, presentacion, modalidad)
+      values ('${SID}', '${S.uid}', 'especialista-s@example.com', 'Especialista S', 'publicado', 'Nutricionista', '{nutricion}', 'Presentación.', 'en_linea');
+    insert into public.especialistas_servicios (id, especialista_id, nombre, duracion_min, modalidad, precio_clp)
+      values ('${SRV}', '${SID}', 'Primera consulta', 45, 'en_linea', 30000);
+    update public.especialistas_config set reservas_activas = ${reservas};
+    update public.modulos set estado = 'habilitado' where clave = 'especialistas';
+    update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    set local role authenticated;\n`;
+  const yaPide = `select public.pedir_reserva('${SRV}', 'Quiero una primera consulta') \\g /dev/null\n`;
+  const apagadas = como(ROLES.A, `${abrir(false)} ${yaPide}`);
+  exigir(!apagadas.ok && /no_disponibles/.test(apagadas.error), "se pidió una reserva con las reservas apagadas");
+  const pide = como(ROLES.A, `${abrir()} ${yaPide} ${reclamosDe(S)}
+    select (select count(*) from public.reservas_especialista) || ' ' ||
+           (select count(*) from public.avisos where tipo = 'reserva_pedida') || ' ' ||
+           (select string_agg(k, ',' order by k) from jsonb_object_keys(public.especialista_seguimiento('${ROLES.A.ficha}')) k)`);
+  exigir(pide.ok && ultima(pide) === "1 1 nombre", `la reserva no llegó al especialista o vio más de lo autorizado: ${pide.error ?? ultima(pide)}`);
+  const autoriza = como(ROLES.A, `${abrir()} ${yaPide} select public.autorizar_especialista('${SID}', true, true, false) \\g /dev/null
+    ${reclamosDe(S)} select string_agg(k, ',' order by k) from jsonb_object_keys(public.especialista_seguimiento('${ROLES.A.ficha}')) k`);
+  exigir(autoriza.ok && ultima(autoriza) === "acciones_recientes,metas,nombre", `el seguimiento no respeta lo autorizado: ${autoriza.error ?? ultima(autoriza)}`);
+  const ajeno = como(ROLES.A, `${abrir()} ${reclamosDe(S)} select public.especialista_seguimiento('${ROLES.B.ficha}')`);
+  exigir(!ajeno.ok && /vinculo/.test(ajeno.error), "un especialista ve el seguimiento de alguien que no lo autorizó");
+  const reserva = "(select id from public.reservas_especialista where especialista_id = '" + SID + "' and origen = 'rumbo')";
+  const acepta = `${reclamosDe(S)} select public.responder_reserva(${reserva}, true, now() + interval '1 day', 'https://meet.example.com/s') \\g /dev/null\n`;
+  const pronto = como(ROLES.A, `${abrir()} ${yaPide} ${acepta} select public.anotar_reserva(${reserva}, 'realizada')`);
+  exigir(!pronto.ok && /aun_no_ocurre/.test(pronto.error), "se anotó realizada una reserva futura");
+  const pasada = `reset role; update public.reservas_especialista set programada_para = now() - interval '1 hour' where especialista_id = '${SID}'; set local role authenticated;\n`;
+  const realiza = como(ROLES.A, `${abrir()} ${yaPide} ${acepta} ${pasada} select public.anotar_reserva(${reserva}, 'realizada') \\g /dev/null
+    select comision_clp from public.reservas_especialista where id = ${reserva}`);
+  exigir(realiza.ok && ultima(realiza) === "4500", `la comisión del 15 % no se calculó sobre 30.000: ${realiza.error ?? ultima(realiza)}`);
+  const propia = como(ROLES.A, `${abrir()} ${yaPide} ${reclamosDe(S)} select public.agendar_reserva('${ROLES.A.ficha}', '${SRV}', now() + interval '2 days') \\g /dev/null
+    reset role; update public.reservas_especialista set programada_para = now() - interval '1 hour' where origen = 'propio' and especialista_id = '${SID}';
+    ${reclamosDe(S)} set local role authenticated;
+    select public.anotar_reserva(id, 'realizada') from public.reservas_especialista where origen = 'propio' \\g /dev/null
+    select origen || ' ' || coalesce(comision_clp::text, '-') from public.reservas_especialista where origen = 'propio'`);
+  exigir(propia.ok && ultima(propia) === "propio -", `una reserva de origen propio llevó comisión: ${propia.error ?? ultima(propia)}`);
+  const liquida = como(ROLES.A, `${abrir()} ${yaPide} ${acepta} ${pasada} select public.anotar_reserva(${reserva}, 'realizada') \\g /dev/null
+    ${reclamosDe(ROLES.aal2)} select realizadas || ' ' || comision_clp || ' ' || comision_validada::int from public.comisiones_especialistas(current_date - 1, current_date + 1)
+     where especialista_id = '${SID}'`);
+  exigir(liquida.ok && ultima(liquida) === "1 4500 0", `la liquidación de comisiones no cuadra: ${liquida.error ?? ultima(liquida)}`);
+  const sinVinculo = como(ROLES.B, `${abrir()} select public.enviar_mensaje_especialista('${ROLES.B.ficha}', '${SID}', 'Hola')`);
+  exigir(!sinVinculo.ok && /vinculo/.test(sinVinculo.error), "se envió un mensaje sin vínculo");
+  const mensajes = como(ROLES.A, `${abrir()} ${yaPide} select public.enviar_mensaje_especialista('${ROLES.A.ficha}', '${SID}', 'Hola, ¿cómo preparo la consulta?') \\g /dev/null
+    ${reclamosDe(S)} select public.enviar_mensaje_especialista('${ROLES.A.ficha}', '${SID}', 'Trae tu registro de la semana.') \\g /dev/null
+    ${reclamosDe(ROLES.A)} select count(*) from public.mensajes_especialista where especialista_id = '${SID}';
+    ${reclamosDe(ROLES.aal2)} select count(*) from public.mensajes_especialista where especialista_id = '${SID}';
+    ${reclamosDe(ROLES.X)} select count(*) from public.mensajes_especialista where especialista_id = '${SID}'`);
+  exigir(mensajes.ok && (mensajes.salida ?? "").split("\n").slice(-3).join(" ") === "2 0 0", `los mensajes no son privados entre las partes: ${mensajes.error ?? mensajes.salida}`);
+  const recomienda = como(ROLES.A, `${abrir()} ${yaPide} ${reclamosDe(S)} select public.recomendar('${ROLES.A.ficha}', 'Agrega una colación a media mañana.') \\g /dev/null
+    ${reclamosDe(ROLES.A)} select count(*) from public.recomendaciones_especialista where especialista_id = '${SID}';
+    ${reclamosDe(ROLES.X)} select count(*) from public.recomendaciones_especialista where especialista_id = '${SID}';
+    ${reclamosDe(ROLES.Y)} select count(*) from public.recomendaciones_especialista where especialista_id = '${SID}'`);
+  exigir(recomienda.ok && (recomienda.salida ?? "").split("\n").slice(-3).join(" ") === "1 1 0", `la recomendación no llegó a la persona y a su coach (y solo a ellos): ${recomienda.error ?? recomienda.salida}`);
+  const retira = como(ROLES.A, `${abrir()} ${yaPide} select public.retirar_especialista('${SID}') \\g /dev/null
+    reset role; select estado from public.reservas_especialista where especialista_id = '${SID}';
+    ${reclamosDe(S)} set local role authenticated; select public.especialista_seguimiento('${ROLES.A.ficha}')`);
+  exigir(!retira.ok && /vinculo/.test(retira.error), "al retirar la autorización el especialista sigue viendo el seguimiento");
+  const cancela = como(ROLES.A, `${abrir()} ${yaPide} select public.retirar_especialista('${SID}') \\g /dev/null
+    select estado from public.reservas_especialista where especialista_id = '${SID}'`);
+  exigir(cancela.ok && ultima(cancela) === "cancelada", `al retirar, la reserva pendiente no se canceló: ${cancela.error ?? ultima(cancela)}`);
+  const suspendido = como(ROLES.A, `${abrir()} ${yaPide} reset role; update public.especialistas set estado = 'suspendido' where id = '${SID}';
+    ${reclamosDe(S)} set local role authenticated; select count(*) from public.mis_participantes_especialista()`);
+  exigir(!suspendido.ok && /no_autorizado/.test(suspendido.error), "un especialista suspendido sigue viendo a sus participantes");
+  const exp = como(ROLES.A, `${abrir()} ${yaPide} select jsonb_array_length(public.exportar_mis_datos()->'especialistas_reservas')`);
+  exigir(exp.ok && Number(ultima(exp)) >= 1, `la copia de mis datos no incluye las reservas con especialistas: ${exp.error ?? ultima(exp)}`);
+}
+paso("especialistas, trabajo: solo con vínculo y lo autorizado; reservas con comisión solo si vienen de Rumbo; mensajes privados; al retirar se corta el acceso");
 
 paso("ranking: voluntario, solo con alias, por % de la semana; con menos de 3 no se muestra; quien sale deja de verlo");
 
