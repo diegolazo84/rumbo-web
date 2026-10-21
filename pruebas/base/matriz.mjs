@@ -77,6 +77,7 @@ const FUNCIONES = {
   persona: [
     "soy_equipo", "mi_contexto", "marcar_accion", "desmarcar_accion", "dejar_pasar", "registrar_evidencia", "eliminar_evidencia",
     "guardar_registro_semanal", "pedir_ajuste", "actualizar_preferencias", "pedir_derecho", "exportar_mis_datos", "mi_coach",
+    "adjuntar_foto", "quitar_foto",
   ],
   "equipo-error": [
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
@@ -571,6 +572,33 @@ exigir(!alDueno.ok && /no_encontrado/.test(alDueno.error), "cambiar_coach desact
 sql(`delete from public.equipo where user_id = '${NUEVO.uid}'; delete from privado.correos_equipo where correo = '${correoNuevo}';
      delete from auth.users where id = '${NUEVO.uid}'`);
 paso("coaches: solo el dueño invita y cambia permisos; la invitación sirve una vez y solo a su correo; un coach con participantes no se desactiva");
+
+// C1 · Foto opcional en cualquier acción: la persona la adjunta a una acción suya sin evidencia obligatoria.
+const ocLibre = sql(`select o.id from public.ocurrencias o where o.participante_id = '${ROLES.A.ficha}' and not o.requiere_foto
+  and o.vigente and o.fecha between current_date - (select dias_registro_tardio from public.ajustes_operacion) and current_date
+  order by o.fecha desc limit 1`);
+exigir(Boolean(ocLibre), "no hay una acción de A sin evidencia obligatoria para probar la foto opcional");
+if (ocLibre) {
+  const ruta = `${ROLES.A.ficha}/${ocLibre}/prueba-ci.jpg`;
+  const conArchivo = (s_) => `reset role; insert into storage.objects (bucket_id, name) values ('evidencias', '${ruta}');
+    set local role authenticated; ${s_}`;
+  const puedeSubir = como(ROLES.A, `select privado.foto_permitida('${ruta}', true)::int`);
+  exigir(puedeSubir.ok && ultima(puedeSubir) === "1", `A no puede subir una foto a una acción sin evidencia obligatoria: ${puedeSubir.error ?? ultima(puedeSubir)}`);
+  const bSube = como(ROLES.B, `select privado.foto_permitida('${ruta}', true)::int`);
+  exigir(bSube.ok && ultima(bSube) === "0", "B puede subir una foto a una acción de A");
+  const adj = como(ROLES.A, conArchivo(`select public.adjuntar_foto('${ocLibre}', '${ruta}') \\g /dev/null
+    select estado || ' ' || (foto_ruta is not null)::int from public.registros where ocurrencia_id = '${ocLibre}'`));
+  exigir(adj.ok && ultima(adj) === "hecha 1", `A no pudo adjuntar una foto opcional: ${adj.error ?? ultima(adj)}`);
+  const quita = como(ROLES.A, conArchivo(`select public.adjuntar_foto('${ocLibre}', '${ruta}') \\g /dev/null
+    select public.quitar_foto('${ocLibre}') \\g /dev/null
+    select estado || ' ' || (foto_ruta is not null)::int from public.registros where ocurrencia_id = '${ocLibre}'`));
+  exigir(quita.ok && ultima(quita) === "hecha 0", `quitar la foto no dejó la acción hecha y sin foto: ${quita.error ?? ultima(quita)}`);
+  const bAdj = como(ROLES.B, conArchivo(`select public.adjuntar_foto('${ocLibre}', '${ruta}')`));
+  exigir(!bAdj.ok && /no_encontrada/.test(bAdj.error), "B adjuntó una foto a una acción de A");
+  const ajena = como(ROLES.A, conArchivo(`select public.adjuntar_foto('${ocLibre}', '${ROLES.B.ficha}/${ocLibre}/x.jpg')`));
+  exigir(!ajena.ok && /ruta_invalida/.test(ajena.error), "se adjuntó una foto con una ruta que no es de la acción");
+}
+paso("fotos: opcionales en cualquier acción, solo en las propias; la acción queda hecha y la foto se puede quitar");
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
 
