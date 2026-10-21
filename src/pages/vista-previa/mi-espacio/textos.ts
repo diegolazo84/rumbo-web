@@ -100,15 +100,31 @@ export const T_HOY = {
   // Frase de la bienvenida: elegida por el estado real del día y nombrando la meta real a la que
   // aporta (nunca una frase motivacional al azar ni números que no existen). Sin culpa.
   bienvenida: {
-    ninguna: (meta: string) => `Hoy das un paso más hacia «${meta}».`,
+    // Varias frases por estado: se elige una por fecha (fraseDelDia), para no repetir la misma.
+    ninguna: [
+      (m: string) => `Hoy das un paso más hacia «${m}».`,
+      (m: string) => `Lo de hoy aporta a «${m}». Empieza por lo que te quede más a mano.`,
+      (m: string) => `Hoy sigues construyendo «${m}», a tu ritmo.`,
+    ],
     ningunaSinMeta: "Hoy das un paso más en tu plan. Empieza por lo que te quede más a mano.",
-    algunas: (meta: string) => `Ya avanzaste en «${meta}». Lo que hiciste cuenta.`,
+    algunas: [
+      (m: string) => `Ya avanzaste en «${m}». Lo que hiciste cuenta.`,
+      (m: string) => `Hoy ya sumaste a «${m}». Sigue a tu ritmo.`,
+    ],
     algunasSinMeta: "Ya avanzaste hoy. Lo que hiciste cuenta.",
-    completo: "Hoy hiciste todo lo que te propusiste.",
-    completoCoach: "Hoy hiciste todo lo que te propusiste. Tu coach lo verá en tu revisión.",
-    ayerCosto: (meta: string) => `Ayer costó un poco. Hoy basta con un paso pequeño hacia «${meta}».`,
-    sinAcciones: "Hoy no hay acciones. Descansar también es parte del plan, y tu racha no se corta.",
+    completo: [(m: string) => `Hoy hiciste todo lo que te propusiste para «${m}».`, () => "Día completo. Hiciste todo lo que te propusiste hoy."],
+    completoCoach: " Tu coach lo verá en tu revisión.",
+    ayerCosto: [
+      (m: string) => `Ayer costó un poco. Hoy basta con un paso pequeño hacia «${m}».`,
+      (m: string) => `Un día difícil no borra lo avanzado. Hoy basta con un paso hacia «${m}».`,
+    ],
+    sinActividad: [
+      (m: string) => `Qué bueno verte. Retomar también es avanzar: hoy basta con un paso hacia «${m}».`,
+      (m: string) => `Volver es lo importante. Hoy puedes empezar por lo más simple de «${m}».`,
+    ],
+    sinAcciones: ["Hoy no hay acciones. Descansar también es parte del plan, y tu racha no se corta.", "Hoy es un día libre en tu plan. Tu racha no se corta."],
   },
+
   // Tarjeta de la meta principal (lib/mi-rumbo.ts: hoy la primera meta del programa).
   metaPrincipal: {
     rotulo: "Tu meta principal",

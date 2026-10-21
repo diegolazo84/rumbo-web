@@ -773,3 +773,6 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
   .me-foco--franja { padding-block: 8px; }
   .me-hoy .anillo { inline-size: 48px; block-size: 48px; }
 }
+
+/* «Nuevo» en el foco: se distingue de lo ya visto (desaparece al abrir la revisión). */
+.etiqueta.me-nuevo { border-color: var(--terracota-texto); background: var(--terracota-texto); color: var(--superficie); }

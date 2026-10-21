@@ -62,3 +62,44 @@ export const PLANES_CON_COACH = ["coach", "cercano"] as const;
 export function incluyeCoach(plan: string): boolean {
   return (PLANES_CON_COACH as readonly string[]).includes(plan);
 }
+
+// ---------------------------------------------------------------------------
+// Estado del día para la bienvenida de Mi Rumbo (referencia visual). Solo con datos reales del
+// progreso diario; nunca culpa. «sinActividad»: al menos 2 días anteriores con acciones y ninguna
+// marcada, seguidos (los días sin acciones no cuentan ni cortan). «ayerCosto»: ayer tuvo acciones
+// y quedó a medias.
+
+export type EstadoBienvenida = "sinAcciones" | "completo" | "suspenso" | "ninguna" | "ayerCosto" | "sinActividad" | "algunas";
+
+type DiaBienvenida = { fecha: string; programadas: number; hechas: number; estado: string };
+
+export function estadoBienvenida(dias: readonly DiaBienvenida[], hoy: string): EstadoBienvenida {
+  const dia = dias.find((d) => d.fecha === hoy);
+  if (!dia?.programadas) return "sinAcciones";
+  if (dia.estado === "completo") return "completo";
+  if (dia.estado === "suspenso") return "suspenso";
+  if (dia.hechas > 0) return "algunas";
+  const anteriores = dias.filter((d) => d.fecha < hoy && d.programadas > 0).sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
+  let seguidos = 0;
+  for (const d of anteriores) {
+    if (d.hechas > 0) break;
+    seguidos++;
+  }
+  if (seguidos >= 2) return "sinActividad";
+  const ayer = anteriores[0];
+  if (ayer && ayer.fecha === sumarUnDia(hoy, -1) && ayer.estado === "incompleto") return "ayerCosto";
+  return "ninguna";
+}
+
+// Elige una de las frases de un estado según la fecha: cambia de un día a otro sin azar (la misma
+// persona ve la misma frase todo el día y otra mañana).
+export function fraseDelDia<T>(opciones: readonly T[], fecha: string): T {
+  const n = Math.floor(Date.parse(`${fecha}T12:00:00Z`) / 86_400_000);
+  return opciones[((n % opciones.length) + opciones.length) % opciones.length];
+}
+
+function sumarUnDia(fecha: string, n: number) {
+  const d = new Date(`${fecha}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}

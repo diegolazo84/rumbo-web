@@ -23,8 +23,8 @@ import Etiqueta from "../../../components/Etiqueta";
 import { AnilloDia, BarraProgreso, ErrorBloque, Hoja, HojaAyuda, Icono, Ilustracion, Tostada } from "../../../components/app";
 import { ESCENARIO_CERCANO, HOY, cuentaComoHecha, ocurrenciasDel, type Escenario, type Meta, type Ocurrencia } from "../../../data/ejemplo-app";
 import { niveles } from "../../../data/rumbo";
-import { diaCorto, mayuscula, sumarDias, type Iso } from "../../../lib/fechas";
-import { ICONO_CATEGORIA, MOMENTOS, colorDeMeta, incluyeCoach, metaPrincipal, momentoDe, type Momento } from "../../../lib/mi-rumbo";
+import { diaCorto, mayuscula, type Iso } from "../../../lib/fechas";
+import { ICONO_CATEGORIA, MOMENTOS, colorDeMeta, estadoBienvenida, fraseDelDia, incluyeCoach, metaPrincipal, momentoDe, type Momento } from "../../../lib/mi-rumbo";
 import type { PropsPantalla } from "../registro";
 import {
   EtiquetaEjemplo,
@@ -102,14 +102,21 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
   const conCoach = incluyeCoach(esc.plan);
   const principal = metaPrincipal(esc.metas);
 
-  // Nuevo nivel: celebración especial (no por cada acción). Solo cuando sube mientras la persona
-  // está en la pantalla y si no ocultó créditos y niveles en Preferencias.
+  // Nuevo nivel: celebración especial (no por cada acción), una sola vez por nivel. Se muestra
+  // cuando el nivel sube mientras la persona está en la pantalla, si no ocultó créditos y niveles
+  // en Preferencias y si ese nivel no se celebró antes (en este dispositivo, como las novedades
+  // vistas). Desmarcar y volver a marcar no la repite.
   const [celebrar, setCelebrar] = useState(false);
   const nivelAntes = useRef(progreso.nivel.nivel);
   useEffect(() => {
-    if (progreso.nivel.nivel > nivelAntes.current && !variante.ocultarCreditos) setCelebrar(true);
-    nivelAntes.current = progreso.nivel.nivel;
-  }, [progreso.nivel.nivel, variante.ocultarCreditos]);
+    const n = progreso.nivel.nivel;
+    const subio = n > nivelAntes.current;
+    nivelAntes.current = Math.max(nivelAntes.current, n);
+    if (!subio || variante.ocultarCreditos) return;
+    if (n <= leerNivelCelebrado(esc.participante.nombre)) return;
+    guardarNivelCelebrado(esc.participante.nombre, n);
+    setCelebrar(true);
+  }, [progreso.nivel.nivel, variante.ocultarCreditos, esc.participante.nombre]);
 
   const semana = semanaDelCiclo(hoy);
   const deHoy = ocurrenciasDel(hoy, lista);
@@ -328,24 +335,27 @@ type PropsBienvenida = {
 
 function Bienvenida({ hoy, semana, total, progreso, esc, deHoy, principal, conCoach }: PropsBienvenida) {
   const { fechaRevision, metaPorId } = useEspacio();
-  const dia = progreso.dias.find((d) => d.fecha === hoy);
-  const n = dia?.programadas ?? 0;
-  const h = dia?.hechas ?? 0;
   const tituloMeta = (o?: Ocurrencia) => (o ? metaPorId(o.metaId).titulo || o.metaTitulo || "" : "") || principal?.titulo || "";
   const pendiente = deHoy.find((o) => o.registro === null);
   const hecha = deHoy.find((o) => cuentaComoHecha(o.registro));
   const B = T_HOY.bienvenida;
-  let frase: string;
-  if (!n) frase = B.sinAcciones;
-  else if (dia?.estado === "completo") frase = conCoach ? B.completoCoach : B.completo;
-  else if (dia?.estado === "suspenso") frase = T_HOY.bajada.fotoEnRevision;
-  else if (!h) {
-    const meta = tituloMeta(pendiente);
-    frase = !meta ? B.ningunaSinMeta : ayerIncompleto(progreso, hoy) ? B.ayerCosto(meta) : B.ninguna(meta);
-  } else {
-    const meta = tituloMeta(hecha);
-    frase = meta ? B.algunas(meta) : B.algunasSinMeta;
-  }
+  const elegir = <T,>(l: readonly T[]) => fraseDelDia(l, hoy);
+  const estado = estadoBienvenida(progreso.dias, hoy);
+  const meta = tituloMeta(estado === "algunas" || estado === "completo" ? hecha : pendiente);
+  const frase =
+    estado === "sinAcciones"
+      ? elegir(B.sinAcciones)
+      : estado === "completo"
+        ? elegir(B.completo)(meta) + (conCoach ? B.completoCoach : "")
+        : estado === "suspenso"
+          ? T_HOY.bajada.fotoEnRevision
+          : estado === "algunas"
+            ? meta
+              ? elegir(B.algunas)(meta)
+              : B.algunasSinMeta
+            : !meta
+              ? B.ningunaSinMeta
+              : elegir(estado === "sinActividad" ? B.sinActividad : estado === "ayerCosto" ? B.ayerCosto : B.ninguna)(meta);
   const esRevision = conCoach && fechaRevision(semana, esc.diaRevision) === hoy;
   const textoRevision = esc.plan === "cercano" ? T_HOY.bajada.videollamada(esc.horaVideollamada) : T_HOY.bajada.revision;
 
@@ -425,6 +435,25 @@ function SinAccionesHoy() {
   );
 }
 
+// Último nivel celebrado (localStorage, como las novedades vistas). Sin almacenamiento, el
+// recuerdo de la sesión (nivelAntes) evita repetirla mientras la pantalla siga abierta.
+const CLAVE_NIVEL = "rumbo-nivel-celebrado";
+function leerNivelCelebrado(quien: string): number {
+  try {
+    return Number(JSON.parse(localStorage.getItem(CLAVE_NIVEL) ?? "{}")[quien] ?? 0);
+  } catch {
+    return 0;
+  }
+}
+function guardarNivelCelebrado(quien: string, nivel: number) {
+  try {
+    const v = JSON.parse(localStorage.getItem(CLAVE_NIVEL) ?? "{}");
+    localStorage.setItem(CLAVE_NIVEL, JSON.stringify({ ...v, [quien]: Math.max(nivel, Number(v[quien] ?? 0)) }));
+  } catch {
+    /* sin almacenamiento */
+  }
+}
+
 // Nuevo nivel: la ventana de celebración (hoja con ilustración). Umbrales y reglas sin cambios:
 // el nivel y el siguiente vienen del progreso calculado con las reglas vigentes.
 function Celebracion({ abierta, progreso, onCerrar }: { abierta: boolean; progreso: Progreso; onCerrar: () => void }) {
@@ -449,12 +478,6 @@ function Celebracion({ abierta, progreso, onCerrar }: { abierta: boolean; progre
       </div>
     </Hoja>
   );
-}
-
-// Ayer tuvo acciones y quedó a medias (no cuenta una pausa ni un día sin acciones).
-function ayerIncompleto(progreso: Progreso, hoy: Iso) {
-  const ayer = progreso.dias.find((d) => d.fecha === sumarDias(hoy, -1));
-  return !!ayer && ayer.programadas > 0 && ayer.estado === "incompleto";
 }
 
 // ---------------------------------------------------------------------------
@@ -553,12 +576,13 @@ function Novedades() {
 type PropsFoco = { semana: number; className?: string; esc?: Escenario; conNovedad?: boolean; enlace?: boolean; enTarjeta?: boolean };
 
 export function Foco({ semana, className, esc: escDado, conNovedad, enlace, enTarjeta }: PropsFoco) {
-  const { esc: escContexto, focoDeLaSemana, novedades, R } = useEspacio();
+  const { esc: escContexto, focoDeLaSemana, novedades, R, servidor } = useEspacio();
   const idRotulo = useId();
   const esc = escDado ?? escContexto;
   const foco = focoDeLaSemana(semana, esc.revisiones, esc.focoInicial);
   if (!foco) return null;
-  const nuevo = !!conNovedad && novedades.some((n) => n.destino === "semana");
+  const novedad = conNovedad ? novedades.find((n) => n.destino === "semana") : undefined;
+  const nuevo = !!novedad;
   const clases = ["me-foco", enTarjeta ? "me-foco--tarjeta" : "me-foco--franja", className].filter(Boolean).join(" ");
   const cuerpo = (
     <>
@@ -573,7 +597,9 @@ export function Foco({ semana, className, esc: escDado, conNovedad, enlace, enTa
           {nuevo && (
             <>
               {" "}
-              <Etiqueta variante="nota">{T_HOY.foco.nuevo}</Etiqueta>
+              <Etiqueta variante="nota" className="me-nuevo">
+                {T_HOY.foco.nuevo}
+              </Etiqueta>
             </>
           )}
         </span>
@@ -586,7 +612,12 @@ export function Foco({ semana, className, esc: escDado, conNovedad, enlace, enTa
   );
   if (enlace)
     return (
-      <Link to={nuevo ? R.semanaPublicada : R.semana} className={clases} aria-describedby={idRotulo}>
+      <Link
+        to={novedad ? (novedad.ruta ?? R.semanaPublicada) : R.semana}
+        className={clases}
+        aria-describedby={idRotulo}
+        onClick={() => novedad && servidor?.verNovedad(novedad.id)}
+      >
         {cuerpo}
         <span className="sr-only">{T_HOY.foco.ir}</span>
       </Link>

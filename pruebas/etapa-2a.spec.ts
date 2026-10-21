@@ -4,7 +4,9 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { TEXTOS_AYUDA } from "../src/components/app/AyudaInmediata";
-import { colorDeMeta, incluyeCoach, metaPrincipal, momentoDe } from "../src/lib/mi-rumbo";
+import { readFileSync } from "node:fs";
+import { niveles, reglasCreditos } from "../src/data/rumbo";
+import { colorDeMeta, estadoBienvenida, fraseDelDia, incluyeCoach, metaPrincipal, momentoDe } from "../src/lib/mi-rumbo";
 import { T_COSTANDO, T_HOY } from "../src/pages/vista-previa/mi-espacio/textos";
 
 const ETIQUETAS_AXE = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
@@ -179,4 +181,88 @@ test("subir de nivel abre la celebración una vez; marcar una acción no", async
   await sinViolaciones(page);
   await celebracion.getByRole("button", { name: T_HOY.celebracion.seguir }).click();
   await expect(celebracion).not.toBeVisible();
+});
+
+test("barra inferior: no tapa ningún botón, enlace ni texto de Mi Rumbo al desplazar", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "solo móvil");
+  for (const [w, h] of [[320, 568], [375, 667], [390, 844]] as const) {
+    await page.setViewportSize({ width: w, height: h });
+    await abrir(page, "mi-espacio/");
+    const tapados = await page.evaluate(async () => {
+      const barra = document.querySelector(".barra-inferior")!.getBoundingClientRect();
+      const fuera: string[] = [];
+      const piezas = document.querySelectorAll<HTMLElement>(
+        ".me-hoy :is(a, button, input, [role='img'], p, h2, h3, .accion-titulo):not([hidden] *, .sr-only)",
+      );
+      for (const el of piezas) {
+        if (!el.offsetParent && getComputedStyle(el).position !== "fixed") continue;
+        el.scrollIntoView({ block: "end", behavior: "instant" });
+        await new Promise((r) => requestAnimationFrame(r));
+        const caja = el.getBoundingClientRect();
+        if (!caja.height) continue;
+        // Desplazado hasta el final de la pantalla, el elemento queda entero sobre la barra.
+        if (caja.bottom > barra.top + 0.5 && caja.top < innerHeight - 1) {
+          const y = Math.min(caja.bottom - 2, innerHeight - 2);
+          const arriba = document.elementFromPoint(caja.left + caja.width / 2, y);
+          if (arriba && !el.contains(arriba) && arriba.closest(".barra-inferior")) fuera.push(el.textContent?.trim().slice(0, 40) || el.className);
+        }
+      }
+      return fuera;
+    });
+    expect(tapados, `${w}×${h}`).toEqual([]);
+  }
+});
+
+test("bienvenida: el estado del día sale del progreso real y las frases cambian de un día a otro", () => {
+  const d = (fecha: string, programadas: number, hechas: number, estado = hechas >= programadas ? "completo" : "incompleto") => ({ fecha, programadas, hechas, estado });
+  const hoy = "2026-10-14";
+  expect(estadoBienvenida([d(hoy, 0, 0, "sin_acciones")], hoy)).toBe("sinAcciones");
+  expect(estadoBienvenida([d(hoy, 3, 3)], hoy)).toBe("completo");
+  expect(estadoBienvenida([d(hoy, 3, 1)], hoy)).toBe("algunas");
+  expect(estadoBienvenida([d("2026-10-13", 3, 3), d(hoy, 3, 0)], hoy)).toBe("ninguna");
+  expect(estadoBienvenida([d("2026-10-13", 3, 1), d(hoy, 3, 0)], hoy)).toBe("ayerCosto");
+  // Dos días con acciones sin marcar (el día sin acciones del medio no cuenta ni corta).
+  expect(estadoBienvenida([d("2026-10-11", 2, 0), d("2026-10-12", 0, 0, "sin_acciones"), d("2026-10-13", 3, 0), d(hoy, 3, 0)], hoy)).toBe("sinActividad");
+  // Misma fecha, misma frase; fechas seguidas recorren las opciones.
+  expect(fraseDelDia(["a", "b", "c"], hoy)).toBe(fraseDelDia(["a", "b", "c"], hoy));
+  expect(new Set(["2026-10-14", "2026-10-15", "2026-10-16"].map((f) => fraseDelDia(["a", "b", "c"], f))).size).toBe(3);
+  // Ninguna frase culpa ni compara.
+  const todas = JSON.stringify(Object.values(T_HOY.bienvenida).flat().map((f) => (typeof f === "function" ? f("X") : f)));
+  expect(todas).not.toMatch(/fallaste|no cumpliste|deberías|atrasad|otros participantes/i);
+});
+
+test("niveles y créditos de la celebración: los mismos de las reglas de Supabase (semillas)", () => {
+  const sql = readFileSync("supabase/migrations/20261008000007_semillas.sql", "utf8");
+  const filas = [...sql.matchAll(/\((\d+), (\d+), '([^']+)'\)/g)].map((m) => ({ nivel: +m[1], minimo: +m[2], nombre: m[3] }));
+  expect(filas).toEqual(niveles);
+  const r = sql.match(/values \(true, (\d+), (\d+), (\d+), (\d+), (\d+), (\d+)\)/)!.slice(1).map(Number);
+  expect(r).toEqual([reglasCreditos.porAccion, reglasCreditos.bonoDiaCompleto, reglasCreditos.diasRachaMedia, reglasCreditos.bonoRacha3, reglasCreditos.diasRachaLarga, reglasCreditos.bonoRacha7]);
+});
+
+test("la celebración de un nivel se muestra una sola vez (desmarcar y volver a marcar no la repite)", async ({ page }) => {
+  await abrir(page, "mi-espacio/");
+  const celebracion = page.locator(".hoja--celebracion");
+  const casillas = page.getByRole("checkbox", { name: /^Marcar “.+” como hecha$/ });
+  await casillas.nth(1).check();
+  await casillas.nth(2).check();
+  await expect(celebracion).toBeVisible();
+  await celebracion.getByRole("button", { name: T_HOY.celebracion.seguir }).click();
+  await casillas.nth(2).uncheck();
+  await casillas.nth(2).check();
+  await page.waitForTimeout(400);
+  await expect(celebracion).not.toBeVisible();
+  // Tampoco al volver a abrir la pantalla.
+  await page.reload();
+  await page.waitForFunction(() => document.documentElement.classList.contains("hidratado"));
+  await expect(celebracion).not.toBeVisible();
+});
+
+test("el foco con «Nuevo» lleva a la revisión publicada en Mi acompañamiento", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "la franja es de móvil; en escritorio el foco va en la tarjeta");
+  await abrir(page, "mi-espacio/");
+  const franja = page.locator("a.me-foco--franja");
+  await expect(franja.locator(".me-nuevo")).toHaveText(T_HOY.foco.nuevo);
+  await franja.click();
+  await expect(page).toHaveURL(/\/mi-espacio\/acompanamiento\//);
+  await expect(page.locator("h1")).toHaveText("Mi acompañamiento");
 });
