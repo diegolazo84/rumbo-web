@@ -17,7 +17,7 @@ legal de Diego).
 | 1 | Postular, acuerdo, crear espacio, ingreso, Mi plan, ajustes, registro y revisión semanal, constructor | operativa | Recorrido completo con correo de prueba | — | — |
 | 1b | Formulario de contacto | **con error** (no guarda mensajes) | Aplicar el arreglo | migración | #22 |
 | 2 | Mi Rumbo rediseñado | parcial | Integrar; meta principal elegida por el coach | autorización | #19 |
-| 3 | Mi acompañamiento | parcial | Diseño nuevo; coach real (#8); «nuevo» entre dispositivos (#11) | diseño, #8, #11 | #20 |
+| 3 | Mi acompañamiento | parcial | Diseño nuevo; coach real (#8); «nuevo» entre dispositivos (base lista en A5) | diseño, #8, #11 | #20 |
 | 4 | 10 niveles | operativa (cálculo) | Camino de los 10 niveles, historial de subidas | diseño | — |
 | 5 | Créditos, rachas y multiplicadores | operativa | Historial día a día; corrección con motivo | diseño, #9 | — |
 | 6 | Recompensas y reconocimientos | inexistente | Catálogo y criterios | decisión, migración | — |
@@ -26,7 +26,7 @@ legal de Diego).
 | 8b | Perfil del coach y «Tu coach» real | desarrollada (base de datos y pruebas) | Pantallas (Mi acompañamiento y panel); foto del coach con C1 | migración, diseño | A3 |
 | 9 | Panel del dueño | parcial | Tablero, pagos, módulos, pantalla de auditoría. Auditoría de cambios y «Ver con motivo»: desarrolladas en la base (A2) | #8, diseño, migración | A2 |
 | 10 | Panel del coach | parcial | Vista propia, bandeja de alertas, «Ver como» | #8, diseño | — |
-| 11 | Notificaciones sincronizadas | inexistente | Avisos y leídos en la base | #8, migración | — |
+| 11 | Notificaciones sincronizadas | parcial: base de avisos desarrollada y probada (A5) | Centro de notificaciones en la app (espera maqueta); aplicar migración | migración, diseño | A5 |
 | 12 | Recordatorios automáticos | inexistente | Preferencias, envío programado, avisos en el teléfono | #11; externo (Brevo gratis 300/día) | — |
 | 13 | Fotos opcionales | parcial | Subida, regla «cualquier acción», miniaturas, borrado por plazo | #8, migración, decisión legal | — |
 | 14 | Asistente de IA | inexistente | Función segura, aceptación, tope de gasto, crisis | #8, #11; externo **pagado** | — |
