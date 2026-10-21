@@ -133,6 +133,41 @@ const trazosPlataforma = {
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </>
   ),
+  // Etapa 2A (Mi Rumbo): momentos del día y «Me está costando».
+  sunset: (
+    <>
+      <path d="M12 10V2" />
+      <path d="m4.93 10.93 1.41 1.41" />
+      <path d="M2 18h2" />
+      <path d="M20 18h2" />
+      <path d="m19.07 10.93-1.41 1.41" />
+      <path d="M22 22H2" />
+      <path d="m16 6-4 4-4-4" />
+      <path d="M16 18a4 4 0 0 0-8 0" />
+    </>
+  ),
+  moon: <path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" />,
+  hand: (
+    <>
+      <path d="M18 11V6a2 2 0 0 0-4 0v1" />
+      <path d="M14 10V4a2 2 0 0 0-4 0v2" />
+      <path d="M10 10.5V6a2 2 0 0 0-4 0v8" />
+      <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+    </>
+  ),
+  // Referencia visual (21-oct-2026): hoja del avance en Mi Rumbo. Lucide, ISC.
+  leaf: (
+    <>
+      <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
+      <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
+    </>
+  ),
+  "pen-line": (
+    <>
+      <path d="M13 21h8" />
+      <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+    </>
+  ),
 } satisfies Record<string, ReactElement>;
 
 const trazos = { ...trazosWeb, ...trazosPlataforma };

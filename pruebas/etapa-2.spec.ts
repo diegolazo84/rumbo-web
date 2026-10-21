@@ -82,20 +82,23 @@ test("Mi plan: pestañas Calendario y Mis metas, y «Pedir un ajuste»", async (
 test.describe("resumen del día en Mi Rumbo", () => {
   test("hechas sobre programadas de hoy, sin porcentaje", async ({ page }) => {
     await abrir(page, "mi-espacio/");
-    const resumen = page.locator(".me-dia-resumen");
+    // Etapa 2A: el resumen del día es un anillo «1/3» (role="img"), sin porcentaje.
+    const resumen = page.locator(".me-hoy__anillo");
     await expect(resumen).toHaveAttribute("aria-label", /^Hoy: \d+ de \d+ acciones? hechas?\.$/);
     await expect(resumen).not.toContainText("%");
     // Marcar actualiza el resumen.
-    const antes = await page.locator(".me-dia-resumen__seg.es-hecho").count();
+    const [h, n] = ((await resumen.textContent()) ?? "").split("/").map(Number);
     await page.getByRole("checkbox", { name: /^Marcar “.+” como hecha$/, checked: false }).first().check();
-    await expect(page.locator(".me-dia-resumen__seg.es-hecho")).toHaveCount(antes + 1);
+    await expect(resumen).toHaveText(`${h + 1}/${n}`);
   });
 
   test("día sin acciones: estado neutro, sin números", async ({ page }) => {
     await abrir(page, "mi-espacio/hoy/sin-acciones/");
-    const resumen = page.locator(".me-dia-resumen");
-    await expect(resumen).toHaveText("Sin acciones para hoy");
-    await expect(resumen).not.toContainText(/\d/);
+    // Referencia visual: estado vacío con ilustración y el plan a mano, sin anillo ni números.
+    const vacio = page.locator(".me-hoy-vacio");
+    await expect(vacio).toContainText("Sin acciones para hoy");
+    await expect(vacio).not.toContainText(/\d/);
+    await expect(page.locator(".me-hoy__anillo")).toHaveCount(0);
   });
 });
 

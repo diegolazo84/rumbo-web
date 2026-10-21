@@ -12,6 +12,7 @@
 // Panel real (etapa 3, con `servidor`): el borrador de la base; «Guardar borrador» escribe metas
 // y acciones (solo se puede mientras es borrador) y «Publicar» corre publicar_programa, después de
 // revisar con la base los solapamientos y la carga prevista.
+import { colorDeMeta } from "../../../lib/mi-rumbo";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Etiqueta from "../../../components/Etiqueta";
 import { ChipMeta, FilaAccion, Hoja, Icono, LeyendaMetas, Segmentado } from "../../../components/app";
@@ -73,7 +74,6 @@ export type DatosConstructor = {
   alPublicar?: () => void; // panel real: al cerrar la hoja tras publicar, vuelve a leer la base
 };
 
-const COLORES_META = 8;
 // El color es de la meta; la categoría se reconoce por su símbolo y su nombre.
 const SIMBOLO_CAT: Record<CategoriaId, string> = { proyecto: "◆", orden: "■", bienestar: "●" };
 function EtiquetaCat({ cat }: { cat: CategoriaId }) {
@@ -267,7 +267,8 @@ function Editor({ d }: { d: DatosConstructor }) {
   const catDe = (id: string) => meta(id)?.categoria ?? "proyecto";
   const nombreMeta = (id: string) => meta(id)?.titulo.trim() || C.metas.tituloCampo;
   // Un color por meta (según su orden), igual en la lista de metas, la semana y el resumen.
-  const colorDe = (id: string) => String(Math.max(0, metas.findIndex((m) => m.id === id)) % COLORES_META);
+  // Mismo color que ve el participante en Mi Rumbo (lib/mi-rumbo.ts).
+  const colorDe = (id: string) => String(colorDeMeta(metas.map((m) => m.id), id));
   const semanas = SEMANAS_MAX.slice(0, d.semanas);
 
   const tocar = () => {
