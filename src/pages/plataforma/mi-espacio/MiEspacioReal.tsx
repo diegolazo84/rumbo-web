@@ -36,6 +36,7 @@ import LoQueViene from "../../vista-previa/mi-espacio/LoQueViene";
 import MisMetas from "../../vista-previa/mi-espacio/MisMetas";
 import { T_SIN_FICHA } from "../../vista-previa/mi-espacio/textos";
 import Pago, { TarjetaPago } from "./Pago";
+import { TarjetaApp } from "./InstalarApp";
 import { armarAusencia, armarDatos, armarNovedades, hoyEn, type Contexto, type Filas } from "./datos";
 
 const LENTO = 8000; // ms: «Sigue cargando…» con «Reintentar» (4.1.4)
@@ -734,11 +735,13 @@ function PantallaReal({ ruta, espacio }: { ruta: RutaPlataforma; espacio: Espaci
 }
 
 // Mientras falta pagar el ciclo, Mi Rumbo muestra la tarjeta «Tu pago» después del título.
+// En el teléfono, mientras se pueda instalar, también la invitación a tener Rumbo a un toque.
 function Inicio({ espacio }: { espacio: Espacio }) {
   return (
     <>
       <InicioSegunCiclo espacio={espacio} />
       {espacio.ciclo.estado !== "cerrado" && <TarjetaPago />}
+      <TarjetaApp />
     </>
   );
 }

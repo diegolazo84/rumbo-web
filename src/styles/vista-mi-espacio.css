@@ -2043,3 +2043,14 @@ a.as-linea__numero { display: inline-flex; min-block-size: 44px; align-items: ce
 .me-pago__form { display: grid; gap: var(--e-3); inline-size: 100%; }
 .me-pago__form .campo { inline-size: 100%; }
 .me-pago__inicio { margin-block-start: var(--e-4); }
+
+/* Mi espacio instalable: sección en Preferencias y tarjeta en Mi Rumbo (solo teléfono). */
+.me-app { display: grid; gap: var(--e-3); justify-items: start; }
+.me-app > * { margin: 0; }
+.me-app__pasos { margin: 0; padding-inline-start: 1.5rem; display: grid; gap: var(--e-2); }
+.me-app__pasos .icono { vertical-align: -2px; margin-inline-end: 6px; }
+.me-app__inicio { margin-block-start: var(--e-4); }
+.me-app__tarjeta { display: grid; gap: var(--e-3); justify-items: start; }
+.me-app__tarjeta > * { margin: 0; }
+.me-app__acciones { display: flex; flex-wrap: wrap; gap: var(--e-2); }
+.me-app__acciones .boton { min-block-size: 44px; }
