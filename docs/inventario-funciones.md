@@ -22,7 +22,7 @@ legal de Diego).
 | 5 | Créditos, rachas y multiplicadores | operativa | Historial día a día; corrección con motivo | diseño, #9 | — |
 | 6 | Recompensas y reconocimientos | inexistente | Catálogo y criterios | decisión, migración | — |
 | 7 | Ranking voluntario | simulada | Alias, aceptación, cálculo semanal | #16 | — |
-| 8 | Roles y asignación de coaches | desarrollada (base de datos y pruebas) | Integrar, aplicar en producción; pantallas del coach y de asignación | migración, diseño | A1 |
+| 8 | Roles y asignación de coaches | desarrollada (base de datos y pruebas): roles y asignación (A1); invitar, aceptar, activar y dar permiso de moderar (B5) | Integrar, aplicar en producción; pantallas del coach, de invitación y de asignación; correo de invitación | migración, diseño | A1, B5 |
 | 8b | Perfil del coach y «Tu coach» real | desarrollada (base de datos y pruebas) | Pantallas (Mi acompañamiento y panel); foto del coach con C1 | migración, diseño | A3 |
 | 9 | Panel del dueño | parcial | Tablero, pagos, módulos, pantalla de auditoría. Auditoría de cambios y «Ver con motivo»: desarrolladas en la base (A2). Indicadores de negocio: función `indicadores` desarrollada y probada (B3); falta la pantalla (maqueta) y los que dependen de minutos e IA. Registro de pagos y devoluciones: desarrollado y probado (B4) | #8, diseño, migración | A2, B3, B4 |
 | 10 | Panel del coach | parcial: datos de la bandeja de seguimiento desarrollados y probados (B2) | Pantalla de la bandeja y vista propia (maqueta), «Ver como» | #8, diseño | B2 |
