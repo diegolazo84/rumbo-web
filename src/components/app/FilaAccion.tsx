@@ -6,11 +6,14 @@
 // - Hecha: el check se rellena con var(--cat) y el título queda en tinta (sin tachado).
 // - Detalle: «30 min · ● Proyecto» (o el nombre corto de la meta) y «· Hecha» / «· Foto en revisión».
 // Sin rojo ni marcas de castigo en ningún estado.
+// Variante de Mi Rumbo (etapa 2A, con `icono`): mosaico con el icono de la acción en el color de
+// su meta, el título, la meta a la que aporta y «08:30 · 30 min». La hora pasa al detalle porque
+// las acciones ya van agrupadas por momento del día. Mismo control y mismos estados.
 import { useId, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { categorias, type CategoriaId } from "../../data/rumbo";
 import { duracionTexto } from "../../lib/fechas";
-import Icono from "./Icono";
+import Icono, { type NombreIconoApp } from "./Icono";
 
 export const TEXTOS_ACCION = {
   flexible: "Flexible",
@@ -39,6 +42,9 @@ type Props = {
   compacta?: boolean; // vista Semana
   extra?: ReactNode; // acciones extra bajo la fila (p. ej. «Ya la hice» en días anteriores)
   sinControl?: boolean; // sin casilla: las acciones van en `extra` («De días anteriores», 4.6)
+  icono?: NombreIconoApp; // variante de Mi Rumbo (etapa 2A)
+  meta?: string; // variante de Mi Rumbo: título de la meta a la que aporta
+  colorMeta?: number; // color de la meta (0 a 7, como en el constructor); sin él, el de la categoría
 };
 
 export default function FilaAccion({
@@ -58,12 +64,59 @@ export default function FilaAccion({
   compacta,
   extra,
   sinControl,
+  icono,
+  meta,
+  colorMeta,
 }: Props) {
   const idNota = useId();
   const hecha = estado === "hecha";
-  const clases = ["accion", "accion--app", hecha && "accion--hecha", compacta && "accion--compacta", sinControl && "accion--sin-control"].filter(Boolean).join(" ");
+  const conIcono = !!icono;
+  const clases = ["accion", "accion--app", conIcono && "accion--hoy", hecha && "accion--hecha", compacta && "accion--compacta", sinControl && "accion--sin-control"].filter(Boolean).join(" ");
 
-  const cuerpo = (
+  const estadoTexto = (
+    <>
+      {hecha && (
+        <>
+          {" "}
+          <span className="nowrap">· {TEXTOS_ACCION.hecha}</span>
+        </>
+      )}
+      {estado === "revision" && (
+        <>
+          {" "}
+          <span className="nowrap">· {TEXTOS_ACCION.fotoEnRevision}</span>
+        </>
+      )}
+    </>
+  );
+  const notas = (
+    <>
+      {nota && <span className="accion-nota">{nota}</span>}
+      {desactivada && (
+        <span id={idNota} className="accion-nota">
+          {desactivada}
+        </span>
+      )}
+    </>
+  );
+
+  const cuerpo = conIcono ? (
+    <>
+      <span className="accion-icono" aria-hidden="true">
+        <Icono nombre={icono} tamaño={22} />
+      </span>
+      <span className="accion-texto">
+        <span className="accion-titulo">{titulo}</span>
+        <span className="accion-meta">{meta ?? etiquetaMeta ?? categorias[cat].nombre}</span>
+        <span className="accion-detalle">
+          {hora && <span className="nowrap">{hora} · </span>}
+          {duracionTexto(duracion)}
+          {estadoTexto}
+        </span>
+        {notas}
+      </span>
+    </>
+  ) : (
     <>
       <span className="accion-hora">{hora ?? TEXTOS_ACCION.flexible}</span>
       <span className="accion-texto">
@@ -74,25 +127,9 @@ export default function FilaAccion({
           <span className="nowrap">
             · <span className="accion-cat">{etiquetaMeta ?? categorias[cat].nombre}</span>
           </span>
-          {hecha && (
-            <>
-              {" "}
-              <span className="nowrap">· {TEXTOS_ACCION.hecha}</span>
-            </>
-          )}
-          {estado === "revision" && (
-            <>
-              {" "}
-              <span className="nowrap">· {TEXTOS_ACCION.fotoEnRevision}</span>
-            </>
-          )}
+          {estadoTexto}
         </span>
-        {nota && <span className="accion-nota">{nota}</span>}
-        {desactivada && (
-          <span id={idNota} className="accion-nota">
-            {desactivada}
-          </span>
-        )}
+        {notas}
       </span>
     </>
   );
@@ -137,7 +174,7 @@ export default function FilaAccion({
     );
 
   return (
-    <div className={clases} data-cat={cat}>
+    <div className={clases} data-cat={cat} data-meta-color={colorMeta}>
       {abrir}
       {control}
       {extra && <div className="accion__extra">{extra}</div>}

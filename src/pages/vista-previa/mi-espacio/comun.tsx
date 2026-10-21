@@ -10,6 +10,7 @@ import Etiqueta from "../../../components/Etiqueta";
 import { FilaAccion, Icono, TEXTOS_CARGA } from "../../../components/app";
 import { calcularProgreso, cuentaComoHecha, type EstadoRegistro, type Ocurrencia } from "../../../data/ejemplo-app";
 import { diaCorto, type Iso } from "../../../lib/fechas";
+import { ICONO_CATEGORIA, colorDeMeta } from "../../../lib/mi-rumbo";
 import { useEspacio, type Progreso } from "./espacio";
 import { T_CALENDARIO, T_COMUN } from "./textos";
 // Estilos propios de este grupo (solo tokens de :root). Lo importan todas sus pantallas.
@@ -165,10 +166,11 @@ type FilaProps = {
   futura?: (dia: string) => string; // nota de una acción futura (por defecto «Se marca desde el …»)
   sinConexion?: boolean; // 4.1.4: controles con aria-disabled y «Necesitas conexión para guardar esto.»
   sinControl?: boolean; // «De días anteriores»: las acciones van en `extra`, sin casilla
+  conMeta?: boolean; // Mi Rumbo (etapa 2A): icono, meta a la que aporta y color de la meta
 };
 
-export function FilaOcurrencia({ o, hoy, onMarcar, onAbrir, compacta, nota, extra, futura = T_CALENDARIO.dia.futura, sinConexion, sinControl }: FilaProps) {
-  const { dentroDeVentana } = useEspacio();
+export function FilaOcurrencia({ o, hoy, onMarcar, onAbrir, compacta, nota, extra, futura = T_CALENDARIO.dia.futura, sinConexion, sinControl, conMeta }: FilaProps) {
+  const { dentroDeVentana, metaPorId, metasDeLaPersona } = useEspacio();
   const etiquetaMeta = useEtiquetaMeta();
   const estado = cuentaComoHecha(o.registro) ? "hecha" : o.registro === "revision" ? "revision" : "pendiente";
   const desactivada =
@@ -196,6 +198,9 @@ export function FilaOcurrencia({ o, hoy, onMarcar, onAbrir, compacta, nota, extr
       compacta={compacta}
       extra={extra}
       sinControl={sinControl}
+      icono={conMeta ? ICONO_CATEGORIA[o.categoria] : undefined}
+      meta={conMeta ? metaPorId(o.metaId).titulo || o.metaTitulo || undefined : undefined}
+      colorMeta={conMeta ? colorDeMeta(metasDeLaPersona(o.metaId).map((m) => m.id), o.metaId) : undefined}
     />
   );
 }

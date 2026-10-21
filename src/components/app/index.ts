@@ -24,3 +24,4 @@ export { default as FranjaSemana, type DiaFranja } from "./FranjaSemana";
 export { default as Tostada } from "./Tostada";
 // El aviso de ayuda bajo los textos libres es un componente de formulario (3.1); se reexporta aquí.
 export { default as AvisoAyuda, NoEsChat } from "../form/AvisoAyuda";
+export { default as AnilloDia } from "./AnilloDia";

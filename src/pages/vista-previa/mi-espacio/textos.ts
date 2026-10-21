@@ -105,13 +105,19 @@ export const T_HOY = {
     todas: "Completaste las acciones de hoy.",
     fotoEnRevision: "Hiciste todo lo de hoy. Tu día y tu racha se actualizan cuando revisemos tu foto.",
     sinAcciones: "Hoy no hay acciones programadas. Tu racha no se corta.",
+    // Etapa 2A: si ayer quedó a medias y hoy todavía no marca nada (sin culpa, sin números).
+    ayerCosto: "Ayer costó un poco. Hoy empieza por lo más simple: lo que hagas, cuenta.",
     revision: "Hoy es tu revisión semanal.",
     videollamada: (hora: string) => `Hoy es tu videollamada, a las ${hora}.`,
   },
   diaCompleto: (bono: number) => `Día completo · +${bono}`,
-  foco: { rotulo: "Tu foco esta semana · de tu coach" },
+  foco: { rotulo: "Tu foco esta semana · de tu coach", nuevo: "Nuevo", ver: "Ver la revisión" },
   grupos: {
     conHorario: "Con horario",
+    // Etapa 2A: momentos del día (lib/mi-rumbo.ts, cortes a las 12:00 y a las 19:00).
+    manana: "Mañana",
+    tarde: "Tarde",
+    noche: "Noche",
     flexibles: "Cuando puedas hoy",
     retomadas: "Retomadas",
     del: (dia: string) => `Del ${dia}`,
@@ -125,6 +131,11 @@ export const T_HOY = {
     bono: (b: number) => `Bono por día completo: +${b}`,
     racha: (r: number) => `${r} ${plural(r, "día completo seguido", "días completos seguidos")}`,
     enlace: "Ver mis logros",
+  },
+  // Etapa 2A: tarjeta «Tu acompañamiento» (próxima revisión, «Me está costando» y novedades).
+  acompanamiento: {
+    titulo: "Tu acompañamiento",
+    costando: "Me está costando",
   },
   revision: {
     titulo: "Tu próxima revisión",
@@ -156,6 +167,9 @@ export const T_HOY = {
 
 // 4.6 De días anteriores (sin culpa)
 export const T_ANTERIORES = {
+  // Etapa 2A: el bloque parte plegado en Mi Rumbo (salvo con el aviso de carga).
+  ver: "Ver las acciones",
+  ocultar: "Ocultar",
   titulo: "De días anteriores",
   bajada: (n: number) =>
     n === 1
@@ -490,6 +504,19 @@ export const T_SECCIONES = {
 } as const;
 
 // Resumen del día en Mi Rumbo: solo las acciones programadas para hoy (nunca las futuras).
+// Etapa 2A · «Me está costando»: tres caminos que ya existen (pedir un ajuste, el registro
+// semanal y Ayuda inmediata). Sin promesas de respuesta inmediata.
+export const T_COSTANDO = {
+  titulo: "¿Qué está pasando?",
+  bajada: "Tu programa tiene que caber en tu semana, no al revés. Elige lo que más se parezca.",
+  ajuste: { titulo: "Necesito cambiar el plan", texto: "Otro día, otro horario o una acción más corta: pide un ajuste." },
+  contar: { titulo: "Quiero contárselo a mi coach", texto: "Escríbelo en tu registro semanal, en «¿Qué se hizo difícil?»." },
+  ayuda: { titulo: "Necesito ayuda ahora", texto: "Teléfonos y servicios de ayuda en crisis." },
+  nota: (dia: string) => `Tu coach lo verá a más tardar en tu revisión del ${dia}. Esto no es un chat y no tiene respuesta inmediata.`,
+  notaCercano: "Si tu semana se desarmó, en «Necesito cambiar el plan» puedes pedir que la reordenemos.",
+  desdeAccion: (titulo: string) => `Sobre «${titulo}»`,
+} as const;
+
 export const T_RESUMEN_DIA = {
   etiqueta: (h: number, n: number) => `Hoy: ${h} de ${acciones(n)} ${plural(n, "hecha", "hechas")}.`,
   corto: (h: number, n: number) => `${h} de ${n} hoy`,
