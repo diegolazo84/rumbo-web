@@ -39,3 +39,26 @@ export const ICONO_CATEGORIA = {
   orden: "list-checks",
   bienestar: "heart",
 } as const satisfies Record<CategoriaId, string>;
+
+// ---------------------------------------------------------------------------
+// Meta principal (referencia visual, 21-oct-2026): la que Mi Rumbo recuerda arriba.
+// Hoy es la primera meta del programa (el orden que define el coach en el constructor).
+// Preparado para la etapa en que el coach la elija desde el panel: si llega `principalId`
+// y existe entre las metas, manda esa. Sin metas, no hay tarjeta.
+
+export function metaPrincipal<M extends { id: string }>(metas: readonly M[], principalId?: string | null): M | null {
+  if (!metas.length) return null;
+  return (principalId && metas.find((m) => m.id === principalId)) || metas[0];
+}
+
+// ---------------------------------------------------------------------------
+// Acompañamiento según lo contratado: Mi Rumbo solo nombra a un coach, su foco, sus
+// revisiones y «Me está costando» si el plan incluye acompañamiento humano. Los dos planes
+// vigentes lo incluyen; un plan futuro sin coach (p. ej. «Rumbo Inicial», en evaluación)
+// quedaría fuera sin tocar las pantallas.
+
+export const PLANES_CON_COACH = ["coach", "cercano"] as const;
+
+export function incluyeCoach(plan: string): boolean {
+  return (PLANES_CON_COACH as readonly string[]).includes(plan);
+}

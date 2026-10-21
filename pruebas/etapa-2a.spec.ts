@@ -4,7 +4,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { TEXTOS_AYUDA } from "../src/components/app/AyudaInmediata";
-import { colorDeMeta, momentoDe } from "../src/lib/mi-rumbo";
+import { colorDeMeta, incluyeCoach, metaPrincipal, momentoDe } from "../src/lib/mi-rumbo";
 import { T_COSTANDO, T_HOY } from "../src/pages/vista-previa/mi-espacio/textos";
 
 const ETIQUETAS_AXE = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
@@ -101,4 +101,82 @@ test("De días anteriores parte plegado en Mi Rumbo y se despliega", async ({ pa
 test("panel: la semana de la ficha muestra el día de hoy con el mismo anillo", async ({ page }) => {
   await abrir(page, "equipo/participante/?pestana=semana");
   await expect(page.getByRole("img", { name: /^Hoy: \d+ de \d+ acciones? hechas?\.$/ })).toBeVisible();
+});
+
+// ---------------------------------------------------------------------------
+// Referencia visual aprobada (21-oct-2026): bienvenida, meta principal, acceso al acompañamiento,
+// primera acción visible y celebración solo al subir de nivel.
+
+test("reglas compartidas: meta principal y acompañamiento según el plan", () => {
+  const metas = [{ id: "a" }, { id: "b" }];
+  expect(metaPrincipal(metas)?.id).toBe("a");
+  expect(metaPrincipal(metas, "b")?.id).toBe("b"); // cuando el coach la elija desde el panel
+  expect(metaPrincipal(metas, "x")?.id).toBe("a");
+  expect(metaPrincipal([])).toBeNull();
+  expect(incluyeCoach("coach")).toBe(true);
+  expect(incluyeCoach("cercano")).toBe(true);
+  expect(incluyeCoach("inicial")).toBe(false);
+});
+
+test("Mi Rumbo: bienvenida cálida con la meta real y el H1 de la sección", async ({ page }) => {
+  await abrir(page, "mi-espacio/");
+  await expect(page.locator("h1")).toHaveText("Mi Rumbo");
+  const bienvenida = page.locator(".me-bienvenida");
+  await expect(bienvenida).toContainText("¡Hola, Camila!");
+  await expect(bienvenida).toContainText("Martes 13 · Semana 2 de 4");
+  // La frase nombra una meta real de la persona (no una frase genérica).
+  await expect(bienvenida.locator(".me-bienvenida__frase")).toContainText("«Lanzar mi taller en línea»");
+  await expect(bienvenida.locator("svg.ilustracion")).toHaveAttribute("aria-hidden", "true");
+});
+
+test("Mi Rumbo: la meta principal es la primera meta, con sus hitos y enlace a Mis metas", async ({ page }) => {
+  await abrir(page, "mi-espacio/");
+  const meta = page.locator(".me-meta-principal");
+  await expect(meta).toContainText(T_HOY.metaPrincipal.rotulo);
+  await expect(meta).toContainText("Lanzar mi taller en línea");
+  await expect(meta).toContainText(T_HOY.metaPrincipal.hitos(1, 2));
+  await expect(meta).toHaveAttribute("href", /\/mi-espacio\/plan\/metas\/?$/);
+});
+
+test("Mi Rumbo: el foco de tu coach lleva a Mi acompañamiento (sin nombre ni foto inventados)", async ({ page, isMobile }) => {
+  await abrir(page, "mi-espacio/");
+  if (isMobile) {
+    const franja = page.locator("a.me-foco--franja");
+    await expect(franja).toBeVisible();
+    await expect(franja).toHaveAttribute("href", /\/mi-espacio\/acompanamiento\//);
+  } else {
+    await expect(page.locator(".me-acomp-hoy .me-foco--tarjeta")).toBeVisible();
+  }
+  await expect(page.locator(".me-acomp-hoy")).toContainText(T_HOY.acompanamiento.quien);
+  await expect(page.locator(".me-hoy img")).toHaveCount(0);
+});
+
+test("Mi Rumbo en el teléfono: la primera acción se ve sin desplazar y la barra no la tapa", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "solo móvil");
+  // Tamaños habituales: la primera acción entera. Teléfono bajo (375 × 667): al menos su título.
+  for (const [w, h, entera] of [[390, 844, true], [412, 915, true], [360, 780, true], [375, 667, false]] as const) {
+    await page.setViewportSize({ width: w, height: h });
+    await abrir(page, "mi-espacio/");
+    // En Mi espacio real no está la banda de la vista previa: se descuenta.
+    const banda = (await page.locator(".previa-aviso").boundingBox())?.height ?? 0;
+    const fila = (await page.locator(".me-hoy__cuerpo .accion--hoy").first().boundingBox())!;
+    const barra = (await page.locator(".barra-inferior").boundingBox())!;
+    expect(fila.y + (entera ? fila.height : 44) - banda, `${w}×${h}`).toBeLessThanOrEqual(barra.y);
+  }
+});
+
+test("subir de nivel abre la celebración una vez; marcar una acción no", async ({ page }) => {
+  await abrir(page, "mi-espacio/");
+  const celebracion = page.locator(".hoja--celebracion");
+  const pendientes = page.getByRole("checkbox", { name: /^Marcar “.+” como hecha$/, checked: false });
+  await pendientes.first().check();
+  await expect(celebracion).not.toBeVisible();
+  // Camila tiene 22 créditos: con el día completo pasa los 25 de Ritmo (reglas sin cambios).
+  await pendientes.first().check();
+  await expect(celebracion).toBeVisible();
+  await expect(celebracion).toContainText(T_HOY.celebracion.titulo("Ritmo"));
+  await expect(celebracion).toContainText(T_HOY.celebracion.texto(3, 10));
+  await sinViolaciones(page);
+  await celebracion.getByRole("button", { name: T_HOY.celebracion.seguir }).click();
+  await expect(celebracion).not.toBeVisible();
 });

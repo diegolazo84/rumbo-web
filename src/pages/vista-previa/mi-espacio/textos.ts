@@ -94,7 +94,43 @@ export const T_ESTADOS = {
 
 export const T_HOY = {
   ojo: (n: number, total: number) => `Semana ${n} de ${total}`,
-  saludo: (nombre: string) => `Hola, ${nombre}.`,
+  saludo: (nombre: string) => `¡Hola, ${nombre}!`,
+  // Referencia visual (21-oct-2026): línea de la bienvenida, «Martes 13 · Semana 2 de 4».
+  fechaSemana: (dia: string, n: number, total: number) => `${dia} · Semana ${n} de ${total}`,
+  // Frase de la bienvenida: elegida por el estado real del día y nombrando la meta real a la que
+  // aporta (nunca una frase motivacional al azar ni números que no existen). Sin culpa.
+  bienvenida: {
+    ninguna: (meta: string) => `Hoy das un paso más hacia «${meta}».`,
+    ningunaSinMeta: "Hoy das un paso más en tu plan. Empieza por lo que te quede más a mano.",
+    algunas: (meta: string) => `Ya avanzaste en «${meta}». Lo que hiciste cuenta.`,
+    algunasSinMeta: "Ya avanzaste hoy. Lo que hiciste cuenta.",
+    completo: "Hoy hiciste todo lo que te propusiste.",
+    completoCoach: "Hoy hiciste todo lo que te propusiste. Tu coach lo verá en tu revisión.",
+    ayerCosto: (meta: string) => `Ayer costó un poco. Hoy basta con un paso pequeño hacia «${meta}».`,
+    sinAcciones: "Hoy no hay acciones. Descansar también es parte del plan, y tu racha no se corta.",
+  },
+  // Tarjeta de la meta principal (lib/mi-rumbo.ts: hoy la primera meta del programa).
+  metaPrincipal: {
+    rotulo: "Tu meta principal",
+    hitos: (h: number, n: number) => `${h} de ${n} ${n === 1 ? "hito" : "hitos"}`,
+    otras: (n: number) => (n === 1 ? "Y 1 meta más en tu plan" : `Y ${n} metas más en tu plan`),
+    ver: "Ver mis metas",
+  },
+  acciones: {
+    titulo: "Tus acciones de hoy",
+    cuenta: (h: number, n: number) => (h >= n ? "Día completo" : `${h} de ${n} ${n === 1 ? "hecha" : "hechas"}`),
+  },
+  vacio: { texto: "Puedes mirar lo que viene en tu plan.", verPlan: "Ver mi plan" },
+  // Nuevo nivel: una celebración especial (no por cada acción). Reglas y umbrales sin cambios.
+  celebracion: {
+    ojo: "Nuevo nivel",
+    titulo: (nombre: string) => `Llegaste a ${nombre}`,
+    texto: (n: number, total: number) => `Nivel ${n} de ${total}. Cada paso cuenta, también los días cortos.`,
+    siguiente: (nombre: string, faltan: number) => `Siguiente parada: ${nombre}, a ${faltan} ${faltan === 1 ? "crédito" : "créditos"} más.`,
+    maximo: "Llegaste al último nivel del camino.",
+    seguir: "Seguir",
+    verCamino: "Ver mi camino",
+  },
   titulo: (dia: string) => `Hoy, ${dia}.`,
   bajada: {
     ninguna: (n: number) =>
@@ -111,7 +147,7 @@ export const T_HOY = {
     videollamada: (hora: string) => `Hoy es tu videollamada, a las ${hora}.`,
   },
   diaCompleto: (bono: number) => `Día completo · +${bono}`,
-  foco: { rotulo: "Tu foco esta semana · de tu coach", nuevo: "Nuevo", ver: "Ver la revisión" },
+  foco: { rotulo: "Foco de tu coach", nuevo: "Nuevo", ver: "Ver la revisión", ir: "Ir a mi acompañamiento" },
   grupos: {
     conHorario: "Con horario",
     // Etapa 2A: momentos del día (lib/mi-rumbo.ts, cortes a las 12:00 y a las 19:00).
@@ -135,6 +171,8 @@ export const T_HOY = {
   // Etapa 2A: tarjeta «Tu acompañamiento» (próxima revisión, «Me está costando» y novedades).
   acompanamiento: {
     titulo: "Tu acompañamiento",
+    // Sin nombre ni foto hasta la etapa 4A (el participante todavía no puede leer quién lo acompaña).
+    quien: "Tu coach lee tu semana",
     costando: "Me está costando",
   },
   revision: {

@@ -11,16 +11,23 @@
 // noche, cuando puedas), cada una con su icono y la meta a la que aporta, en el color de la meta.
 // El avance del día es un anillo; el foco es una franja; «Tu acompañamiento» reúne la próxima
 // revisión, «Me está costando» y las novedades; «De días anteriores» parte plegado.
-import { useEffect, useRef, useState } from "react";
+//
+// Referencia visual aprobada (21-oct-2026): bienvenida cálida con un paisaje pequeño («¡Hola,
+// Camila!» y una frase que nombra la meta real del día), la meta principal arriba, el foco de tu
+// coach como acceso al acompañamiento, «Tus acciones de hoy» con el anillo, y una celebración
+// solo al subir de nivel. Todo lo que nombra a un coach depende de que el plan lo incluya
+// (incluyeCoach). La primera acción sigue visible sin desplazar en un celular habitual.
+import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Etiqueta from "../../../components/Etiqueta";
-import { AnilloDia, BarraProgreso, ErrorBloque, Hoja, HojaAyuda, Icono, Tostada } from "../../../components/app";
-import { ESCENARIO_CERCANO, HOY, ocurrenciasDel, type Escenario, type Ocurrencia } from "../../../data/ejemplo-app";
+import { AnilloDia, BarraProgreso, ErrorBloque, Hoja, HojaAyuda, Icono, Ilustracion, Tostada } from "../../../components/app";
+import { ESCENARIO_CERCANO, HOY, cuentaComoHecha, ocurrenciasDel, type Escenario, type Meta, type Ocurrencia } from "../../../data/ejemplo-app";
+import { niveles } from "../../../data/rumbo";
 import { diaCorto, mayuscula, sumarDias, type Iso } from "../../../lib/fechas";
-import { MOMENTOS, momentoDe, type Momento } from "../../../lib/mi-rumbo";
+import { ICONO_CATEGORIA, MOMENTOS, colorDeMeta, incluyeCoach, metaPrincipal, momentoDe, type Momento } from "../../../lib/mi-rumbo";
 import type { PropsPantalla } from "../registro";
 import {
-  Cabeza,
+  EtiquetaEjemplo,
   FilaOcurrencia,
   RegionViva,
   useAvisos,
@@ -30,7 +37,6 @@ import {
   type Progreso,
 } from "./comun";
 import Detalle from "./Detalle";
-import { TituloSeccion } from "./Seccion";
 import { T_ANTERIORES, T_COMUN, T_COSTANDO, T_HOY, T_RESUMEN_DIA, T_SECCIONES } from "./textos";
 
 type Variante = {
@@ -93,6 +99,17 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
   const [ayuda, setAyuda] = useState(false);
   const [costando, setCostando] = useState<{ abierta: boolean; accion?: Ocurrencia }>({ abierta: false });
   const accionesRef = useRef<HTMLDivElement>(null);
+  const conCoach = incluyeCoach(esc.plan);
+  const principal = metaPrincipal(esc.metas);
+
+  // Nuevo nivel: celebración especial (no por cada acción). Solo cuando sube mientras la persona
+  // está en la pantalla y si no ocultó créditos y niveles en Preferencias.
+  const [celebrar, setCelebrar] = useState(false);
+  const nivelAntes = useRef(progreso.nivel.nivel);
+  useEffect(() => {
+    if (progreso.nivel.nivel > nivelAntes.current && !variante.ocultarCreditos) setCelebrar(true);
+    nivelAntes.current = progreso.nivel.nivel;
+  }, [progreso.nivel.nivel, variante.ocultarCreditos]);
 
   const semana = semanaDelCiclo(hoy);
   const deHoy = ocurrenciasDel(hoy, lista);
@@ -147,17 +164,31 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
   const grupos = MOMENTOS.map((m) => ({ m, lista: deHoy.filter((o) => momentoDe(o.hora) === m) }));
   const conCarga = variante.carga || anteriores.length >= 5;
 
+  const diaHoy = progreso.dias.find((d) => d.fecha === hoy);
+  const programadas = diaHoy?.programadas ?? 0;
+  const hechas = Math.min(diaHoy?.hechas ?? 0, programadas);
+
   return (
     <div className="me-pantalla me-hoy">
-      <div className="me-hoy__cabeza">
-        <TituloSeccion titulo={T_SECCIONES.rumbo} icono="compass" ojo={T_HOY.ojo(semana, ciclo.semanas)} ejemplo />
-        <CabezaHoy hoy={hoy} semana={semana} progreso={progreso} esc={esc} />
-      </div>
+      <Bienvenida hoy={hoy} semana={semana} progreso={progreso} esc={esc} deHoy={deHoy} principal={principal} conCoach={conCoach} total={ciclo.semanas} />
 
-      <Foco semana={semana} esc={esc} conNovedad={variante.novedades} />
+      {principal && <MetaPrincipal meta={principal} metas={esc.metas} />}
+
+      {conCoach && <Foco semana={semana} esc={esc} conNovedad={variante.novedades} enlace />}
 
       <div className="me-hoy__cuerpo">
         <div className="me-bloque" ref={accionesRef}>
+          {programadas > 0 ? (
+            <div className="me-hoy__acciones-cabeza">
+              <div>
+                <h2 className="me-h2">{T_HOY.acciones.titulo}</h2>
+                <p className="me-bloque__bajada">{T_HOY.acciones.cuenta(hechas, programadas)}</p>
+              </div>
+              <AnilloDia hechas={hechas} programadas={programadas} etiqueta={T_RESUMEN_DIA.etiqueta(hechas, programadas)} className="me-hoy__anillo" />
+            </div>
+          ) : (
+            <SinAccionesHoy />
+          )}
           {grupos.map(({ m, lista: l }) => (
             <Grupo key={m} momento={m} titulo={TITULO_MOMENTO[m]} lista={l} hoy={hoy} onMarcar={marcar} onAbrir={setAbierta} sinConexion={sinConexion} />
           ))}
@@ -174,7 +205,16 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
       </div>
 
       <div className="me-hoy__lado">
-        <TuAcompanamiento hoy={hoy} esc={esc} ausencia={!!variante.ausencia} novedades={!!variante.novedades} onCostando={() => setCostando({ abierta: true })} />
+        {conCoach && (
+          <TuAcompanamiento
+            hoy={hoy}
+            semana={semana}
+            esc={esc}
+            ausencia={!!variante.ausencia}
+            novedades={!!variante.novedades}
+            onCostando={() => setCostando({ abierta: true })}
+          />
+        )}
         {!variante.ocultarCreditos &&
           (errorBloque ? (
             <section className="tarjeta me-resumen" aria-label={T_HOY.resumen.enlace}>
@@ -253,6 +293,7 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
           setAyuda(true);
         }}
       />
+      <Celebracion abierta={celebrar} progreso={progreso} onCerrar={() => setCelebrar(false)} />
       <HojaAyuda abierta={ayuda} onCerrar={() => setAyuda(false)} />
       <Tostada mensaje={tostada?.mensaje ?? null} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
       <RegionViva texto={vivo} />
@@ -269,51 +310,144 @@ const TITULO_MOMENTO: Record<Momento, string> = {
 const ICONO_MOMENTO = { manana: "sun", tarde: "sunset", noche: "moon", flexible: "clock" } as const;
 
 // ---------------------------------------------------------------------------
-// Encabezado: ojo «Semana 2 de 4», saludo, H1 «Hoy, martes 13.» y bajada según el día (4.4.2)
+// Bienvenida (referencia visual): «Martes 13 · Semana 2 de 4», «¡Hola, Camila!» y una frase según
+// el día real, que nombra la meta a la que aporta la próxima acción (o la que ya avanzó). El H1
+// de la pantalla sigue siendo «Mi Rumbo», al inicio de la línea de la fecha.
+// La altura es baja a propósito: la primera acción tiene que verse sin desplazar.
 
-function CabezaHoy({ hoy, semana, progreso, esc }: { hoy: Iso; semana: number; progreso: Progreso; esc: Escenario }) {
-  const { fechaRevision } = useEspacio();
+type PropsBienvenida = {
+  hoy: Iso;
+  semana: number;
+  total: number;
+  progreso: Progreso;
+  esc: Escenario;
+  deHoy: Ocurrencia[];
+  principal: Meta | null;
+  conCoach: boolean;
+};
+
+function Bienvenida({ hoy, semana, total, progreso, esc, deHoy, principal, conCoach }: PropsBienvenida) {
+  const { fechaRevision, metaPorId } = useEspacio();
   const dia = progreso.dias.find((d) => d.fecha === hoy);
   const n = dia?.programadas ?? 0;
   const h = dia?.hechas ?? 0;
-  let bajada: string;
-  let completo = false;
-  if (!n) bajada = T_HOY.bajada.sinAcciones;
-  else if (dia?.estado === "completo") {
-    bajada = T_HOY.bajada.todas;
-    completo = true;
-  } else if (dia?.estado === "suspenso") bajada = T_HOY.bajada.fotoEnRevision;
-  else if (!h) bajada = ayerIncompleto(progreso, hoy) ? T_HOY.bajada.ayerCosto : T_HOY.bajada.ninguna(n);
-  else bajada = T_HOY.bajada.algunas(h, n);
-  const esRevision = fechaRevision(semana, esc.diaRevision) === hoy;
+  const tituloMeta = (o?: Ocurrencia) => (o ? metaPorId(o.metaId).titulo || o.metaTitulo || "" : "") || principal?.titulo || "";
+  const pendiente = deHoy.find((o) => o.registro === null);
+  const hecha = deHoy.find((o) => cuentaComoHecha(o.registro));
+  const B = T_HOY.bienvenida;
+  let frase: string;
+  if (!n) frase = B.sinAcciones;
+  else if (dia?.estado === "completo") frase = conCoach ? B.completoCoach : B.completo;
+  else if (dia?.estado === "suspenso") frase = T_HOY.bajada.fotoEnRevision;
+  else if (!h) {
+    const meta = tituloMeta(pendiente);
+    frase = !meta ? B.ningunaSinMeta : ayerIncompleto(progreso, hoy) ? B.ayerCosto(meta) : B.ninguna(meta);
+  } else {
+    const meta = tituloMeta(hecha);
+    frase = meta ? B.algunas(meta) : B.algunasSinMeta;
+  }
+  const esRevision = conCoach && fechaRevision(semana, esc.diaRevision) === hoy;
   const textoRevision = esc.plan === "cercano" ? T_HOY.bajada.videollamada(esc.horaVideollamada) : T_HOY.bajada.revision;
 
   return (
-    <div className="me-hoy__titular">
-    <Cabeza
-      nivel={2}
-      ejemplo={false}
-      antes={<p className="me-saludo">{T_HOY.saludo(esc.participante.nombre)}</p>}
-      titulo={T_HOY.titulo(diaCorto(hoy))}
-      bajada={
-        <>
-          {!n && <ResumenDia hechas={h} programadas={n} />}
-          <p>
-            {bajada}
-            {esRevision && ` ${textoRevision}`}
-          </p>
-          {completo && dia && (
-            <p>
-              <Etiqueta variante="activo" grande>
-                {T_HOY.diaCompleto(dia.bono)}
-              </Etiqueta>
-            </p>
-          )}
-        </>
-      }
-    />
-    {n > 0 && <AnilloDia hechas={h} programadas={n} etiqueta={T_RESUMEN_DIA.etiqueta(Math.min(h, n), n)} className="me-hoy__anillo" />}
+    <header className="me-bienvenida me-hoy__cabeza">
+      <Ilustracion nombre="paisaje" className="me-bienvenida__ilus" />
+      <div className="me-bienvenida__texto">
+        <div className="me-bienvenida__ojo">
+          <h1 className="me-bienvenida__h1">{T_SECCIONES.rumbo}</h1>
+          <span aria-hidden="true">·</span>
+          <p>{T_HOY.fechaSemana(mayuscula(diaCorto(hoy)), semana, total)}</p>
+          <EtiquetaEjemplo />
+        </div>
+        <p className="me-bienvenida__saludo">{T_HOY.saludo(esc.participante.nombre)}</p>
+        <p className="me-bienvenida__frase">
+          {frase}
+          {esRevision && ` ${textoRevision}`}
+        </p>
+      </div>
+    </header>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Meta principal: ¿qué quiero conseguir? Hoy la primera meta del programa (metaPrincipal); con
+// sus hitos si el coach los definió (los marca el coach en el constructor).
+
+function MetaPrincipal({ meta, metas }: { meta: Meta; metas: Meta[] }) {
+  const { R } = useEspacio();
+  const logrados = meta.hitos.filter((x) => x.logrado).length;
+  const otras = metas.length - 1;
+  const color = colorDeMeta(
+    metas.map((m) => m.id),
+    meta.id,
+  );
+  return (
+    <Link to={R.metas} className="me-meta-principal" data-meta-color={color}>
+      <span className="me-meta-principal__icono" aria-hidden="true">
+        <Icono nombre={ICONO_CATEGORIA[meta.categoria]} tamaño={24} />
+      </span>
+      <span className="me-meta-principal__texto">
+        <span className="me-meta-principal__rotulo">{T_HOY.metaPrincipal.rotulo}</span>
+        <span className="me-meta-principal__titulo">{meta.titulo}</span>
+        {meta.hitos.length > 0 ? (
+          <span className="me-meta-principal__hitos">
+            <span className="me-meta-principal__puntos" aria-hidden="true">
+              {meta.hitos.map((x, i) => (
+                <span key={i} className={x.logrado ? "es-logrado" : undefined} />
+              ))}
+            </span>
+            {T_HOY.metaPrincipal.hitos(logrados, meta.hitos.length)}
+          </span>
+        ) : (
+          otras > 0 && <span className="me-meta-principal__otras">{T_HOY.metaPrincipal.otras(otras)}</span>
+        )}
+      </span>
+      <Icono nombre="chevron-right" tamaño={20} className="me-meta-principal__flecha" />
+    </Link>
+  );
+}
+
+// Sin acciones hoy: estado vacío amable, con el plan a mano.
+function SinAccionesHoy() {
+  const { R } = useEspacio();
+  return (
+    <div className="me-hoy-vacio">
+      <Ilustracion nombre="brote" className="me-hoy-vacio__ilus" />
+      <div>
+        <h2 className="me-h2">{T_RESUMEN_DIA.sinAcciones}</h2>
+        <p className="me-bloque__bajada">{T_HOY.vacio.texto}</p>
+        <Link to={R.calendario} className="enlace-flecha">
+          {T_HOY.vacio.verPlan}
+          <Icono nombre="arrow-right" tamaño={16} />
+        </Link>
+      </div>
     </div>
+  );
+}
+
+// Nuevo nivel: la ventana de celebración (hoja con ilustración). Umbrales y reglas sin cambios:
+// el nivel y el siguiente vienen del progreso calculado con las reglas vigentes.
+function Celebracion({ abierta, progreso, onCerrar }: { abierta: boolean; progreso: Progreso; onCerrar: () => void }) {
+  const { R } = useEspacio();
+  const C = T_HOY.celebracion;
+  const { nivel, siguiente, creditos } = progreso;
+  return (
+    <Hoja abierta={abierta} onCerrar={onCerrar} titulo={C.titulo(nivel.nombre)} className="hoja--celebracion">
+      <div className="me-celebracion">
+        <Ilustracion nombre="brote" className="me-celebracion__ilus" />
+        <p className="me-celebracion__ojo">{C.ojo}</p>
+        <p>{C.texto(nivel.nivel, niveles.length)}</p>
+        <p className="me-celebracion__siguiente">{siguiente ? C.siguiente(siguiente.nombre, siguiente.minimo - creditos) : C.maximo}</p>
+        <div className="me-celebracion__botones">
+          <button type="button" className="boton boton--primario" onClick={onCerrar}>
+            {C.seguir}
+          </button>
+          <Link to={R.progreso} className="boton boton--secundario" onClick={onCerrar}>
+            {C.verCamino}
+          </Link>
+        </div>
+      </div>
+    </Hoja>
   );
 }
 
@@ -413,19 +547,28 @@ function Novedades() {
 // «Tu foco esta semana» (4.4.4): si no hay foco, el bloque no se muestra.
 
 // Etapa 2A: franja de una línea; con «Nuevo» cuando la revisión que lo trae todavía no se ha visto.
-export function Foco({ semana, className, esc: escDado, conNovedad }: { semana: number; className?: string; esc?: Escenario; conNovedad?: boolean }) {
-  const { esc: escContexto, focoDeLaSemana, novedades } = useEspacio();
+// Referencia visual: en Mi Rumbo la franja es el acceso al acompañamiento (avatar genérico de
+// «tu coach» hasta la etapa 4A, y enlace a Mi acompañamiento). En escritorio la franja se oculta y
+// el foco va dentro de la tarjeta «Tu acompañamiento» (variante `enTarjeta`).
+type PropsFoco = { semana: number; className?: string; esc?: Escenario; conNovedad?: boolean; enlace?: boolean; enTarjeta?: boolean };
+
+export function Foco({ semana, className, esc: escDado, conNovedad, enlace, enTarjeta }: PropsFoco) {
+  const { esc: escContexto, focoDeLaSemana, novedades, R } = useEspacio();
+  const idRotulo = useId();
   const esc = escDado ?? escContexto;
   const foco = focoDeLaSemana(semana, esc.revisiones, esc.focoInicial);
   if (!foco) return null;
   const nuevo = !!conNovedad && novedades.some((n) => n.destino === "semana");
-  return (
-    <aside className={["me-foco me-foco--franja", className].filter(Boolean).join(" ")} aria-labelledby="foco-rotulo">
-      <span className="icono-mosaico">
-        <Icono nombre="message-circle" tamaño={20} />
-      </span>
-      <div className="me-foco__cuerpo">
-        <p id="foco-rotulo" className="me-rotulo">
+  const clases = ["me-foco", enTarjeta ? "me-foco--tarjeta" : "me-foco--franja", className].filter(Boolean).join(" ");
+  const cuerpo = (
+    <>
+      {!enTarjeta && (
+        <span className="me-avatar" aria-hidden="true">
+          <Icono nombre="user-round" tamaño={20} />
+        </span>
+      )}
+      <span className="me-foco__cuerpo">
+        <span id={idRotulo} className="me-rotulo">
           {T_HOY.foco.rotulo}
           {nuevo && (
             <>
@@ -433,11 +576,24 @@ export function Foco({ semana, className, esc: escDado, conNovedad }: { semana: 
               <Etiqueta variante="nota">{T_HOY.foco.nuevo}</Etiqueta>
             </>
           )}
-        </p>
-        <p className="voz">
+        </span>
+        <span className="voz">
           <q>{foco}</q>
-        </p>
-      </div>
+        </span>
+      </span>
+      {enlace && <Icono nombre="chevron-right" tamaño={20} className="me-foco__flecha" />}
+    </>
+  );
+  if (enlace)
+    return (
+      <Link to={nuevo ? R.semanaPublicada : R.semana} className={clases} aria-describedby={idRotulo}>
+        {cuerpo}
+        <span className="sr-only">{T_HOY.foco.ir}</span>
+      </Link>
+    );
+  return (
+    <aside className={clases} aria-labelledby={idRotulo}>
+      {cuerpo}
     </aside>
   );
 }
@@ -461,10 +617,10 @@ function Grupo({ titulo, momento, lista, hoy, onMarcar, onAbrir, nota, sinConexi
   const id = `grupo-${titulo.toLowerCase().replace(/\s+/g, "-")}`;
   return (
     <div className="me-grupo">
-      <h2 id={id} className="me-grupo__titulo" tabIndex={-1}>
+      <h3 id={id} className="me-grupo__titulo" tabIndex={-1}>
         {momento && <Icono nombre={ICONO_MOMENTO[momento]} tamaño={16} />}
         {titulo}
-      </h2>
+      </h3>
       <ul className="me-filas" aria-labelledby={id}>
         {lista.map((o) => (
           <li key={o.id}>
@@ -635,6 +791,9 @@ export function ResumenAvance({ progreso }: { progreso: Progreso }) {
   return (
     <section className="tarjeta me-resumen" aria-labelledby="resumen-nivel">
       <div className="me-resumen__fila">
+        <span className="me-resumen__icono" aria-hidden="true">
+          <Icono nombre="leaf" tamaño={20} />
+        </span>
         <Etiqueta key={destello} variante="activo" grande nowrap className={destello ? "destello" : undefined}>
           <span id="resumen-nivel">{T_HOY.resumen.nivel(nivel.nivel, nivel.nombre)}</span>
         </Etiqueta>
@@ -679,9 +838,9 @@ function useProximaRevision(hoy: Iso, esc: Escenario, ausencia: boolean) {
   return { fecha, enviado };
 }
 
-type PropsAcomp = { hoy: Iso; esc: Escenario; ausencia: boolean; novedades: boolean; onCostando: () => void };
+type PropsAcomp = { hoy: Iso; semana: number; esc: Escenario; ausencia: boolean; novedades: boolean; onCostando: () => void };
 
-function TuAcompanamiento({ hoy, esc, ausencia, novedades, onCostando }: PropsAcomp) {
+function TuAcompanamiento({ hoy, semana, esc, ausencia, novedades, onCostando }: PropsAcomp) {
   const { R } = useEspacio();
   const { fecha, enviado } = useProximaRevision(hoy, esc, ausencia);
   const cercano = esc.plan === "cercano";
@@ -689,42 +848,54 @@ function TuAcompanamiento({ hoy, esc, ausencia, novedades, onCostando }: PropsAc
   const texto = enviado ? T_HOY.revision.coachEnviado : T_HOY.revision.coachAntes;
   return (
     <section className="tarjeta me-acomp-hoy" aria-labelledby="acomp-hoy-titulo">
-      <h2 id="acomp-hoy-titulo" className="me-h2">
-        {T_HOY.acompanamiento.titulo}
-      </h2>
-      {cercano ? (
-        <>
-          <p>
-            {t.antes}
-            <strong>
-              {diaCorto(fecha)}
-              {t.a}
-              {esc.horaVideollamada}
-            </strong>
-            {t.despues}
-          </p>
-          {esc.horaLocal && <p className="microcopia">{T_HOY.revision.enTuZona(esc.horaLocal(esc.horaVideollamada))}</p>}
-        </>
-      ) : (
-        <p>
-          {texto.antes}
-          <strong>{diaCorto(fecha)}</strong>
-          {texto.despues}
-        </p>
-      )}
-      <div className="me-acomp-hoy__botones">
-        <button type="button" className="boton boton--secundario me-boton-chico" aria-haspopup="dialog" onClick={onCostando}>
-          <Icono nombre="hand" tamaño={20} />
-          {T_HOY.acompanamiento.costando}
-        </button>
-        {!enviado && (
-          <Link to={R.semana} className="boton boton--secundario me-boton-chico">
-            <Icono nombre="pen-line" tamaño={20} />
-            {cercano ? T_HOY.revision.escribirOpcional : T_HOY.revision.escribir}
-          </Link>
-        )}
+      <div className="me-acomp-hoy__cabeza">
+        <span className="me-avatar me-avatar--grande" aria-hidden="true">
+          <Icono nombre="user-round" tamaño={22} />
+        </span>
+        <div>
+          <h2 id="acomp-hoy-titulo" className="me-h2">
+            {T_HOY.acompanamiento.titulo}
+          </h2>
+          <p className="me-acomp-hoy__quien">{T_HOY.acompanamiento.quien}</p>
+        </div>
       </div>
-      {novedades && <Novedades />}
+      <div className="me-acomp-hoy__cuerpo">
+        <Foco semana={semana} esc={esc} conNovedad={novedades} enTarjeta />
+        {cercano ? (
+          <>
+            <p>
+              {t.antes}
+              <strong>
+                {diaCorto(fecha)}
+                {t.a}
+                {esc.horaVideollamada}
+              </strong>
+              {t.despues}
+            </p>
+            {esc.horaLocal && <p className="microcopia">{T_HOY.revision.enTuZona(esc.horaLocal(esc.horaVideollamada))}</p>}
+          </>
+        ) : (
+          <p>
+            {texto.antes}
+            <strong>{diaCorto(fecha)}</strong>
+            {texto.despues}
+          </p>
+        )}
+        <div className="me-acomp-hoy__botones">
+          <button type="button" className="boton boton--secundario me-boton-chico" aria-haspopup="dialog" onClick={onCostando}>
+            <Icono nombre="hand" tamaño={20} />
+            {T_HOY.acompanamiento.costando}
+          </button>
+          {!enviado && (
+            <Link to={R.semana} className="boton boton--secundario me-boton-chico">
+              <Icono nombre="pen-line" tamaño={20} />
+              {cercano ? T_HOY.revision.escribirOpcional : T_HOY.revision.escribir}
+            </Link>
+          )}
+        </div>
+        {novedades && <Novedades />}
+      </div>
+      <Ilustracion nombre="colinas" className="me-acomp-hoy__ilus" />
     </section>
   );
 }

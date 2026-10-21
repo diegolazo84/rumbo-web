@@ -94,9 +94,11 @@ test.describe("resumen del día en Mi Rumbo", () => {
 
   test("día sin acciones: estado neutro, sin números", async ({ page }) => {
     await abrir(page, "mi-espacio/hoy/sin-acciones/");
-    const resumen = page.locator(".me-dia-resumen");
-    await expect(resumen).toHaveText("Sin acciones para hoy");
-    await expect(resumen).not.toContainText(/\d/);
+    // Referencia visual: estado vacío con ilustración y el plan a mano, sin anillo ni números.
+    const vacio = page.locator(".me-hoy-vacio");
+    await expect(vacio).toContainText("Sin acciones para hoy");
+    await expect(vacio).not.toContainText(/\d/);
+    await expect(page.locator(".me-hoy__anillo")).toHaveCount(0);
   });
 });
 

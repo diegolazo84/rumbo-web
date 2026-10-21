@@ -259,9 +259,9 @@ test("Hoy real: sin «Ejemplo», marcar llama a marcar_accion y los créditos vi
   const llamadas = await simular(page, baseInicial());
   await page.goto("mi-espacio/");
   await expect(page.locator("h1")).toHaveText("Mi Rumbo");
-  await expect(page.getByRole("heading", { level: 2, name: "Hoy, martes 13." })).toBeVisible();
+  await expect(page.locator(".me-bienvenida__ojo")).toContainText("Martes 13 · Semana");
   await hidratar(page);
-  await expect(page.getByText("Hola, Ana.")).toBeVisible();
+  await expect(page.getByText("¡Hola, Ana!")).toBeVisible();
   await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
   await expect(page.getByText("BORRADOR SECRETO")).toHaveCount(0);
   const creditos = page.locator(".me-hoy .me-resumen__creditos");

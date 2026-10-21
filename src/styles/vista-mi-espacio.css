@@ -46,40 +46,110 @@
 /* ========================================================================
    Hoy (4.4)
    ======================================================================== */
-.me-hoy { row-gap: var(--e-6); }
-.me-hoy__cabeza { display: grid; gap: var(--e-5); }
-.me-hoy__cuerpo, .me-hoy__lado { display: grid; gap: var(--e-6); align-content: start; min-inline-size: 0; }
-/* Escritorio: encabezado, foco y acciones en 7 columnas; «Tu acompañamiento» y el avance en 5.
-   En móvil el orden es el del documento: acciones, acompañamiento, avance y días anteriores. */
+.me-hoy { row-gap: var(--e-3); }
+.me-hoy__cuerpo, .me-hoy__lado { display: grid; gap: var(--e-4); align-content: start; min-inline-size: 0; }
+/* Escritorio: bienvenida a lo ancho; meta principal y acciones en 7 columnas; «Tu acompañamiento»
+   (con el foco) y el avance en 5. En móvil el orden es el del documento: bienvenida, meta,
+   foco, acciones, acompañamiento, avance y días anteriores. */
 @media (min-width: 1024px) {
   .me-hoy {
     grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
     grid-template-areas:
-      "cabeza     lado"
-      "foco       lado"
+      "cabeza     cabeza"
+      "meta       lado"
       "cuerpo     lado"
       "anteriores lado"
       "pie        lado";
     column-gap: var(--e-6);
+    row-gap: var(--e-5);
     align-items: start;
   }
   .me-hoy__cabeza { grid-area: cabeza; }
-  .me-hoy .me-foco { grid-area: foco; }
+  .me-hoy .me-meta-principal { grid-area: meta; }
+  .me-hoy > .me-foco--franja { display: none; }
   .me-hoy__cuerpo { grid-area: cuerpo; }
   .me-hoy__lado { grid-area: lado; }
   .me-hoy__anteriores { grid-area: anteriores; }
   .me-hoy__pie { grid-area: pie; }
 }
-/* Etapa 2A: el encabezado deja espacio a las acciones (saludo y anillo en una fila). */
-.me-hoy { row-gap: var(--e-5); }
-.me-hoy__cabeza { gap: var(--e-3); }
-.me-hoy__titular { display: flex; align-items: center; justify-content: space-between; gap: var(--e-4); }
-.me-hoy__titular > .me-cabeza { min-inline-size: 0; }
-.me-hoy__cuerpo { gap: var(--e-4); }
+/* En móvil el foco va en la franja; en escritorio, dentro de la tarjeta. */
+@media (max-width: 1023.98px) { .me-acomp-hoy .me-foco--tarjeta { display: none; } }
+
+/* Bienvenida (referencia visual): crema, de borde a borde, con el paisaje a la derecha. Baja a
+   propósito para que la primera acción se vea sin desplazar. El texto nunca va sobre el dibujo. */
+.me-bienvenida {
+  position: relative;
+  display: grid;
+  margin-inline: calc(-1 * var(--gutter));
+  margin-block-start: calc(-1 * var(--e-5));
+  padding: var(--e-4) var(--gutter) var(--e-6);
+  overflow: hidden;
+  background: var(--crema);
+}
+.me-bienvenida__ilus { position: absolute; inset-block-end: 0; inset-inline-end: 0; inline-size: 46%; max-inline-size: 240px; block-size: auto; }
+.me-bienvenida__texto { position: relative; display: grid; gap: 4px; }
+.me-bienvenida__saludo, .me-bienvenida__frase { max-inline-size: 68%; }
+.me-bienvenida__ojo { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font: 600 var(--t-micro)/1.3 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--terracota-texto); }
+.me-bienvenida__h1 { margin: 0; font: inherit; letter-spacing: inherit; color: var(--bosque); }
+.me-bienvenida__ojo .etiqueta { letter-spacing: 0; text-transform: none; }
+.me-bienvenida__saludo { font: 600 var(--t-saludo)/1.08 var(--serif); letter-spacing: -0.015em; color: var(--bosque); }
+.me-bienvenida__frase { font-size: var(--t-s); line-height: 1.4; color: var(--tinta-suave); }
+@media (min-width: 1024px) {
+  .me-bienvenida { margin-inline: 0; margin-block-start: 0; padding: var(--e-6) var(--e-6) var(--e-7); border-radius: var(--r-l); }
+  .me-bienvenida__ilus { inline-size: auto; block-size: 100%; max-inline-size: 48%; }
+  .me-bienvenida__texto { gap: 6px; }
+  .me-bienvenida__saludo, .me-bienvenida__frase { max-inline-size: 56%; }
+  .me-bienvenida__frase { font-size: var(--t-base); }
+}
+
+/* Meta principal: ¿qué quiero conseguir? Sube sobre el borde de la bienvenida. */
+.me-meta-principal {
+  position: relative;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 12px;
+  margin-block-start: calc(-1 * var(--e-5));
+  padding: 12px;
+  border-radius: var(--r-m);
+  background: var(--superficie);
+  box-shadow: var(--sombra-1);
+  color: var(--tinta);
+  text-decoration: none;
+}
+.me-meta-principal__icono { display: grid; place-items: center; inline-size: 52px; block-size: 52px; border-radius: var(--r-m); background: var(--cat-fondo); color: var(--cat-texto); }
+.me-meta-principal__texto { display: grid; gap: 2px; min-inline-size: 0; }
+.me-meta-principal__rotulo { font: 600 var(--t-micro)/1.3 var(--sans); color: var(--tinta-suave); }
+.me-meta-principal__titulo { font: 600 var(--t-h3)/1.2 var(--serif); letter-spacing: -0.005em; }
+.me-meta-principal__hitos, .me-meta-principal__otras { display: flex; align-items: center; gap: 8px; font: 600 var(--t-micro)/1.3 var(--sans); color: var(--cat-texto); }
+.me-meta-principal__otras { color: var(--tinta-suave); }
+.me-meta-principal__puntos { display: inline-flex; gap: 4px; }
+.me-meta-principal__puntos > span { inline-size: 8px; block-size: 8px; border: 1.5px solid var(--cat); border-radius: var(--r-full); }
+.me-meta-principal__puntos > .es-logrado { background: var(--cat); }
+.me-meta-principal__flecha { color: var(--tinta-suave); }
+@media (hover: hover) { .me-meta-principal:hover .me-meta-principal__titulo { text-decoration: underline; text-underline-offset: 3px; } }
+@media (min-width: 1024px) { .me-meta-principal { margin-block-start: calc(-1 * var(--e-7)); } }
+
+/* «Tus acciones de hoy» con el anillo. */
+.me-hoy__acciones-cabeza { display: flex; align-items: center; justify-content: space-between; gap: var(--e-4); }
+.me-hoy__acciones-cabeza .me-h2 { font-size: var(--t-h3); }
+.me-hoy__acciones-cabeza .me-bloque__bajada { font-size: var(--t-xs); }
+.me-hoy .anillo { inline-size: 60px; block-size: 60px; }
+.me-hoy-vacio { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; gap: var(--e-4); padding: var(--e-4); border-radius: var(--r-m); background: var(--superficie); box-shadow: var(--sombra-1); }
+.me-hoy-vacio__ilus { inline-size: 88px; block-size: 88px; }
+.me-hoy-vacio > div { display: grid; gap: var(--e-2); }
+
+/* Avance compacto con la hoja. */
+.me-resumen__icono { display: grid; place-items: center; inline-size: 40px; block-size: 40px; border-radius: var(--r-s); background: var(--salvia-suave); color: var(--bosque); }
+.me-resumen__fila .etiqueta { margin-inline-end: auto; }
 
 /* Tarjeta «Tu acompañamiento». */
-.me-acomp-hoy { display: grid; gap: var(--e-3); padding: 20px; font-size: var(--t-s); line-height: 1.55; }
-@media (min-width: 1024px) { .me-acomp-hoy { padding: 24px; } }
+.me-acomp-hoy { display: grid; gap: 0; padding: 0; overflow: hidden; border: 0; box-shadow: var(--sombra-1); font-size: var(--t-s); line-height: 1.55; }
+.me-acomp-hoy__cabeza { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--salvia-suave); }
+.me-acomp-hoy__quien { font-size: var(--t-xs); color: var(--tinta-suave); }
+.me-acomp-hoy__cuerpo { display: grid; gap: var(--e-3); padding: 16px; }
+.me-acomp-hoy__ilus { inline-size: 100%; block-size: 56px; }
+@media (min-width: 1024px) { .me-acomp-hoy__cabeza { padding: 16px 20px; } .me-acomp-hoy__cuerpo { padding: 20px; } .me-acomp-hoy__ilus { block-size: 80px; } }
 .me-acomp-hoy__botones { display: flex; flex-wrap: wrap; gap: 8px; }
 .me-acomp-hoy__botones .boton { gap: 8px; }
 .me-acomp-hoy .me-novedades { margin-block-start: var(--e-1); }
@@ -142,10 +212,16 @@
 }
 .me-foco__cuerpo { display: grid; gap: 6px; padding-block-start: 2px; }
 /* Etapa 2A: franja compacta (mosaico más chico, menos aire). */
-.me-foco--franja { grid-template-columns: 36px minmax(0, 1fr); gap: 12px; align-items: center; padding: 12px 16px; }
-.me-foco--franja .icono-mosaico { inline-size: 36px; block-size: 36px; }
-.me-foco--franja .me-foco__cuerpo { gap: 2px; padding: 0; }
+/* Referencia visual: la franja es el acceso al acompañamiento (salvia, avatar y flecha). */
+.me-foco--franja { grid-template-columns: 40px minmax(0, 1fr) 20px; gap: 12px; align-items: center; padding: 10px 12px; border: 0; background: var(--salvia-suave); color: var(--tinta); text-decoration: none; }
+.me-foco--franja .me-foco__cuerpo { gap: 0; padding: 0; }
+.me-foco--franja .me-rotulo { color: var(--bosque); }
 .me-foco--franja .etiqueta { vertical-align: 1px; }
+.me-foco__cuerpo > .me-rotulo, .me-foco__cuerpo > .voz { display: block; }
+.me-foco__flecha { color: var(--bosque); }
+@media (hover: hover) { a.me-foco--franja:hover .voz { text-decoration: underline; text-underline-offset: 3px; } }
+.me-foco--tarjeta { display: grid; grid-template-columns: minmax(0, 1fr); padding: 0; border: 0; background: none; }
+.me-foco--tarjeta .voz { font-size: var(--t-voz); }
 .me-foco .voz { color: var(--tinta); }
 
 /* Grupos de acciones: rótulo como la leyenda de un día del calendario. */
@@ -158,7 +234,7 @@
   font: 600 var(--t-micro)/1.3 var(--sans);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--tinta-suave);
+  color: var(--terracota-texto);
 }
 .me-filas { list-style: none; display: grid; gap: 8px; min-inline-size: 0; }
 .me-filas > li { min-inline-size: 0; }
@@ -686,3 +762,14 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 .me-lqv__cabeza { display: flex; align-items: center; gap: 10px; color: var(--tinta-suave); }
 .me-lqv__titulo { font: 600 var(--t-base)/1.3 var(--sans); color: var(--tinta); }
 .me-anteriores .me-bloque__cabeza > .boton { justify-self: start; }
+
+/* Teléfonos bajos (≤ 700 px de alto, p. ej. 375 × 667): todo un poco más junto para que la
+   primera acción asome sin desplazar. */
+@media (max-width: 1023.98px) and (max-height: 700px) {
+  .me-bienvenida { padding-block: var(--e-3) var(--e-5); }
+  .me-bienvenida__saludo { font-size: var(--t-h3); }
+  .me-meta-principal { grid-template-columns: 44px minmax(0, 1fr) 20px; padding: 10px 12px; }
+  .me-meta-principal__icono { inline-size: 44px; block-size: 44px; }
+  .me-foco--franja { padding-block: 8px; }
+  .me-hoy .anillo { inline-size: 48px; block-size: 48px; }
+}
