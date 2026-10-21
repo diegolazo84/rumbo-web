@@ -74,6 +74,11 @@ const TABLAS = {
   ia_config: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   ia_consentimientos: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   ia_consultas: { leer: "equipo", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
+  especialidades: { leer: "con-sesion", escribir: "funciones", coach: { leer: "con-sesion", escribir: "nada" } },
+  especialistas_config: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  especialistas: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  especialistas_credenciales: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  especialistas_servicios: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   plantillas_accion: { leer: "equipo", escribir: "funciones", coach: { leer: "todas", escribir: "nada" } },
   registros_semanales: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   programas: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // sin borradores
@@ -105,9 +110,11 @@ const FUNCIONES = {
     "invitar_coach", "revocar_invitacion", "cambiar_coach", "programar_videollamada", "anotar_videollamada",
     "moderar_publicacion", "guardar_reconocimiento", "guardar_beneficio", "otorgar_beneficio", "aplicar_beneficio",
     "ia_pedir_borrador", "ia_revisar", "guardar_ia_config", "ia_gasto",
+    "invitar_especialista", "revisar_credencial", "decidir_especialista", "guardar_config_especialistas", "guardar_especialidad",
+    "guardar_perfil_especialista", "agregar_credencial", "guardar_servicio_especialista", "enviar_perfil_a_revision",
   ],
   equipo: ["mi_rol_equipo", "actualizar_mi_perfil", "guardar_plantilla"],
-  "con-sesion": ["ia_disponible", "modulo_visible", "marcar_avisos_leidos", "aceptar_invitacion_equipo"],
+  "con-sesion": ["aceptar_invitacion_especialista", "especialistas_publicados", "ia_disponible", "modulo_visible", "marcar_avisos_leidos", "aceptar_invitacion_equipo"],
   "equipo-vacio": ["solapamientos", "carga_prevista", "bandeja_seguimiento", "ia_bandeja"],
 };
 // Funciones de privado que authenticated necesita porque las usan las políticas de RLS.
@@ -157,7 +164,7 @@ const contar = (rol, desde) => {
 
 // Cuentas de los coaches de prueba: solo la fila en auth.users (la prueba entra con el rol y los
 // datos de sesión de la API; no necesita contraseña).
-for (const correo of ["coach-x@example.com", "coach-y@example.com"])
+for (const correo of ["coach-x@example.com", "coach-y@example.com", "especialista-s@example.com"])
   sql(`insert into auth.users (id, instance_id, aud, role, email, created_at, updated_at)
        select gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '${correo}', now(), now()
         where not exists (select 1 from auth.users where email = '${correo}')`);
@@ -229,9 +236,14 @@ insert into public.ia_consentimientos (participante_id, metas, acciones, registr
 insert into public.ia_consultas (participante_id, tipo, pedida_por, pregunta, estado, respuesta)
   values ('${ROLES.A.ficha}', 'pregunta', '${ROLES.A.uid}', 'Pregunta de prueba de CI de A.', 'por_revisar', 'Borrador de prueba.'),
          ('${ROLES.B.ficha}', 'pregunta', '${ROLES.B.uid}', 'Pregunta de prueba de CI de B.', 'por_revisar', 'Borrador de prueba.');
+insert into public.especialistas (id, correo, nombre, estado) values ('00000000-0000-0000-0000-0000000e5e01', 'otro-especialista-ci@example.com', 'Otra especialista', 'en_revision')
+  on conflict do nothing;
+insert into public.especialistas_credenciales (especialista_id, tipo, descripcion) values ('00000000-0000-0000-0000-0000000e5e01', 'titulo', 'Título de prueba de CI');
+insert into public.especialistas_servicios (especialista_id, nombre, duracion_min, modalidad) values ('00000000-0000-0000-0000-0000000e5e01', 'Sesión de prueba', 45, 'en_linea');
 insert into public.recordatorios (participante_id) values ('${ROLES.A.ficha}'), ('${ROLES.B.ficha}') on conflict do nothing;
 `);
 
+const reclamosDe = (r) => `select set_config('request.jwt.claims', '${JSON.stringify({ sub: r.uid, role: "authenticated", aal: r.aal ?? "aal1" })}', true) \\g /dev/null\n`;
 let pasos = 0;
 const paso = (texto) => console.log(`  ${String(++pasos).padStart(2, "0")}. ${texto}`);
 const fallas = [];
@@ -1147,6 +1159,76 @@ paso("reconocimientos y beneficios: se otorgan solos y una vez; el 10 % exige to
   exigir(borrador.ok && ultima(borrador) === "0", `la persona ve los borradores pedidos por su coach: ${borrador.error ?? ultima(borrador)}`);
 }
 paso("asistente de IA: apagado sin clave y sin módulo; con consentimiento y solo el contexto autorizado; la respuesta la aprueba el coach; crisis sin IA y con alerta; topes de gasto");
+
+// E3 · Especialistas Rumbo: invitación, perfil, credenciales verificadas, publicación con aprobación, sin acceso al programa.
+{
+  const S = { nombre: "especialista S", uid: uid("especialista-s@example.com"), aal: "aal2" };
+  const Saal1 = { ...S, nombre: "especialista S sin segundo factor", aal: "aal1" };
+  const SID = "00000000-0000-0000-0000-0000000e5e02";
+  const base = (estado = "borrador") => `reset role;
+    insert into public.especialistas (id, user_id, correo, nombre, estado, profesion, especialidades, presentacion, modalidad)
+      values ('${SID}', '${S.uid}', 'especialista-s@example.com', 'Especialista S', '${estado}', 'Nutricionista', '{nutricion}',
+              'Presentación de prueba de CI.', 'en_linea');
+    set local role authenticated;\n`;
+  const invita = como(ROLES.aal2, `select public.invitar_especialista('Especialista-S@example.com', 'Especialista S') \\g /dev/null
+    reset role; select estado || ' ' || (select count(*) from privado.correos_equipo where correo = 'especialista-s@example.com')
+      from public.especialistas where correo = 'especialista-s@example.com'`);
+  exigir(invita.ok && ultima(invita) === "invitado 1", `el dueño no pudo invitar a un especialista: ${invita.error ?? ultima(invita)}`);
+  const invitar = `reset role; insert into public.especialistas (correo, nombre) values ('especialista-s@example.com', 'Especialista S'); set local role authenticated;\n`;
+  const sinFactor = como(Saal1, `${invitar} select public.aceptar_invitacion_especialista()`);
+  exigir(!sinFactor.ok && /sin_segundo_factor/.test(sinFactor.error), "un especialista aceptó sin segundo factor");
+  const acepta = como(S, `${invitar} select public.aceptar_invitacion_especialista() \\g /dev/null
+    select estado from public.especialistas`);
+  exigir(acepta.ok && ultima(acepta) === "borrador", `el especialista no pudo aceptar o ve otros perfiles: ${acepta.error ?? acepta.salida}`);
+  const incompleto = como(S, `${invitar} select public.aceptar_invitacion_especialista() \\g /dev/null
+    select public.enviar_perfil_a_revision()`);
+  exigir(!incompleto.ok && /incompleto/.test(incompleto.error), "se envió a revisión un perfil incompleto");
+  const malaEsp = como(S, `${base()} select public.guardar_perfil_especialista('{"especialidades": ["astrologia"]}')`);
+  exigir(!malaEsp.ok && /especialidades/.test(malaEsp.error), "se aceptó una especialidad fuera del catálogo");
+  const completa = `select public.agregar_credencial('registro_superintendencia', 'Registro de prestadores', 'Superintendencia de Salud', '12345') \\g /dev/null
+    select public.guardar_servicio_especialista(null, '{"nombre": "Primera consulta", "duracion_min": 45, "modalidad": "en_linea", "precio_clp": 30000}') \\g /dev/null
+    select public.enviar_perfil_a_revision() \\g /dev/null\n`;
+  const envia = como(S, `${base()} ${completa} select estado from public.especialistas`);
+  exigir(envia.ok && ultima(envia) === "en_revision", `el perfil completo no quedó en revisión: ${envia.error ?? ultima(envia)}`);
+  const comoDueno = `${reclamosDe(ROLES.aal2)}`;
+  const temprano = como(S, `${base()} ${completa} ${comoDueno} select public.decidir_especialista('${SID}', 'publicado')`);
+  exigir(!temprano.ok && /sin_verificar/.test(temprano.error), "se publicó un especialista sin verificar");
+  const sinCred = como(S, `${base()} ${completa} ${comoDueno} select public.decidir_especialista('${SID}', 'verificado')`);
+  exigir(!sinCred.ok && /sin_credenciales/.test(sinCred.error), "se verificó un especialista sin credenciales verificadas");
+  const sinNota = como(S, `${base()} ${completa} ${comoDueno} select public.revisar_credencial(id, true, '') from public.especialistas_credenciales where especialista_id = '${SID}'`);
+  exigir(!sinNota.ok && /nota/.test(sinNota.error), "se verificó una credencial sin anotar cómo");
+  const publicar = `${comoDueno} select public.revisar_credencial(id, true, 'Consultado en el registro público de prestadores') from public.especialistas_credenciales where especialista_id = '${SID}' \\g /dev/null
+    select public.decidir_especialista('${SID}', 'verificado') \\g /dev/null
+    select public.decidir_especialista('${SID}', 'publicado') \\g /dev/null\n`;
+  const publica = como(S, `${base()} ${completa} ${publicar} select estado from public.especialistas where id = '${SID}'`);
+  exigir(publica.ok && ultima(publica) === "publicado", `el dueño no pudo verificar y publicar: ${publica.error ?? ultima(publica)}`);
+  const modulo = "reset role; update public.modulos set estado = 'habilitado' where clave = 'especialistas'; set local role authenticated;\n";
+  const cerrado = como(S, `${base()} ${completa} ${publicar} ${reclamosDe(ROLES.A)} select count(*) from public.especialistas_publicados()`);
+  exigir(!cerrado.ok && /no_disponible/.test(cerrado.error), "una persona ve especialistas sin habilitar el módulo");
+  const directorio = como(S, `${base()} ${completa} ${publicar} ${modulo} ${reclamosDe(ROLES.A)}
+    select count(*) || ' ' || bool_and(not (to_jsonb(x) ? 'correo')) || ' ' || max(jsonb_array_length(servicios)) from public.especialistas_publicados() x`);
+  exigir(directorio.ok && ultima(directorio) === "1 true 1", `el directorio no muestra solo al publicado, sin correo: ${directorio.error ?? ultima(directorio)}`);
+  const vuelve = como(S, `${base()} ${completa} ${publicar} ${modulo} ${reclamosDe(S)} select public.guardar_perfil_especialista('{"presentacion": "Otra presentación."}') \\g /dev/null
+    ${reclamosDe(ROLES.A)} select count(*) from public.especialistas_publicados()`);
+  exigir(vuelve.ok && ultima(vuelve) === "0", `un perfil publicado que cambió sigue visible sin nueva revisión: ${vuelve.error ?? ultima(vuelve)}`);
+  // El especialista no ve nada del programa ni de otras personas.
+  const ajenas = [];
+  for (const [t, regla] of Object.entries(TABLAS)) {
+    if (["todos", "con-sesion", "destinatario"].includes(regla.leer) || t.startsWith("especialistas")) continue;
+    const r = como(S, `${base("publicado")} select count(*) from public.${t}`);
+    if (!r.ok || ultima(r) !== "0") ajenas.push(`${t}: ${r.error ?? ultima(r)}`);
+  }
+  exigir(ajenas.length === 0, `un especialista lee tablas del programa: ${ajenas.join("; ")}`);
+  const propios = como(S, `${base("publicado")} select (select count(*) from public.especialistas) || ' ' || (select count(*) from public.especialistas_servicios)`);
+  exigir(propios.ok && ultima(propios) === "1 0", `el especialista no ve solo su perfil: ${propios.error ?? ultima(propios)}`);
+  for (const f of ["bandeja_seguimiento", "ia_bandeja"]) {
+    const r = como(S, `${base("publicado")} select count(*) from public.${f}()`);
+    exigir(!r.ok || ultima(r) === "0", `un especialista lee ${f}: ${ultima(r)}`);
+  }
+  const comision = como(ROLES.aal2, "select comision_pct || ' ' || comision_validada::int from public.especialistas_config");
+  exigir(comision.ok && ultima(comision) === "15.00 0", `la comisión inicial no es 15 % por validar: ${comision.error ?? ultima(comision)}`);
+}
+paso("especialistas: invita el dueño; perfil con credenciales verificadas y publicación aprobada; al cambiar vuelve a revisión; no ven el programa");
 
 paso("ranking: voluntario, solo con alias, por % de la semana; con menos de 3 no se muestra; quien sale deja de verlo");
 
