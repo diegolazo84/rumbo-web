@@ -56,6 +56,7 @@ comentario. En producción ya está así: **no se pega**, solo se registra.
 | 20261106000000 | `20261106000000_comunidad.sql` | (nuevo, C6: comunidad con reglas, reportes y moderación; **pendiente de aplicar, solo con autorización de Diego**) |
 | 20261107000000 | `20261107000000_recordatorios_por_correo.sql` | (nuevo, D3: recordatorios por correo con Brevo, apagados sin claves; **pendiente de aplicar, solo con autorización de Diego**) |
 | 20261108000000 | `20261108000000_recompensas.sql` | (nuevo, E1: reconocimientos y beneficios; descuento apagado; **pendiente de aplicar, solo con autorización de Diego**) |
+| 20261109000000 | `20261109000000_asistente_ia.sql` | (nuevo, E2: asistente de IA con OpenAI, apagado; **pendiente de aplicar, solo con autorización de Diego**) |
 
 Fuera de `migrations/` quedan las herramientas que no cambian la estructura:
 `verificacion.sql`, `historial-migraciones.sql`, `restaurar-antes.sql` y `restaurar-despues.sql`.
