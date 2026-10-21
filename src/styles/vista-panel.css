@@ -25,6 +25,9 @@
 .pa-tenue { font-size: var(--t-xs); font-weight: 500; line-height: 1.45; color: var(--tinta-suave); padding: 10px 14px; border-radius: var(--r-s); background: var(--papel-hondo); }
 .pa-largo { overflow-wrap: anywhere; }
 .pa-vacio { max-inline-size: var(--medida); padding: var(--e-5); border: 1px solid var(--linea); border-radius: var(--r-m); color: var(--tinta-suave); }
+.pa-cerrados { margin-block-start: var(--e-5); }
+.pa-cerrados > summary { cursor: pointer; color: var(--tinta-suave); padding-block: var(--e-3); }
+.pa-cerrados > .pa-filas { margin-block-start: var(--e-3); }
 .pa-etiquetas { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
 .pa-etiqueta-larga { white-space: normal; block-size: auto; min-block-size: 26px; padding-block: 4px; line-height: 1.25; }
 .pa-plan { font: 600 var(--t-s)/1.3 var(--sans); }

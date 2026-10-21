@@ -480,6 +480,9 @@ export const CONTACTO_PANEL = {
   titulo: "Contacto y derechos.",
   mensajes: {
     titulo: "Mensajes",
+    ayuda: "Consultas generales que llegan por el formulario de contacto.",
+    cerrados: "Respondidos y archivados",
+    reabrir: "Volver a abrir",
     estados: { nuevo: "Nuevo", respondido: "Respondido", archivado: "Archivado" } as Record<string, string>,
     motivo: "Motivo", // (vista previa)
     recibido: "Recibido", // (vista previa)
@@ -489,6 +492,9 @@ export const CONTACTO_PANEL = {
   },
   peticiones: {
     titulo: "Peticiones sobre datos",
+    ayuda: "Pedidos legales sobre datos personales (ver, corregir o borrar sus datos). Tienen plazo legal para responder. Llegan desde Mi espacio o cuando alguien elige «Mis datos personales» en el formulario de contacto.",
+    cerradas: "Resueltas",
+    reabrir: "Volver a abrir",
     tipo: "Tipo",
     tipoAyuda: "Si vino por contacto, clasifícala.", // (vista previa)
     recibida: "Recibida",

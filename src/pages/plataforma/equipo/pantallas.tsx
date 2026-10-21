@@ -262,7 +262,7 @@ function ContactoReal() {
     void (async () => {
       try {
         const [m, p] = await Promise.all([
-          sb.from("mensajes_contacto").select("id,creado_en,motivo,nombre,correo,mensaje,estado").neq("estado", "archivado").order("creado_en", { ascending: false }).limit(100),
+          sb.from("mensajes_contacto").select("id,creado_en,motivo,nombre,correo,mensaje,estado").order("creado_en", { ascending: false }).limit(100),
           sb.from("peticiones_derechos").select("id,recibida_en,origen,participante_id,correo,tipo,detalle,fecha_limite,estado,respuesta").order("recibida_en", { ascending: false }).limit(100),
         ]);
         if (!vivo) return;
@@ -282,28 +282,46 @@ function ContactoReal() {
     <div className="pa-pantalla">
       <Cabeza ojo={CONTACTO_PANEL.ojo} titulo={CONTACTO_PANEL.titulo} />
       <Seccion titulo={CONTACTO_PANEL.peticiones.titulo} id="peticiones">
-        {peticiones.length ? (
-          <ul className="pa-filas">
-            {peticiones.map((x) => (
-              <ItemPeticion key={x.id} x={x} />
-            ))}
-          </ul>
-        ) : (
-          <p className="pa-vacio">—</p>
-        )}
+        <p className="microcopia">{CONTACTO_PANEL.peticiones.ayuda}</p>
+        <ListaConCerrados
+          abiertos={peticiones.filter((x) => x.estado === "abierta")}
+          cerrados={peticiones.filter((x) => x.estado !== "abierta")}
+          tituloCerrados={CONTACTO_PANEL.peticiones.cerradas}
+          item={(x) => <ItemPeticion key={x.id} x={x} />}
+        />
       </Seccion>
       <Seccion titulo={CONTACTO_PANEL.mensajes.titulo} id="mensajes">
-        {mensajes.length ? (
-          <ul className="pa-filas">
-            {mensajes.map((m) => (
-              <ItemMensaje key={m.id} m={m} />
-            ))}
-          </ul>
-        ) : (
-          <p className="pa-vacio">—</p>
-        )}
+        <p className="microcopia">{CONTACTO_PANEL.mensajes.ayuda}</p>
+        <ListaConCerrados
+          abiertos={mensajes.filter((m) => m.estado === "nuevo")}
+          cerrados={mensajes.filter((m) => m.estado !== "nuevo")}
+          tituloCerrados={CONTACTO_PANEL.mensajes.cerrados}
+          item={(m) => <ItemMensaje key={m.id} m={m} />}
+        />
       </Seccion>
     </div>
+  );
+}
+
+// Lo pendiente a la vista; lo cerrado, plegado y con «Volver a abrir» por si se cerró sin querer.
+function ListaConCerrados<T>({ abiertos, cerrados, tituloCerrados, item }: {
+  abiertos: T[];
+  cerrados: T[];
+  tituloCerrados: string;
+  item: (x: T) => ReactNode;
+}) {
+  return (
+    <>
+      {abiertos.length ? <ul className="pa-filas">{abiertos.map(item)}</ul> : <p className="pa-vacio">—</p>}
+      {cerrados.length > 0 && (
+        <details className="pa-cerrados">
+          <summary>
+            {tituloCerrados} ({cerrados.length})
+          </summary>
+          <ul className="pa-filas">{cerrados.map(item)}</ul>
+        </details>
+      )}
+    </>
   );
 }
 
@@ -314,9 +332,10 @@ function ItemMensaje({ m }: { m: FilaMensaje }) {
   const [correr, error] = useEscritura();
   const id = `msj-${m.id}`;
   const mailto = `mailto:${m.correo}${respuesta ? `?body=${encodeURIComponent(respuesta)}` : ""}`;
-  const cambiar = (nuevo: "respondido" | "archivado") =>
+  const cambiar = (nuevo: "nuevo" | "respondido" | "archivado") =>
     void correr(async () => {
-      datos(await sb.from("mensajes_contacto").update({ estado: nuevo, ...(nuevo === "respondido" ? { respondido_en: new Date().toISOString() } : {}) }).eq("id", m.id));
+      const cuando = nuevo === "respondido" ? new Date().toISOString() : nuevo === "nuevo" ? null : undefined;
+      datos(await sb.from("mensajes_contacto").update({ estado: nuevo, ...(cuando !== undefined ? { respondido_en: cuando } : {}) }).eq("id", m.id));
       setEstado(nuevo);
       await recargar();
     });
@@ -359,6 +378,14 @@ function ItemMensaje({ m }: { m: FilaMensaje }) {
             </button>
           </div>
         </form>
+      )}
+      {estado !== "nuevo" && (
+        <div className="acciones">
+          <Alerta texto={error} />
+          <button type="button" className="boton boton--terciario" onClick={() => cambiar("nuevo")}>
+            {CONTACTO_PANEL.mensajes.reabrir}
+          </button>
+        </div>
       )}
     </li>
   );
@@ -451,6 +478,14 @@ function ItemPeticion({ x }: { x: FilaPeticion }) {
             {CONTACTO_PANEL.peticiones.resuelta}
           </button>
         </form>
+      )}
+      {estado !== "abierta" && (
+        <div className="acciones">
+          <Alerta texto={error} />
+          <button type="button" className="boton boton--terciario" onClick={() => guardar({ estado: "abierta", resuelta_en: null }, () => setEstado("abierta"))}>
+            {CONTACTO_PANEL.peticiones.reabrir}
+          </button>
+        </div>
       )}
     </li>
   );
