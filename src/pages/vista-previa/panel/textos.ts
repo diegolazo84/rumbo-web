@@ -371,7 +371,7 @@ export const CONSTRUCTOR = {
     instrucciones: "Cada acción con instrucciones",
     cruces: "Solapamientos resueltos o aceptados",
     vigencia: "Vigencia",
-    vigenciaAyuda: "«Desde mañana» por defecto; no puede ser una fecha que ya tenga acciones registradas.", // (vista previa)
+    vigenciaAyuda: "Desde qué día ve la persona el programa nuevo. Por defecto, desde mañana. No puede ser un día en que ya marcó acciones.", // (vista previa)
     nota: "Nota de cambios",
     notaAyuda: "La persona la ve como novedad.",
     foco: "Foco inicial",
@@ -607,8 +607,8 @@ export const PANEL_REAL = {
     crear: "Crear el borrador",
     crearAyuda: "El borrador copia el programa publicado (si hay) como versión nueva. La persona no lo ve hasta publicar.",
     publicado: (n: number) => `Programa publicado: ${n} acciones fechadas en Mi espacio.`,
-    cargaBase: (min: number, fecha: string) => `Según la base, el día más cargado es el ${fecha}, con ${min} min.`,
-    crucesBase: (n: number) => (n ? `La base encuentra ${n} solapamiento${n === 1 ? "" : "s"}.` : "La base no encuentra solapamientos."),
+    cargaBase: (min: number, fecha: string) => `Revisión final: el día más cargado es el ${fecha}, con ${min} min.`,
+    crucesBase: (n: number) => (n ? `Revisión final: hay ${n} ${n === 1 ? "choque" : "choques"} de horario entre acciones.` : "Revisión final: ninguna acción choca de horario con otra."),
     erroresMeta: "Cada meta necesita un título de 2 a 80 caracteres.",
     erroresAccion: (titulo: string, semana: number, faltan: string[]) =>
       `Falta completar la acción ${titulo ? `«${titulo}»` : "sin título"} (semana ${semana}): ${faltan.join(", ")}. Te la dejamos abierta.`,

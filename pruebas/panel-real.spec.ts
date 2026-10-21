@@ -490,7 +490,7 @@ test("constructor: crear el borrador, meta y acción, guardar y publicar", async
 
   await page.getByRole("button", { name: "Publicar" }).click();
   const hoja = page.getByRole("dialog");
-  await expect(hoja.getByText("La base no encuentra solapamientos.")).toBeVisible();
+  await expect(hoja.getByText("Revisión final: ninguna acción choca de horario con otra.")).toBeVisible();
   await hoja.locator("#pub-foco").fill("Empieza por lo más importante.");
   await hoja.getByRole("button", { name: "Publicar" }).click();
   await expect(hoja.getByText("Programa publicado: 4 acciones fechadas en Mi espacio.")).toBeVisible();
