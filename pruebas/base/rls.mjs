@@ -95,7 +95,7 @@ sql("update public.ajustes_operacion set limite_ip_hora = 100, limite_correo_dia
 // 1. Equipo con segundo factor
 const DIEGO = "equipo-ci@example.com";
 const diego = await cuenta(DIEGO);
-sql(`insert into public.equipo (user_id, nombre) select id, 'Equipo CI' from auth.users where email = '${DIEGO}' on conflict do nothing`);
+sql(`insert into public.equipo (user_id, nombre, rol) select id, 'Equipo CI', 'dueno' from auth.users where email = '${DIEGO}' on conflict do nothing`);
 assert.equal(ok(await diego.rpc("soy_equipo"), "soy_equipo"), true);
 assert.equal(ok(await diego.from("solicitudes").select("id"), "solicitudes aal1").length, 0, "aal1 no debe leer solicitudes");
 paso("cuenta del equipo sin segundo factor: soy_equipo sí, solicitudes no");

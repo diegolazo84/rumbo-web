@@ -18,7 +18,8 @@
 //
 // Se hace en SQL, con el mismo rol y los mismos datos de sesión (request.jwt.claims) que pone
 // la API. Cada intento va en una transacción que se deshace: la prueba no cambia datos.
-// Etapa A1 (roles dueño y coach) agrega aquí sus roles y sus columnas.
+// A1: agrega el dueño y dos coaches (X acompaña a A; Y, a B). Cada coach ve y trabaja solo con
+// sus participantes; lo administrativo queda para el dueño.
 // Uso: PGURL=postgresql://… node pruebas/base/matriz.mjs
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -29,35 +30,37 @@ if (!PGURL) throw new Error("Falta PGURL.");
 // ---------------------------------------------------------------------------
 // Lo esperado
 
+// coach: qué hace un coach con sus participantes («suyos»), «propia» (su fila y la del dueño) o «nada».
 // leer: «todos» (catálogo, también anon) · «equipo» (solo equipo con aal2) ·
 //       «propio» (cada persona ve exactamente sus filas; el equipo con aal2, todas) ·
 //       «propio-filtrado» (cada persona ve solo parte de sus filas, p. ej. lo publicado).
 // escribir: «equipo» (el equipo con aal2 escribe directo) · «funciones» (nadie escribe directo).
 const TABLAS = {
-  areas: { leer: "todos", escribir: "equipo" },
-  planes: { leer: "todos", escribir: "equipo" },
-  niveles: { leer: "todos", escribir: "equipo" },
-  reglas_creditos: { leer: "todos", escribir: "equipo" },
-  feriados: { leer: "todos", escribir: "equipo" },
-  ajustes_operacion: { leer: "equipo", escribir: "equipo" },
-  solicitudes: { leer: "equipo", escribir: "equipo" },
-  solicitudes_eventos: { leer: "equipo", escribir: "equipo" },
-  mensajes_contacto: { leer: "equipo", escribir: "equipo" },
-  acciones: { leer: "equipo", escribir: "equipo" },
-  equipo: { leer: "equipo", escribir: "funciones" },
-  auditoria: { leer: "equipo", escribir: "funciones" },
-  participantes: { leer: "propio", escribir: "equipo", dueno: "id" },
-  ciclos: { leer: "propio", escribir: "equipo" },
-  peticiones_derechos: { leer: "propio", escribir: "equipo" },
-  solicitudes_ajuste: { leer: "propio", escribir: "equipo" },
-  ocurrencias: { leer: "propio", escribir: "funciones" },
-  registros: { leer: "propio", escribir: "funciones" },
-  progreso: { leer: "propio", escribir: "funciones" },
-  progreso_diario: { leer: "propio", escribir: "funciones" },
-  registros_semanales: { leer: "propio", escribir: "funciones" },
-  programas: { leer: "propio-filtrado", escribir: "equipo" }, // sin borradores
-  metas: { leer: "propio-filtrado", escribir: "equipo" }, // solo de programas publicados
-  revisiones: { leer: "propio-filtrado", escribir: "equipo" }, // solo publicadas
+  areas: { leer: "todos", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
+  planes: { leer: "todos", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
+  niveles: { leer: "todos", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
+  reglas_creditos: { leer: "todos", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
+  feriados: { leer: "todos", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
+  ajustes_operacion: { leer: "equipo", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
+  solicitudes: { leer: "equipo", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
+  solicitudes_eventos: { leer: "equipo", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
+  mensajes_contacto: { leer: "equipo", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
+  acciones: { leer: "equipo", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } },
+  equipo: { leer: "equipo", escribir: "funciones", coach: { leer: "propia", escribir: "nada" } },
+  auditoria: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  participantes: { leer: "propio", escribir: "equipo", dueno: "id", coach: { leer: "suyos", escribir: "nada" } },
+  ciclos: { leer: "propio", escribir: "equipo", coach: { leer: "suyos", escribir: "nada" } },
+  peticiones_derechos: { leer: "propio", escribir: "equipo", coach: { leer: "nada", escribir: "nada" } },
+  solicitudes_ajuste: { leer: "propio", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } },
+  ocurrencias: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
+  registros: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
+  progreso: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
+  progreso_diario: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
+  registros_semanales: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
+  programas: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // sin borradores
+  metas: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // solo de programas publicados
+  revisiones: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // solo publicadas
+  asignaciones_coach: { leer: "equipo", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
 };
 const PRIVADAS = ["correos_equipo", "limites", "sales"];
 
@@ -72,12 +75,15 @@ const FUNCIONES = {
   ],
   "equipo-error": [
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
-    "nuevo_enlace_solicitud", "eliminar_participante",
+    "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach",
   ],
+  equipo: ["mi_rol_equipo"],
   "equipo-vacio": ["solapamientos", "carga_prevista"],
 };
 // Funciones de privado que authenticated necesita porque las usan las políticas de RLS.
-const PRIVADO_EJECUTABLES = ["es_admin", "foto_permitida", "mi_participante_id"];
+const PRIVADO_EJECUTABLES = ["es_admin", "es_dueno", "es_coach", "gestiona", "puede_moderar", "foto_permitida", "mi_participante_id"];
+// Del coach: las usa con sus participantes; con los de otro coach, «sin autorización».
+const DEL_COACH = ["publicar_programa", "nuevo_borrador", "revisar_evidencia", "solapamientos", "carga_prevista"];
 
 // ---------------------------------------------------------------------------
 // SQL
@@ -118,18 +124,42 @@ const contar = (rol, desde) => {
 // ---------------------------------------------------------------------------
 // Cuentas y datos de prueba (los deja rls.mjs)
 
+// Cuentas de los coaches de prueba: solo la fila en auth.users (la prueba entra con el rol y los
+// datos de sesión de la API; no necesita contraseña).
+for (const correo of ["coach-x@example.com", "coach-y@example.com"])
+  sql(`insert into auth.users (id, instance_id, aud, role, email, created_at, updated_at)
+       select gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '${correo}', now(), now()
+        where not exists (select 1 from auth.users where email = '${correo}')`);
 const uid = (correo) => sql(`select id from auth.users where email = '${correo}'`);
 const ROLES = {
   anon: { nombre: "anon" },
   A: { nombre: "persona A", uid: uid("persona-a@example.com") },
   B: { nombre: "persona B", uid: uid("persona-b@example.com") },
   aal1: { nombre: "equipo sin segundo factor", uid: uid("equipo-ci@example.com"), aal: "aal1" },
-  aal2: { nombre: "equipo con TOTP", uid: uid("equipo-ci@example.com"), aal: "aal2" },
+  aal2: { nombre: "dueño con TOTP", uid: uid("equipo-ci@example.com"), aal: "aal2" },
+  X: { nombre: "coach X", uid: uid("coach-x@example.com"), aal: "aal2", coach: true },
+  Y: { nombre: "coach Y", uid: uid("coach-y@example.com"), aal: "aal2", coach: true },
+  Xaal1: { nombre: "coach X sin segundo factor", uid: uid("coach-x@example.com"), aal: "aal1" },
 };
 for (const r of Object.values(ROLES)) if ("uid" in r) assert.ok(r.uid, `falta la cuenta de ${r.nombre}: corre antes pruebas/base/rls.mjs`);
 const ficha = (r) => sql(`select id from public.participantes where user_id = '${r.uid}'`);
 ROLES.A.ficha = ficha(ROLES.A);
 ROLES.B.ficha = ficha(ROLES.B);
+
+// Equipo: X e Y entran como coaches; el dueño asigna A a X y B a Y con asignar_coach.
+sql(`insert into public.equipo (user_id, nombre, rol) values ('${ROLES.X.uid}', 'Coach X', 'coach'), ('${ROLES.Y.uid}', 'Coach Y', 'coach')
+     on conflict (user_id) do nothing`);
+const confirmado = (rol, sentencia) => {
+  const claims = { sub: rol.uid, role: "authenticated", aal: rol.aal };
+  return psql(`begin;\nset local role authenticated;\nselect set_config('request.jwt.claims', '${JSON.stringify(claims)}', true) \\g /dev/null\n${sentencia};\ncommit;`);
+};
+for (const [p, c] of [[ROLES.A, ROLES.X], [ROLES.B, ROLES.Y]]) {
+  const r = confirmado(ROLES.aal2, `select public.asignar_coach('${p.ficha}', '${c.uid}', 'Prueba de CI')`);
+  assert.ok(r.ok, `el dueño no pudo asignar coach: ${r.error}`);
+}
+ROLES.X.suyos = [ROLES.A.ficha];
+ROLES.Y.suyos = [ROLES.B.ficha];
+const enLista = (ids) => `(${ids.map((i) => `'${i}'`).join(", ")})`;
 
 // Filas que rls.mjs no crea, para que ninguna tabla quede vacía (una tabla vacía no prueba nada).
 // Sin disparadores (session_replication_role): aquí solo importan las filas, no los avisos.
@@ -173,7 +203,7 @@ exigir(vistas.length === 0, `hay vistas sin declarar (las vistas se saltan la RL
 const ejecutables = (esquema, rol) =>
   lista(`select distinct p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = '${esquema}' and has_function_privilege('${rol}', p.oid, 'execute') order by 1`);
-const declaradasAuth = [...FUNCIONES.anon, ...FUNCIONES.persona, ...FUNCIONES["equipo-error"], ...FUNCIONES["equipo-vacio"]].sort();
+const declaradasAuth = [...FUNCIONES.anon, ...FUNCIONES.persona, ...FUNCIONES["equipo-error"], ...FUNCIONES["equipo-vacio"], ...FUNCIONES.equipo].sort();
 const igual = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
 const dif = (a, b) => `sobran: ${a.filter((x) => !b.includes(x)).join(", ") || "—"}; faltan: ${b.filter((x) => !a.includes(x)).join(", ") || "—"}`;
 const anonPuede = ejecutables("public", "anon");
@@ -186,6 +216,9 @@ exigir(igual(privAuth, PRIVADO_EJECUTABLES), `authenticated ejecuta en privado a
 paso(`inventario: ${tablas.length} tablas de public y ${privadas.length} de privado con RLS y declaradas; ${authPuede.length} funciones declaradas`);
 
 // 2. Lectura ----------------------------------------------------------------
+// De qué participante es una fila (acciones no tiene la columna: se mira su programa).
+const duenoDe = (t, x) =>
+  t === "participantes" ? `${x}.id` : t === "acciones" ? `(select g.participante_id from public.programas g where g.id = ${x}.programa_id)` : `${x}.participante_id`;
 for (const [t, regla] of Object.entries(TABLAS)) {
   const col = regla.dueno ?? "participante_id";
   const total = Number(sql(`select count(*) from public.${t}`));
@@ -195,8 +228,17 @@ for (const [t, regla] of Object.entries(TABLAS)) {
     const n = vistos.n ?? 0;
     const que = `${rol.nombre} lee public.${t}`;
     if (regla.leer === "todos") exigir(n === total, `${que}: ve ${n} de ${total} (catálogo: debe ver todo)`);
-    else if (clave === "aal2") exigir(n === total, `${que}: ve ${n} de ${total} (el equipo con TOTP ve todo)`);
-    else if (regla.leer === "equipo" || clave === "anon" || clave === "aal1") exigir(n === 0, `${que}: ve ${n} filas (debe ver 0)`);
+    else if (rol.coach) {
+      if (regla.coach.leer === "suyos") {
+        const suyas = Number(sql(`select count(*) from public.${t} x where ${duenoDe(t, "x")} in ${enLista(rol.suyos)}`));
+        exigir(n === suyas, `${que}: ve ${n} de las ${suyas} filas de sus participantes`);
+        if (clave === "X") exigir(suyas > 0, `public.${t} no tiene filas de los participantes de ${rol.nombre}: la prueba quedó vacía`);
+      } else if (regla.coach.leer === "propia") {
+        const esperadas = Number(sql(`select count(*) from public.equipo where user_id = '${rol.uid}' or rol = 'dueno'`));
+        exigir(n === esperadas, `${que}: ve ${n} filas (su fila y la del dueño: ${esperadas})`);
+      } else exigir(n === 0, `${que}: ve ${n} filas (un coach no debe ver esta tabla)`);
+    } else if (clave === "aal2") exigir(n === total, `${que}: ve ${n} de ${total} (el equipo con TOTP ve todo)`);
+    else if (regla.leer === "equipo" || clave === "anon" || clave === "aal1" || clave === "Xaal1") exigir(n === 0, `${que}: ve ${n} filas (debe ver 0)`);
     else {
       const propias = Number(sql(`select count(*) from public.${t} where ${col} = '${rol.ficha}'`));
       const ajenas = contar(rol, `public.${t} where ${col} is distinct from '${rol.ficha}'`).n ?? 0;
@@ -224,6 +266,16 @@ for (const [t, regla] of Object.entries(TABLAS)) {
     const ins = como(rol, `insert into public.${t} default values`);
     const upd = como(rol, `with x as (update public.${t} set ${c} = ${c} returning 1) select count(*) from x`);
     const del = como(rol, `with x as (delete from public.${t} returning 1) select count(*) from x`);
+    if (rol.coach && regla.coach.escribir === "suyos") {
+      const ajenas = como(rol, `with x as (update public.${t} y set ${c} = ${c} where ${duenoDe(t, "y")} not in ${enLista(rol.suyos)} returning 1) select count(*) from x`);
+      exigir((ajenas.ok && Number(ajenas.salida) === 0) || ajenas.codigo === DENEGADO, `${que}: modifica filas de participantes ajenos (${ajenas.salida ?? ajenas.error})`);
+      const borra = como(rol, `with x as (delete from public.${t} y where ${duenoDe(t, "y")} not in ${enLista(rol.suyos)} returning 1) select count(*) from x`);
+      exigir((borra.ok && Number(borra.salida) === 0) || borra.codigo === DENEGADO, `${que}: borra filas de participantes ajenos (${borra.salida ?? borra.error})`);
+      const hay = Number(sql(`select count(*) from public.${t} y where ${duenoDe(t, "y")} in ${enLista(rol.suyos)}`));
+      const propias = hay === 0 ? { ok: false, codigo: "sin-filas" } : como(rol, `with x as (update public.${t} y set ${c} = ${c} where ${duenoDe(t, "y")} in ${enLista(rol.suyos)} returning 1) select count(*) from x`);
+      if (hay > 0) exigir(!(propias.ok && Number(propias.salida) === 0) && propias.codigo !== DENEGADO, `${que}: no puede modificar lo de sus participantes (${propias.error ?? "0 filas"})`);
+      continue;
+    }
     if (clave === "aal2" && regla.escribir === "equipo") {
       // Puede escribir: la modificación no se rechaza por permisos y alcanza filas. (Un
       // disparador de reglas de negocio puede frenarla con otro código: también vale.)
@@ -262,7 +314,7 @@ const firmas = Object.fromEntries(
     return [nombre, ts.map((t, i) => argumento(a[i], t)).join(", ")];
   }),
 );
-for (const clave of ["A", "B", "aal1"]) {
+for (const clave of ["A", "B", "aal1", "Xaal1"]) {
   const rol = ROLES[clave];
   for (const f of FUNCIONES["equipo-error"]) {
     const r = como(rol, `select public.${f}(${firmas[f]})`);
@@ -273,6 +325,57 @@ for (const clave of ["A", "B", "aal1"]) {
     exigir((r.ok && Number(r.salida) === 0) || !r.ok, `${rol.nombre} lee ${f}: ${r.salida} filas`);
   }
 }
+// Coaches: Y no usa con A ninguna función del equipo; X usa con A las de su trabajo, no las del dueño.
+for (const f of FUNCIONES["equipo-error"]) {
+  const y = como(ROLES.Y, `select public.${f}(${firmas[f]})`);
+  exigir(!y.ok && /no_autorizado/.test(y.error), `coach Y ejecuta ${f} sobre A: ${y.ok ? "funcionó" : y.error}`);
+  const x = como(ROLES.X, `select public.${f}(${firmas[f]})`);
+  if (DEL_COACH.includes(f)) exigir(x.ok || !/no_autorizado/.test(x.error), `coach X no puede usar ${f} con A: ${x.error}`);
+  else exigir(!x.ok && /no_autorizado/.test(x.error), `coach X ejecuta ${f}, que es solo del dueño: ${x.ok ? "funcionó" : x.error}`);
+}
+for (const f of FUNCIONES["equipo-vacio"]) {
+  const y = como(ROLES.Y, `select count(*) from public.${f}(${firmas[f]})`);
+  exigir(!y.ok || Number(y.salida) === 0, `coach Y lee ${f} de A: ${y.salida} filas`);
+}
+const cargaX = como(ROLES.X, `select count(*) from public.carga_prevista(${firmas.carga_prevista})`);
+exigir(cargaX.ok && Number(cargaX.salida) > 0, `coach X no ve la carga prevista de A (${cargaX.salida ?? cargaX.error})`);
+
+// Asignaciones y roles: nadie cambia coach_id a mano, un coach no se cambia el rol y siempre queda un dueño.
+for (const r of [ROLES.aal2, ROLES.X]) {
+  const m = como(r, `with x as (update public.participantes set coach_id = '${ROLES.Y.uid}' where id = '${ROLES.A.ficha}' returning 1) select count(*) from x`);
+  exigir(!m.ok || Number(m.salida) === 0, `${r.nombre} cambia el coach de A sin asignar_coach`);
+}
+const subir = como(ROLES.X, `with x as (update public.equipo set rol = 'dueno' where user_id = '${ROLES.X.uid}' returning 1) select count(*) from x`);
+exigir((subir.ok && Number(subir.salida) === 0) || subir.codigo === DENEGADO, `coach X se cambia el rol a dueño (${subir.salida ?? subir.error})`);
+const sinDueno = psql(`begin; update public.equipo set rol = 'coach'; rollback;`);
+exigir(!sinDueno.ok && /sin_dueno/.test(sinDueno.error), "se puede dejar el equipo sin dueño");
+const rolX = como(ROLES.X, "select public.mi_rol_equipo()->>'rol'");
+exigir(rolX.salida === "coach", `mi_rol_equipo de X: ${rolX.salida ?? rolX.error}`);
+const vigentes = Number(sql(`select count(*) from public.asignaciones_coach where hasta is null and participante_id in ${enLista([ROLES.A.ficha, ROLES.B.ficha])}`));
+exigir(vigentes === 2, `asignaciones vigentes: ${vigentes} de 2`);
+
+// Reasignar: A pasa de X a Y. X pierde el acceso al instante, Y lo gana, y queda el historial.
+const tramosDeA = () =>
+  sql(`select count(*) filter (where hasta is not null) || '/' || count(*) filter (where hasta is null)
+         from public.asignaciones_coach where participante_id = '${ROLES.A.ficha}'`).split("/").map(Number);
+const auditadasDeA = () => Number(sql(`select count(*) from public.auditoria where accion = 'asignar_coach' and fila = '${ROLES.A.ficha}'`));
+const [cerradosAntes] = tramosDeA();
+const auditadasAntes = auditadasDeA();
+const reasignar = (c) => confirmado(ROLES.aal2, `select public.asignar_coach('${ROLES.A.ficha}', '${c.uid}', 'Prueba de CI: reasignación')`);
+assert.ok(reasignar(ROLES.Y).ok, "el dueño no pudo reasignar a A");
+const ciclosDeA = (r) => contar(r, `public.ciclos where participante_id = '${ROLES.A.ficha}'`).n ?? 0;
+exigir(ciclosDeA(ROLES.X) === 0, "coach X sigue viendo a A después de la reasignación");
+exigir(ciclosDeA(ROLES.Y) > 0, "coach Y no ve a A después de la reasignación");
+const pubX = como(ROLES.X, `select public.nuevo_borrador(${firmas.nuevo_borrador})`);
+exigir(!pubX.ok && /no_autorizado/.test(pubX.error), `coach X sigue trabajando el programa de A: ${pubX.error ?? "funcionó"}`);
+const [cerrados, abiertos] = tramosDeA();
+exigir(cerrados === cerradosAntes + 1 && abiertos === 1, `historial de A: ${cerrados} cerrados y ${abiertos} vigentes (esperado ${cerradosAntes + 1} y 1)`);
+exigir(auditadasDeA() === auditadasAntes + 1, "la reasignación no quedó en la auditoría");
+const leeHistorialY = contar(ROLES.Y, `public.asignaciones_coach where participante_id = '${ROLES.A.ficha}'`).n ?? 0;
+exigir(leeHistorialY === cerrados + abiertos, `coach Y ve ${leeHistorialY} de ${cerrados + abiertos} tramos del historial de A`);
+assert.ok(reasignar(ROLES.X).ok, "no se pudo devolver A a X");
+paso("coaches: cada uno trabaja solo con sus participantes; al reasignar, el anterior pierde el acceso; asignar y cambiar roles es del dueño");
+
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
 
 // 5. Esquema privado --------------------------------------------------------

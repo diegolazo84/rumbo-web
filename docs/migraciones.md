@@ -36,6 +36,7 @@ comentario. En producción ya está así: **no se pega**, solo se registra.
 | 20261008000009 | `20261008000009_etapa3.sql` | `07-etapa3.sql` |
 | 20261012000000 | `20261012000000_avisos_ntfy.sql` | `08-avisos-ntfy.sql` |
 | 20261020000000 | `20261020000000_alinear_produccion.sql` | (nuevo, ver abajo) |
+| 20261022000000 | `20261022000000_roles_coach.sql` | (nuevo, A1: roles dueño y coach; **pendiente de aplicar, solo con autorización de Diego**; se deshace con `supabase/deshacer/20261022000000_roles_coach.sql`) |
 
 Fuera de `migrations/` quedan las herramientas que no cambian la estructura:
 `verificacion.sql`, `historial-migraciones.sql`, `restaurar-antes.sql` y `restaurar-despues.sql`.
