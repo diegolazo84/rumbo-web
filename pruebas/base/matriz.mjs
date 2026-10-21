@@ -61,6 +61,7 @@ const TABLAS = {
   progreso_diario: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   invitaciones_equipo: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   pagos: { leer: "propio", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  videollamadas: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   registros_semanales: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   programas: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // sin borradores
   metas: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // solo de programas publicados
@@ -83,7 +84,7 @@ const FUNCIONES = {
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
     "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion", "cambiar_modulo", "indicadores",
     "registrar_pago", "devolucion_sugerida", "registrar_devolucion",
-    "invitar_coach", "revocar_invitacion", "cambiar_coach",
+    "invitar_coach", "revocar_invitacion", "cambiar_coach", "programar_videollamada", "anotar_videollamada",
   ],
   equipo: ["mi_rol_equipo", "actualizar_mi_perfil"],
   "con-sesion": ["modulo_visible", "marcar_avisos_leidos", "aceptar_invitacion_equipo"],
@@ -92,7 +93,8 @@ const FUNCIONES = {
 // Funciones de privado que authenticated necesita porque las usan las políticas de RLS.
 const PRIVADO_EJECUTABLES = ["es_admin", "es_dueno", "es_coach", "gestiona", "puede_moderar", "foto_permitida", "mi_participante_id"];
 // Del coach: las usa con sus participantes; con los de otro coach, «sin autorización».
-const DEL_COACH = ["publicar_programa", "nuevo_borrador", "revisar_evidencia", "solapamientos", "carga_prevista", "ver_postulacion"];
+const DEL_COACH = ["publicar_programa", "nuevo_borrador", "revisar_evidencia", "solapamientos", "carga_prevista", "ver_postulacion",
+  "programar_videollamada", "anotar_videollamada"];
 
 // ---------------------------------------------------------------------------
 // SQL
@@ -185,6 +187,10 @@ insert into public.pagos (participante_id, ciclo_id, monto, moneda, medio, pagad
    where c.participante_id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}') and c.precio_acordado_clp is not null
   on conflict (ciclo_id) do nothing;
 insert into public.invitaciones_equipo (correo, nombre) values ('invitada-ci@example.com', 'Invitada de CI') on conflict do nothing;
+insert into public.videollamadas (participante_id, ciclo_id, semana, programada_para, enlace)
+  select c.participante_id, c.id, 1, now() + interval '2 days', 'https://meet.example.com/ci' from public.ciclos c
+   where c.participante_id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}')
+  on conflict (ciclo_id, semana) do nothing;
 `);
 
 let pasos = 0;
@@ -316,10 +322,12 @@ const deA = {
   p_ciclo: sql(`select id from public.ciclos where participante_id = '${ROLES.A.ficha}'`),
   p_solicitud: sql(`select s.id from public.solicitudes s join public.participantes p on lower(p.correo) = lower(s.correo) where p.id = '${ROLES.A.ficha}' limit 1`),
   p_registro: sql(`select id from public.registros where participante_id = '${ROLES.A.ficha}' limit 1`),
+  p_videollamada: sql(`select id from public.videollamadas where participante_id = '${ROLES.A.ficha}' limit 1`),
 };
 const argumento = (nombre, tipo) => {
   if (tipo === "uuid") return `'${deA[nombre] ?? ROLES.A.ficha}'::uuid`;
   if (tipo === "date") return "current_date";
+  if (tipo === "timestamp with time zone") return "now() + interval '1 day'";
   if (tipo === "boolean") return "true";
   if (tipo === "jsonb") return "'{}'::jsonb";
   if (/int/.test(tipo)) return "1";
@@ -599,6 +607,46 @@ if (ocLibre) {
   exigir(!ajena.ok && /ruta_invalida/.test(ajena.error), "se adjuntó una foto con una ruta que no es de la acción");
 }
 paso("fotos: opcionales en cualquier acción, solo en las propias; la acción queda hecha y la foto se puede quitar");
+
+// C2 · Videollamada del plan cercano: el coach de la persona la agenda y anota; nadie más.
+{
+  const cicloA = deA.p_ciclo;
+  const cercano = `reset role; update public.ciclos set plan_id = 'cercano', hora_videollamada = '19:00' where id = '${cicloA}';
+    set local role authenticated;`;
+  const agendar = (semana, cuando = "now() + interval '3 days'", enlace = "https://meet.example.com/a") =>
+    `select public.programar_videollamada('${cicloA}', ${semana}, ${cuando}, '${enlace}')`;
+  const sinPlan = como(ROLES.X, agendar(2));
+  exigir(!sinPlan.ok && /sin_videollamada/.test(sinPlan.error), `se agendó una videollamada en un plan sin videollamada: ${sinPlan.error ?? "funcionó"}`);
+  const ok = como(ROLES.X, `${cercano} ${agendar(2)} \\g /dev/null
+    reset role; select (select count(*) from public.videollamadas where ciclo_id = '${cicloA}' and semana = 2) || ' ' ||
+           (select count(*) from public.avisos where participante_id = '${ROLES.A.ficha}' and tipo = 'videollamada_programada')`);
+  exigir(ok.ok && ultima(ok) === "1 1", `el coach de A no pudo agendar su videollamada con aviso: ${ok.error ?? ultima(ok)}`);
+  const otro = como(ROLES.Y, `${cercano} ${agendar(2)}`);
+  exigir(!otro.ok && /no_autorizado/.test(otro.error), "otro coach agendó la videollamada de A");
+  const persona = como(ROLES.A, `${cercano} ${agendar(2)}`);
+  exigir(!persona.ok && /no_autorizado/.test(persona.error), "la persona se agendó su propia videollamada");
+  const http = como(ROLES.X, `${cercano} ${agendar(2, undefined, "http://meet.example.com/a")}`);
+  exigir(!http.ok && /enlace/.test(http.error), "se aceptó un enlace sin https");
+  const fuera = como(ROLES.X, `${cercano} ${agendar(9)}`);
+  exigir(!fuera.ok && /semana/.test(fuera.error), "se agendó una semana fuera del ciclo");
+  const pasada = como(ROLES.X, `${cercano} ${agendar(2, "now() - interval '1 hour'")}`);
+  exigir(!pasada.ok && /fecha/.test(pasada.error), "se agendó una videollamada en el pasado");
+  const vid = deA.p_videollamada;
+  const antes = como(ROLES.X, `select public.anotar_videollamada('${vid}', 'realizada')`);
+  exigir(!antes.ok && /aun_no_ocurre/.test(antes.error), "se anotó como realizada una videollamada que aún no ocurre");
+  const hecha = como(ROLES.X, `reset role; update public.videollamadas set programada_para = now() - interval '1 hour' where id = '${vid}';
+    set local role authenticated; select public.anotar_videollamada('${vid}', 'realizada') \\g /dev/null
+    select estado from public.videollamadas where id = '${vid}'`);
+  exigir(hecha.ok && ultima(hecha) === "realizada", `el coach no pudo anotar la videollamada: ${hecha.error ?? ultima(hecha)}`);
+  const re = como(ROLES.X, `${cercano} select public.anotar_videollamada('${vid}', 'cancelada') \\g /dev/null
+    ${agendar(1)}`);
+  exigir(!re.ok && /ya_registrada/.test(re.error), "se reprogramó una videollamada ya anotada");
+  const yAnota = como(ROLES.Y, `select public.anotar_videollamada('${vid}', 'cancelada')`);
+  exigir(!yAnota.ok && /no_autorizado/.test(yAnota.error), "otro coach anotó la videollamada de A");
+  const exp = como(ROLES.A, "select jsonb_array_length(public.exportar_mis_datos()->'videollamadas')");
+  exigir(exp.ok && Number(exp.salida) >= 1, `la copia de mis datos no incluye las videollamadas: ${exp.error ?? exp.salida}`);
+}
+paso("videollamadas: solo en el plan cercano; las agenda y anota el coach de la persona, con enlace https y aviso");
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
 
