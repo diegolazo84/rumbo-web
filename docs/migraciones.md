@@ -40,6 +40,7 @@ comentario. En producción ya está así: **no se pega**, solo se registra.
 | 20261020000000 | `20261020000000_alinear_produccion.sql` | (nuevo, ver abajo) |
 | 20261022000000 | `20261022000000_roles_coach.sql` | (nuevo, A1: roles dueño y coach; **pendiente de aplicar, solo con autorización de Diego**; se deshace con `supabase/deshacer/20261022000000_roles_coach.sql`) |
 | 20261023000000 | `20261023000000_auditoria_ver_con_motivo.sql` | (nuevo, A2: auditoría de cambios y «Ver con motivo»; **pendiente de aplicar, solo con autorización de Diego**) |
+| 20261024000000 | `20261024000000_perfil_coach.sql` | (nuevo, A3: perfil del coach y «Tu coach»; **pendiente de aplicar, solo con autorización de Diego**) |
 
 Fuera de `migrations/` quedan las herramientas que no cambian la estructura:
 `verificacion.sql`, `historial-migraciones.sql`, `restaurar-antes.sql` y `restaurar-despues.sql`.

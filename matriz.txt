@@ -1,11 +1,12 @@
 Matriz de acceso (Supabase local)
-  01. inventario: 26 tablas de public y 3 de privado con RLS y declaradas; 32 funciones declaradas
+  01. inventario: 26 tablas de public y 3 de privado con RLS y declaradas; 34 funciones declaradas
   02. lectura: 25 tablas × 8 roles; cada persona ve solo lo suyo
   03. escritura directa: solo el equipo con TOTP escribe, y solo en las tablas de gestión
   04. coaches: cada uno trabaja solo con sus participantes; al reasignar, el anterior pierde el acceso; asignar y cambiar roles es del dueño
   05. auditoría: cada cambio de gestión queda registrado; la postulación original solo se lee con motivo
-  06. funciones del equipo: 12 rechazan a las personas y al equipo sin TOTP
-  07. esquema privado: sin permisos de tabla para anon ni authenticated
+  06. perfil del coach: cada coach edita el suyo; cada participante ve solo a su coach, sin datos de contacto
+  07. funciones del equipo: 12 rechazan a las personas y al equipo sin TOTP
+  08. esquema privado: sin permisos de tabla para anon ni authenticated
 
 293 fallas:
 - public.prueba_ci no tiene RLS
@@ -34,10 +35,10 @@ Matriz de acceso (Supabase local)
 - coach X lee public.equipo: ve 3 filas (su fila y la del dueño: 2)
 - coach Y lee public.equipo: ve 3 filas (su fila y la del dueño: 2)
 - coach X sin segundo factor lee public.equipo: ve 3 filas (debe ver 0)
-- equipo sin segundo factor lee public.auditoria: ve 40 filas (debe ver 0)
-- coach X lee public.auditoria: ve 40 filas (un coach no debe ver esta tabla)
-- coach Y lee public.auditoria: ve 40 filas (un coach no debe ver esta tabla)
-- coach X sin segundo factor lee public.auditoria: ve 40 filas (debe ver 0)
+- equipo sin segundo factor lee public.auditoria: ve 43 filas (debe ver 0)
+- coach X lee public.auditoria: ve 43 filas (un coach no debe ver esta tabla)
+- coach Y lee public.auditoria: ve 43 filas (un coach no debe ver esta tabla)
+- coach X sin segundo factor lee public.auditoria: ve 43 filas (debe ver 0)
 - persona A lee public.participantes: ve 2 filas ajenas
 - persona A lee public.participantes: ve 3 de sus 1 filas
 - persona B lee public.participantes: ve 2 filas ajenas
