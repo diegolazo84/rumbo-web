@@ -71,6 +71,9 @@ const TABLAS = {
   reconocimientos_otorgados: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   beneficios: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   beneficios_otorgados: { leer: "propio", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  ia_config: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  ia_consentimientos: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
+  ia_consultas: { leer: "equipo", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   plantillas_accion: { leer: "equipo", escribir: "funciones", coach: { leer: "todas", escribir: "nada" } },
   registros_semanales: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   programas: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // sin borradores
@@ -93,6 +96,7 @@ const FUNCIONES = {
     "guardar_alias", "participar_en_ranking", "ranking_semanal",
     "aceptar_reglas_comunidad", "publicar_en_comunidad", "borrar_mi_publicacion", "reportar_publicacion", "comunidad_publicaciones",
     "mis_reconocimientos", "mis_beneficios",
+    "ia_guardar_consentimiento", "ia_retirar_consentimiento", "ia_preguntar", "mis_consultas_ia",
   ],
   "equipo-error": [
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
@@ -100,16 +104,17 @@ const FUNCIONES = {
     "registrar_pago", "devolucion_sugerida", "registrar_devolucion",
     "invitar_coach", "revocar_invitacion", "cambiar_coach", "programar_videollamada", "anotar_videollamada",
     "moderar_publicacion", "guardar_reconocimiento", "guardar_beneficio", "otorgar_beneficio", "aplicar_beneficio",
+    "ia_pedir_borrador", "ia_revisar", "guardar_ia_config", "ia_gasto",
   ],
   equipo: ["mi_rol_equipo", "actualizar_mi_perfil", "guardar_plantilla"],
-  "con-sesion": ["modulo_visible", "marcar_avisos_leidos", "aceptar_invitacion_equipo"],
-  "equipo-vacio": ["solapamientos", "carga_prevista", "bandeja_seguimiento"],
+  "con-sesion": ["ia_disponible", "modulo_visible", "marcar_avisos_leidos", "aceptar_invitacion_equipo"],
+  "equipo-vacio": ["solapamientos", "carga_prevista", "bandeja_seguimiento", "ia_bandeja"],
 };
 // Funciones de privado que authenticated necesita porque las usan las políticas de RLS.
 const PRIVADO_EJECUTABLES = ["es_admin", "es_dueno", "es_coach", "gestiona", "puede_moderar", "foto_permitida", "mi_participante_id"];
 // Del coach: las usa con sus participantes; con los de otro coach, «sin autorización».
 const DEL_COACH = ["publicar_programa", "nuevo_borrador", "revisar_evidencia", "solapamientos", "carga_prevista", "ver_postulacion",
-  "programar_videollamada", "anotar_videollamada"];
+  "programar_videollamada", "anotar_videollamada", "ia_pedir_borrador", "ia_revisar"];
 
 // ---------------------------------------------------------------------------
 // SQL
@@ -219,6 +224,11 @@ insert into public.reconocimientos_otorgados (participante_id, clave, referencia
 insert into public.beneficios_otorgados (beneficio_id, participante_id, porcentaje, nota)
   select b.id, p.id, b.porcentaje, 'Semilla de CI' from public.beneficios b, public.participantes p
    where b.clave = 'renovacion_ciclo_completo' and p.id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+insert into public.ia_consentimientos (participante_id, metas, acciones, registro_semanal, aceptado_en)
+  values ('${ROLES.A.ficha}', true, true, true, now()), ('${ROLES.B.ficha}', true, false, false, now()) on conflict do nothing;
+insert into public.ia_consultas (participante_id, tipo, pedida_por, pregunta, estado, respuesta)
+  values ('${ROLES.A.ficha}', 'pregunta', '${ROLES.A.uid}', 'Pregunta de prueba de CI de A.', 'por_revisar', 'Borrador de prueba.'),
+         ('${ROLES.B.ficha}', 'pregunta', '${ROLES.B.uid}', 'Pregunta de prueba de CI de B.', 'por_revisar', 'Borrador de prueba.');
 insert into public.recordatorios (participante_id) values ('${ROLES.A.ficha}'), ('${ROLES.B.ficha}') on conflict do nothing;
 `);
 
@@ -354,6 +364,7 @@ const deA = {
   p_solicitud: sql(`select s.id from public.solicitudes s join public.participantes p on lower(p.correo) = lower(s.correo) where p.id = '${ROLES.A.ficha}' limit 1`),
   p_registro: sql(`select id from public.registros where participante_id = '${ROLES.A.ficha}' limit 1`),
   p_videollamada: sql(`select id from public.videollamadas where participante_id = '${ROLES.A.ficha}' limit 1`),
+  p_consulta: sql(`select id from public.ia_consultas where participante_id = '${ROLES.A.ficha}' limit 1`),
 };
 const argumento = (nombre, tipo) => {
   if (tipo === "uuid") return `'${deA[nombre] ?? ROLES.A.ficha}'::uuid`;
@@ -1048,6 +1059,94 @@ paso("comunidad: solo habilitada, con alias y reglas; se ve el alias, no quién 
   exigir(mios.ok && ultima(mios) === suyos, `B no ve exactamente sus beneficios: ${mios.error ?? ultima(mios)} de ${suyos}`);
 }
 paso("reconocimientos y beneficios: se otorgan solos y una vez; el 10 % exige todo lo vigente del ciclo, se usa en una renovación y no se acumula; solo el dueño configura");
+
+// E2 · Asistente de IA (OpenAI): apagado por defecto, con consentimiento, revisión del coach, crisis y topes de gasto.
+{
+  const reclamos = (r) => `select set_config('request.jwt.claims', '${JSON.stringify({ sub: r.uid, role: "authenticated", aal: r.aal ?? "aal1" })}', true) \\g /dev/null\n`;
+  const encender = `reset role; update public.ia_config set activo = true;
+    select vault.create_secret('sk-prueba-ci', 'openai_api_key') \\g /dev/null
+    update public.modulos set estado = 'habilitado' where clave = 'asistente_ia';
+    update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    set local role authenticated;\n`;
+  const colaIA = "(select count(*) from net.http_request_queue where url = 'https://api.openai.com/v1/chat/completions')";
+  const antes = sql(`select ${colaIA}`);
+  const cerrado = como(ROLES.A, "select public.ia_preguntar('¿Cómo ordeno mi semana?')");
+  exigir(!cerrado.ok && /no_disponible/.test(cerrado.error), `se preguntó con el módulo sin habilitar: ${cerrado.error ?? "funcionó"}`);
+  const apagada = como(ROLES.A, `reset role; update public.modulos set estado = 'habilitado' where clave = 'asistente_ia'; set local role authenticated;
+    select public.ia_preguntar('¿Cómo ordeno mi semana?')`);
+  exigir(!apagada.ok && /ia:apagada/.test(apagada.error), `se preguntó con el asistente apagado: ${apagada.error ?? "funcionó"}`);
+  const disp = como(ROLES.A, `${encender} select public.ia_disponible()`);
+  exigir(disp.ok && ultima(disp) === "t", `encendido, ia_disponible no lo dice: ${disp.error ?? ultima(disp)}`);
+
+  const datosA = sql(`select correo || '|' || nombre from public.participantes where id = '${ROLES.A.ficha}'`).split("|");
+  const envia = como(ROLES.A, `${encender} select public.ia_preguntar('¿Cómo ordeno mi semana?')->>'estado';
+    reset role;
+    select count(*) || ' ' || bool_and(headers->>'Authorization' = 'Bearer sk-prueba-ci')
+        || ' ' || bool_and(convert_from(body, 'utf8') like '%Pregunta de la persona%')
+        || ' ' || bool_or(convert_from(body, 'utf8') like '%${datosA[0]}%' or convert_from(body, 'utf8') like '%${datosA[1]}%')
+      from net.http_request_queue where url = 'https://api.openai.com/v1/chat/completions';
+    set local role authenticated;
+    select string_agg(estado || ':' || coalesce(respuesta, '-'), ',' order by creada_en) from public.mis_consultas_ia()`);
+  const [estado1, cola1, mias1] = (envia.salida ?? "").split("\n").slice(-3);
+  exigir(envia.ok && estado1 === "enviada", `la pregunta de A no se envió: ${envia.error ?? estado1}`);
+  exigir(envia.ok && cola1 === `${Number(antes) + 1} true true false`, `el envío a OpenAI no es el esperado (clave, pregunta, sin nombre ni correo): ${cola1}`);
+  exigir(envia.ok && !/Borrador de prueba/.test(mias1) && /en_revision:-/.test(mias1), `A ve un borrador sin revisar: ${mias1}`);
+
+  const respuesta = (status, contenido) => `reset role;
+    insert into net._http_response (id, status_code, content)
+      select request_id, ${status}, '${contenido}' from public.ia_consultas where request_id is not null;
+    ${reclamos(ROLES.X)} set local role authenticated;`;
+  const ok200 = '{"choices":[{"message":{"content":"Prueba de respuesta del asistente."}}],"usage":{"prompt_tokens":1000,"completion_tokens":100}}';
+  const flujo = como(ROLES.A, `${encender} select public.ia_preguntar('¿Cómo ordeno mi semana?') \\g /dev/null
+    ${respuesta(200, ok200)}
+    select string_agg(estado, ',') from public.ia_bandeja() where participante_id = '${ROLES.A.ficha}' and respuesta like 'Prueba de respuesta%';
+    select public.ia_revisar(id, true, 'Texto revisado por el coach.') from public.ia_consultas where respuesta like 'Prueba de respuesta%' \\g /dev/null
+    reset role; select costo_usd from public.ia_consultas where respuesta like 'Prueba de respuesta%';
+    ${reclamos(ROLES.A)} set local role authenticated;
+    select respuesta from public.mis_consultas_ia() where estado = 'aprobada'`);
+  const [bandeja, costo, aprobada] = (flujo.salida ?? "").split("\n").slice(-3);
+  exigir(flujo.ok && bandeja === "por_revisar", `la respuesta no llegó a la bandeja del coach: ${flujo.error ?? bandeja}`);
+  exigir(flujo.ok && Number(costo) === 0.00021, `el costo no se calculó con los tokens: ${costo}`);
+  exigir(flujo.ok && aprobada === "Texto revisado por el coach.", `A no ve la respuesta aprobada por su coach: ${aprobada}`);
+  const yBandeja = como(ROLES.A, `${encender} select public.ia_preguntar('¿Cómo ordeno mi semana?') \\g /dev/null
+    ${respuesta(200, ok200)} ${reclamos(ROLES.Y)} select count(*) from public.ia_bandeja() where participante_id = '${ROLES.A.ficha}'`);
+  exigir(yBandeja.ok && ultima(yBandeja) === "0", `el coach Y ve consultas de A: ${yBandeja.error ?? ultima(yBandeja)}`);
+  const fallo = como(ROLES.A, `${encender} select public.ia_preguntar('¿Cómo ordeno mi semana?') \\g /dev/null
+    ${respuesta(500, '{"error":"x"}')} select count(*) from public.ia_bandeja() \\g /dev/null
+    reset role; select estado || ' ' || costo_reservado_usd || ' ' || error from public.ia_consultas where request_id is not null`);
+  exigir(fallo.ok && ultima(fallo) === "error 0.000000 http_500", `un error de OpenAI no quedó registrado ni liberó la reserva: ${fallo.error ?? ultima(fallo)}`);
+
+  const crisis = como(ROLES.A, `${encender} select public.ia_preguntar('A veces siento que quiero morir')->>'estado';
+    reset role; select ${colaIA} || ' ' || (select count(*) from public.avisos where tipo = 'ia_alerta' and destinatario = '${ROLES.X.uid}')`);
+  const [estadoC, colaC] = (crisis.salida ?? "").split("\n").slice(-2);
+  exigir(crisis.ok && estadoC === "crisis", `una consulta con riesgo no se trató como crisis: ${crisis.error ?? estadoC}`);
+  exigir(crisis.ok && colaC === `${antes} 1`, `en crisis se envió a la IA o el coach no recibió la alerta: ${colaC}`);
+  const retira = como(ROLES.B, `${encender} select public.ia_retirar_consentimiento() \\g /dev/null
+    select public.ia_preguntar('¿Qué hago hoy?')`);
+  exigir(!retira.ok && /sin_consentimiento/.test(retira.error), `se envió sin consentimiento: ${retira.error ?? "funcionó"}`);
+  const minimo = como(ROLES.B, `${encender} select public.ia_preguntar('¿Qué hago hoy?') \\g /dev/null
+    reset role; select string_agg(k, ',' order by k) from public.ia_consultas q, jsonb_object_keys(q.contexto_enviado) k
+     where q.participante_id = '${ROLES.B.ficha}' and q.request_id is not null`);
+  exigir(minimo.ok && !/acciones|registro/.test(ultima(minimo)), `se envió contexto que B no autorizó: ${minimo.error ?? ultima(minimo)}`);
+  const tope = como(ROLES.A, `${encender} reset role; update public.ia_config set tope_mensual_usd = 0; set local role authenticated;
+    select public.ia_preguntar('¿Cómo ordeno mi semana?')->>'estado'; reset role; select ${colaIA}`);
+  exigir(tope.ok && (tope.salida ?? "").split("\n").slice(-2).join(" ") === `sin_presupuesto ${antes}`, `sin presupuesto se envió igual: ${tope.error ?? tope.salida}`);
+  const diario = como(ROLES.A, `${encender} reset role; update public.ia_config set tope_diario_persona = 2; set local role authenticated;
+    select public.ia_preguntar('Una') \\g /dev/null
+    select public.ia_preguntar('Dos')`);
+  exigir(!diario.ok && /demasiadas/.test(diario.error), `no hay tope diario de consultas: ${diario.error ?? "funcionó"}`);
+  const sinClave = como(ROLES.aal2, `select public.guardar_ia_config('{"activo": true}')`);
+  exigir(!sinClave.ok && /sin_clave/.test(sinClave.error), "el asistente se encendió sin clave en el Vault");
+  const conClave = como(ROLES.aal2, `reset role; select vault.create_secret('sk-prueba-ci', 'openai_api_key') \\g /dev/null
+    set local role authenticated; select public.guardar_ia_config('{"activo": true, "tope_mensual_usd": 3}') \\g /dev/null
+    select (public.ia_gasto()->>'tope_usd')`);
+  exigir(conClave.ok && Number(ultima(conClave)) === 3, `el dueño no pudo encender y fijar el tope: ${conClave.error ?? ultima(conClave)}`);
+  const borrador = como(ROLES.X, `${encender} select public.ia_pedir_borrador('${ROLES.A.ficha}', 'Borrador de la revisión de esta semana') \\g /dev/null
+    ${respuesta(200, ok200)} select string_agg(estado || ':' || tipo, ',') from public.ia_bandeja() where respuesta like 'Prueba de respuesta%' \\g /dev/null
+    ${reclamos(ROLES.A)} set local role authenticated; select count(*) from public.mis_consultas_ia() where pregunta like 'Borrador de la revisión%'`);
+  exigir(borrador.ok && ultima(borrador) === "0", `la persona ve los borradores pedidos por su coach: ${borrador.error ?? ultima(borrador)}`);
+}
+paso("asistente de IA: apagado sin clave y sin módulo; con consentimiento y solo el contexto autorizado; la respuesta la aprueba el coach; crisis sin IA y con alerta; topes de gasto");
 
 paso("ranking: voluntario, solo con alias, por % de la semana; con menos de 3 no se muestra; quien sale deja de verlo");
 
