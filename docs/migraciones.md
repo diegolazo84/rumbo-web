@@ -7,6 +7,8 @@ archivos numerados con fecha (`AAAAMMDDhhmmss_nombre.sql`) que se aplican en ese
 
 - Cada cambio de estructura es un archivo **nuevo** en `supabase/migrations/`. Nunca se edita un
   archivo que ya se pegó en producción.
+- Desde Rumbo 2.0, cada migración nueva trae en `supabase/deshacer/` un archivo con el mismo
+  nombre que la deshace. GitHub Actions comprueba que deja la base exactamente como antes.
 - Toda tabla nueva entra con RLS y con casos nuevos en `pruebas/base/rls.mjs`, y se declara en
   `pruebas/base/matriz.mjs` (quién la lee y quién la escribe). Lo mismo para cada función que
   anon o authenticated puedan ejecutar. Si falta, GitHub Actions falla.
@@ -37,6 +39,7 @@ comentario. En producción ya está así: **no se pega**, solo se registra.
 | 20261012000000 | `20261012000000_avisos_ntfy.sql` | `08-avisos-ntfy.sql` |
 | 20261020000000 | `20261020000000_alinear_produccion.sql` | (nuevo, ver abajo) |
 | 20261022000000 | `20261022000000_roles_coach.sql` | (nuevo, A1: roles dueño y coach; **pendiente de aplicar, solo con autorización de Diego**; se deshace con `supabase/deshacer/20261022000000_roles_coach.sql`) |
+| 20261023000000 | `20261023000000_auditoria_ver_con_motivo.sql` | (nuevo, A2: auditoría de cambios y «Ver con motivo»; **pendiente de aplicar, solo con autorización de Diego**) |
 
 Fuera de `migrations/` quedan las herramientas que no cambian la estructura:
 `verificacion.sql`, `historial-migraciones.sql`, `restaurar-antes.sql` y `restaurar-despues.sql`.

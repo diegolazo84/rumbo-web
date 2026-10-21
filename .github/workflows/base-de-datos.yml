@@ -202,23 +202,32 @@ jobs:
           node pruebas/base/matriz.mjs > /dev/null || { echo "::error::la base no volvió a su estado"; exit 1; }
           echo "la matriz detectó los 6 cambios"
 
-      # A1: el archivo para deshacer deja la base exactamente como antes de A1 (la herramienta
-      # oficial compara con las migraciones sin A1: diferencia vacía). Luego se vuelve a aplicar
-      # A1, para que el paso siguiente parta de la base completa.
-      - name: Deshacer A1 deja la base como antes
+      # Rumbo 2.0: cada migración nueva trae su archivo en supabase/deshacer/. Se deshacen todas,
+      # de la más nueva a la más antigua, y la herramienta oficial compara con las migraciones que
+      # quedan: la diferencia debe ser vacía. Luego se vuelven a aplicar, en orden, para el paso
+      # siguiente.
+      - name: Deshacer deja la base como antes
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
         run: |
           set -euo pipefail
-          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f supabase/deshacer/20261022000000_roles_coach.sql
-          mv supabase/migrations/20261022000000_roles_coach.sql "$RUNNER_TEMP/"
-          supabase db diff --db-url "$PGURL" -s public,privado --output-format json > deshacer.json
-          mv "$RUNNER_TEMP/20261022000000_roles_coach.sql" supabase/migrations/
-          if [ -n "$(jq -r '.diff' deshacer.json | tr -d '[:space:]')" ]; then
-            jq -r '.diff' deshacer.json; echo "::error::deshacer A1 no dejó la base como antes"; exit 1
-          fi
-          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f supabase/migrations/20261022000000_roles_coach.sql
-          echo "deshacer A1: la base quedó como antes, y A1 se volvió a aplicar"
+          mkdir -p "$RUNNER_TEMP/apartadas"
+          for d in $(ls supabase/deshacer/*.sql | sort -r); do
+            m="supabase/migrations/$(basename "$d")"
+            [ -f "$m" ] || { echo "::error::$d no corresponde a ninguna migración"; exit 1; }
+            psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$d"
+            mv "$m" "$RUNNER_TEMP/apartadas/"
+            supabase db diff --db-url "$PGURL" -s public,privado --output-format json > deshacer.json
+            if [ -n "$(jq -r '.diff' deshacer.json | tr -d '[:space:]')" ]; then
+              jq -r '.diff' deshacer.json; echo "::error::$d no dejó la base como antes"; exit 1
+            fi
+            echo "$(basename "$d"): deshecha sin diferencias"
+          done
+          for m in $(ls "$RUNNER_TEMP/apartadas/"*.sql | sort); do
+            mv "$m" supabase/migrations/
+            psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "supabase/migrations/$(basename "$m")"
+          done
+          echo "migraciones vueltas a aplicar"
 
       # Etapa 1: las dos revisiones deben detectar cambios hechos a mano. Va al final porque altera
       # la base local de prueba (nunca producción).
