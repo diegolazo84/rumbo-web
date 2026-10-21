@@ -53,6 +53,7 @@ comentario. En producción ya está así: **no se pega**, solo se registra.
 | 20261103000000 | `20261103000000_evolucion.sql` | (nuevo, C3: evolución semanal e informe de ciclo; **pendiente de aplicar, solo con autorización de Diego**) |
 | 20261104000000 | `20261104000000_medibles_y_plantillas.sql` | (nuevo, C4: acciones medibles y plantillas; **pendiente de aplicar, solo con autorización de Diego**) |
 | 20261105000000 | `20261105000000_alias_y_ranking.sql` | (nuevo, C5: alias y ranking semanal voluntario; **pendiente de aplicar, solo con autorización de Diego**) |
+| 20261106000000 | `20261106000000_comunidad.sql` | (nuevo, C6: comunidad con reglas, reportes y moderación; **pendiente de aplicar, solo con autorización de Diego**) |
 
 Fuera de `migrations/` quedan las herramientas que no cambian la estructura:
 `verificacion.sql`, `historial-migraciones.sql`, `restaurar-antes.sql` y `restaurar-despues.sql`.
