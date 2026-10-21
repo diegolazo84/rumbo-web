@@ -28,7 +28,7 @@ legal de Diego).
 | 10 | Panel del coach | parcial: datos de la bandeja de seguimiento desarrollados y probados (B2) | Pantalla de la bandeja y vista propia (maqueta), «Ver como» | #8, diseño | B2 |
 | 11 | Notificaciones sincronizadas | parcial: base de avisos desarrollada y probada (A5) | Centro de notificaciones en la app (espera maqueta); aplicar migración | migración, diseño | A5 |
 | 12 | Recordatorios automáticos | inexistente | Preferencias, envío programado, avisos en el teléfono | #11; externo (Brevo gratis 300/día) | — |
-| 13 | Fotos opcionales | parcial | Subida, regla «cualquier acción», miniaturas, borrado por plazo | #8, migración, decisión legal | — |
+| 13 | Fotos opcionales | parcial: regla «cualquier acción» en la base, sin tope semanal (C1) | Botón en Mi espacio (maqueta), miniaturas, borrado por plazo; la columna `planes.fotos_por_semana` queda sin uso | #8, migración, decisión legal | C1 |
 | 14 | Asistente de IA | inexistente | Función segura, aceptación, tope de gasto, crisis | #8, #11; externo **pagado** | — |
 | 15 | Seguimiento e informes de evolución | parcial | Gráfico semanal, constancia, informe de cierre | diseño, migración | — |
 | 16 | Comunidad | simulada | Alias, publicaciones, moderación, reglas | #8, #11, migración | — |
