@@ -152,6 +152,49 @@ jobs:
           export ANON_KEY="${ANON_KEY:-${PUBLISHABLE_KEY:-}}"
           node pruebas/base/rls.mjs
 
+      # Rumbo 2.0, A0: matriz de acceso tabla por tabla y rol por rol (anon, persona A, persona B,
+      # equipo sin y con segundo factor), sobre los datos que deja el paso anterior. Toda tabla o
+      # función nueva debe declararse en pruebas/base/matriz.mjs con quién puede usarla.
+      - name: Matriz de acceso
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: node pruebas/base/matriz.mjs
+
+      # La matriz debe fallar ante 5 errores típicos de permisos hechos a mano, y volver a pasar
+      # al deshacerlos. Solo en la base local de prueba.
+      - name: La matriz detecta fugas de permisos
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          set -uo pipefail
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q <<'SQL'
+          create policy prueba_ci_fuga on public.participantes for select to authenticated using (true);
+          create policy prueba_ci_escribir on public.ciclos for update to authenticated using (true);
+          grant execute on function public.crear_espacio(uuid) to anon;
+          create table public.prueba_ci (id int);
+          create or replace function privado.es_admin() returns boolean
+          language sql stable security definer set search_path = '' as $$
+            select exists (select 1 from public.equipo e where e.user_id = auth.uid());
+          $$;
+          SQL
+          if node pruebas/base/matriz.mjs > matriz.txt 2>&1; then cat matriz.txt; echo "::error::la matriz no detectó los cambios"; exit 1; fi
+          for buscado in 'public.prueba_ci no tiene RLS' 'funciones que anon ejecuta' 'persona A lee public.participantes: ve' 'persona A en public.ciclos: modificar alcanza filas' 'equipo sin segundo factor lee public.solicitudes'; do
+            grep -qF "$buscado" matriz.txt || { cat matriz.txt; echo "::error::la matriz no detectó: $buscado"; exit 1; }
+          done
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q <<'SQL'
+          drop policy prueba_ci_fuga on public.participantes;
+          drop policy prueba_ci_escribir on public.ciclos;
+          revoke execute on function public.crear_espacio(uuid) from anon;
+          drop table public.prueba_ci;
+          create or replace function privado.es_admin() returns boolean
+          language sql stable security definer set search_path = '' as $$
+            select coalesce(auth.jwt()->>'aal', 'aal1') = 'aal2'
+               and exists (select 1 from public.equipo e where e.user_id = auth.uid());
+          $$;
+          SQL
+          node pruebas/base/matriz.mjs > /dev/null || { echo "::error::la base no volvió a su estado"; exit 1; }
+          echo "la matriz detectó los 5 cambios"
+
       # Etapa 1: las dos revisiones deben detectar cambios hechos a mano. Va al final porque altera
       # la base local de prueba (nunca producción).
       - name: Las revisiones detectan cambios

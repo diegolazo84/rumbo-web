@@ -7,7 +7,9 @@ archivos numerados con fecha (`AAAAMMDDhhmmss_nombre.sql`) que se aplican en ese
 
 - Cada cambio de estructura es un archivo **nuevo** en `supabase/migrations/`. Nunca se edita un
   archivo que ya se pegó en producción.
-- Toda tabla nueva entra con RLS y con casos nuevos en `pruebas/base/rls.mjs`.
+- Toda tabla nueva entra con RLS y con casos nuevos en `pruebas/base/rls.mjs`, y se declara en
+  `pruebas/base/matriz.mjs` (quién la lee y quién la escribe). Lo mismo para cada función que
+  anon o authenticated puedan ejecutar. Si falta, GitHub Actions falla.
 - La contraseña de la base y la dirección de conexión no se escriben en el chat, en este
   repositorio ni en GitHub Actions.
 - Nada de lo que está aquí lee datos de personas ni secretos: solo nombres y definiciones.
