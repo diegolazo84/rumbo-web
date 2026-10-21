@@ -37,7 +37,7 @@ legal de Diego).
 | 19 | Pagos | desarrollada (base de datos y pruebas): registro manual de pagos y devoluciones (B4) | Pantalla del dueño (maqueta); aplicar migración; pago en línea después | #9, migración; SII | B4 |
 | 20 | «Lo que viene» desde la base | parcial: tabla de módulos desarrollada (A4) | Que «Lo que viene» y cada sección lean la tabla; pantalla del dueño para cambiar estados | migración, diseño | A4 |
 | 21 | App instalable con avisos | parcial | Service worker | — | — |
-| 22 | Acciones medibles y plantillas | inexistente | Cantidades y plantillas | migración | — |
+| 22 | Acciones medibles y plantillas | desarrollada (base de datos y pruebas): cantidad objetivo y unidad por acción; la persona anota cuánto hizo en lo ya marcado, sin cambiar créditos; plantillas del equipo (cada uno edita las suyas, el dueño todas, se archivan) (C4) | Campos en el constructor y en Mi espacio, catálogo de plantillas (maqueta); aplicar migración | migración, diseño | C4 |
 | 23 | WhatsApp | inexistente | Después de correo y avisos en el teléfono | #12; externo **pagado** | — |
 | 24 | Rumbo Inicial gratuito | pendiente de evaluación | No se construye sin decisión | decisión | — |
 
