@@ -103,7 +103,8 @@ test.describe("resumen del día en Mi Rumbo", () => {
 });
 
 test.describe("«Próximamente»: sin botones de compra, sin fechas y sin datos ficticios", () => {
-  for (const r of ["mi-espacio/comunidad/", "mi-espacio/lo-que-viene/"]) {
+  // Comunidad dejó de ser «Próximamente» (maqueta de ChatGPT): sus pruebas están en comunidad.spec.ts.
+  for (const r of ["mi-espacio/lo-que-viene/"]) {
     test(r, async ({ page }) => {
       await abrir(page, r);
       const main = page.locator("main");
