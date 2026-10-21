@@ -71,6 +71,8 @@ const TABLAS = {
   grupos_comunidad: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   miembros_grupo: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   reacciones_comunidad: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  guardadas_comunidad: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  bloqueos_comunidad: { leer: "equipo", escribir: "funciones", dueno: "bloqueador", coach: { leer: "nada", escribir: "nada" } },
   reconocimientos: { leer: "con-sesion", escribir: "funciones", coach: { leer: "con-sesion", escribir: "nada" } },
   reconocimientos_otorgados: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   beneficios: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
@@ -109,6 +111,7 @@ const FUNCIONES = {
     "guardar_alias", "participar_en_ranking", "ranking_semanal",
     "aceptar_reglas_comunidad", "publicar_en_comunidad", "borrar_mi_publicacion", "reportar_publicacion", "comunidad_publicaciones",
     "reaccionar_publicacion", "unirme_a_grupo", "salir_de_grupo", "comunidad_grupos",
+    "guardar_publicacion", "bloquear_autor", "desbloquear_alias", "mis_bloqueos", "comunidad_temas", "mi_impacto_comunidad",
     "mis_reconocimientos", "mis_beneficios",
     "ia_guardar_consentimiento", "ia_retirar_consentimiento", "ia_preguntar", "mis_consultas_ia",
     "autorizar_especialista", "retirar_especialista", "pedir_reserva", "cancelar_reserva", "enviar_mensaje_especialista",
@@ -241,6 +244,9 @@ insert into public.grupos_comunidad (id, nombre, descripcion) values ('00000000-
 insert into public.miembros_grupo (grupo_id, participante_id) values ('00000000-0000-0000-0000-0000000000c1', '${ROLES.B.ficha}') on conflict do nothing;
 insert into public.reacciones_comunidad (publicacion_id, participante_id) values ('00000000-0000-0000-0000-0000000000b1', '${ROLES.A.ficha}')
   on conflict do nothing;
+insert into public.guardadas_comunidad (publicacion_id, participante_id) values ('00000000-0000-0000-0000-0000000000b1', '${ROLES.A.ficha}')
+  on conflict do nothing;
+insert into public.bloqueos_comunidad (bloqueador, bloqueado) values ('${ROLES.A.ficha}', '${ROLES.B.ficha}') on conflict do nothing;
 insert into public.plantillas_accion (titulo, instrucciones, duracion_min, autor)
   values ('Caminar', 'Plantilla de prueba de CI.', 20, '${ROLES.aal2.uid}');
 insert into public.reconocimientos_otorgados (participante_id, clave, referencia)
@@ -921,6 +927,8 @@ paso("medibles y plantillas: la cantidad se anota en lo propio ya marcado y no c
   const entrar = como(ROLES.A, "select public.participar_en_ranking(true)");
   exigir(!entrar.ok && /no_disponible/.test(entrar.error), "una persona entra al ranking sin que el dueño lo haya habilitado");
 }
+// El bloqueo de la semilla solo sirve para la prueba de lectura: las de comunidad parten sin bloqueos.
+sql("delete from public.bloqueos_comunidad");
 // C6 · Comunidad: solo con el módulo habilitado, alias y reglas; se publica con alias; moderación aparte.
 {
   const abrir = `reset role; update public.modulos set estado = 'habilitado' where clave = 'comunidad';
@@ -1053,6 +1061,69 @@ paso("comunidad: solo habilitada, con alias y reglas; se ve el alias, no quién 
   exigir(exp.ok && ultima(exp) === "1", `la copia de mis datos no incluye mis reacciones: ${exp.error ?? ultima(exp)}`);
 }
 paso("comunidad C7: reacciones sin decir quién, grupos solo para sus miembros y foto en bucket privado");
+
+// C8 · Comunidad: tipo de publicación, guardadas, bloqueos, temas e impacto.
+{
+  const abrir = `reset role; update public.modulos set estado = 'habilitado' where clave = 'comunidad';
+    update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    update public.alias set reglas_comunidad_en = now(); delete from public.reacciones_comunidad;
+    delete from public.bloqueos_comunidad; delete from public.guardadas_comunidad; set local role authenticated;`;
+  const b1 = "'00000000-0000-0000-0000-0000000000b1'";
+  const tipo = como(ROLES.A, `${abrir} select public.publicar_en_comunidad('Mi consejo #Hábitos y #habitos', null, null, null, 'consejo') \\g /dev/null
+    select count(*) from public.comunidad_publicaciones(null, null, 30, null, false, 'consejo')`);
+  exigir(tipo.ok && ultima(tipo) === "1", `no se filtra por tipo: ${tipo.error ?? ultima(tipo)}`);
+  const tipoMalo = como(ROLES.A, `${abrir} select public.publicar_en_comunidad('x', null, null, null, 'anuncio')`);
+  exigir(!tipoMalo.ok && /invalido/.test(tipoMalo.error), "se aceptó un tipo inventado");
+  const respTipo = como(ROLES.A, `${abrir} select public.publicar_en_comunidad('x', ${b1}, null, null, 'logro')`);
+  exigir(!respTipo.ok && /solo_publicaciones/.test(respTipo.error), "una respuesta llevó tipo");
+  const temas = como(ROLES.B, `${abrir} reset role; insert into public.publicaciones (autor, texto) values
+      ('${ROLES.A.ficha}', 'Hoy #Hábitos'), ('${ROLES.A.ficha}', 'Otra vez #hábitos y #Calma');
+    set local role authenticated;
+    select string_agg(lower(tema) || ':' || publicaciones, ',' order by publicaciones desc, tema) from public.comunidad_temas()`);
+  exigir(temas.ok && ultima(temas) === "hábitos:2,calma:1", `temas populares mal contados: ${temas.error ?? ultima(temas)}`);
+  const porTema = como(ROLES.B, `${abrir} reset role; insert into public.publicaciones (autor, texto) values ('${ROLES.A.ficha}', 'Hoy #Calma'), ('${ROLES.A.ficha}', 'Hoy #Calmado');
+    set local role authenticated; select count(*) from public.comunidad_publicaciones(null, null, 30, null, false, null, false, 'calma')`);
+  exigir(porTema.ok && ultima(porTema) === "1", `el filtro por tema no es exacto: ${porTema.error ?? ultima(porTema)}`);
+  const guarda = como(ROLES.A, `${abrir} select public.guardar_publicacion(${b1}) \\g /dev/null
+    select count(*) || ' ' || bool_and(guardada) from public.comunidad_publicaciones(null, null, 30, null, false, null, true)`);
+  exigir(guarda.ok && ultima(guarda) === "1 true", `A no pudo guardar: ${guarda.error ?? ultima(guarda)}`);
+  const quitaGuardada = como(ROLES.A, `${abrir} select public.guardar_publicacion(${b1}) \\g /dev/null
+    select public.guardar_publicacion(${b1}) \\g /dev/null
+    select count(*) from public.comunidad_publicaciones(null, null, 30, null, false, null, true)`);
+  exigir(quitaGuardada.ok && ultima(quitaGuardada) === "0", "guardar no se deshace con el mismo botón");
+  const ajenaGuardada = como(ROLES.B, `${abrir} reset role; insert into public.guardadas_comunidad values (${b1}, '${ROLES.A.ficha}'); set local role authenticated;
+    select count(*) from public.comunidad_publicaciones(null, null, 30, null, false, null, true)`);
+  exigir(ajenaGuardada.ok && ultima(ajenaGuardada) === "0", "B ve lo que guardó A");
+  const bloquea = como(ROLES.A, `${abrir} select public.bloquear_autor(${b1}) \\g /dev/null
+    select (select count(*) from public.comunidad_publicaciones() where id = ${b1}) || ' ' ||
+           (select string_agg(alias_publico, ',') from public.mis_bloqueos())`);
+  exigir(bloquea.ok && ultima(bloquea) === "0 Alias B", `el bloqueo no oculta a B: ${bloquea.error ?? ultima(bloquea)}`);
+  const mutuo = como(ROLES.B, `${abrir} reset role; insert into public.bloqueos_comunidad values ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    insert into public.publicaciones (autor, texto) values ('${ROLES.A.ficha}', 'De A para todos'); set local role authenticated;
+    select count(*) from public.comunidad_publicaciones() where texto = 'De A para todos'`);
+  exigir(mutuo.ok && ultima(mutuo) === "0", "quien fue bloqueado sigue viendo a quien lo bloqueó");
+  const responder = como(ROLES.A, `${abrir} reset role; insert into public.bloqueos_comunidad values ('${ROLES.A.ficha}', '${ROLES.B.ficha}'); set local role authenticated;
+    select public.publicar_en_comunidad('Respuesta', ${b1})`);
+  exigir(!responder.ok && /no_encontrada/.test(responder.error), "se respondió a alguien bloqueado");
+  const desbloquea = como(ROLES.A, `${abrir} select public.bloquear_autor(${b1}) \\g /dev/null
+    select public.desbloquear_alias('alias b') \\g /dev/null
+    select count(*) from public.comunidad_publicaciones() where id = ${b1}`);
+  exigir(desbloquea.ok && ultima(desbloquea) === "1", `desbloquear no devolvió la publicación: ${desbloquea.error ?? ultima(desbloquea)}`);
+  const moderaVe = como(ROLES.aal2, `${abrir.replace("set local role authenticated;", "")} insert into public.bloqueos_comunidad values ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    set local role authenticated; select count(*) from public.comunidad_publicaciones() where id = ${b1}`);
+  exigir(moderaVe.ok && ultima(moderaVe) === "1", `moderación dejó de ver por un bloqueo: ${moderaVe.error ?? ultima(moderaVe)}`);
+  const impacto = como(ROLES.B, `${abrir} reset role; insert into public.reacciones_comunidad values (${b1}, '${ROLES.A.ficha}');
+    insert into public.publicaciones (autor, texto, respuesta_a) values ('${ROLES.B.ficha}', 'Gracias', ${b1});
+    set local role authenticated;
+    select publicaciones >= 1 and comentarios >= 1 and reacciones_recibidas = 1 from public.mi_impacto_comunidad()`);
+  exigir(impacto.ok && ultima(impacto) === "t", `el impacto no cuenta lo real: ${impacto.error ?? ultima(impacto)}`);
+  const ilus = como(ROLES.aal2, `select public.guardar_grupo_comunidad('{"nombre":"Con dibujo","ilustracion":"foto-externa"}')`);
+  exigir(!ilus.ok && /invalida/.test(ilus.error), "un grupo aceptó una ilustración que no es de Rumbo");
+  const exp = como(ROLES.A, `${abrir} select public.guardar_publicacion(${b1}) \\g /dev/null
+    select jsonb_array_length(public.exportar_mis_datos()->'comunidad_guardadas')`);
+  exigir(exp.ok && ultima(exp) === "1", `la copia de mis datos no incluye mis guardadas: ${exp.error ?? ultima(exp)}`);
+}
+paso("comunidad C8: tipos, guardadas solo mías, bloqueo en ambos sentidos, temas e impacto con datos reales");
 
 
 // E1 · Reconocimientos y beneficios. Fechas relativas al ciclo de A que deja rls.mjs.
