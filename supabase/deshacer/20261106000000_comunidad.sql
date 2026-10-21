@@ -30,3 +30,8 @@ drop function if exists privado.en_comunidad();
 drop table if exists public.reportes_comunidad;
 drop table if exists public.publicaciones;
 alter table public.alias drop column if exists reglas_comunidad_en;
+delete from public.avisos where tipo = 'reporte_comunidad';
+alter table public.avisos drop constraint avisos_tipo_check;
+alter table public.avisos add constraint avisos_tipo_check check (tipo in ('revision_publicada','ajuste_respondido',
+  'programa_publicado','registro_enviado','ajuste_pedido','videollamada_programada',
+  'recordatorio_acciones','recordatorio_registro'));

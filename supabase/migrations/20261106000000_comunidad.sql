@@ -12,6 +12,12 @@
 
 alter table public.alias add column reglas_comunidad_en timestamptz;
 
+-- Cada reporte nuevo avisa a quienes moderan (dueños y coaches con permiso, activos).
+alter table public.avisos drop constraint avisos_tipo_check;
+alter table public.avisos add constraint avisos_tipo_check check (tipo in ('revision_publicada','ajuste_respondido',
+  'programa_publicado','registro_enviado','ajuste_pedido','videollamada_programada',
+  'recordatorio_acciones','recordatorio_registro','reporte_comunidad'));
+
 create table public.publicaciones (
   id uuid primary key default gen_random_uuid(),
   autor uuid not null references public.participantes(id) on delete cascade,
@@ -114,6 +120,11 @@ begin
   insert into public.reportes_comunidad (publicacion_id, reportante, motivo, detalle)
   values (p_id, v_yo, p_motivo, nullif(left(btrim(p_detalle), 300), ''))
   on conflict (publicacion_id, reportante) do nothing;
+  if found then
+    insert into public.avisos (destinatario, tipo, titulo, enlace)
+    select e.user_id, 'reporte_comunidad', 'Nuevo reporte en la comunidad', '/equipo/comunidad/'
+      from public.equipo e where e.activo and (e.rol = 'dueno' or e.puede_moderar);
+  end if;
 end $$;
 
 -- Moderación: ocultar (con motivo) o dejar visible. Resuelve los reportes abiertos de esa publicación.

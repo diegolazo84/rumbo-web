@@ -870,8 +870,9 @@ paso("medibles y plantillas: la cantidad se anota en lo propio ya marcado y no c
   const reporta = como(ROLES.A, `${abrir} reset role; delete from public.reportes_comunidad; set local role authenticated;
     select public.reportar_publicacion('00000000-0000-0000-0000-0000000000b1', 'respeto') \\g /dev/null
     select public.reportar_publicacion('00000000-0000-0000-0000-0000000000b1', 'respeto') \\g /dev/null
-    reset role; select count(*) from public.reportes_comunidad`);
-  exigir(reporta.ok && ultima(reporta) === "1", `el reporte no quedó una sola vez: ${reporta.error ?? ultima(reporta)}`);
+    reset role; select count(*) || ' ' || (select count(*) from public.avisos where tipo = 'reporte_comunidad' and destinatario = '${ROLES.aal2.uid}')
+    from public.reportes_comunidad`);
+  exigir(reporta.ok && ultima(reporta) === "1 1", `el reporte no quedó una sola vez con un aviso al dueño: ${reporta.error ?? ultima(reporta)}`);
   const propia = como(ROLES.B, `${abrir} select public.reportar_publicacion('00000000-0000-0000-0000-0000000000b1', 'spam')`);
   exigir(!propia.ok && /no_encontrada/.test(propia.error), "una persona reportó su propia publicación");
   const oculta = como(ROLES.aal2, `select public.moderar_publicacion('00000000-0000-0000-0000-0000000000b1', true, 'respeto') \\g /dev/null
