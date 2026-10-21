@@ -212,14 +212,16 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/apartadas"
-          # A veces el contenedor de comparación anterior aún no suelta el puerto 54320: solo en ese
-          # caso se espera y se reintenta (hasta 3 veces). Cualquier otro error falla de inmediato.
+          # A veces el puerto de la base de comparación (54320) sigue ocupado por una corrida anterior.
+          # Solo en ese caso se reintenta con otro puerto (hasta 3 veces); cualquier otro error falla
+          # de inmediato.
           diferencias() {
             for intento in 1 2 3; do
               if supabase db diff --db-url "$PGURL" -s public,privado --output-format json > deshacer.json 2> deshacer.err; then return 0; fi
               cat deshacer.err
-              grep -q "address already in use" deshacer.err && [ "$intento" -lt 3 ] || return 1
-              echo "puerto ocupado; reintento $((intento + 1)) en 15 s"; sleep 15
+              grep -qE "address already in use|port is already allocated" deshacer.err && [ "$intento" -lt 3 ] || return 1
+              export SUPABASE_DB_SHADOW_PORT=$((54330 + intento))
+              echo "puerto ocupado; reintento $((intento + 1)) con el puerto $SUPABASE_DB_SHADOW_PORT"
             done
           }
           for d in $(ls supabase/deshacer/*.sql | sort -r); do
