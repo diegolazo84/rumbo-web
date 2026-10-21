@@ -3,11 +3,14 @@
 // pendiente, futura, semana-1 y cercano (Martín: «Resumen de tu videollamada» de la semana 1).
 // El registro es opcional; el borrador se guarda en este dispositivo. Con acompañamiento: la
 // revisión es escrita, en el día acordado; en Acompañamiento cercano, una videollamada.
-import { useEffect, useState, type ReactNode } from "react";
-import { Aviso } from "../../../components/Bloques";
+//
+// Textos y estructura exactos de Diego (21-oct-2026): «Así fue tu semana» · «Semana X de 4»;
+// primero «Lo que vimos juntos» (la revisión publicada, con «Leer revisión completa» si es
+// extensa), luego «Lo que compartiste» (el registro) y «Tus avances de esta semana».
+import { useEffect, useId, useState, type ReactNode } from "react";
 import Etiqueta from "../../../components/Etiqueta";
-import { Icono, Segmentado } from "../../../components/app";
-import { AvisoAyuda, CampoArea, Formulario, NoEsChat } from "../../../components/form";
+import { BarraProgreso, Icono, Segmentado } from "../../../components/app";
+import { AvisoAyuda, CampoArea, Formulario } from "../../../components/form";
 import {
   ESCENARIO_CERCANO,
   ESCENARIO_COACH,
@@ -21,8 +24,9 @@ import {
 } from "../../../data/ejemplo-app";
 import { REGISTRO_SEMANAL } from "../../../data/formularios";
 import { diaCorto, type Iso } from "../../../lib/fechas";
+import { colorDeMeta } from "../../../lib/mi-rumbo";
 import type { PropsPantalla } from "../registro";
-import { AlertaGuardar, Cabeza, prepararLista, useEspacio } from "./comun";
+import { AlertaGuardar, prepararLista, useEspacio } from "./comun";
 import type { DatosRegistroSemanal } from "./espacio";
 import { T_SEMANA } from "./textos";
 
@@ -166,12 +170,10 @@ function SemanaReal() {
   );
 }
 
-// Selector de semanas y encabezado (día de revisión y, en cercano, hora de la videollamada).
-function MarcoSemana({ n, setN, esc, children }: { n: number; setN: (n: number) => void; esc: Escenario; children: ReactNode }) {
-  const { ciclo, fechaRevision } = useEspacio();
-  const cercano = esc.plan === "cercano";
-  const fecha = fechaRevision(n, esc.diaRevision);
-  const bajada = cercano ? T_SEMANA.bajadaCercano : T_SEMANA.bajadaCoach;
+// Selector de semanas y encabezado «Así fue tu semana» · «Semana X de 4». La fecha y la modalidad
+// de la próxima revisión están una sola vez, en su tarjeta de Mi acompañamiento.
+function MarcoSemana({ n, setN, children }: { n: number; setN: (n: number) => void; esc: Escenario; children: ReactNode }) {
+  const { ciclo } = useEspacio();
   return (
     <div className="me-pantalla me-semana">
       <Segmentado
@@ -182,23 +184,10 @@ function MarcoSemana({ n, setN, esc, children }: { n: number; setN: (n: number) 
         onCambio={(v) => setN(Number(v))}
         className="me-semana__selector"
       />
-
-      <Cabeza
-        nivel={2}
-        ejemplo={false}
-        ojo={T_SEMANA.ojo}
-        titulo={T_SEMANA.titulo(n, ciclo.semanas)}
-        bajada={
-          <p>
-            {bajada.antes}
-            <strong>
-              {diaCorto(fecha)}
-              {cercano && ` a las ${esc.horaVideollamada}`}
-            </strong>
-            {bajada.despues}
-          </p>
-        }
-      />
+      <header className="me-semana__cabeza">
+        <h2 className="me-semana__titulo">{T_SEMANA.asiFue}</h2>
+        <p className="me-semana__subtitulo">{T_SEMANA.subtitulo(n, ciclo.semanas)}</p>
+      </header>
       {children}
     </div>
   );
@@ -214,61 +203,96 @@ type PropsContenido = {
   guardar?: (datos: DatosRegistroSemanal) => Promise<void>; // Mi espacio real
 };
 
+// El hash abre lo que corresponde: #tu-registro (botón «Escribir mi registro» de arriba) abre el
+// formulario si se puede escribir; #lo-que-vimos («Leer la revisión» del historial) despliega la
+// revisión completa.
+function useHash(objetivo: string, accion: () => void) {
+  useEffect(() => {
+    const revisar = () => {
+      if (window.location.hash === objetivo) accion();
+    };
+    revisar();
+    window.addEventListener("hashchange", revisar);
+    return () => window.removeEventListener("hashchange", revisar);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [objetivo]);
+}
+
 function ContenidoSemana({ n, hoy, situacion, esc, inicial, cambios, guardar }: PropsContenido) {
-  const { fechaRevision } = useEspacio();
   const [registro, setRegistro] = useState<RegistroSemanal | null>(inicial);
-  const [editando, setEditando] = useState(false);
-  const fecha = fechaRevision(n, esc.diaRevision);
-  const abierto = situacion === "sin-enviar" || situacion === "semana-1" || ((situacion === "enviado") && (editando || !registro?.enviadoEl));
-  const cerrado = situacion === "en-revision" || situacion === "publicada" || situacion === "pendiente";
+  const enviadoSinCerrar = situacion === "enviado";
+  const puedeEscribir = situacion === "sin-enviar" || situacion === "semana-1" || enviadoSinCerrar;
+  // Se escribe si se pidió (botón), si se está editando o si hay un borrador en este dispositivo.
+  const [escribiendo, setEscribiendo] = useState(false);
+  useEffect(() => {
+    if (!puedeEscribir || inicial) return;
+    try {
+      if (localStorage.getItem(clave(n))) setEscribiendo(true);
+    } catch {
+      /* sin almacenamiento */
+    }
+  }, [n, puedeEscribir, inicial]);
+  useHash("#tu-registro", () => {
+    if (puedeEscribir && !registro?.enviadoEl) setEscribiendo(true);
+  });
+  const publicada = situacion === "publicada" && esc.revisiones.some((r) => r.semana === n && r.publicadaEl);
+  const mostrarCompartiste = !!registro?.enviadoEl || puedeEscribir;
 
   return (
-    <div className="me-semana__cuerpo">
+    <div className="me-semana__cuerpo" id={mostrarCompartiste ? undefined : "tu-registro"}>
       <div className="me-semana__principal">
-      {/* Publicada: lo nuevo (respuesta y cambios) va primero; el registro queda cerrado debajo. */}
-      {situacion === "publicada" && <Respuesta n={n} esc={esc} cambios={cambios} />}
-      <section id="tu-registro" className="tarjeta me-registro" aria-labelledby="registro-titulo">
-        <div className="me-registro__cabeza">
-          <h2 id="registro-titulo" className="me-h2">
-            {T_SEMANA.registro}
-          </h2>
-          {registro?.enviadoEl && !abierto && situacion === "enviado" && (
-            <Etiqueta variante="activo">{T_SEMANA.enviado(diaCorto(registro.enviadoEl))}</Etiqueta>
-          )}
-          {situacion === "en-revision" && <Etiqueta variante="nota">{T_SEMANA.enRevision}</Etiqueta>}
-        </div>
+        {publicada ? <LoQueVimos n={n} esc={esc} cambios={cambios} /> : <p className="me-semana__sin-revision">{T_SEMANA.sinRevision}</p>}
 
-        {situacion === "semana-1" && <p className="me-bloque__bajada">{T_SEMANA.semana1(diaCorto(fecha))}</p>}
-        {situacion === "en-revision" && <p>{T_SEMANA.llega(diaCorto(fecha))}</p>}
-        {situacion === "pendiente" && <p>{T_SEMANA.pendiente}</p>}
-
-        {abierto ? (
-          <FormularioRegistro
-            n={n}
-            inicial={registro}
-            guardar={guardar}
-            onEnviar={(r) => {
-              setRegistro({ ...r, semana: n, enviadoEl: hoy });
-              setEditando(false);
-            }}
-          />
-        ) : registro ? (
-          <>
-            <RegistroLeido r={registro} />
-            {situacion === "enviado" && !cerrado && (
-              <p>
-                <button type="button" className="boton boton--terciario me-boton-izq" onClick={() => setEditando(true)}>
-                  {T_SEMANA.editar}
-                </button>
-              </p>
+        {mostrarCompartiste && (
+          <section id="tu-registro" className="tarjeta me-registro" aria-labelledby={`compartiste-${n}`}>
+            <div className="me-registro__cabeza">
+              <h3 id={`compartiste-${n}`} className="me-semana__h3">
+                {T_SEMANA.compartiste}
+              </h3>
+              {registro?.enviadoEl && !escribiendo && enviadoSinCerrar && <Etiqueta variante="activo">{T_SEMANA.enviado(diaCorto(registro.enviadoEl))}</Etiqueta>}
+            </div>
+            {escribiendo ? (
+              <FormularioRegistro
+                n={n}
+                inicial={registro}
+                guardar={guardar}
+                onEnviar={(r) => {
+                  setRegistro({ ...r, semana: n, enviadoEl: hoy });
+                  setEscribiendo(false);
+                }}
+              />
+            ) : registro?.enviadoEl ? (
+              <>
+                <RegistroLeido r={registro} />
+                {enviadoSinCerrar && (
+                  <p>
+                    <button type="button" className="boton boton--terciario me-boton-izq" onClick={() => setEscribiendo(true)}>
+                      {T_SEMANA.editar}
+                    </button>
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <p>{T_SEMANA.invitacion}</p>
+                <p>
+                  <button type="button" className="boton boton--secundario" onClick={() => {
+                    setEscribiendo(true);
+                    // Al abrir el formulario, el foco pasa a su primera pregunta.
+                    setTimeout(() => document.querySelector<HTMLElement>("#tu-registro form :is(input, textarea)")?.focus(), 0);
+                  }}>
+                    <Icono nombre="pen-line" tamaño={20} />
+                    {T_SEMANA.escribir}
+                  </button>
+                </p>
+              </>
             )}
-          </>
-        ) : null}
-      </section>
+          </section>
+        )}
       </div>
 
       <div className="me-semana__lado">
-        <LoQueMarcaste n={n} hoy={hoy} esc={esc} />
+        <TusAvances n={n} hoy={hoy} esc={esc} />
       </div>
     </div>
   );
@@ -382,7 +406,6 @@ function FormularioRegistro({ n, inicial, guardar, onEnviar }: PropsFormulario) 
           )}
         </p>
       </div>
-      <NoEsChat />
       <AvisoAyuda variante="revision" href={R.ayuda} />
     </Formulario>
   );
@@ -409,27 +432,31 @@ function RegistroLeido({ r }: { r: RegistroSemanal }) {
 }
 
 // ---------------------------------------------------------------------------
-// Bloque 2 · «Lo que marcaste» (automático): por meta, hasta hoy.
+// Bloque 2 · «Tus avances de esta semana» (automático): por meta, hasta hoy, con el color de cada
+// meta (el mismo de Mi Rumbo) y los días completos.
 
-function LoQueMarcaste({ n, hoy, esc }: { n: number; hoy: Iso; esc: Escenario }) {
+function TusAvances({ n, hoy, esc }: { n: number; hoy: Iso; esc: Escenario }) {
   const { ciclo, semanaDelCiclo, real, progreso: delServidor } = useEspacio();
   const lista = prepararLista({}, hoy, esc.ocurrencias);
   const progreso = (real && delServidor) || calcularProgreso(lista, hoy, ciclo.inicio);
   const de = (o: Ocurrencia) => o.semana === n && o.vigente && o.fecha <= hoy;
   const completos = progreso.dias.filter((d) => semanaDelCiclo(d.fecha) === n && d.estado === "completo").length;
+  const ids = esc.metas.map((m) => m.id);
   return (
     <section className="me-bloque me-marcaste" aria-labelledby={`marcaste-${n}`}>
-      <h2 id={`marcaste-${n}`} className="me-h2">
-        {T_SEMANA.marcaste}
-      </h2>
+      <h3 id={`marcaste-${n}`} className="me-semana__h3">
+        {T_SEMANA.avances}
+      </h3>
       <ul className="me-marcaste__lista">
         {esc.metas.map((m) => {
           const l = lista.filter((o) => o.metaId === m.id && de(o));
           if (!l.length) return null;
+          const hechas = l.filter((o) => cuentaComoHecha(o.registro)).length;
           return (
-            <li key={m.id} data-cat={m.categoria}>
+            <li key={m.id} data-meta-color={colorDeMeta(ids, m.id)}>
               <span className="me-marcaste__meta">{m.titulo}</span>
-              <span className="me-marcaste__dato">{T_SEMANA.deMeta(l.filter((o) => cuentaComoHecha(o.registro)).length, l.length)}</span>
+              <BarraProgreso valor={hechas} maximo={l.length} cat={m.categoria} etiqueta={m.titulo} textoValor={T_SEMANA.deMeta(hechas, l.length)} />
+              <span className="me-marcaste__dato">{T_SEMANA.deMeta(hechas, l.length)}</span>
             </li>
           );
         })}
@@ -440,49 +467,65 @@ function LoQueMarcaste({ n, hoy, esc }: { n: number; hoy: Iso; esc: Escenario })
 }
 
 // ---------------------------------------------------------------------------
-// Bloques 3 y 4 · respuesta de tu coach y cambios en tu programa
+// Bloques 3 y 4 · «Lo que vimos juntos»: la revisión publicada en tres apartados (sin inventar
+// los que vengan vacíos). Los cambios en el programa van en «Lo que podemos ajustar». Si es
+// extensa, primero un resumen (cada apartado recortado a pocas líneas) y «Leer revisión completa».
 
-function Respuesta({ n, esc, cambios }: { n: number; esc: Escenario; cambios: string | null }) {
+const LARGO_APARTADO = 220;
+const LARGO_TOTAL = 480;
+
+function LoQueVimos({ n, esc, cambios }: { n: number; esc: Escenario; cambios: string | null }) {
   const r = esc.revisiones.find((x) => x.semana === n && x.publicadaEl);
-  const cercano = esc.plan === "cercano";
+  const [completa, setCompleta] = useState(false);
+  const idCuerpo = useId();
+  useHash("#lo-que-vimos", () => setCompleta(true));
   if (!r?.publicadaEl) return null;
+  const cercano = esc.plan === "cercano";
+  const ajuste = [r.ajustamos, cambios ? `${T_SEMANA.cambiosPrograma} ${cambios}` : ""].filter(Boolean);
+  const apartados = [
+    { id: "funciono", titulo: T_SEMANA.loQueFunciono, textos: r.funciono ? [r.funciono] : [] },
+    { id: "ajustar", titulo: T_SEMANA.podemosAjustar, textos: ajuste },
+    { id: "foco", titulo: T_SEMANA.focoProxima, textos: r.foco ? [r.foco] : [], voz: true },
+  ].filter((a) => a.textos.length);
+  const largos = apartados.map((a) => a.textos.join(" ").length);
+  const extensa = largos.some((l) => l > LARGO_APARTADO) || largos.reduce((x, y) => x + y, 0) > LARGO_TOTAL;
+  const resumen = extensa && !completa;
   return (
-    <>
-      <section className="tarjeta me-respuesta" aria-labelledby={`respuesta-${n}`}>
-        <div className="me-respuesta__cabeza">
-          <span className="icono-mosaico">
-            <Icono nombre="message-circle" tamaño={22} />
-          </span>
-          <div>
-            <h2 id={`respuesta-${n}`} className="me-rotulo me-respuesta__rotulo">
-              {cercano ? T_SEMANA.resumenVideollamada : T_SEMANA.respuesta}
-            </h2>
-            <p className="microcopia">{diaCorto(r.publicadaEl)}</p>
+    <section id="lo-que-vimos" className="tarjeta me-vimos" aria-labelledby={`vimos-${n}`}>
+      <div className="me-vimos__cabeza">
+        <span className="icono-mosaico" aria-hidden="true">
+          <Icono nombre="message-circle" tamaño={22} />
+        </span>
+        <div>
+          <h3 id={`vimos-${n}`} className="me-semana__h3">
+            {T_SEMANA.vimos}
+          </h3>
+          <p className="microcopia">{cercano ? T_SEMANA.videollamadaDel(diaCorto(r.publicadaEl)) : T_SEMANA.publicadaEl(diaCorto(r.publicadaEl))}</p>
+        </div>
+      </div>
+      <div id={idCuerpo} className={resumen ? "me-vimos__cuerpo es-resumen" : "me-vimos__cuerpo"}>
+        {apartados.map((a) => (
+          <div key={a.id} className="me-vimos__parte">
+            <h4>{a.titulo}</h4>
+            {a.textos.map((t) =>
+              a.voz ? (
+                <p key={t} className="voz">
+                  <q>{t}</q>
+                </p>
+              ) : (
+                <p key={t}>{t}</p>
+              ),
+            )}
           </div>
-        </div>
-        <div className="me-respuesta__parte">
-          <h3>{T_SEMANA.funciono}</h3>
-          <p>{r.funciono}</p>
-        </div>
-        <div className="me-respuesta__parte">
-          <h3>{T_SEMANA.ajustamos}</h3>
-          <p>{r.ajustamos}</p>
-        </div>
-        <div className="me-respuesta__parte">
-          <h3>{T_SEMANA.foco(n + 1)}</h3>
-          <p className="voz">
-            <q>{r.foco}</q>
-          </p>
-        </div>
-      </section>
-      {/* Cambios en el programa: solo si la publicación los trae (la de Martín no cambió nada). */}
-      {cambios && (
-        <section aria-labelledby={`cambios-${n}`}>
-          <Aviso icono="info" titulo={<span id={`cambios-${n}`}>{T_SEMANA.cambios}</span>}>
-            {cambios}
-          </Aviso>
-        </section>
+        ))}
+      </div>
+      {extensa && (
+        <p>
+          <button type="button" className="boton boton--terciario me-boton-izq" aria-expanded={completa} aria-controls={idCuerpo} onClick={() => setCompleta((v) => !v)}>
+            {completa ? T_SEMANA.verMenos : T_SEMANA.leerCompleta}
+          </button>
+        </p>
       )}
-    </>
+    </section>
   );
 }

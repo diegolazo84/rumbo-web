@@ -317,7 +317,8 @@ test("registro semanal y solicitud de ajuste van a sus RPC", async ({ page }) =>
   await page.goto("mi-espacio/acompanamiento/");
   await hidratar(page);
   await expect(page.locator("h1")).toHaveText("Mi acompañamiento");
-  await expect(page.getByRole("heading", { level: 2, name: "Semana 2 de 4." })).toBeVisible();
+  await expect(page.locator(".me-semana__subtitulo")).toHaveText("Semana 2 de 4");
+  await page.locator("#tu-registro").getByRole("button", { name: "Escribir mi registro" }).click();
   await page.locator("#registro-funciono").fill("Escribir temprano.");
   await page.getByRole("button", { name: "Enviar mi registro" }).click();
   await expect.poll(() => llamadas.filter((l) => l.nombre === "guardar_registro_semanal").length).toBe(1);
@@ -390,12 +391,38 @@ test("Mi acompañamiento real: foco inicial y fecha de la primera revisión, sin
   await expect(page.getByRole("heading", { name: "Próxima revisión" })).toBeVisible();
   await expect(page.locator(".me-proxima")).toContainText("Jueves 15 de octubre");
   // Intro de cercanía y la modalidad real del plan (sin atención permanente ni chat).
-  await expect(page.locator(".me-acomp__intro")).toContainText("No tienes que hacerlo solo.");
-  await expect(page.locator(".me-coach__plan")).toContainText(/Revisión semanal por escrito/);
-  await expect(page.locator(".me-proxima")).toContainText("No es un chat.");
+  await expect(page.locator(".me-acomp__intro")).toContainText("Un espacio para compartir cómo vas");
+  await expect(page.locator(".me-proxima__modalidad")).toHaveText("Revisión por escrito");
+  await expect(page.locator(".me-proxima")).toContainText("Este espacio no es un chat de respuesta inmediata.");
   // Sin revisión publicada, el historial lo dice sin inventar observaciones.
   await expect(page.locator(".me-acomp-historial")).toContainText("Aquí verás las respuestas de tu coach.");
   await expect(page.locator(".me-avatar img")).toHaveCount(0);
+  await sinViolaciones(page);
+});
+
+// Revisión real extensa: primero un resumen y «Leer revisión completa»; la solicitud respondida
+// lleva la fecha real de la respuesta (solicitudes_ajuste.respondida_en). Sin «Nuevo».
+test("Mi acompañamiento real: revisión extensa con resumen y fechas reales en el historial", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  const largo = "Marcaste casi todo lo de la mañana y eso muestra que el horario temprano te funciona. ".repeat(4).trim();
+  base.revisiones.push({ participante_id: "p1", ciclo_id: "c1", semana: 1, tipo: "escrita", que_funciono: largo, que_ajustamos: null, foco: "Una cosa a la vez.", iniciada_en: "2026-10-08T18:00:00Z", publicada_en: "2026-10-08T20:00:00Z" });
+  base.solicitudes_ajuste.push({ id: "s9", participante_id: "p1", ciclo_id: "c1", creada_en: "2026-10-06T15:00:00Z", tipo: "horarios", ocurrencias: [], desde: "2026-10-06", texto: "Salgo tarde los martes.", estado: "respondida", respuesta: "Movimos la acción a la noche.", cuenta_como_reorden: false, respondida_en: "2026-10-07T15:00:00Z" });
+  await simular(page, base);
+  await page.goto("mi-espacio/acompanamiento/?n=1");
+  await hidratar(page);
+  const vimos = page.locator("#lo-que-vimos");
+  await expect(vimos).toContainText("Lo que funcionó");
+  // «Lo que podemos ajustar» venía vacío: no se inventa.
+  await expect(vimos).not.toContainText("Lo que podemos ajustar");
+  const boton = vimos.getByRole("button", { name: "Leer revisión completa" });
+  await expect(boton).toHaveAttribute("aria-expanded", "false");
+  await boton.click();
+  await expect(vimos.getByRole("button", { name: "Ver menos" })).toHaveAttribute("aria-expanded", "true");
+  const historial = page.locator(".me-acomp-historial");
+  await expect(historial).toContainText("Respondida el miércoles 7");
+  await expect(historial).toContainText("Publicada el jueves 8");
+  await expect(page.locator(".me-acomp .me-nuevo")).toHaveCount(0);
   await sinViolaciones(page);
 });
 

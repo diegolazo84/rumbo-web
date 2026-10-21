@@ -1,10 +1,11 @@
-// Mi acompañamiento con la referencia visual v2 (21-oct-2026): «Tu coach» genérico, el mensaje de
-// la semana (foco real del coach), «Me está costando», «Escribir mi registro», la próxima revisión
-// y el historial reciente, todo con datos que ya existen. Corre sobre la vista previa.
+// Mi acompañamiento con la referencia visual v2 y los textos exactos de Diego (21-oct-2026):
+// «Tu coach» genérico, el mensaje de la semana (foco real del coach), «Me está costando»,
+// «Escribir mi registro», la próxima revisión, el historial, «Así fue tu semana» y el cierre,
+// todo con datos que ya existen. Corre sobre la vista previa.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { revisiones } from "../src/data/ejemplo-app";
-import { T_ACOMPANAMIENTO as T, T_COSTANDO } from "../src/pages/vista-previa/mi-espacio/textos";
+import { T_ACOMPANAMIENTO as T, T_COSTANDO, T_SEMANA } from "../src/pages/vista-previa/mi-espacio/textos";
 
 const ETIQUETAS_AXE = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
@@ -22,21 +23,25 @@ test.beforeEach(({}, info) => {
   test.skip(info.project.name === "iphone", "basta con Chromium en móvil y escritorio");
 });
 
-test("tu coach sin nombre ni foto, con el foco real de la última revisión como mensaje", async ({ page }) => {
+test("tu coach sin nombre ni foto, con el foco real de la última revisión como mensaje y sin «Nuevo»", async ({ page }) => {
   await abrir(page, "publicada/");
   await expect(page.locator("h1")).toHaveText("Mi acompañamiento");
+  await expect(page.locator(".me-acomp__intro")).toHaveText(T.intro);
   const coach = page.locator(".me-coach");
   await expect(coach.getByRole("heading", { name: T.coach.titulo, exact: true })).toBeVisible();
+  await expect(coach).toContainText(T.coach.quien);
   await expect(coach.locator(".me-avatar img")).toHaveCount(0);
   await expect(coach).not.toContainText("Diego");
+  await expect(coach.locator(".me-coach__rotulo")).toHaveText(T.mensaje.rotulo);
   const foco = revisiones.find((r) => r.semana === 1)!.foco;
   await expect(coach.locator(".me-coach__cita")).toContainText(foco);
-  await expect(coach.locator(".me-coach__mensaje .me-nuevo")).toBeVisible();
   await expect(coach.locator(".me-coach__fecha")).toHaveText("Jueves 8");
+  // Lo visto se guarda solo en cada dispositivo: no es fiable, así que no hay «Nuevo» en esta sección.
+  await expect(page.locator(".me-acomp .me-nuevo")).toHaveCount(0);
   await sinViolaciones(page);
 });
 
-test("«Me está costando» abre la misma hoja de Mi Rumbo y el registro está en la pantalla", async ({ page }) => {
+test("«Me está costando» abre la misma hoja de Mi Rumbo; «Escribir mi registro» abre el formulario", async ({ page }) => {
   await abrir(page, "");
   await page.getByRole("button", { name: T.botones.costando }).click();
   const hoja = page.getByRole("dialog", { name: T_COSTANDO.titulo });
@@ -46,50 +51,97 @@ test("«Me está costando» abre la misma hoja de Mi Rumbo y el registro está e
   await expect(hoja).toContainText(T_COSTANDO.ayuda.titulo);
   await page.keyboard.press("Escape");
   await expect(hoja).not.toBeVisible();
-  const escribir = page.getByRole("link", { name: T.botones.escribir });
+  await expect(page.locator("#tu-registro")).toContainText(T_SEMANA.invitacion);
+  await expect(page.locator("#registro-funciono")).toHaveCount(0);
+  const escribir = page.locator(".me-acomp__botones").getByRole("link", { name: T.botones.escribir });
   await expect(escribir).toHaveAttribute("href", "#tu-registro");
   await escribir.click();
+  await expect(page.locator("#registro-funciono")).toBeVisible();
   await expect(page.locator("#tu-registro")).toBeInViewport();
 });
 
-test("registro ya enviado: el botón dice «Ver mi registro»", async ({ page }) => {
-  await abrir(page, "enviado/");
-  await expect(page.getByRole("link", { name: T.botones.ver })).toBeVisible();
-  await expect(page.getByRole("link", { name: T.botones.escribir, exact: true })).toHaveCount(0);
+test("«Escribir mi registro» dentro de «Lo que compartiste» abre el formulario y lleva el foco", async ({ page }) => {
+  await abrir(page, "");
+  const seccion = page.locator("#tu-registro");
+  await expect(seccion.getByRole("heading", { name: T_SEMANA.compartiste })).toBeVisible();
+  await seccion.getByRole("button", { name: T_SEMANA.escribir }).click();
+  await expect(page.locator("#tu-registro form")).toBeVisible();
+  await expect(page.locator("#tu-registro form :is(input, textarea)").first()).toBeFocused();
+  // La aclaración «no es un chat» aparece una sola vez en la pantalla.
+  await expect(page.getByText(/no es un chat/i).filter({ visible: true })).toHaveCount(1);
 });
 
-test("próxima revisión real: por escrito o videollamada según el plan, sin prometer chat", async ({ page }) => {
+test("registro ya enviado: «Lo que compartiste» muestra sus respuestas reales", async ({ page }) => {
+  await abrir(page, "enviado/");
+  const seccion = page.locator("#tu-registro");
+  await expect(seccion).toContainText("La pausa de la tarde");
+  await expect(seccion.getByRole("button", { name: T_SEMANA.editar })).toBeVisible();
+  await expect(page.locator(".me-acomp__botones").getByRole("link", { name: T.botones.escribir })).toBeVisible();
+});
+
+test("próxima revisión real: fecha, modalidad contratada y explicación según el programa", async ({ page }) => {
   await abrir(page, "");
   const proxima = page.locator(".me-proxima");
-  await expect(proxima).toContainText("Jueves 15 de octubre");
-  await expect(proxima).toContainText(T.proxima.escrita);
+  await expect(proxima.locator(".me-proxima__fecha")).toHaveText("Jueves 15 de octubre");
+  await expect(proxima.locator(".me-proxima__modalidad")).toHaveText(T.proxima.escrita);
+  await expect(proxima).toContainText(T.proxima.explicaEscrita);
   await expect(proxima).toContainText(T.proxima.noEsChat);
   await abrir(page, "cercano/");
-  await expect(page.locator(".me-coach__plan")).toContainText("Videollamada semanal de 20 minutos");
-  await expect(page.locator(".me-proxima")).toContainText("Videollamada a las");
+  await expect(page.locator(".me-proxima__modalidad")).toHaveText(T.proxima.videollamada("19:00"));
+  await expect(page.locator(".me-proxima")).toContainText(T.proxima.explicaVideollamada);
   await sinViolaciones(page);
 });
 
-test("historial: revisiones y solicitudes de ajuste reales, con «Nuevo» y enlaces", async ({ page }) => {
+test("historial: tipo, estado real, fecha y acción para ver el detalle", async ({ page }) => {
   await abrir(page, "publicada/");
   const items = page.locator(".me-acomp-historial__item");
   await expect(items).toHaveCount(3);
-  await expect(items.filter({ hasText: T.historial.revision(1, true) })).toHaveCount(1);
-  await expect(items.filter({ hasText: T.historial.ajusteRespondido })).toHaveCount(1);
-  await expect(items.filter({ hasText: T.historial.ajustePendiente })).toHaveCount(1);
-  await expect(page.locator(".me-acomp-historial .me-nuevo")).toHaveCount(2);
-  await items.filter({ hasText: T.historial.revision(1, true) }).getByRole("link").click();
-  await expect(page).toHaveURL(/#mis-semanas$/);
-  await expect(page.getByRole("heading", { level: 2, name: "Semana 1 de 4." })).toBeVisible();
+  await expect(items.nth(0)).toContainText(T.historial.ajuste);
+  await expect(items.nth(0)).toContainText("Enviada el lunes 12");
+  await expect(items.nth(0).getByRole("link")).toHaveText(T.historial.verSolicitud);
+  await expect(items.nth(1)).toContainText(T.historial.revision(1));
+  await expect(items.nth(1)).toContainText("Publicada el jueves 8");
+  await expect(items.nth(2)).toContainText("Respondida el martes 6");
+  await expect(items.nth(2).getByRole("link")).toHaveText(T.historial.verRespuesta);
+  await items.nth(1).getByRole("link", { name: T.historial.leerRevision }).click();
+  await expect(page).toHaveURL(/#lo-que-vimos$/);
+  await expect(page.locator("#lo-que-vimos")).toBeInViewport();
+});
+
+test("«Así fue tu semana»: «Lo que vimos juntos» con los tres apartados reales", async ({ page }) => {
+  await abrir(page, "publicada/");
+  await expect(page.getByRole("heading", { level: 2, name: T_SEMANA.asiFue })).toBeVisible();
+  await expect(page.locator(".me-semana__subtitulo")).toHaveText("Semana 1 de 4");
+  const vimos = page.locator("#lo-que-vimos");
+  await expect(vimos.getByRole("heading", { name: T_SEMANA.vimos })).toBeVisible();
+  for (const t of [T_SEMANA.loQueFunciono, T_SEMANA.podemosAjustar, T_SEMANA.focoProxima]) await expect(vimos.getByRole("heading", { name: t })).toBeVisible();
+  const r = revisiones.find((x) => x.semana === 1)!;
+  await expect(vimos).toContainText(r.funciono);
+  await expect(vimos).toContainText(r.ajustamos);
+  // Revisión corta: se ve completa, sin botón.
+  await expect(vimos.getByRole("button", { name: T_SEMANA.leerCompleta })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: T_SEMANA.avances })).toBeVisible();
+  await expect(page.locator(".me-marcaste__lista li[data-meta-color]").first()).toBeVisible();
+});
+
+test("sin revisión publicada: «Tu revisión aparecerá aquí cuando esté lista.»", async ({ page }) => {
+  await abrir(page, "en-revision/");
+  await expect(page.locator(".me-semana__sin-revision")).toHaveText(T_SEMANA.sinRevision);
+  await expect(page.locator("#lo-que-vimos")).toHaveCount(0);
 });
 
 test("semana 1, sin revisiones: foco inicial y fecha de la primera revisión, sin inventar", async ({ page }) => {
   await abrir(page, "semana-1/");
   await expect(page.locator(".me-coach__fecha")).toHaveText(T.mensaje.inicial);
-  await expect(page.locator(".me-coach__mensaje .me-nuevo")).toHaveCount(0);
-  // Aún no hay revisiones publicadas: el historial no muestra ninguna (solo el ajuste que ya existía).
-  await expect(page.locator(".me-acomp-historial")).not.toContainText("Tu coach respondió");
-  await expect(page.locator(".me-acomp-historial")).not.toContainText("Tu coach publicó");
+  await expect(page.locator(".me-acomp-historial")).not.toContainText(T.historial.revision(1));
+  await expect(page.locator(".me-semana__sin-revision")).toHaveText(T_SEMANA.sinRevision);
+});
+
+test("cierre: frase breve antes del paisaje", async ({ page }) => {
+  await abrir(page, "");
+  const cierre = page.locator(".me-acomp__cierre");
+  await expect(cierre).toContainText(T.cierre);
+  await expect(cierre.locator(".me-acomp__paisaje")).toHaveCount(1);
 });
 
 test("barra inferior: no tapa nada de Mi acompañamiento al desplazar", async ({ page, isMobile }) => {

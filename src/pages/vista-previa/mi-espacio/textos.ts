@@ -401,6 +401,23 @@ export const T_SEMANA = {
   selector: "Semana",
   ojo: "Revisión semanal",
   titulo: (n: number, total: number) => `Semana ${n} de ${total}.`,
+  // Textos exactos de Diego (21-oct-2026): «Así fue tu semana».
+  asiFue: "Así fue tu semana",
+  subtitulo: (n: number, total: number) => `Semana ${n} de ${total}`,
+  vimos: "Lo que vimos juntos",
+  publicadaEl: (dia: string) => `Publicada el ${dia}`,
+  videollamadaDel: (dia: string) => `Resumen de tu videollamada del ${dia}`,
+  loQueFunciono: "Lo que funcionó",
+  podemosAjustar: "Lo que podemos ajustar",
+  focoProxima: "Tu foco para la próxima semana",
+  cambiosPrograma: "Cambios en tu programa:",
+  leerCompleta: "Leer revisión completa",
+  verMenos: "Ver menos",
+  sinRevision: "Tu revisión aparecerá aquí cuando esté lista.",
+  compartiste: "Lo que compartiste",
+  invitacion: "¿Cómo te has sentido esta semana? Puedes contarnos qué funcionó, qué te costó y qué te gustaría cambiar.",
+  escribir: "Escribir mi registro",
+  avances: "Tus avances de esta semana",
   bajadaCoach: { antes: "Tu revisión es por escrito, el ", despues: ". Si no alcanzas a escribir, revisamos lo que marcaste en el calendario." },
   bajadaCercano: {
     antes: "Conversamos por videollamada el ",
@@ -588,49 +605,51 @@ export const T_PLAN = {
   ajusteTexto: "Pide un ajuste y lo revisamos contigo. Tu plan se adapta a tu vida, no al revés.",
 } as const;
 
-// Mi acompañamiento (referencia visual v2, 21-oct-2026): una persona te acompaña, pero sin
-// prometer chat ni disponibilidad permanente. Frecuencia y modalidad reales de cada plan
-// (src/data/rumbo.ts). «Tu coach» con avatar genérico hasta que exista la asignación (etapa 4A).
+// Mi acompañamiento (referencia visual v2 y textos exactos de Diego, 21-oct-2026). Le habla a la
+// persona; sin prometer chat ni disponibilidad permanente. «Tu coach» con avatar genérico hasta
+// que exista la asignación de coaches (etapa 4A).
 export const T_ACOMPANAMIENTO = {
-  intro: "No tienes que hacerlo solo. Estamos aquí para apoyarte.",
+  intro: "Un espacio para compartir cómo vas, qué te está costando y qué podemos ajustar juntos.",
   coach: {
     titulo: "Tu coach",
-    quien: "Te acompaña en este proceso",
-    escrita: (dia: string) => `Revisión semanal por escrito los ${dia}, aquí en tu espacio.`,
-    videollamada: (dia: string, hora: string) => `Videollamada semanal de 20 minutos los ${dia} a las ${hora} (hora de Chile), con un resumen escrito aquí.`,
+    quien: "Te acompaña a avanzar a tu ritmo",
   },
   mensaje: {
-    rotulo: "Mensaje de esta semana",
+    rotulo: "Un mensaje para ti esta semana",
     inicial: "Para empezar",
-    nuevo: "Nuevo",
   },
   botones: {
     costando: "Me está costando",
     escribir: "Escribir mi registro",
-    escribirOpcional: "Escribir mi registro (opcional)",
-    ver: "Ver mi registro",
   },
   proxima: {
     titulo: "Próxima revisión",
-    escrita: "Por escrito, aquí en tu espacio.",
-    videollamada: (hora: string) => `Videollamada a las ${hora} (hora de Chile), con un resumen escrito aquí.`,
-    registroEnviado: "Tu registro ya está enviado.",
-    registroPendiente: "Si alcanzas, escribe antes tu registro. Es opcional.",
-    noEsChat: "Tu coach lee lo que escribes y te responde en cada revisión. No es un chat.",
+    escrita: "Revisión por escrito",
+    videollamada: (hora: string) => `Videollamada de 20 minutos · ${hora} (hora de Chile)`,
+    explicaEscrita: "Puedes contarnos cómo te fue en tu registro. Tu coach lo revisará en la fecha indicada.",
+    explicaVideollamada: "Nos encontraremos en tu sesión programada para revisar tus avances y ajustar lo que necesites.",
+    noEsChat: "Este espacio no es un chat de respuesta inmediata.",
   },
   historial: {
     titulo: "Historial reciente",
-    revision: (n: number, conRegistro: boolean) =>
-      conRegistro ? `Tu coach respondió tu registro de la semana ${n}.` : `Tu coach publicó tu revisión de la semana ${n}.`,
-    verRevision: "Ver la revisión",
-    ajusteRespondido: "Respondimos tu solicitud de ajuste.",
-    ajusteSinCambios: "Revisamos tu solicitud de ajuste.",
-    ajustePendiente: "Enviaste una solicitud de ajuste. La estamos revisando.",
-    verRespuesta: "Ver la respuesta",
-    verSolicitud: "Ver tu solicitud",
-    vacio: (dia: string) => `Aquí verás las respuestas de tu coach. Tu primera revisión llega el ${dia}.`,
+    revision: (n: number) => `Revisión de la semana ${n}`,
+    ajuste: "Solicitud de ajuste",
+    estados: {
+      publicada: "Publicada",
+      enviada: "Enviada",
+      en_revision: "En revisión",
+      respondida: "Respondida",
+      sin_cambios: "Revisada sin cambios",
+    },
+    fecha: (estado: string, dia: string) => `${estado} el ${dia}`,
+    enRevision: (dia: string) => `En revisión · enviada el ${dia}`,
+    leerRevision: "Leer la revisión",
+    verRespuesta: "Ver respuesta",
+    verSolicitud: "Ver mi solicitud",
+    vacio: (dia: string) => `Aquí verás las respuestas de tu coach. Tu primera revisión es el ${dia}.`,
     vacioSinFecha: "Aquí verás las respuestas de tu coach.",
   },
+  cierre: "No tienes que resolverlo todo hoy. Seguimos avanzando contigo.",
   pronto: {
     titulo: "Lo que viene en tu acompañamiento",
     items: [
