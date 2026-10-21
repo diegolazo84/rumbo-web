@@ -65,6 +65,8 @@ const TABLAS = {
   videollamadas: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   recordatorios: { leer: "propio", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   alias: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
+  publicaciones: { leer: "equipo", escribir: "funciones", dueno: "autor", coach: { leer: "nada", escribir: "nada" } },
+  reportes_comunidad: { leer: "equipo", escribir: "funciones", dueno: "reportante", coach: { leer: "nada", escribir: "nada" } },
   plantillas_accion: { leer: "equipo", escribir: "funciones", coach: { leer: "todas", escribir: "nada" } },
   registros_semanales: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   programas: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // sin borradores
@@ -85,12 +87,14 @@ const FUNCIONES = {
     "adjuntar_foto", "quitar_foto", "guardar_recordatorios",
     "evolucion_semanal", "informe_ciclo", "mis_medibles", "anotar_cantidad",
     "guardar_alias", "participar_en_ranking", "ranking_semanal",
+    "aceptar_reglas_comunidad", "publicar_en_comunidad", "borrar_mi_publicacion", "reportar_publicacion", "comunidad_publicaciones",
   ],
   "equipo-error": [
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
     "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion", "cambiar_modulo", "indicadores",
     "registrar_pago", "devolucion_sugerida", "registrar_devolucion",
     "invitar_coach", "revocar_invitacion", "cambiar_coach", "programar_videollamada", "anotar_videollamada",
+    "moderar_publicacion",
   ],
   equipo: ["mi_rol_equipo", "actualizar_mi_perfil", "guardar_plantilla"],
   "con-sesion": ["modulo_visible", "marcar_avisos_leidos", "aceptar_invitacion_equipo"],
@@ -199,6 +203,10 @@ insert into public.videollamadas (participante_id, ciclo_id, semana, programada_
   on conflict (ciclo_id, semana) do nothing;
 insert into public.alias (participante_id, alias, en_ranking, ranking_aceptado_en)
   values ('${ROLES.A.ficha}', 'Alias A', true, now()), ('${ROLES.B.ficha}', 'Alias B', true, now()) on conflict do nothing;
+insert into public.publicaciones (id, autor, texto) values ('00000000-0000-0000-0000-0000000000b1', '${ROLES.B.ficha}', 'Publicación de prueba de CI.')
+  on conflict do nothing;
+insert into public.reportes_comunidad (publicacion_id, reportante, motivo)
+  values ('00000000-0000-0000-0000-0000000000b1', '${ROLES.A.ficha}', 'spam') on conflict do nothing;
 insert into public.plantillas_accion (titulo, instrucciones, duracion_min, autor)
   values ('Caminar', 'Plantilla de prueba de CI.', 20, '${ROLES.aal2.uid}');
 insert into public.recordatorios (participante_id) values ('${ROLES.A.ficha}'), ('${ROLES.B.ficha}') on conflict do nothing;
@@ -829,6 +837,67 @@ paso("medibles y plantillas: la cantidad se anota en lo propio ya marcado y no c
   const entrar = como(ROLES.A, "select public.participar_en_ranking(true)");
   exigir(!entrar.ok && /no_disponible/.test(entrar.error), "una persona entra al ranking sin que el dueño lo haya habilitado");
 }
+// C6 · Comunidad: solo con el módulo habilitado, alias y reglas; se publica con alias; moderación aparte.
+{
+  const abrir = `reset role; update public.modulos set estado = 'habilitado' where clave = 'comunidad';
+    update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    update public.alias set reglas_comunidad_en = now(); set local role authenticated;`;
+  const cerrada = como(ROLES.A, "select public.publicar_en_comunidad('Hola')");
+  exigir(!cerrada.ok && /no_disponible/.test(cerrada.error), "se publicó con la comunidad sin habilitar");
+  const sinReglas = como(ROLES.A, `${abrir} reset role; update public.alias set reglas_comunidad_en = null; set local role authenticated;
+    select public.publicar_en_comunidad('Hola')`);
+  exigir(!sinReglas.ok && /sin_reglas/.test(sinReglas.error), "se publicó sin aceptar las reglas");
+  const acepta = como(ROLES.A, `${abrir} reset role; update public.alias set reglas_comunidad_en = null; set local role authenticated;
+    select public.aceptar_reglas_comunidad() \\g /dev/null
+    select public.publicar_en_comunidad('Primera publicación de A') is not null`);
+  exigir(acepta.ok && ultima(acepta) === "t", `A no pudo publicar tras aceptar las reglas: ${acepta.error ?? ultima(acepta)}`);
+  const feed = como(ROLES.A, `${abrir} select public.publicar_en_comunidad('Hola desde A') \\g /dev/null
+    select string_agg(alias_publico || '|' || mia::int, ',' order by alias_publico) from public.comunidad_publicaciones()`);
+  exigir(feed.ok && ultima(feed) === "Alias A|1,Alias B|0", `la comunidad no muestra lo esperado con alias: ${feed.error ?? ultima(feed)}`);
+  const columnas = sql(`select string_agg(parameter_name, ',' order by ordinal_position) from information_schema.parameters
+    where specific_name like 'comunidad_publicaciones%' and parameter_mode = 'OUT'`);
+  exigir(!/autor|participante|nombre|correo/.test(columnas), `comunidad_publicaciones expone quién es quién: ${columnas}`);
+  const directo = como(ROLES.A, `${abrir} select count(*) from public.publicaciones`);
+  exigir(directo.ok && ultima(directo) === "0", "una persona lee la tabla de publicaciones directo (vería los autores)");
+  const responde = como(ROLES.A, `${abrir} select public.publicar_en_comunidad('Respuesta de A', '00000000-0000-0000-0000-0000000000b1') \\g /dev/null
+    select count(*) from public.comunidad_publicaciones('00000000-0000-0000-0000-0000000000b1')`);
+  exigir(responde.ok && ultima(responde) === "2", `el hilo no muestra la publicación y su respuesta: ${responde.error ?? ultima(responde)}`);
+  const borraAjena = como(ROLES.A, `${abrir} select public.borrar_mi_publicacion('00000000-0000-0000-0000-0000000000b1')`);
+  exigir(!borraAjena.ok && /no_encontrada/.test(borraAjena.error), "A borró una publicación de B");
+  const borra = como(ROLES.B, `${abrir} select public.borrar_mi_publicacion('00000000-0000-0000-0000-0000000000b1') \\g /dev/null
+    select count(*) from public.comunidad_publicaciones()`);
+  exigir(borra.ok && ultima(borra) === "0", `B no pudo borrar su publicación: ${borra.error ?? ultima(borra)}`);
+  const reporta = como(ROLES.A, `${abrir} reset role; delete from public.reportes_comunidad; set local role authenticated;
+    select public.reportar_publicacion('00000000-0000-0000-0000-0000000000b1', 'respeto') \\g /dev/null
+    select public.reportar_publicacion('00000000-0000-0000-0000-0000000000b1', 'respeto') \\g /dev/null
+    reset role; select count(*) from public.reportes_comunidad`);
+  exigir(reporta.ok && ultima(reporta) === "1", `el reporte no quedó una sola vez: ${reporta.error ?? ultima(reporta)}`);
+  const propia = como(ROLES.B, `${abrir} select public.reportar_publicacion('00000000-0000-0000-0000-0000000000b1', 'spam')`);
+  exigir(!propia.ok && /no_encontrada/.test(propia.error), "una persona reportó su propia publicación");
+  const oculta = como(ROLES.aal2, `select public.moderar_publicacion('00000000-0000-0000-0000-0000000000b1', true, 'respeto') \\g /dev/null
+    select (select estado from public.publicaciones where id = '00000000-0000-0000-0000-0000000000b1') || ' ' ||
+           (select count(*) from public.reportes_comunidad where publicacion_id = '00000000-0000-0000-0000-0000000000b1' and resolucion = 'ocultada')`);
+  exigir(oculta.ok && ultima(oculta) === "oculta 1", `el dueño no pudo ocultar con motivo: ${oculta.error ?? ultima(oculta)}`);
+  const sinMotivo = como(ROLES.aal2, "select public.moderar_publicacion('00000000-0000-0000-0000-0000000000b1', true)");
+  exigir(!sinMotivo.ok && /motivo/.test(sinMotivo.error), "se ocultó una publicación sin motivo");
+  const tras = como(ROLES.A, `${abrir} reset role; update public.publicaciones set estado = 'oculta', moderacion_motivo = 'respeto'
+    where id = '00000000-0000-0000-0000-0000000000b1'; set local role authenticated;
+    select count(*) from public.comunidad_publicaciones() where id = '00000000-0000-0000-0000-0000000000b1'`);
+  exigir(tras.ok && ultima(tras) === "0", "una publicación oculta sigue visible");
+  const modera = como(ROLES.X, `reset role; update public.equipo set puede_moderar = true where user_id = '${ROLES.X.uid}'; set local role authenticated;
+    select public.moderar_publicacion('00000000-0000-0000-0000-0000000000b1', false) \\g /dev/null
+    select count(*) from public.publicaciones`);
+  exigir(modera.ok && Number(ultima(modera)) > 0, `un coach con permiso de moderar no pudo moderar: ${modera.error ?? ultima(modera)}`);
+  const spam = como(ROLES.A, `${abrir} reset role; insert into public.publicaciones (autor, texto)
+    select '${ROLES.A.ficha}', 'x' from generate_series(1, 20); set local role authenticated;
+    select public.publicar_en_comunidad('una más')`);
+  exigir(!spam.ok && /demasiadas/.test(spam.error), "no hay tope de publicaciones al día");
+  const exp = como(ROLES.A, `${abrir} select public.publicar_en_comunidad('Para mi copia') \\g /dev/null
+    select jsonb_array_length(public.exportar_mis_datos()->'publicaciones')`);
+  exigir(exp.ok && Number(ultima(exp)) >= 1, `la copia de mis datos no incluye mis publicaciones: ${exp.error ?? ultima(exp)}`);
+}
+paso("comunidad: solo habilitada, con alias y reglas; se ve el alias, no quién es; reportes y moderación con motivo");
+
 paso("ranking: voluntario, solo con alias, por % de la semana; con menos de 3 no se muestra; quien sale deja de verlo");
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
