@@ -71,13 +71,13 @@ const FUNCIONES = {
   anon: ["ping", "estado_postulaciones", "enviar_solicitud", "ver_solicitud", "retirar_solicitud", "aceptar_acuerdo", "enviar_mensaje"],
   persona: [
     "soy_equipo", "mi_contexto", "marcar_accion", "desmarcar_accion", "dejar_pasar", "registrar_evidencia", "eliminar_evidencia",
-    "guardar_registro_semanal", "pedir_ajuste", "actualizar_preferencias", "pedir_derecho", "exportar_mis_datos",
+    "guardar_registro_semanal", "pedir_ajuste", "actualizar_preferencias", "pedir_derecho", "exportar_mis_datos", "mi_coach",
   ],
   "equipo-error": [
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
     "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion",
   ],
-  equipo: ["mi_rol_equipo"],
+  equipo: ["mi_rol_equipo", "actualizar_mi_perfil"],
   "equipo-vacio": ["solapamientos", "carga_prevista"],
 };
 // Funciones de privado que authenticated necesita porque las usan las políticas de RLS.
@@ -402,6 +402,22 @@ const sinCambio = como(ROLES.aal2, `update public.ciclos set semanas = semanas w
   select count(*) from public.auditoria where tabla = 'ciclos' and en = now()`);
 exigir(sinCambio.ok && ultima(sinCambio) === "0", "una modificación sin cambios quedó en la auditoría");
 paso("auditoría: cada cambio de gestión queda registrado; la postulación original solo se lee con motivo");
+
+// A3 · Perfil del coach: cada uno edita el suyo; el participante ve solo a su coach.
+const PRES = "Acompaño proyectos personales (CI).";
+assert.ok(confirmado(ROLES.X, `select public.actualizar_mi_perfil('{"presentacion": "${PRES}"}'::jsonb)`).ok, "coach X no pudo editar su presentación");
+const suCoach = como(ROLES.A, "select public.mi_coach()::text");
+exigir(suCoach.ok && suCoach.salida.includes("Coach X") && suCoach.salida.includes(PRES) && !suCoach.salida.includes("@"),
+  `persona A no ve a su coach (o ve de más): ${suCoach.salida ?? suCoach.error}`);
+const otroCoach = como(ROLES.B, "select public.mi_coach()::text");
+exigir(otroCoach.ok && otroCoach.salida.includes("Coach Y") && !otroCoach.salida.includes("Coach X"), `persona B ve al coach equivocado: ${otroCoach.salida}`);
+assert.ok(confirmado(ROLES.Y, `select public.actualizar_mi_perfil('{"nombre": "Coach Y (editado)"}'::jsonb)`).ok, "coach Y no pudo editar su nombre");
+exigir(sql(`select nombre from public.equipo where user_id = '${ROLES.X.uid}'`) === "Coach X", "editar el perfil propio cambió el de otro coach");
+exigir(sql(`select nombre from public.equipo where user_id = '${ROLES.Y.uid}'`) === "Coach Y (editado)", "coach Y no cambió su propio nombre");
+sql(`update public.equipo set nombre = 'Coach Y' where user_id = '${ROLES.Y.uid}'`);
+const personaEdita = como(ROLES.A, `select public.actualizar_mi_perfil('{"nombre": "Intruso"}'::jsonb)`);
+exigir(!personaEdita.ok && /no_autorizado/.test(personaEdita.error), "una persona participante edita perfiles del equipo");
+paso("perfil del coach: cada coach edita el suyo; cada participante ve solo a su coach, sin datos de contacto");
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
 

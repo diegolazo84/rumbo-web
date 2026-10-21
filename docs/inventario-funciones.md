@@ -23,6 +23,7 @@ legal de Diego).
 | 6 | Recompensas y reconocimientos | inexistente | Catálogo y criterios | decisión, migración | — |
 | 7 | Ranking voluntario | simulada | Alias, aceptación, cálculo semanal | #16 | — |
 | 8 | Roles y asignación de coaches | desarrollada (base de datos y pruebas) | Integrar, aplicar en producción; pantallas del coach y de asignación | migración, diseño | A1 |
+| 8b | Perfil del coach y «Tu coach» real | desarrollada (base de datos y pruebas) | Pantallas (Mi acompañamiento y panel); foto del coach con C1 | migración, diseño | A3 |
 | 9 | Panel del dueño | parcial | Tablero, pagos, módulos, pantalla de auditoría. Auditoría de cambios y «Ver con motivo»: desarrolladas en la base (A2) | #8, diseño, migración | A2 |
 | 10 | Panel del coach | parcial | Vista propia, bandeja de alertas, «Ver como» | #8, diseño | — |
 | 11 | Notificaciones sincronizadas | inexistente | Avisos y leídos en la base | #8, migración | — |
