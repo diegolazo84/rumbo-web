@@ -64,6 +64,7 @@ const TABLAS = {
   pagos: { leer: "propio", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   videollamadas: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   recordatorios: { leer: "propio", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  alias: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   plantillas_accion: { leer: "equipo", escribir: "funciones", coach: { leer: "todas", escribir: "nada" } },
   registros_semanales: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   programas: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // sin borradores
@@ -83,6 +84,7 @@ const FUNCIONES = {
     "guardar_registro_semanal", "pedir_ajuste", "actualizar_preferencias", "pedir_derecho", "exportar_mis_datos", "mi_coach",
     "adjuntar_foto", "quitar_foto", "guardar_recordatorios",
     "evolucion_semanal", "informe_ciclo", "mis_medibles", "anotar_cantidad",
+    "guardar_alias", "participar_en_ranking", "ranking_semanal",
   ],
   "equipo-error": [
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
@@ -195,6 +197,8 @@ insert into public.videollamadas (participante_id, ciclo_id, semana, programada_
   select c.participante_id, c.id, 1, now() + interval '2 days', 'https://meet.example.com/ci' from public.ciclos c
    where c.participante_id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}')
   on conflict (ciclo_id, semana) do nothing;
+insert into public.alias (participante_id, alias, en_ranking, ranking_aceptado_en)
+  values ('${ROLES.A.ficha}', 'Alias A', true, now()), ('${ROLES.B.ficha}', 'Alias B', true, now()) on conflict do nothing;
 insert into public.plantillas_accion (titulo, instrucciones, duracion_min, autor)
   values ('Caminar', 'Plantilla de prueba de CI.', 20, '${ROLES.aal2.uid}');
 insert into public.recordatorios (participante_id) values ('${ROLES.A.ficha}'), ('${ROLES.B.ficha}') on conflict do nothing;
@@ -779,6 +783,53 @@ paso("evolución: semanas e informe de ciclo cuadran con la base; solo los ven l
   }
 }
 paso("medibles y plantillas: la cantidad se anota en lo propio ya marcado y no cambia créditos; las plantillas son del equipo");
+
+// C5 · Alias y ranking semanal voluntario.
+{
+  const enUso = como(ROLES.A, "select public.guardar_alias('alias b')");
+  exigir(!enUso.ok && /en_uso/.test(enUso.error), "A tomó el alias de B (sin distinguir mayúsculas)");
+  const malo = como(ROLES.A, "select public.guardar_alias('<b>hola')");
+  exigir(!malo.ok && /alias:invalido/.test(malo.error), "se aceptó un alias con símbolos");
+  const cambia = como(ROLES.A, "select public.guardar_alias('Brisa del sur') \\g /dev/null\n select alias from public.alias");
+  exigir(cambia.ok && ultima(cambia) === "Brisa del sur", `A no pudo cambiar su alias: ${cambia.error ?? ultima(cambia)}`);
+  // Semana fija (lunes 5 de enero de 2026): A cumple 100 %, B y una tercera persona C, 50 %.
+  const lunes = "'2026-01-05'::date";
+  const semana = (conC) => `reset role; set session_replication_role = replica;
+    update public.modulos set estado = 'habilitado' where clave = 'ranking';
+    update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    delete from public.progreso_diario where fecha between ${lunes} and ${lunes} + 6;
+    insert into public.progreso_diario (participante_id, fecha, programadas, hechas, en_revision, creditos_acciones, bono, racha)
+      values ('${ROLES.A.ficha}', ${lunes}, 4, 5, 0, 0, 0, 0), ('${ROLES.B.ficha}', ${lunes}, 4, 2, 0, 0, 0, 0);
+    ${conC ? `insert into public.participantes select (jsonb_populate_record(null::public.participantes, to_jsonb(p)
+        || jsonb_build_object('id', '00000000-0000-0000-0000-00000000c0c0', 'user_id', null, 'correo', 'persona-c-ci@example.com'))).*
+      from public.participantes p where p.id = '${ROLES.B.ficha}';
+    insert into public.alias (participante_id, alias, en_ranking, ranking_aceptado_en) values ('00000000-0000-0000-0000-00000000c0c0', 'Alias C', true, now());
+    insert into public.progreso_diario (participante_id, fecha, programadas, hechas, en_revision, creditos_acciones, bono, racha)
+      values ('00000000-0000-0000-0000-00000000c0c0', ${lunes} + 2, 2, 1, 0, 0, 0, 0);` : ""}
+    set session_replication_role = origin; set local role authenticated;`;
+  const tabla = `select string_agg(puesto || ' ' || alias_publico || ' ' || cumplimiento || ' ' || soy_yo::int, ', ' order by puesto, alias_publico)
+    from public.ranking_semanal(${lunes})`;
+  const r3 = como(ROLES.A, `${semana(true)} ${tabla}`);
+  exigir(r3.ok && ultima(r3) === "1 Alias A 100 1, 2 Alias B 50 0, 2 Alias C 50 0", `el ranking de la semana no es el esperado: ${r3.error ?? ultima(r3)}`);
+  const r2 = como(ROLES.A, `${semana(false)} ${tabla}`);
+  exigir(r2.ok && ultima(r2) === "", `con 2 participantes el ranking se mostró: ${r2.error ?? ultima(r2)}`);
+  const dueno = como(ROLES.aal2, `${semana(true)} select count(*) from public.ranking_semanal(${lunes})`);
+  exigir(dueno.ok && ultima(dueno) === "3", `el dueño no ve el ranking: ${dueno.error ?? ultima(dueno)}`);
+  const sale = como(ROLES.A, `select public.participar_en_ranking(false) \\g /dev/null\n ${semana(true)} select count(*) from public.ranking_semanal(${lunes})`);
+  exigir(!sale.ok && /no_participa/.test(sale.error), "quien salió del ranking lo sigue viendo");
+  const fuera = como(ROLES.B, `${semana(true)} reset role; update public.alias set en_ranking = false where participante_id = '${ROLES.B.ficha}'; set local role authenticated;
+    select count(*) from public.ranking_semanal(${lunes})`);
+  exigir(!fuera.ok && /no_participa/.test(fuera.error), "quien no participa ve el ranking");
+  const martes = como(ROLES.A, "select count(*) from public.ranking_semanal('2026-01-06')");
+  exigir(!martes.ok && /semana/.test(martes.error), "se pidió el ranking de una semana que no parte el lunes");
+  const anon = como(ROLES.anon, "select count(*) from public.ranking_semanal()");
+  exigir(!anon.ok && anon.codigo === DENEGADO, "sin sesión se ve el ranking");
+  const apagado = como(ROLES.A, `select count(*) from public.ranking_semanal(${lunes})`);
+  exigir(!apagado.ok && /no_disponible/.test(apagado.error), "una persona ve el ranking sin que el dueño lo haya habilitado");
+  const entrar = como(ROLES.A, "select public.participar_en_ranking(true)");
+  exigir(!entrar.ok && /no_disponible/.test(entrar.error), "una persona entra al ranking sin que el dueño lo haya habilitado");
+}
+paso("ranking: voluntario, solo con alias, por % de la semana; con menos de 3 no se muestra; quien sale deja de verlo");
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
 
