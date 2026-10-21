@@ -30,7 +30,8 @@ if (!PGURL) throw new Error("Falta PGURL.");
 // ---------------------------------------------------------------------------
 // Lo esperado
 
-// coach: qué hace un coach con sus participantes («suyos»), «propia» (su fila y la del dueño) o «nada».
+// coach: qué hace un coach con sus participantes («suyos»), «propia» (su fila y la del dueño),
+//        «todas» (todas las filas: material del equipo) o «nada».
 // leer: «todos» (catálogo, también anon) · «con-sesion» (todas las filas, solo con sesión) ·
 //       «destinatario» (cada cuenta ve solo las filas dirigidas a ella) · «equipo» (solo equipo con aal2) ·
 //       «propio» (cada persona ve exactamente sus filas; el equipo con aal2, todas) ·
@@ -63,6 +64,7 @@ const TABLAS = {
   pagos: { leer: "propio", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   videollamadas: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   recordatorios: { leer: "propio", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  plantillas_accion: { leer: "equipo", escribir: "funciones", coach: { leer: "todas", escribir: "nada" } },
   registros_semanales: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   programas: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // sin borradores
   metas: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // solo de programas publicados
@@ -80,7 +82,7 @@ const FUNCIONES = {
     "soy_equipo", "mi_contexto", "marcar_accion", "desmarcar_accion", "dejar_pasar", "registrar_evidencia", "eliminar_evidencia",
     "guardar_registro_semanal", "pedir_ajuste", "actualizar_preferencias", "pedir_derecho", "exportar_mis_datos", "mi_coach",
     "adjuntar_foto", "quitar_foto", "guardar_recordatorios",
-    "evolucion_semanal", "informe_ciclo",
+    "evolucion_semanal", "informe_ciclo", "mis_medibles", "anotar_cantidad",
   ],
   "equipo-error": [
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
@@ -88,7 +90,7 @@ const FUNCIONES = {
     "registrar_pago", "devolucion_sugerida", "registrar_devolucion",
     "invitar_coach", "revocar_invitacion", "cambiar_coach", "programar_videollamada", "anotar_videollamada",
   ],
-  equipo: ["mi_rol_equipo", "actualizar_mi_perfil"],
+  equipo: ["mi_rol_equipo", "actualizar_mi_perfil", "guardar_plantilla"],
   "con-sesion": ["modulo_visible", "marcar_avisos_leidos", "aceptar_invitacion_equipo"],
   "equipo-vacio": ["solapamientos", "carga_prevista", "bandeja_seguimiento"],
 };
@@ -193,6 +195,8 @@ insert into public.videollamadas (participante_id, ciclo_id, semana, programada_
   select c.participante_id, c.id, 1, now() + interval '2 days', 'https://meet.example.com/ci' from public.ciclos c
    where c.participante_id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}')
   on conflict (ciclo_id, semana) do nothing;
+insert into public.plantillas_accion (titulo, instrucciones, duracion_min, autor)
+  values ('Caminar', 'Plantilla de prueba de CI.', 20, '${ROLES.aal2.uid}');
 insert into public.recordatorios (participante_id) values ('${ROLES.A.ficha}'), ('${ROLES.B.ficha}') on conflict do nothing;
 `);
 
@@ -263,6 +267,8 @@ for (const [t, regla] of Object.entries(TABLAS)) {
         const suyas = Number(sql(`select count(*) from public.${t} x where ${duenoDe(t, "x")} in ${enLista(rol.suyos)}`));
         exigir(n === suyas, `${que}: ve ${n} de las ${suyas} filas de sus participantes`);
         if (clave === "X") exigir(suyas > 0, `public.${t} no tiene filas de los participantes de ${rol.nombre}: la prueba quedó vacía`);
+      } else if (regla.coach.leer === "todas") {
+        exigir(n === (clave === "Xaal1" ? 0 : total), `${que}: ve ${n} de ${total} (material del equipo: todo con TOTP)`);
       } else if (regla.coach.leer === "propia") {
         const esperadas = Number(sql(`select count(*) from public.equipo where user_id = '${rol.uid}' or rol = 'dueno'`));
         exigir(n === esperadas, `${que}: ve ${n} filas (su fila y la del dueño: ${esperadas})`);
@@ -725,6 +731,54 @@ paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan 
   exigir(informe.ok && informe.salida === `${enBase} ${focos}`, `el informe del ciclo de A no cuadra: ${informe.error ?? informe.salida} (base: ${enBase} ${focos})`);
 }
 paso("evolución: semanas e informe de ciclo cuadran con la base; solo los ven la persona, su coach y el dueño");
+
+// C4 · Acciones medibles y plantillas.
+{
+  const oc = sql(`select o.id from public.ocurrencias o join public.registros r on r.ocurrencia_id = o.id and r.estado in ('hecha','aprobada')
+    where o.participante_id = '${ROLES.A.ficha}' limit 1`);
+  const ocSin = sql(`select o.id from public.ocurrencias o where o.participante_id = '${ROLES.A.ficha}'
+    and not exists (select 1 from public.registros r where r.ocurrencia_id = o.id) limit 1`);
+  exigir(Boolean(oc && ocSin), "A no tiene acciones marcadas y sin marcar para probar las medibles");
+  const medible = (ids) => `reset role; set session_replication_role = replica;
+    update public.acciones set cantidad_objetivo = 20, unidad = 'minutos' where id in (select accion_id from public.ocurrencias where id in (${ids}));
+    set session_replication_role = origin; set local role authenticated;`;
+  const noMedible = como(ROLES.A, `select public.anotar_cantidad('${oc}', 15)`);
+  exigir(!noMedible.ok && /no_medible/.test(noMedible.error), "se anotó una cantidad en una acción que no es medible");
+  const anota = como(ROLES.A, `${medible(`'${oc}'`)} select public.anotar_cantidad('${oc}', 15) \\g /dev/null
+    select cantidad_objetivo || ' ' || unidad || ' ' || cantidad from public.mis_medibles(current_date - 92, current_date + 0) where ocurrencia_id = '${oc}'`);
+  exigir(anota.ok && ultima(anota) === "20 minutos 15", `A no pudo anotar la cantidad: ${anota.error ?? ultima(anota)}`);
+  const creditos = `select creditos from public.progreso where participante_id = '${ROLES.A.ficha}'`;
+  const igual = como(ROLES.A, `${creditos}; ${medible(`'${oc}'`)} select public.anotar_cantidad('${oc}', 15) \\g /dev/null
+    ${creditos}`);
+  const [c0, c1] = (igual.salida ?? "").split("\n");
+  exigir(igual.ok && c0 === c1, `anotar la cantidad cambió los créditos: ${igual.error ?? `${c0} → ${c1}`}`);
+  const sinMarcar = como(ROLES.A, `${medible(`'${ocSin}'`)} select public.anotar_cantidad('${ocSin}', 5)`);
+  exigir(!sinMarcar.ok && /sin_marcar/.test(sinMarcar.error), "se anotó una cantidad en una acción sin marcar");
+  const bAnota = como(ROLES.B, `${medible(`'${oc}'`)} select public.anotar_cantidad('${oc}', 5)`);
+  exigir(!bAnota.ok && /no_encontrada/.test(bAnota.error), "B anotó una cantidad en una acción de A");
+  const bVe = como(ROLES.B, `${medible(`'${oc}'`)} select count(*) from public.mis_medibles(current_date - 92, current_date + 0) where ocurrencia_id = '${oc}'`);
+  exigir(bVe.ok && ultima(bVe) === "0", "B ve lo medible de A");
+  const negativa = como(ROLES.A, `${medible(`'${oc}'`)} select public.anotar_cantidad('${oc}', -1)`);
+  exigir(!negativa.ok && /cantidad/.test(negativa.error), "se aceptó una cantidad negativa");
+
+  const datos = `'{"titulo": "Respirar", "instrucciones": "Tres respiraciones lentas.", "duracion_min": 5, "cantidad_objetivo": 3, "unidad": "veces"}'`;
+  const xCrea = como(ROLES.X, `select public.guardar_plantilla(null, ${datos}) \\g /dev/null
+    select titulo || ' ' || unidad from public.plantillas_accion where autor = '${ROLES.X.uid}'`);
+  exigir(xCrea.ok && ultima(xCrea) === "Respirar veces", `el coach no pudo crear una plantilla: ${xCrea.error ?? ultima(xCrea)}`);
+  const plantillaDueno = sql(`select id from public.plantillas_accion where autor = '${ROLES.aal2.uid}' limit 1`);
+  const xEdita = como(ROLES.X, `select public.guardar_plantilla('${plantillaDueno}', '{"titulo": "Otra"}')`);
+  exigir(!xEdita.ok && /no_autorizado/.test(xEdita.error), "un coach editó la plantilla de otra persona");
+  const duenoArchiva = como(ROLES.aal2, `select public.guardar_plantilla('${plantillaDueno}', '{"archivada": true}') \\g /dev/null
+    select archivada::int from public.plantillas_accion where id = '${plantillaDueno}'`);
+  exigir(duenoArchiva.ok && ultima(duenoArchiva) === "1", `el dueño no pudo archivar una plantilla: ${duenoArchiva.error ?? ultima(duenoArchiva)}`);
+  const mala = como(ROLES.aal2, `select public.guardar_plantilla(null, '{"titulo": "X", "instrucciones": "a", "duracion_min": 5, "unidad": "veces"}')`);
+  exigir(!mala.ok && /plantilla:invalida/.test(mala.error), "se aceptó una plantilla con unidad y sin cantidad");
+  for (const r of [ROLES.A, ROLES.aal1, ROLES.Xaal1]) {
+    const x = como(r, `select public.guardar_plantilla(null, ${datos})`);
+    exigir(!x.ok && /no_autorizado/.test(x.error), `${r.nombre} creó una plantilla: ${x.ok ? "funcionó" : x.error}`);
+  }
+}
+paso("medibles y plantillas: la cantidad se anota en lo propio ya marcado y no cambia créditos; las plantillas son del equipo");
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
 
