@@ -1,12 +1,13 @@
 Matriz de acceso (Supabase local)
-  01. inventario: 26 tablas de public y 3 de privado con RLS y declaradas; 31 funciones declaradas
+  01. inventario: 26 tablas de public y 3 de privado con RLS y declaradas; 32 funciones declaradas
   02. lectura: 25 tablas × 8 roles; cada persona ve solo lo suyo
   03. escritura directa: solo el equipo con TOTP escribe, y solo en las tablas de gestión
   04. coaches: cada uno trabaja solo con sus participantes; al reasignar, el anterior pierde el acceso; asignar y cambiar roles es del dueño
-  05. funciones del equipo: 11 rechazan a las personas y al equipo sin TOTP
-  06. esquema privado: sin permisos de tabla para anon ni authenticated
+  05. auditoría: cada cambio de gestión queda registrado; la postulación original solo se lee con motivo
+  06. funciones del equipo: 12 rechazan a las personas y al equipo sin TOTP
+  07. esquema privado: sin permisos de tabla para anon ni authenticated
 
-290 fallas:
+293 fallas:
 - public.prueba_ci no tiene RLS
 - public.prueba_ci no está declarada en TABLAS (pruebas/base/matriz.mjs)
 - funciones que anon ejecuta en public no coinciden con FUNCIONES.anon (sobran: crear_espacio; faltan: —)
@@ -33,10 +34,10 @@ Matriz de acceso (Supabase local)
 - coach X lee public.equipo: ve 3 filas (su fila y la del dueño: 2)
 - coach Y lee public.equipo: ve 3 filas (su fila y la del dueño: 2)
 - coach X sin segundo factor lee public.equipo: ve 3 filas (debe ver 0)
-- equipo sin segundo factor lee public.auditoria: ve 8 filas (debe ver 0)
-- coach X lee public.auditoria: ve 8 filas (un coach no debe ver esta tabla)
-- coach Y lee public.auditoria: ve 8 filas (un coach no debe ver esta tabla)
-- coach X sin segundo factor lee public.auditoria: ve 8 filas (debe ver 0)
+- equipo sin segundo factor lee public.auditoria: ve 40 filas (debe ver 0)
+- coach X lee public.auditoria: ve 40 filas (un coach no debe ver esta tabla)
+- coach Y lee public.auditoria: ve 40 filas (un coach no debe ver esta tabla)
+- coach X sin segundo factor lee public.auditoria: ve 40 filas (debe ver 0)
 - persona A lee public.participantes: ve 2 filas ajenas
 - persona A lee public.participantes: ve 3 de sus 1 filas
 - persona B lee public.participantes: ve 2 filas ajenas
@@ -294,6 +295,9 @@ Matriz de acceso (Supabase local)
 - coach X ejecuta nuevo_enlace_solicitud, que es solo del dueño: ERROR:  PT400: token:invalido
 - coach Y ejecuta eliminar_participante sobre A: funcionó
 - coach X ejecuta eliminar_participante, que es solo del dueño: funcionó
+- coach Y ejecuta ver_postulacion sobre A: funcionó
 - coach Y lee carga_prevista de A: 28 filas
 - coach X sigue viendo a A después de la reasignación
 - coach X sigue trabajando el programa de A: funcionó
+- coach X lee la auditoría
+- coach X lee la tabla de postulaciones directo: 3 filas

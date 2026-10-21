@@ -75,7 +75,7 @@ const FUNCIONES = {
   ],
   "equipo-error": [
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
-    "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach",
+    "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion",
   ],
   equipo: ["mi_rol_equipo"],
   "equipo-vacio": ["solapamientos", "carga_prevista"],
@@ -83,7 +83,7 @@ const FUNCIONES = {
 // Funciones de privado que authenticated necesita porque las usan las políticas de RLS.
 const PRIVADO_EJECUTABLES = ["es_admin", "es_dueno", "es_coach", "gestiona", "puede_moderar", "foto_permitida", "mi_participante_id"];
 // Del coach: las usa con sus participantes; con los de otro coach, «sin autorización».
-const DEL_COACH = ["publicar_programa", "nuevo_borrador", "revisar_evidencia", "solapamientos", "carga_prevista"];
+const DEL_COACH = ["publicar_programa", "nuevo_borrador", "revisar_evidencia", "solapamientos", "carga_prevista", "ver_postulacion"];
 
 // ---------------------------------------------------------------------------
 // SQL
@@ -375,6 +375,33 @@ const leeHistorialY = contar(ROLES.Y, `public.asignaciones_coach where participa
 exigir(leeHistorialY === cerrados + abiertos, `coach Y ve ${leeHistorialY} de ${cerrados + abiertos} tramos del historial de A`);
 assert.ok(reasignar(ROLES.X).ok, "no se pudo devolver A a X");
 paso("coaches: cada uno trabaja solo con sus participantes; al reasignar, el anterior pierde el acceso; asignar y cambiar roles es del dueño");
+
+// A2 · Ver con motivo: la postulación original solo con motivo, y cada lectura queda registrada.
+const ultima = (r) => (r.salida ?? "").split("\n").pop();
+const corto = como(ROLES.X, `select public.ver_postulacion('${ROLES.A.ficha}', 'corto')`);
+exigir(!corto.ok && /motivo:corto/.test(corto.error), `ver_postulacion acepta un motivo de menos de 10 caracteres: ${corto.error ?? "funcionó"}`);
+const MOTIVO = "Preparar la revisión semanal (CI)";
+// (La auditoría la lee solo el dueño: se cuenta como administrador de la base.)
+const lecturas = () =>
+  Number(sql(`select count(*) from public.auditoria where accion = 'ver_con_motivo' and actor = '${ROLES.X.uid}'
+                and fila = '${ROLES.A.ficha}' and detalle->>'motivo' = '${MOTIVO}'`));
+const lecturasAntes = lecturas();
+const vista = confirmado(ROLES.X, `select public.ver_postulacion('${ROLES.A.ficha}', '${MOTIVO}')->>'meta'`);
+exigir(vista.ok && /proyecto/.test(vista.salida), `coach X no lee la postulación de A con motivo: ${vista.error ?? vista.salida}`);
+exigir(lecturas() === lecturasAntes + 1, "la lectura con motivo no quedó en la auditoría");
+exigir((contar(ROLES.X, "public.auditoria").n ?? 0) === 0, "coach X lee la auditoría");
+const directa = contar(ROLES.X, "public.solicitudes");
+exigir(directa.n === 0, `coach X lee la tabla de postulaciones directo: ${directa.n} filas`);
+
+// A2 · Auditoría de cambios: queda quién cambió qué campos, sin su contenido.
+const cambio = como(ROLES.aal2, `update public.ciclos set foco_inicial = 'Prueba de auditoría' where participante_id = '${ROLES.A.ficha}';
+  select count(*) from public.auditoria where tabla = 'ciclos' and accion = 'update' and actor = '${ROLES.aal2.uid}'
+     and detalle->'campos' ? 'foco_inicial' and not (detalle::text like '%Prueba de auditoría%') and en = now()`);
+exigir(cambio.ok && ultima(cambio) === "1", `un cambio del dueño en ciclos no quedó auditado (${cambio.error ?? ultima(cambio)})`);
+const sinCambio = como(ROLES.aal2, `update public.ciclos set semanas = semanas where participante_id = '${ROLES.A.ficha}';
+  select count(*) from public.auditoria where tabla = 'ciclos' and en = now()`);
+exigir(sinCambio.ok && ultima(sinCambio) === "0", "una modificación sin cambios quedó en la auditoría");
+paso("auditoría: cada cambio de gestión queda registrado; la postulación original solo se lee con motivo");
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
 
