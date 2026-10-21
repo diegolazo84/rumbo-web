@@ -59,6 +59,7 @@ const TABLAS = {
   registros: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   progreso: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   progreso_diario: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
+  invitaciones_equipo: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   pagos: { leer: "propio", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   registros_semanales: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   programas: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // sin borradores
@@ -81,9 +82,10 @@ const FUNCIONES = {
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
     "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion", "cambiar_modulo", "indicadores",
     "registrar_pago", "devolucion_sugerida", "registrar_devolucion",
+    "invitar_coach", "revocar_invitacion", "cambiar_coach",
   ],
   equipo: ["mi_rol_equipo", "actualizar_mi_perfil"],
-  "con-sesion": ["modulo_visible", "marcar_avisos_leidos"],
+  "con-sesion": ["modulo_visible", "marcar_avisos_leidos", "aceptar_invitacion_equipo"],
   "equipo-vacio": ["solapamientos", "carga_prevista", "bandeja_seguimiento"],
 };
 // Funciones de privado que authenticated necesita porque las usan las políticas de RLS.
@@ -181,6 +183,7 @@ insert into public.pagos (participante_id, ciclo_id, monto, moneda, medio, pagad
   select c.participante_id, c.id, c.precio_acordado_clp, 'CLP', 'transferencia', current_date from public.ciclos c
    where c.participante_id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}') and c.precio_acordado_clp is not null
   on conflict (ciclo_id) do nothing;
+insert into public.invitaciones_equipo (correo, nombre) values ('invitada-ci@example.com', 'Invitada de CI') on conflict do nothing;
 `);
 
 let pasos = 0;
@@ -536,6 +539,38 @@ if (pagoA) {
   exigir(exportB.ok && exportB.salida === "0", "la copia de datos de B incluye un pago de A");
 }
 paso("pagos: solo el dueño registra; un pago por ciclo, con el precio acordado; la devolución no supera lo pagado");
+
+// B5 · Coaches: el dueño invita; la persona invitada acepta con su sesión; nadie más entra al equipo.
+const correoNuevo = `coach-nuevo-${Date.now()}@example.com`;
+const invita = confirmado(ROLES.aal2, `select public.invitar_coach('${correoNuevo}', 'Coach nuevo de CI', false)`);
+exigir(invita.ok, `el dueño no pudo invitar a un coach: ${invita.error}`);
+const duplicada = como(ROLES.aal2, `select public.invitar_coach('${correoNuevo}', 'Coach nuevo de CI')`);
+exigir(!duplicada.ok && /ya_invitada/.test(duplicada.error), "se invitó dos veces al mismo correo");
+const aParticipante = como(ROLES.aal2, "select public.invitar_coach('persona-a@example.com', 'Persona A')");
+exigir(!aParticipante.ok && /es_participante/.test(aParticipante.error), "se invitó al equipo a una persona participante");
+const sinInvitacion = como(ROLES.A, "select public.aceptar_invitacion_equipo()");
+exigir(!sinInvitacion.ok && /no_encontrada/.test(sinInvitacion.error), "una persona sin invitación entró al equipo");
+exigir(sql(`select count(*) from privado.correos_equipo where correo = '${correoNuevo}'`) === "1", "el correo invitado no quedó habilitado para entrar");
+sql(`insert into auth.users (id, instance_id, aud, role, email, created_at, updated_at)
+     values (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '${correoNuevo}', now(), now())`);
+const NUEVO = { nombre: "coach nuevo", uid: uid(correoNuevo), aal: "aal2" };
+const acepta = confirmado(NUEVO, "select public.aceptar_invitacion_equipo()->>'rol'");
+exigir(acepta.ok && ultima(acepta) === "coach", `la persona invitada no pudo aceptar: ${acepta.error ?? ultima(acepta)}`);
+const otraVez = como(NUEVO, "select public.aceptar_invitacion_equipo()");
+exigir(!otraVez.ok && /no_encontrada/.test(otraVez.error), "una invitación se usó dos veces");
+const nuevoVe = como(NUEVO, "select count(*) from public.participantes");
+exigir(nuevoVe.ok && nuevoVe.salida === "0", "un coach recién llegado ve participantes sin tener asignados");
+const conGente = como(ROLES.aal2, `select public.cambiar_coach('${ROLES.X.uid}', false, null)`);
+exigir(!conGente.ok && /con_participantes/.test(conGente.error), "se desactivó un coach que aún tiene participantes");
+const modera = como(ROLES.aal2, `select public.cambiar_coach('${NUEVO.uid}', null, true); select puede_moderar::int from public.equipo where user_id = '${NUEVO.uid}'`);
+exigir(modera.ok && ultima(modera) === "1", `el dueño no pudo dar permiso de moderar: ${modera.error ?? ultima(modera)}`);
+const xCambia = como(ROLES.X, `select public.cambiar_coach('${NUEVO.uid}', false, null)`);
+exigir(!xCambia.ok && /no_autorizado/.test(xCambia.error), "un coach desactivó a otro");
+const alDueno = como(ROLES.aal2, `select public.cambiar_coach('${ROLES.aal2.uid}', false, null)`);
+exigir(!alDueno.ok && /no_encontrado/.test(alDueno.error), "cambiar_coach desactivó al dueño");
+sql(`delete from public.equipo where user_id = '${NUEVO.uid}'; delete from privado.correos_equipo where correo = '${correoNuevo}';
+     delete from auth.users where id = '${NUEVO.uid}'`);
+paso("coaches: solo el dueño invita y cambia permisos; la invitación sirve una vez y solo a su correo; un coach con participantes no se desactiva");
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
 

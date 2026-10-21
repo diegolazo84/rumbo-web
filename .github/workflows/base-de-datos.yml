@@ -67,8 +67,7 @@ jobs:
         run: |
           set -euo pipefail
           supabase --version
-          supabase db diff --db-url "$PGURL" -s public,privado --output-format json > diff.json 2> diff.err \
-            || { cat diff.json diff.err; echo "::error::supabase db diff no pudo ejecutarse"; exit 1; }
+          pruebas/base/db-diff.sh diff.json || { cat diff.json; echo "::error::supabase db diff no pudo ejecutarse"; exit 1; }
           jq -r '"motor: " + .engine' diff.json
           if [ -n "$(jq -r '.diff' diff.json | tr -d '[:space:]')" ]; then
             jq -r '.diff' diff.json; echo "::error::supabase db diff encontró diferencias"; exit 1
@@ -217,7 +216,7 @@ jobs:
             [ -f "$m" ] || { echo "::error::$d no corresponde a ninguna migración"; exit 1; }
             psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$d"
             mv "$m" "$RUNNER_TEMP/apartadas/"
-            supabase db diff --db-url "$PGURL" -s public,privado --output-format json > deshacer.json
+            pruebas/base/db-diff.sh deshacer.json
             if [ -n "$(jq -r '.diff' deshacer.json | tr -d '[:space:]')" ]; then
               jq -r '.diff' deshacer.json; echo "::error::$d no dejó la base como antes"; exit 1
             fi
@@ -246,7 +245,8 @@ jobs:
           insert into storage.buckets (id, name) values ('prueba-ci', 'prueba-ci');
           drop trigger al_crear_usuario on auth.users;
           SQL
-          supabase db diff --db-url "$PGURL" -s public,privado --output-format json | jq -r '.diff' > diff.sql
+          pruebas/base/db-diff.sh cambios.json
+          jq -r '.diff' cambios.json > diff.sql
           for buscado in 'GRANT SELECT ON TABLE "public"."solicitudes" TO "anon"' 'prueba_ci' 'privado.tareas_por_hora'; do
             grep -qF "$buscado" diff.sql || { cat diff.sql; echo "::error::db diff no detectó: $buscado"; exit 1; }
           done

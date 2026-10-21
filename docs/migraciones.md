@@ -46,6 +46,7 @@ comentario. En producción ya está así: **no se pega**, solo se registra.
 | 20261027000000 | `20261027000000_indicadores.sql` | (nuevo, B3: indicadores de negocio para el dueño; **pendiente de aplicar, solo con autorización de Diego**) |
 | 20261028000000 | `20261028000000_bandeja_coach.sql` | (nuevo, B2: bandeja de seguimiento del coach; **pendiente de aplicar, solo con autorización de Diego**) |
 | 20261029000000 | `20261029000000_pagos.sql` | (nuevo, B4: registro manual de pagos y devoluciones; **pendiente de aplicar, solo con autorización de Diego**) |
+| 20261030000000 | `20261030000000_invitar_coaches.sql` | (nuevo, B5: invitar y gestionar coaches; **pendiente de aplicar, solo con autorización de Diego**) |
 
 Fuera de `migrations/` quedan las herramientas que no cambian la estructura:
 `verificacion.sql`, `historial-migraciones.sql`, `restaurar-antes.sql` y `restaurar-despues.sql`.
