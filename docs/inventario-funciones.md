@@ -33,8 +33,8 @@ legal de Diego).
 | 15 | Seguimiento e informes de evolución | parcial | Gráfico semanal, constancia, informe de cierre | diseño, migración | — |
 | 16 | Comunidad | simulada | Alias, publicaciones, moderación, reglas | #8, #11, migración | — |
 | 17 | Red de especialistas | inexistente | Modelo comercial, verificación, reservas, pagos | decisión, externo | — |
-| 18 | Videollamada del plan cercano | parcial | Enlace, asistencia y notas | #8 | — |
-| 19 | Pagos | inexistente | Registro manual; después pago en línea | #9; SII | — |
+| 18 | Videollamada del plan cercano | desarrollada (base de datos y pruebas): el coach agenda cada semana con enlace https, la persona recibe aviso, se anota realizada, no asistió o cancelada; lo conversado va en la revisión de tipo videollamada (C2) | Pantallas del coach y de Mi acompañamiento (maqueta); aplicar migración | #8, migración, diseño | C2 |
+| 19 | Pagos | desarrollada (base de datos y pruebas): registro manual de pagos y devoluciones (B4) | Pantalla del dueño (maqueta); aplicar migración; pago en línea después | #9, migración; SII | B4 |
 | 20 | «Lo que viene» desde la base | parcial: tabla de módulos desarrollada (A4) | Que «Lo que viene» y cada sección lean la tabla; pantalla del dueño para cambiar estados | migración, diseño | A4 |
 | 21 | App instalable con avisos | parcial | Service worker | — | — |
 | 22 | Acciones medibles y plantillas | inexistente | Cantidades y plantillas | migración | — |
