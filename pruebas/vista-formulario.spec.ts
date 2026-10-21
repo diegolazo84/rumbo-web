@@ -22,6 +22,10 @@ async function sinViolaciones(page: Page) {
 test.beforeEach(({}, info) => {
   test.skip(info.project.name !== "escritorio", "interacción: basta un proyecto");
 });
+// Sin desplazamiento suave (styles.css lo activa con prefers-reduced-motion: no-preference): con la
+// máquina cargada, el clic en un campo fuera de pantalla podía caer mientras la página aún se movía
+// («element is not stable») y no marcar la casilla.
+test.use({ reducedMotion: "reduce" });
 
 test("postular: enviar vacío muestra el resumen con los textos de formularios.ts y lleva a cada campo", async ({ page }) => {
   await abrir(page, "postular/");
@@ -98,7 +102,11 @@ test("postular: el borrador vuelve en la pestaña y la autorización nunca vuelv
   await abrir(page, "postular/");
   await page.locator("#meta").fill("Quiero ordenar mis semanas para avanzar con mi proyecto.");
   await page.locator("#autorizacion").check();
-  await page.waitForTimeout(800);
+  // El borrador se guarda 500 ms después del último cambio: se espera a que esté guardado (con la
+  // máquina cargada, una espera fija de 800 ms no siempre alcanzaba).
+  await expect
+    .poll(() => page.evaluate(() => Object.values(sessionStorage).some((v) => v.includes("Quiero ordenar mis semanas"))))
+    .toBe(true);
   await page.reload();
   await hidratar(page);
   await expect(page.locator("#meta")).toHaveValue("Quiero ordenar mis semanas para avanzar con mi proyecto.");

@@ -22,6 +22,9 @@ async function sinViolaciones(page: Page) {
 test.beforeEach(({}, info) => {
   test.skip(info.project.name === "iphone", "basta con Chromium en móvil y escritorio");
 });
+// Sin desplazamiento suave: con la máquina cargada, un clic en un botón fuera de pantalla podía caer
+// mientras la página todavía se movía (misma causa que la prueba intermitente del formulario).
+test.use({ reducedMotion: "reduce" });
 
 test("tu coach sin nombre ni foto, con el foco real de la última revisión como mensaje y sin «Nuevo»", async ({ page }) => {
   await abrir(page, "publicada/");
