@@ -123,6 +123,17 @@ jobs:
           fi
           echo "::endgroup::"
 
+          # Formulario de contacto (/contacto/): enviar_mensaje guarda el mensaje. Con motivo
+          # «datos» también abre una petición de derechos (migrations/20261021000000_arreglo_aviso_contacto.sql).
+          echo "::group::enviar_mensaje"
+          rpc enviar_mensaje '{"p":{"motivo":"datos","nombre":"Contacto CI","correo":"contacto-ci@example.com","mensaje":"Mensaje de prueba de CI.","ms":5000,"campo_extra_7":""}}' | tee mensaje.json
+          jq -e '.ok == true' mensaje.json > /dev/null || { echo "::error::enviar_mensaje no guardó el mensaje"; exit 1; }
+          [ "$(psql "$PGURL" -At -c "select count(*) from public.mensajes_contacto where correo = 'contacto-ci@example.com'")" = 1 ] \
+            || { echo "::error::el mensaje de contacto no quedó en la base"; exit 1; }
+          [ "$(psql "$PGURL" -At -c "select count(*) from public.peticiones_derechos where correo = 'contacto-ci@example.com'")" = 1 ] \
+            || { echo "::error::el motivo «datos» no abrió la petición de derechos"; exit 1; }
+          echo "::endgroup::"
+
           # La tabla no se lee con la clave anon: 401, 403 o ninguna fila.
           CODIGO=$(curl -sS -o filas.json -w '%{http_code}' "${CABECERAS[@]}" "$API/rest/v1/solicitudes?select=*")
           case "$CODIGO" in
