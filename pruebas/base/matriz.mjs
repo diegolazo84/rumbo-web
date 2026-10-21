@@ -72,6 +72,8 @@ const TABLAS = {
   miembros_grupo: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   reacciones_comunidad: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   guardadas_comunidad: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  desafios: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  participaciones_desafio: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   bloqueos_comunidad: { leer: "equipo", escribir: "funciones", dueno: "bloqueador", coach: { leer: "nada", escribir: "nada" } },
   reconocimientos: { leer: "con-sesion", escribir: "funciones", coach: { leer: "con-sesion", escribir: "nada" } },
   reconocimientos_otorgados: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
@@ -112,6 +114,7 @@ const FUNCIONES = {
     "aceptar_reglas_comunidad", "publicar_en_comunidad", "borrar_mi_publicacion", "reportar_publicacion", "comunidad_publicaciones",
     "reaccionar_publicacion", "unirme_a_grupo", "salir_de_grupo", "comunidad_grupos",
     "guardar_publicacion", "bloquear_autor", "desbloquear_alias", "mis_bloqueos", "comunidad_temas", "mi_impacto_comunidad",
+    "unirme_a_desafio", "salir_de_desafio", "comunidad_desafios", "mi_avance_desafio",
     "mis_reconocimientos", "mis_beneficios",
     "ia_guardar_consentimiento", "ia_retirar_consentimiento", "ia_preguntar", "mis_consultas_ia",
     "autorizar_especialista", "retirar_especialista", "pedir_reserva", "cancelar_reserva", "enviar_mensaje_especialista",
@@ -121,7 +124,7 @@ const FUNCIONES = {
     "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion", "cambiar_modulo", "indicadores",
     "registrar_pago", "devolucion_sugerida", "registrar_devolucion",
     "invitar_coach", "revocar_invitacion", "cambiar_coach", "programar_videollamada", "anotar_videollamada",
-    "moderar_publicacion", "guardar_grupo_comunidad", "guardar_reconocimiento", "guardar_beneficio", "otorgar_beneficio", "aplicar_beneficio",
+    "moderar_publicacion", "guardar_grupo_comunidad", "guardar_desafio", "guardar_reconocimiento", "guardar_beneficio", "otorgar_beneficio", "aplicar_beneficio",
     "ia_pedir_borrador", "ia_revisar", "guardar_ia_config", "ia_gasto",
     "invitar_especialista", "revisar_credencial", "decidir_especialista", "guardar_config_especialistas", "guardar_especialidad",
     "guardar_perfil_especialista", "agregar_credencial", "guardar_servicio_especialista", "enviar_perfil_a_revision",
@@ -247,6 +250,10 @@ insert into public.reacciones_comunidad (publicacion_id, participante_id) values
 insert into public.guardadas_comunidad (publicacion_id, participante_id) values ('00000000-0000-0000-0000-0000000000b1', '${ROLES.A.ficha}')
   on conflict do nothing;
 insert into public.bloqueos_comunidad (bloqueador, bloqueado) values ('${ROLES.A.ficha}', '${ROLES.B.ficha}') on conflict do nothing;
+insert into public.desafios (id, titulo, reglas, dias, inicio) values ('00000000-0000-0000-0000-0000000000d1', 'Desafío de CI',
+  'Semilla de CI: completar las acciones del día.', 7, current_date - 3) on conflict do nothing;
+insert into public.participaciones_desafio (desafio_id, participante_id) values ('00000000-0000-0000-0000-0000000000d1', '${ROLES.A.ficha}')
+  on conflict do nothing;
 insert into public.plantillas_accion (titulo, instrucciones, duracion_min, autor)
   values ('Caminar', 'Plantilla de prueba de CI.', 20, '${ROLES.aal2.uid}');
 insert into public.reconocimientos_otorgados (participante_id, clave, referencia)
@@ -1124,6 +1131,58 @@ paso("comunidad C7: reacciones sin decir quién, grupos solo para sus miembros y
   exigir(exp.ok && ultima(exp) === "1", `la copia de mis datos no incluye mis guardadas: ${exp.error ?? ultima(exp)}`);
 }
 paso("comunidad C8: tipos, guardadas solo mías, bloqueo en ambos sentidos, temas e impacto con datos reales");
+
+// C9 · Desafíos: voluntarios, avance verificable con progreso_diario, sin cambiar créditos ni rachas.
+{
+  const abrir = `reset role; update public.modulos set estado = 'habilitado' where clave = 'comunidad';
+    update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    update public.alias set reglas_comunidad_en = now(); set local role authenticated;`;
+  const d1 = "'00000000-0000-0000-0000-0000000000d1'";
+  const dias = (inicio) => `reset role; update public.desafios set inicio = privado.hoy_chile() - ${inicio}, dias = 7 where id = ${d1};
+    delete from public.progreso_diario where participante_id = '${ROLES.A.ficha}' and fecha >= privado.hoy_chile() - 10;`;
+  const fila = (n, prog, hechas, susp = false) => `insert into public.progreso_diario (participante_id, fecha, programadas, hechas, en_revision,
+      creditos_acciones, bono, racha, en_suspenso) values ('${ROLES.A.ficha}', privado.hoy_chile() - ${n}, ${prog}, ${hechas}, 0, 0, 0, 0, ${susp});`;
+  const crearPersona = como(ROLES.A, `${abrir} select public.guardar_desafio('{"titulo":"Mío","reglas":"Reglas suficientes","dias":7,"inicio":"2030-01-01"}')`);
+  exigir(!crearPersona.ok && /no_autorizado/.test(crearPersona.error), "una persona creó un desafío");
+  const crea = como(ROLES.aal2, `select public.guardar_desafio('{"titulo":"28 días de constancia","reglas":"Completa todas tus acciones del día.","dias":28,"inicio":"2030-01-01"}') is not null`);
+  exigir(crea.ok && ultima(crea) === "t", `el dueño no pudo crear un desafío: ${crea.error ?? ultima(crea)}`);
+  const pasado = como(ROLES.aal2, `select public.guardar_desafio('{"titulo":"Viejo","reglas":"Reglas suficientes","dias":7,"inicio":"2020-01-01"}')`);
+  exigir(!pasado.ok && /pasado/.test(pasado.error), "se creó un desafío que ya empezó");
+  const avance = como(ROLES.A, `${abrir} ${dias(3)} ${fila(3, 2, 2)} ${fila(2, 2, 1)} ${fila(1, 0, 0)} ${fila(0, 1, 1, true)}
+    set local role authenticated;
+    select participo || ' ' || dias_cumplidos || ' ' || dias_transcurridos || ' ' || completado || ' ' || participantes
+      from public.comunidad_desafios() where id = ${d1}`);
+  exigir(avance.ok && ultima(avance) === "true 1 4 false 1", `el avance no sale de los días realmente cumplidos: ${avance.error ?? ultima(avance)}`);
+  const detalle = como(ROLES.A, `${abrir} ${dias(3)} ${fila(3, 2, 2)} set local role authenticated;
+    select string_agg(cumplido::text, ',' order by fecha) from public.mi_avance_desafio(${d1})`);
+  exigir(detalle.ok && ultima(detalle) === "true,false,false,false", `el detalle de días no coincide: ${detalle.error ?? ultima(detalle)}`);
+  const completo = como(ROLES.A, `${abrir} ${dias(6)} ${[0, 1, 2, 3, 4, 5, 6].map((n) => fila(n, 1, 1)).join(" ")}
+    set local role authenticated; select completado from public.comunidad_desafios() where id = ${d1}`);
+  exigir(completo.ok && ultima(completo) === "t", `siete días cumplidos no completan el desafío: ${completo.error ?? ultima(completo)}`);
+  const creditos = como(ROLES.A, `${abrir} reset role; delete from public.participaciones_desafio where participante_id = '${ROLES.A.ficha}';
+    set local role authenticated; select (select creditos from public.progreso) || '' \\g /dev/null
+    select public.unirme_a_desafio(${d1}) \\g /dev/null
+    select count(*) from public.participaciones_desafio`);
+  exigir(creditos.ok && ultima(creditos) === "0", "una persona lee quién participa en un desafío");
+  const otra = como(ROLES.B, `${abrir} select participo || ' ' || dias_cumplidos || ' ' || participantes from public.comunidad_desafios() where id = ${d1}`);
+  exigir(otra.ok && ultima(otra) === "false 0 1", `B no ve el desafío con el conteo real: ${otra.error ?? ultima(otra)}`);
+  const ajeno = como(ROLES.B, `${abrir} select count(*) from public.mi_avance_desafio(${d1})`);
+  exigir(!ajeno.ok && /no_participa/.test(ajeno.error), "se vio el avance sin participar");
+  const sale = como(ROLES.A, `${abrir} select public.salir_de_desafio(${d1}) \\g /dev/null
+    select participo || ' ' || participantes from public.comunidad_desafios() where id = ${d1}`);
+  exigir(sale.ok && ultima(sale) === "false 0", `salir del desafío no funcionó: ${sale.error ?? ultima(sale)}`);
+  const reglas = como(ROLES.aal2, `select public.guardar_desafio(jsonb_build_object('id', ${d1}, 'titulo', 'Desafío de CI',
+    'reglas', 'Semilla de CI: completar las acciones del día.', 'dias', 10, 'inicio', current_date - 3))`);
+  exigir(!reglas.ok && /con_participantes/.test(reglas.error), "se cambiaron los días de un desafío con participantes");
+  const terminado = como(ROLES.B, `${abrir} reset role; update public.desafios set inicio = privado.hoy_chile() - 30 where id = ${d1};
+    set local role authenticated; select public.unirme_a_desafio(${d1})`);
+  exigir(!terminado.ok && /no_disponible/.test(terminado.error), "alguien se unió a un desafío terminado");
+  const cerrado = como(ROLES.B, `select public.unirme_a_desafio(${d1})`);
+  exigir(!cerrado.ok && /no_disponible/.test(cerrado.error), "alguien se unió a un desafío con la comunidad sin habilitar");
+  const exp = como(ROLES.A, `${abrir} select jsonb_array_length(public.exportar_mis_datos()->'desafios')`);
+  exigir(exp.ok && ultima(exp) === "1", `la copia de mis datos no incluye mis desafíos: ${exp.error ?? ultima(exp)}`);
+}
+paso("desafíos C9: voluntarios, avance verificable con los días realmente cumplidos y conteo real sin nombres");
 
 
 // E1 · Reconocimientos y beneficios. Fechas relativas al ciclo de A que deja rls.mjs.
