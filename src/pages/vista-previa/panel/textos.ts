@@ -219,6 +219,60 @@ export const PARTICIPANTES = {
   } as Record<string, string>,
 } as const;
 
+// Panel del coach con la referencia de ChatGPT (21-oct-2026, 21:35 UTC): «Mis participantes».
+export const MIS_PARTICIPANTES = {
+  titulo: "Mis participantes",
+  filtros: {
+    etiqueta: "Filtrar participantes",
+    todos: "Todos",
+    revision: "Revisión esta semana",
+    atencion: "Necesita atención",
+    sinRegistro: "Sin registro",
+  },
+  buscar: "Buscar participante…",
+  buscarEtiqueta: "Buscar participante por nombre",
+  columnas: { participante: "Participante", progreso: "Progreso semana", proxima: "Próxima revisión", estado: "Estado", ver: "Ver" },
+  plan: (nombre: string) => `Plan: ${nombre}`,
+  progreso: (hechas: number, total: number) => `${hechas} de ${total}`,
+  sinAcciones: "Sin acciones",
+  estados: {
+    al_dia: "Al día",
+    sin_registro: "Sin registro",
+    necesita_apoyo: "Necesita apoyo",
+    preparacion: "Programa en preparación",
+    pausa: "En pausa",
+    cerrado: "Cerrado",
+  },
+  motivos: {
+    ajuste: "ajuste sin responder",
+    evidencia: "evidencia por revisar",
+    sin_actividad: "3 días o más sin registrar",
+    registro: "no envió su registro semanal",
+  },
+  ver: (nombre: string) => `Ver a ${nombre}`,
+  ninguno: "No hay participantes con este filtro.",
+  vacio: "Todavía no hay participantes. Se crean desde una solicitud con acuerdo aceptado.",
+  actividad: {
+    titulo: "Actividad reciente",
+    accion: (n: string) => `${n} completó una acción`,
+    registro: (n: string) => `${n} envió su registro semanal`,
+    ajuste: (n: string) => `${n} envió una solicitud de ajuste`,
+    hoy: (h: string) => `Hoy, ${h}`,
+    ayer: (h: string) => `Ayer, ${h}`,
+    vacio: "Todavía no hay actividad esta semana.",
+  },
+  hoy: {
+    titulo: "Revisiones de hoy",
+    escrita: (n: string) => `Revisión escrita de ${n}`,
+    videollamada: (n: string) => `Videollamada con ${n}`,
+    duracion: (h: string) => `${h} · 20 min`,
+    porEscrito: "Por escrito",
+    iniciar: "Iniciar",
+    iniciarDe: (n: string) => `Iniciar la revisión de ${n}`,
+    vacio: "Hoy no tienes revisiones pendientes.",
+  },
+} as const;
+
 export const FICHA_PARTICIPANTE = {
   ojo: "Participante",
   proxima: (dia: string) => `Próxima revisión: ${dia}`, // (vista previa)

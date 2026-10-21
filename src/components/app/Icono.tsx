@@ -11,6 +11,19 @@ import type { ReactElement } from "react";
 import { trazos as trazosWeb } from "../Icono";
 
 const trazosPlataforma = {
+  check: <path d="M20 6 9 17l-5-5" />,
+  search: (
+    <>
+      <path d="m21 21-4.34-4.34" />
+      <circle cx="11" cy="11" r="8" />
+    </>
+  ),
+  video: (
+    <>
+      <path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5" />
+      <rect x="2" y="6" width="14" height="12" rx="2" />
+    </>
+  ),
   "circle-alert": (
     <>
       <circle cx="12" cy="12" r="10" />
