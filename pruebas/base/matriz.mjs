@@ -68,6 +68,9 @@ const TABLAS = {
   alias: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   publicaciones: { leer: "equipo", escribir: "funciones", dueno: "autor", coach: { leer: "nada", escribir: "nada" } },
   reportes_comunidad: { leer: "equipo", escribir: "funciones", dueno: "reportante", coach: { leer: "nada", escribir: "nada" } },
+  grupos_comunidad: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  miembros_grupo: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  reacciones_comunidad: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   reconocimientos: { leer: "con-sesion", escribir: "funciones", coach: { leer: "con-sesion", escribir: "nada" } },
   reconocimientos_otorgados: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   beneficios: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
@@ -105,6 +108,7 @@ const FUNCIONES = {
     "evolucion_semanal", "informe_ciclo", "mis_medibles", "anotar_cantidad",
     "guardar_alias", "participar_en_ranking", "ranking_semanal",
     "aceptar_reglas_comunidad", "publicar_en_comunidad", "borrar_mi_publicacion", "reportar_publicacion", "comunidad_publicaciones",
+    "reaccionar_publicacion", "unirme_a_grupo", "salir_de_grupo", "comunidad_grupos",
     "mis_reconocimientos", "mis_beneficios",
     "ia_guardar_consentimiento", "ia_retirar_consentimiento", "ia_preguntar", "mis_consultas_ia",
     "autorizar_especialista", "retirar_especialista", "pedir_reserva", "cancelar_reserva", "enviar_mensaje_especialista",
@@ -114,7 +118,7 @@ const FUNCIONES = {
     "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion", "cambiar_modulo", "indicadores",
     "registrar_pago", "devolucion_sugerida", "registrar_devolucion",
     "invitar_coach", "revocar_invitacion", "cambiar_coach", "programar_videollamada", "anotar_videollamada",
-    "moderar_publicacion", "guardar_reconocimiento", "guardar_beneficio", "otorgar_beneficio", "aplicar_beneficio",
+    "moderar_publicacion", "guardar_grupo_comunidad", "guardar_reconocimiento", "guardar_beneficio", "otorgar_beneficio", "aplicar_beneficio",
     "ia_pedir_borrador", "ia_revisar", "guardar_ia_config", "ia_gasto",
     "invitar_especialista", "revisar_credencial", "decidir_especialista", "guardar_config_especialistas", "guardar_especialidad",
     "guardar_perfil_especialista", "agregar_credencial", "guardar_servicio_especialista", "enviar_perfil_a_revision",
@@ -126,7 +130,7 @@ const FUNCIONES = {
   "equipo-vacio": ["solapamientos", "carga_prevista", "bandeja_seguimiento", "ia_bandeja"],
 };
 // Funciones de privado que authenticated necesita porque las usan las políticas de RLS.
-const PRIVADO_EJECUTABLES = ["mi_especialista_id", "es_admin", "es_dueno", "es_coach", "gestiona", "puede_moderar", "foto_permitida", "mi_participante_id"];
+const PRIVADO_EJECUTABLES = ["mi_especialista_id", "es_admin", "es_dueno", "es_coach", "gestiona", "puede_moderar", "foto_permitida", "foto_comunidad_permitida", "mi_participante_id"];
 // Del coach: las usa con sus participantes; con los de otro coach, «sin autorización».
 const DEL_COACH = ["publicar_programa", "nuevo_borrador", "revisar_evidencia", "solapamientos", "carga_prevista", "ver_postulacion",
   "programar_videollamada", "anotar_videollamada", "ia_pedir_borrador", "ia_revisar"];
@@ -232,6 +236,11 @@ insert into public.publicaciones (id, autor, texto) values ('00000000-0000-0000-
   on conflict do nothing;
 insert into public.reportes_comunidad (publicacion_id, reportante, motivo)
   values ('00000000-0000-0000-0000-0000000000b1', '${ROLES.A.ficha}', 'spam') on conflict do nothing;
+insert into public.grupos_comunidad (id, nombre, descripcion) values ('00000000-0000-0000-0000-0000000000c1', 'Grupo de CI', 'Semilla de CI')
+  on conflict do nothing;
+insert into public.miembros_grupo (grupo_id, participante_id) values ('00000000-0000-0000-0000-0000000000c1', '${ROLES.B.ficha}') on conflict do nothing;
+insert into public.reacciones_comunidad (publicacion_id, participante_id) values ('00000000-0000-0000-0000-0000000000b1', '${ROLES.A.ficha}')
+  on conflict do nothing;
 insert into public.plantillas_accion (titulo, instrucciones, duracion_min, autor)
   values ('Caminar', 'Plantilla de prueba de CI.', 20, '${ROLES.aal2.uid}');
 insert into public.reconocimientos_otorgados (participante_id, clave, referencia)
@@ -973,6 +982,78 @@ paso("medibles y plantillas: la cantidad se anota en lo propio ya marcado y no c
   exigir(exp.ok && Number(ultima(exp)) >= 1, `la copia de mis datos no incluye mis publicaciones: ${exp.error ?? ultima(exp)}`);
 }
 paso("comunidad: solo habilitada, con alias y reglas; se ve el alias, no quién es; reportes y moderación con motivo");
+
+// C7 · Comunidad: reacciones (sin decir quién), foto opcional en bucket privado y grupos solo para sus miembros.
+{
+  const abrir = `reset role; update public.modulos set estado = 'habilitado' where clave = 'comunidad';
+    update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    update public.alias set reglas_comunidad_en = now(); delete from public.reacciones_comunidad; set local role authenticated;`;
+  const b1 = "'00000000-0000-0000-0000-0000000000b1'";
+  const g1 = "'00000000-0000-0000-0000-0000000000c1'";
+  const reclamos = (r) => `set local request.jwt.claims to '${JSON.stringify({ sub: r.uid, role: "authenticated", aal: "aal1" })}';`;
+  const reacciona = como(ROLES.A, `${abrir} select public.reaccionar_publicacion(${b1}) \\g /dev/null
+    select reacciones || ' ' || mi_reaccion from public.comunidad_publicaciones() where id = ${b1}`);
+  exigir(reacciona.ok && ultima(reacciona) === "1 true", `A no pudo reaccionar: ${reacciona.error ?? ultima(reacciona)}`);
+  const quita = como(ROLES.A, `${abrir} select public.reaccionar_publicacion(${b1}) \\g /dev/null
+    select public.reaccionar_publicacion(${b1}) \\g /dev/null
+    select reacciones || ' ' || mi_reaccion from public.comunidad_publicaciones() where id = ${b1}`);
+  exigir(quita.ok && ultima(quita) === "0 false", `la reacción no se quita con el mismo botón: ${quita.error ?? ultima(quita)}`);
+  const otraVe = como(ROLES.B, `${abrir} reset role; insert into public.reacciones_comunidad values (${b1}, '${ROLES.A.ficha}'); set local role authenticated;
+    select reacciones || ' ' || mi_reaccion from public.comunidad_publicaciones() where id = ${b1}`);
+  exigir(otraVe.ok && ultima(otraVe) === "1 false", `B no ve la cuenta de reacciones (o la ve como suya): ${otraVe.error ?? ultima(otraVe)}`);
+  const directa = como(ROLES.B, `${abrir} select count(*) from public.reacciones_comunidad`);
+  exigir(directa.ok && ultima(directa) === "0", "una persona lee quién reaccionó");
+  const cerrada = como(ROLES.A, `select public.reaccionar_publicacion(${b1})`);
+  exigir(!cerrada.ok && /no_disponible/.test(cerrada.error), "se reaccionó con la comunidad sin habilitar");
+
+  const creaPersona = como(ROLES.A, `${abrir} select public.guardar_grupo_comunidad('{"nombre":"Mío"}')`);
+  exigir(!creaPersona.ok && /no_autorizado/.test(creaPersona.error), "una persona creó un grupo");
+  const crea = como(ROLES.aal2, `select public.guardar_grupo_comunidad('{"nombre":"Corredores","descripcion":"Para quienes salen a correr"}') is not null`);
+  exigir(crea.ok && ultima(crea) === "t", `el dueño no pudo crear un grupo: ${crea.error ?? ultima(crea)}`);
+  const ajeno = como(ROLES.A, `${abrir} select public.publicar_en_comunidad('En el grupo', null, ${g1})`);
+  exigir(!ajeno.ok && /no_miembro/.test(ajeno.error), "A publicó en un grupo del que no es miembro");
+  const enGrupo = `${abrir} select public.unirme_a_grupo(${g1}) \\g /dev/null
+    select public.publicar_en_comunidad('Hola grupo', null, ${g1}) \\g /dev/null`;
+  const miembro = como(ROLES.A, `${enGrupo}
+    select count(*) || ' ' || (select count(*) from public.comunidad_publicaciones(null, null, 30, null, true)) ||
+      ' ' || (select soy_miembro from public.comunidad_grupos() where id = ${g1})
+    from public.comunidad_publicaciones(null, null, 30, ${g1})`);
+  exigir(miembro.ok && ultima(miembro) === "1 1 true", `A no publicó ni ve su grupo: ${miembro.error ?? ultima(miembro)}`);
+  const noMiembro = como(ROLES.B, `${abrir} reset role; delete from public.miembros_grupo where participante_id = '${ROLES.B.ficha}';
+    insert into public.miembros_grupo values (${g1}, '${ROLES.A.ficha}') on conflict do nothing;
+    insert into public.publicaciones (autor, texto, grupo_id) values ('${ROLES.A.ficha}', 'Solo del grupo', ${g1});
+    set local role authenticated;
+    select count(*) from public.comunidad_publicaciones() where texto = 'Solo del grupo'`);
+  exigir(noMiembro.ok && ultima(noMiembro) === "0", `quien no es miembro ve lo publicado en un grupo: ${noMiembro.error ?? ultima(noMiembro)}`);
+  const saleGrupo = como(ROLES.A, `${enGrupo}
+    select public.salir_de_grupo(${g1}) \\g /dev/null
+    select count(*) from public.comunidad_publicaciones(null, null, 30, ${g1})`);
+  exigir(saleGrupo.ok && ultima(saleGrupo) === "0", `al salir del grupo se sigue viendo: ${saleGrupo.error ?? ultima(saleGrupo)}`);
+
+  const ruta = `${ROLES.A.ficha}/00000000-0000-4000-8000-0000000000f1.webp`;
+  const sinArchivo = como(ROLES.A, `${abrir} select public.publicar_en_comunidad('Con foto', null, null, '${ruta}')`);
+  exigir(!sinArchivo.ok && /ruta_invalida/.test(sinArchivo.error), "se publicó una foto que no existe");
+  const conFoto = `${abrir} reset role; insert into storage.objects (bucket_id, name) values ('comunidad', '${ruta}'); set local role authenticated;`;
+  const foto = como(ROLES.A, `${conFoto} select public.publicar_en_comunidad('Con foto', null, null, '${ruta}') \\g /dev/null
+    select foto_ruta from public.comunidad_publicaciones() where texto = 'Con foto'`);
+  exigir(foto.ok && ultima(foto) === ruta, `A no pudo publicar con foto: ${foto.error ?? ultima(foto)}`);
+  const respuestaConFoto = como(ROLES.A, `${conFoto} select public.publicar_en_comunidad('Respuesta', ${b1}, null, '${ruta}')`);
+  exigir(!respuestaConFoto.ok && /solo_publicaciones/.test(respuestaConFoto.error), "una respuesta llevó foto");
+  const fotoVisible = como(ROLES.B, `${conFoto} reset role; ${reclamos(ROLES.A)} set local role authenticated;
+    select public.publicar_en_comunidad('Foto visible', null, null, '${ruta}') \\g /dev/null
+    reset role; ${reclamos(ROLES.B)} set local role authenticated;
+    select count(*) from storage.objects where bucket_id = 'comunidad'`);
+  exigir(fotoVisible.ok && ultima(fotoVisible) === "1", `B no ve la foto de una publicación visible: ${fotoVisible.error ?? ultima(fotoVisible)}`);
+  const fotoSuelta = como(ROLES.B, `${conFoto} select count(*) from storage.objects where bucket_id = 'comunidad'`);
+  exigir(fotoSuelta.ok && ultima(fotoSuelta) === "0", "B ve una foto que no está en ninguna publicación");
+  const subeAjena = como(ROLES.B, `${abrir} insert into storage.objects (bucket_id, name) values ('comunidad', '${ruta}')`);
+  exigir(!subeAjena.ok, "B subió una foto a la carpeta de A");
+  const exp = como(ROLES.A, `${abrir} select public.reaccionar_publicacion(${b1}) \\g /dev/null
+    select jsonb_array_length(public.exportar_mis_datos()->'comunidad_reacciones')`);
+  exigir(exp.ok && ultima(exp) === "1", `la copia de mis datos no incluye mis reacciones: ${exp.error ?? ultima(exp)}`);
+}
+paso("comunidad C7: reacciones sin decir quién, grupos solo para sus miembros y foto en bucket privado");
+
 
 // E1 · Reconocimientos y beneficios. Fechas relativas al ciclo de A que deja rls.mjs.
 {
