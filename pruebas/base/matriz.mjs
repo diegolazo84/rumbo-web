@@ -82,7 +82,7 @@ const FUNCIONES = {
   ],
   equipo: ["mi_rol_equipo", "actualizar_mi_perfil"],
   "con-sesion": ["modulo_visible", "marcar_avisos_leidos"],
-  "equipo-vacio": ["solapamientos", "carga_prevista"],
+  "equipo-vacio": ["solapamientos", "carga_prevista", "bandeja_seguimiento"],
 };
 // Funciones de privado que authenticated necesita porque las usan las políticas de RLS.
 const PRIVADO_EJECUTABLES = ["es_admin", "es_dueno", "es_coach", "gestiona", "puede_moderar", "foto_permitida", "mi_participante_id"];
@@ -345,7 +345,9 @@ for (const f of FUNCIONES["equipo-error"]) {
   else exigir(!x.ok && /no_autorizado/.test(x.error), `coach X ejecuta ${f}, que es solo del dueño: ${x.ok ? "funcionó" : x.error}`);
 }
 for (const f of FUNCIONES["equipo-vacio"]) {
-  const y = como(ROLES.Y, `select count(*) from public.${f}(${firmas[f]})`);
+  // Sin argumentos (la bandeja), la función devuelve lo de quien llama: se mira solo la fila de A.
+  const filtroA = firmas[f] ? "" : ` where participante_id = '${ROLES.A.ficha}'`;
+  const y = como(ROLES.Y, `select count(*) from public.${f}(${firmas[f]})${filtroA}`);
   exigir(!y.ok || Number(y.salida) === 0, `coach Y lee ${f} de A: ${y.salida} filas`);
 }
 const cargaX = como(ROLES.X, `select count(*) from public.carga_prevista(${firmas.carga_prevista})`);
@@ -487,6 +489,18 @@ if (ind.ok) {
 const largo = como(ROLES.aal2, "select public.indicadores(current_date - 400, current_date)");
 exigir(!largo.ok && /periodo/.test(largo.error), "los indicadores aceptan un periodo de más de un año");
 paso("indicadores: solo el dueño; cifras agregadas que cuadran con las tablas y sin datos personales");
+
+// B2 · Bandeja de seguimiento: cada coach ve solo a los suyos; el dueño, a todos.
+const enBandeja = (r, ficha) => como(r, `select count(*) from public.bandeja_seguimiento() where participante_id = '${ficha}'`);
+const activoA = Number(sql(`select count(*) from public.participantes p join public.ciclos c on c.participante_id = p.id
+  where p.id = '${ROLES.A.ficha}' and p.estado = 'activo' and c.estado = 'activo' and c.inicio <= current_date`)) > 0;
+const bx = enBandeja(ROLES.X, ROLES.A.ficha), by = enBandeja(ROLES.Y, ROLES.A.ficha), bd = enBandeja(ROLES.aal2, ROLES.A.ficha);
+exigir(bx.ok && by.ok && bd.ok, `la bandeja falló: ${bx.error ?? by.error ?? bd.error}`);
+exigir(!activoA || (bx.salida === "1" && bd.salida === "1"), `A no aparece en la bandeja de su coach o del dueño (${bx.salida}, ${bd.salida})`);
+exigir(by.salida === "0", "el coach Y ve en su bandeja a una persona que no acompaña");
+const ajenos = como(ROLES.X, "select count(*) from public.bandeja_seguimiento() b join public.participantes p on p.id = b.participante_id where p.coach_id is distinct from auth.uid()");
+exigir(ajenos.ok && ajenos.salida === "0", "la bandeja del coach X incluye personas de otro coach");
+paso("bandeja de seguimiento: cada coach ve solo a sus participantes; el dueño ve a todos");
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
 
