@@ -78,7 +78,7 @@ const FUNCIONES = {
   ],
   "equipo-error": [
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
-    "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion", "cambiar_modulo",
+    "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion", "cambiar_modulo", "indicadores",
   ],
   equipo: ["mi_rol_equipo", "actualizar_mi_perfil"],
   "con-sesion": ["modulo_visible", "marcar_avisos_leidos"],
@@ -470,6 +470,23 @@ exigir(marca.ok && Number(marca.salida) > 0, `coach X no pudo marcar sus avisos:
 // Otra sesión (otro dispositivo) de X ve lo mismo: ya no quedan sin leer.
 exigir((contar(ROLES.X, "public.avisos where leido_en is null").n ?? -1) === 0, "lo leído no quedó leído para la otra sesión de X");
 paso("avisos: los crea la base, llegan a quien corresponde y lo leído queda leído en todos los dispositivos");
+
+// B3 · Indicadores: solo el dueño, cifras agregadas que cuadran con las tablas.
+const ind = como(ROLES.aal2, "select public.indicadores(current_date - 30, current_date)::text");
+exigir(ind.ok, `el dueño no pudo leer los indicadores: ${ind.error}`);
+if (ind.ok) {
+  const j = JSON.parse(ultima(ind));
+  const post = Number(sql(`select count(*) from public.solicitudes where tipo = 'solicitud'
+    and creada_en >= (current_date - 30)::timestamp at time zone 'America/Santiago'`));
+  exigir(j.conversion.postulaciones === post, `postulaciones ${j.conversion.postulaciones} ≠ ${post} en la tabla`);
+  exigir(j.cumplimiento.acciones_hechas <= j.cumplimiento.acciones_programadas || j.cumplimiento.acciones_programadas === 0,
+    "hay más acciones hechas que programadas");
+  exigir(!/@/.test(ultima(ind)), "los indicadores incluyen un correo");
+  exigir(Array.isArray(j.no_disponible) && j.no_disponible.length === 4, "faltan los indicadores no disponibles");
+}
+const largo = como(ROLES.aal2, "select public.indicadores(current_date - 400, current_date)");
+exigir(!largo.ok && /periodo/.test(largo.error), "los indicadores aceptan un periodo de más de un año");
+paso("indicadores: solo el dueño; cifras agregadas que cuadran con las tablas y sin datos personales");
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
 

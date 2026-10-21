@@ -43,6 +43,7 @@ comentario. En producción ya está así: **no se pega**, solo se registra.
 | 20261024000000 | `20261024000000_perfil_coach.sql` | (nuevo, A3: perfil del coach y «Tu coach»; **pendiente de aplicar, solo con autorización de Diego**) |
 | 20261025000000 | `20261025000000_modulos.sql` | (nuevo, A4: configuración de módulos; **pendiente de aplicar, solo con autorización de Diego**) |
 | 20261026000000 | `20261026000000_avisos_sincronizados.sql` | (nuevo, A5: avisos dentro de la app y leídos sincronizados; **pendiente de aplicar, solo con autorización de Diego**) |
+| 20261027000000 | `20261027000000_indicadores.sql` | (nuevo, B3: indicadores de negocio para el dueño; **pendiente de aplicar, solo con autorización de Diego**) |
 
 Fuera de `migrations/` quedan las herramientas que no cambian la estructura:
 `verificacion.sql`, `historial-migraciones.sql`, `restaurar-antes.sql` y `restaurar-despues.sql`.
