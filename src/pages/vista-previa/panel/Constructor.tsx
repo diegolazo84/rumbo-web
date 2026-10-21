@@ -12,7 +12,7 @@
 // Panel real (etapa 3, con `servidor`): el borrador de la base; «Guardar borrador» escribe metas
 // y acciones (solo se puede mientras es borrador) y «Publicar» corre publicar_programa, después de
 // revisar con la base los solapamientos y la carga prevista.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Etiqueta from "../../../components/Etiqueta";
 import { ChipMeta, FilaAccion, Hoja, Icono, LeyendaMetas, Segmentado } from "../../../components/app";
 import { CampoArea, CampoSelect, CampoTexto, GrupoOpciones, Opcion } from "../../../components/form";
@@ -73,6 +73,19 @@ export type DatosConstructor = {
   alPublicar?: () => void; // panel real: al cerrar la hoja tras publicar, vuelve a leer la base
 };
 
+const COLORES_META = 8;
+// El color es de la meta; la categoría se reconoce por su símbolo y su nombre.
+const SIMBOLO_CAT: Record<CategoriaId, string> = { proyecto: "◆", orden: "■", bienestar: "●" };
+function EtiquetaCat({ cat }: { cat: CategoriaId }) {
+  return (
+    <span className="pa-cat">
+      <span className="pa-cat__simbolo" aria-hidden="true">
+        {SIMBOLO_CAT[cat]}
+      </span>
+      {categorias[cat].nombre}
+    </span>
+  );
+} // paleta de vista-panel.css ([data-meta-color])
 const LIMITE_NOTA_CAMBIOS = 600; // nota_cambios (6.4)
 const camila = participantes[0];
 
@@ -244,15 +257,21 @@ function Editor({ d }: { d: DatosConstructor }) {
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState("");
   const [mostrarErrores, setMostrarErrores] = useState(false);
+  const enCurso = useRef<Promise<void> | null>(null);
+  const cambios = useRef(0); // sube con cada cambio: lo editado mientras se guarda sigue pendiente
   const mapa = useMemo(() => cruces(acciones), [acciones]);
   const pares = [...mapa.values()].reduce((s, x) => s + x.size, 0) / 2;
   const accion = acciones.find((a) => a.id === sel);
   const nombre = (id: string) => acciones.find((a) => a.id === id)?.titulo ?? "";
   const meta = (id: string) => metas.find((m) => m.id === id);
   const catDe = (id: string) => meta(id)?.categoria ?? "proyecto";
+  const nombreMeta = (id: string) => meta(id)?.titulo.trim() || C.metas.tituloCampo;
+  // Un color por meta (según su orden), igual en la lista de metas, la semana y el resumen.
+  const colorDe = (id: string) => String(Math.max(0, metas.findIndex((m) => m.id === id)) % COLORES_META);
   const semanas = SEMANAS_MAX.slice(0, d.semanas);
 
   const tocar = () => {
+    cambios.current += 1;
     setSucio(true);
     setAviso("");
   };
@@ -284,11 +303,18 @@ function Editor({ d }: { d: DatosConstructor }) {
     ]);
     setSel(id);
   };
+  // Al elegir otra meta, el formulario no queda abierto sobre una acción de la meta anterior
+  // (escribir ahí cambiaba esa acción): se abre la primera acción de la meta o ninguna.
+  const elegirMeta = (id: string) => {
+    setMetaSel(id);
+    if (accion && accion.metaId !== id) setSel(acciones.find((a) => a.metaId === id && enSemana(a, semana))?.id ?? "");
+  };
   const nuevaMeta = () => {
     tocar();
     const id = idNuevo(real, "m", metas.length + 1);
     setMetas((l) => [...l, { id, titulo: "", paraQue: "", categoria: "proyecto", hitos: [] }]);
     setMetaSel(id);
+    setSel("");
   };
   const quitarMeta = (id: string) => {
     tocar();
@@ -304,7 +330,8 @@ function Editor({ d }: { d: DatosConstructor }) {
 
   // Guarda el borrador en la base (panel real). Devuelve si quedó guardado.
   // desdeBoton: «Guardar borrador» siempre confirma, aunque no haya cambios pendientes.
-  const guardar = async (desdeBoton = false): Promise<boolean> => {
+  const guardar = (desdeBoton = false): Promise<boolean> => guardarAhora(desdeBoton);
+  const guardarAhora = async (desdeBoton: boolean): Promise<boolean> => {
     if (!d.servidor) return true;
     if (!metas.every(metaValida)) {
       setError(PANEL_REAL.constructor.erroresMeta);
@@ -323,6 +350,11 @@ function Editor({ d }: { d: DatosConstructor }) {
       setError(PANEL_REAL.constructor.erroresAccion(incompleta.titulo.trim(), incompleta.desde, faltan));
       return false;
     }
+    // Si hay un guardado en curso (p. ej. el automático), se espera y se sigue con lo que quede.
+    if (enCurso.current) {
+      await enCurso.current;
+      return guardarAhora(desdeBoton);
+    }
     if (!sucio) {
       if (desdeBoton) {
         setError(null);
@@ -332,9 +364,15 @@ function Editor({ d }: { d: DatosConstructor }) {
     }
     setOcupado(true);
     setError(null);
+    const version = cambios.current;
+    const pendiente = d.servidor.guardar(metas, acciones);
+    enCurso.current = pendiente.then(
+      () => undefined,
+      () => undefined,
+    );
     try {
-      await d.servidor.guardar(metas, acciones);
-      setSucio(false);
+      await pendiente;
+      setSucio(cambios.current !== version);
       setMostrarErrores(false);
       setAviso(PANEL_REAL.constructor.guardado);
       return true;
@@ -342,9 +380,20 @@ function Editor({ d }: { d: DatosConstructor }) {
       setError(textoError(e));
       return false;
     } finally {
+      enCurso.current = null;
       setOcupado(false);
     }
   };
+
+  // Guardado automático (panel real): 1,5 s después del último cambio, si todo está completo.
+  // Con algo incompleto no se guarda solo; «Guardar borrador» dice qué falta.
+  useEffect(() => {
+    if (!real || !sucio || ocupado) return;
+    if (!metas.every(metaValida) || !acciones.every(accionValida)) return;
+    const t = setTimeout(() => void guardar(), 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [real, sucio, ocupado, metas, acciones]);
 
   const delaSemana = acciones.filter((a) => enSemana(a, semana));
   const minutosPorMeta = (id: string) => delaSemana.filter((a) => a.metaId === id).reduce((s, a) => s + a.duracion * a.dias.length, 0);
@@ -423,10 +472,10 @@ function Editor({ d }: { d: DatosConstructor }) {
             {metas.length ? (
               <ol className="pa-metas">
                 {metas.map((m, i) => (
-                  <li key={m.id} className={m.id === metaSel ? "pa-metas__item es-elegida" : "pa-metas__item"} data-cat={m.categoria}>
-                    <button type="button" className="pa-metas__elegir" aria-pressed={m.id === metaSel} onClick={() => setMetaSel(m.id)}>
+                  <li key={m.id} className={m.id === metaSel ? "pa-metas__item es-elegida" : "pa-metas__item"} data-cat={m.categoria} data-meta-color={colorDe(m.id)}>
+                    <button type="button" className="pa-metas__elegir" aria-pressed={m.id === metaSel} onClick={() => elegirMeta(m.id)}>
                       <span className="pa-metas__titulo">{m.titulo || C.metas.tituloCampo}</span>
-                      <span className="pa-metas__cat">{categorias[m.categoria].nombre}</span>
+                      <EtiquetaCat cat={m.categoria} />
                     </button>
                     <div className="pa-metas__orden">
                       <button type="button" className="boton boton--terciario" aria-disabled={i === 0 ? true : undefined} onClick={() => i > 0 && mover(i, -1)}>
@@ -468,7 +517,7 @@ function Editor({ d }: { d: DatosConstructor }) {
               <h3 className="pa-h3">{C.resumen.titulo}</h3>
               <ul>
                 {metas.map((m) => (
-                  <li key={m.id}>
+                  <li key={m.id} data-meta-color={colorDe(m.id)}>
                     <ChipMeta cat={m.categoria} meta={m.titulo} />
                     <span className="microcopia">{C.resumen.porSemana(minutosPorMeta(m.id))}</span>
                   </li>
@@ -507,12 +556,15 @@ function Editor({ d }: { d: DatosConstructor }) {
                               type="button"
                               className={["pa-bloque", a.id === sel && "es-elegida", choca.length && "con-cruce"].filter(Boolean).join(" ")}
                               data-cat={catDe(a.metaId)}
+                              data-meta-color={colorDe(a.metaId)}
                               aria-pressed={a.id === sel}
                               onClick={() => setSel(a.id)}
                             >
                               <span className="pa-bloque__hora">{a.hora ? `${a.hora}–${sumarMinutos(a.hora, a.duracion)}` : C.accion.flexible}</span>
                               <span className="pa-bloque__texto">
                                 <span className="pa-bloque__titulo">{a.titulo || C.accion.nueva}</span>
+                                <span className="sr-only">{`Meta: ${nombreMeta(a.metaId)}. `}</span>
+<EtiquetaCat cat={catDe(a.metaId)} />
                                 <span className="microcopia">{duracionTexto(a.duracion)}</span>
                                 {choca.map((o) => (
                                   <span key={o} className="pa-bloque__cruce">
@@ -548,12 +600,15 @@ function Editor({ d }: { d: DatosConstructor }) {
                           type="button"
                           className={["pa-bloque", a.id === sel && "es-elegida"].filter(Boolean).join(" ")}
                           data-cat={catDe(a.metaId)}
+                          data-meta-color={colorDe(a.metaId)}
                           aria-pressed={a.id === sel}
                           onClick={() => setSel(a.id)}
                         >
                           <span className="pa-bloque__hora">{a.hora ?? C.accion.flexible}</span>
                           <span className="pa-bloque__texto">
                             <span className="pa-bloque__titulo">{a.titulo || C.accion.nueva}</span>
+                            <span className="sr-only">{`Meta: ${nombreMeta(a.metaId)}. `}</span>
+<EtiquetaCat cat={catDe(a.metaId)} />
                             <span className="microcopia">{duracionTexto(a.duracion)}</span>
                           </span>
                         </button>
@@ -565,6 +620,7 @@ function Editor({ d }: { d: DatosConstructor }) {
             <button type="button" className="boton boton--secundario" aria-disabled={metaSel ? undefined : true} onClick={nueva}>
               <Icono nombre="plus" tamaño={20} />
               {C.accion.nueva}
+              {meta(metaSel)?.titulo ? <span className="pa-boton-meta">{` · ${meta(metaSel)!.titulo}`}</span> : null}
             </button>
           </section>
 
@@ -593,7 +649,15 @@ function Editor({ d }: { d: DatosConstructor }) {
                 )}
               </>
             ) : (
-              <p className="microcopia">{PANEL_REAL.constructor.sinAcciones}</p>
+              <div className="pa-pila pa-pila--chica">
+                <p className="microcopia">{PANEL_REAL.constructor.sinAcciones}</p>
+                {meta(metaSel) && (
+                  <button type="button" className="boton boton--primario" onClick={nueva}>
+                    <Icono nombre="plus" tamaño={20} />
+                    {PANEL_REAL.constructor.agregarA(meta(metaSel)!.titulo)}
+                  </button>
+                )}
+              </div>
             )}
           </section>
         </div>
@@ -627,7 +691,7 @@ function FormMeta({ meta, real, onCambio, onQuitar }: { meta: MetaB; real: boole
       <CampoSelect id="meta-cat" etiqueta={C.metas.categoria} value={meta.categoria} onChange={(e) => onCambio({ categoria: e.target.value as CategoriaId })}>
         {(Object.keys(categorias) as CategoriaId[]).map((c) => (
           <option key={c} value={c}>
-            {categorias[c].nombre}
+            {`${SIMBOLO_CAT[c]} ${categorias[c].nombre}`}
           </option>
         ))}
       </CampoSelect>

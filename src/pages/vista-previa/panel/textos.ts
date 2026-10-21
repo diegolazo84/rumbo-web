@@ -603,6 +603,7 @@ export const PANEL_REAL = {
     yaPublicado: (n: number) => `La versión ${n} está publicada y la persona ya la ve. Para cambiarla, crea un borrador nuevo: copia lo publicado.`,
     sinMetas: "Todavía no hay metas. Agrega la primera.",
     sinAcciones: "Elige una acción de la semana o agrega una nueva.",
+    agregarA: (meta: string) => (meta.trim() ? `Agregar una acción a «${meta.trim()}»` : "Agregar una acción a esta meta"),
     crear: "Crear el borrador",
     crearAyuda: "El borrador copia el programa publicado (si hay) como versión nueva. La persona no lo ve hasta publicar.",
     publicado: (n: number) => `Programa publicado: ${n} acciones fechadas en Mi espacio.`,
