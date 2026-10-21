@@ -67,6 +67,10 @@ const TABLAS = {
   alias: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   publicaciones: { leer: "equipo", escribir: "funciones", dueno: "autor", coach: { leer: "nada", escribir: "nada" } },
   reportes_comunidad: { leer: "equipo", escribir: "funciones", dueno: "reportante", coach: { leer: "nada", escribir: "nada" } },
+  reconocimientos: { leer: "con-sesion", escribir: "funciones", coach: { leer: "con-sesion", escribir: "nada" } },
+  reconocimientos_otorgados: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
+  beneficios: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  beneficios_otorgados: { leer: "propio", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   plantillas_accion: { leer: "equipo", escribir: "funciones", coach: { leer: "todas", escribir: "nada" } },
   registros_semanales: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   programas: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // sin borradores
@@ -88,13 +92,14 @@ const FUNCIONES = {
     "evolucion_semanal", "informe_ciclo", "mis_medibles", "anotar_cantidad",
     "guardar_alias", "participar_en_ranking", "ranking_semanal",
     "aceptar_reglas_comunidad", "publicar_en_comunidad", "borrar_mi_publicacion", "reportar_publicacion", "comunidad_publicaciones",
+    "mis_reconocimientos", "mis_beneficios",
   ],
   "equipo-error": [
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
     "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion", "cambiar_modulo", "indicadores",
     "registrar_pago", "devolucion_sugerida", "registrar_devolucion",
     "invitar_coach", "revocar_invitacion", "cambiar_coach", "programar_videollamada", "anotar_videollamada",
-    "moderar_publicacion",
+    "moderar_publicacion", "guardar_reconocimiento", "guardar_beneficio", "otorgar_beneficio", "aplicar_beneficio",
   ],
   equipo: ["mi_rol_equipo", "actualizar_mi_perfil", "guardar_plantilla"],
   "con-sesion": ["modulo_visible", "marcar_avisos_leidos", "aceptar_invitacion_equipo"],
@@ -209,6 +214,11 @@ insert into public.reportes_comunidad (publicacion_id, reportante, motivo)
   values ('00000000-0000-0000-0000-0000000000b1', '${ROLES.A.ficha}', 'spam') on conflict do nothing;
 insert into public.plantillas_accion (titulo, instrucciones, duracion_min, autor)
   values ('Caminar', 'Plantilla de prueba de CI.', 20, '${ROLES.aal2.uid}');
+insert into public.reconocimientos_otorgados (participante_id, clave, referencia)
+  values ('${ROLES.A.ficha}', 'primer_paso', 'unico'), ('${ROLES.B.ficha}', 'primer_paso', 'unico') on conflict do nothing;
+insert into public.beneficios_otorgados (beneficio_id, participante_id, porcentaje, nota)
+  select b.id, p.id, b.porcentaje, 'Semilla de CI' from public.beneficios b, public.participantes p
+   where b.clave = 'renovacion_ciclo_completo' and p.id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
 insert into public.recordatorios (participante_id) values ('${ROLES.A.ficha}'), ('${ROLES.B.ficha}') on conflict do nothing;
 `);
 
@@ -919,6 +929,125 @@ paso("medibles y plantillas: la cantidad se anota en lo propio ya marcado y no c
   exigir(exp.ok && Number(ultima(exp)) >= 1, `la copia de mis datos no incluye mis publicaciones: ${exp.error ?? ultima(exp)}`);
 }
 paso("comunidad: solo habilitada, con alias y reglas; se ve el alias, no quién es; reportes y moderación con motivo");
+
+// E1 · Reconocimientos y beneficios. Fechas relativas al ciclo de A que deja rls.mjs.
+{
+  const cicloA = sql(`select id from public.ciclos where participante_id = '${ROLES.A.ficha}'`);
+  const finA = `(select fin from public.ciclos where id = '${cicloA}')`;
+  const otorgados = (quien) => `select coalesce(string_agg(clave, ',' order by clave), '') from public.reconocimientos_otorgados where participante_id = '${quien}'`;
+  const base = `begin; delete from public.reconocimientos_otorgados;`;
+  const r1 = psql(`${base} select privado.otorgar_reconocimientos(${finA} + 1) \\g /dev/null
+    ${otorgados(ROLES.A.ficha)}; ${otorgados(ROLES.B.ficha)};
+    select privado.otorgar_reconocimientos(${finA} + 1);
+    select count(*) from public.avisos where tipo = 'reconocimiento'; rollback;`);
+  const [a1, b1, otraVez, avisos1] = (r1.salida ?? "").split("\n");
+  exigir(r1.ok && /ciclo_completado/.test(a1) && /primer_paso/.test(a1) && !/mitad_del_camino|meta_alcanzada/.test(a1),
+    `los reconocimientos de A no son los esperados: ${r1.error ?? a1}`);
+  exigir(r1.ok && b1 === "", `B recibió reconocimientos sin acciones hechas: ${b1}`);
+  exigir(r1.ok && otraVez === "0", `los reconocimientos se repiten: ${otraVez}`);
+  exigir(r1.ok && avisos1 === "0", `hubo avisos de reconocimiento con el módulo sin habilitar: ${avisos1}`);
+  const r2 = psql(`${base} update public.modulos set estado = 'habilitado' where clave = 'reconocimientos';
+    update public.reconocimientos set activo = false where clave = 'primer_paso';
+    set session_replication_role = replica;
+    update public.metas m set hitos = '[{"texto": "Hito de CI", "logrado": true}]' from public.programas g
+     where g.id = m.programa_id and g.estado = 'publicado' and m.participante_id = '${ROLES.A.ficha}';
+    insert into public.registros (ocurrencia_id, participante_id, estado)
+      select o.id, o.participante_id, 'hecha' from public.ocurrencias o where o.ciclo_id = '${cicloA}' and o.vigente
+         and not exists (select 1 from public.registros g where g.ocurrencia_id = o.id);
+    update public.registros set estado = 'hecha' where participante_id = '${ROLES.A.ficha}';
+    set session_replication_role = origin;
+    select privado.otorgar_reconocimientos(${finA} + 1);
+    ${otorgados(ROLES.A.ficha)};
+    select count(*) from public.avisos where tipo = 'reconocimiento' and participante_id = '${ROLES.A.ficha}'; rollback;`);
+  const [n2, a2, avisos2] = (r2.salida ?? "").split("\n");
+  exigir(r2.ok && /meta_alcanzada/.test(a2) && /mitad_del_camino/.test(a2) && !/primer_paso/.test(a2),
+    `con hitos logrados y la mitad hecha no se otorgó lo esperado (o se otorgó uno apagado): ${r2.error ?? a2}`);
+  exigir(r2.ok && avisos2 === n2, `con el módulo habilitado, avisos ${avisos2} de ${n2} reconocimientos`);
+  const cerrado = como(ROLES.A, "select count(*) from public.mis_reconocimientos()");
+  exigir(!cerrado.ok && /no_disponible/.test(cerrado.error), "se ven los reconocimientos sin habilitar el módulo");
+  const ver = como(ROLES.B, `reset role; update public.modulos set estado = 'habilitado' where clave = 'reconocimientos'; set local role authenticated;
+    select string_agg(clave, ',') from public.mis_reconocimientos()`);
+  exigir(ver.ok && ultima(ver) === "primer_paso", `B no ve solo lo suyo: ${ver.error ?? ultima(ver)}`);
+  const xEdita = como(ROLES.X, `select public.guardar_reconocimiento('constancia', '{"umbral": 5}')`);
+  exigir(!xEdita.ok && /no_autorizado/.test(xEdita.error), "un coach cambió un reconocimiento");
+  const dEdita = como(ROLES.aal2, `select public.guardar_reconocimiento('constancia', '{"umbral": 5}') \\g /dev/null
+    select umbral from public.reconocimientos where clave = 'constancia'`);
+  exigir(dEdita.ok && ultima(dEdita) === "5", `el dueño no pudo ajustar el umbral: ${dEdita.error ?? ultima(dEdita)}`);
+  const exp = como(ROLES.A, "select jsonb_array_length(public.exportar_mis_datos()->'reconocimientos')");
+  exigir(exp.ok && Number(ultima(exp)) >= 1, `la copia de mis datos no incluye los reconocimientos: ${exp.error ?? ultima(exp)}`);
+
+  // Beneficio: 10 % en la renovación por completar todas las acciones vigentes del ciclo de 28 días.
+  const completo = `set session_replication_role = replica;
+    insert into public.registros (ocurrencia_id, participante_id, estado)
+      select o.id, o.participante_id, 'hecha' from public.ocurrencias o where o.ciclo_id = '${cicloA}' and o.vigente
+         and not exists (select 1 from public.registros g where g.ocurrencia_id = o.id);
+    update public.registros set estado = 'hecha' where participante_id = '${ROLES.A.ficha}';
+    set session_replication_role = origin;`;
+  const evaluar = (antes, fecha = `${finA} + 1`) =>
+    psql(`begin; delete from public.beneficios_otorgados; ${antes} select privado.evaluar_beneficios(${fecha}); rollback;`).salida;
+  const activar = "update public.beneficios set activo = true where clave = 'renovacion_ciclo_completo';";
+  exigir(evaluar(completo) === "0", "se otorgó el beneficio estando apagado");
+  exigir(evaluar(activar + completo) === "1", `con todo hecho no se otorgó el beneficio (${evaluar(activar + completo)})`);
+  exigir(evaluar(activar + completo, finA) === "0", "se otorgó el beneficio antes de terminar el ciclo");
+  const falta = `delete from public.registros where id = (select g.id from public.registros g join public.ocurrencias o on o.id = g.ocurrencia_id
+    where o.ciclo_id = '${cicloA}' limit 1);`;
+  exigir(evaluar(activar + completo + falta) === "0", "se otorgó el beneficio con una acción sin hacer");
+  const anulada = `update public.ocurrencias set vigente = false, anulada_motivo = 'ajuste', anulada_en = current_date
+    where id = (select o.id from public.ocurrencias o where o.ciclo_id = '${cicloA}' order by fecha desc limit 1);
+    delete from public.registros where ocurrencia_id in (select id from public.ocurrencias where ciclo_id = '${cicloA}' and not vigente);`;
+  exigir(evaluar(activar + completo + anulada) === "1", "una acción anulada por un ajuste autorizado impidió el beneficio");
+  const doble = psql(`begin; ${activar} ${completo} select privado.evaluar_beneficios(${finA} + 1) \\g /dev/null
+    select privado.evaluar_beneficios(${finA} + 1); rollback;`);
+  exigir(doble.ok && ultima(doble) === "0", "el beneficio se otorgó dos veces por el mismo ciclo");
+
+  const renovar = `reset role; ${activar} ${completo} select privado.evaluar_beneficios(${finA} + 1) \\g /dev/null
+    update public.ciclos set estado = 'cerrado', cerrado_en = now() where id = '${cicloA}';
+    set session_replication_role = replica;
+    insert into public.ciclos (id, participante_id, numero, plan_id, inicio, semanas, fin, dia_revision, precio_acordado_clp)
+      select '00000000-0000-0000-0000-0000000c1c02', participante_id, 2, plan_id, fin + 1, 4, fin + 28, dia_revision, 30000
+        from public.ciclos where id = '${cicloA}';
+    set session_replication_role = origin; set local role authenticated;`;
+  const ganado = `(select id from public.beneficios_otorgados where ciclo_origen = '${cicloA}')`;
+  const semilla = `(select id from public.beneficios_otorgados where participante_id = '${ROLES.A.ficha}' and ciclo_origen is null limit 1)`;
+  const aplica = como(ROLES.aal2, `${renovar} select public.aplicar_beneficio(${ganado}, '00000000-0000-0000-0000-0000000c1c02') \\g /dev/null
+    select public.registrar_pago('00000000-0000-0000-0000-0000000c1c02', 'transferencia', current_date) \\g /dev/null
+    select (select descuento_clp from public.beneficios_otorgados where id = ${ganado}) || ' ' ||
+           (select monto from public.pagos where ciclo_id = '00000000-0000-0000-0000-0000000c1c02')`);
+  exigir(aplica.ok && ultima(aplica) === "3000 27000", `el 10 % no se aplicó a la renovación: ${aplica.error ?? ultima(aplica)}`);
+  const acumula = como(ROLES.aal2, `${renovar} select public.aplicar_beneficio(${ganado}, '00000000-0000-0000-0000-0000000c1c02') \\g /dev/null
+    select public.aplicar_beneficio(${semilla}, '00000000-0000-0000-0000-0000000c1c02')`);
+  exigir(!acumula.ok && /no_acumulable/.test(acumula.error), "se sumaron dos beneficios en una renovación");
+  const mismo = como(ROLES.aal2, `${renovar} select public.aplicar_beneficio(${ganado}, '${cicloA}')`);
+  exigir(!mismo.ok && /no_es_renovacion|ya_registrado/.test(mismo.error), "el beneficio se aplicó al mismo ciclo que lo ganó");
+  const dosVeces = como(ROLES.aal2, `${renovar} select public.aplicar_beneficio(${ganado}, '00000000-0000-0000-0000-0000000c1c02') \\g /dev/null
+    select public.aplicar_beneficio(${ganado}, '00000000-0000-0000-0000-0000000c1c02')`);
+  exigir(!dosVeces.ok && /ya_usado/.test(dosVeces.error), "un beneficio se usó dos veces");
+  const xAplica = como(ROLES.X, `${renovar} select public.aplicar_beneficio(${ganado}, '00000000-0000-0000-0000-0000000c1c02')`);
+  exigir(!xAplica.ok && /no_autorizado/.test(xAplica.error), "un coach aplicó un beneficio");
+
+  const beneficio = `(select id from public.beneficios where clave = 'renovacion_ciclo_completo')`;
+  const cambiaActivo = como(ROLES.aal2, `reset role; ${activar} set local role authenticated;
+    select public.guardar_beneficio(${beneficio}, '{"porcentaje": 15}')`);
+  exigir(!cambiaActivo.ok && /beneficio:activo/.test(cambiaActivo.error), "se cambió el porcentaje con el beneficio activo");
+  const cambiaApagado = como(ROLES.aal2, `select public.guardar_beneficio(${beneficio}, '{"porcentaje": 15}') \\g /dev/null
+    select porcentaje from public.beneficios where id = ${beneficio}`);
+  exigir(cambiaApagado.ok && ultima(cambiaApagado) === "15", `el dueño no pudo ajustar el porcentaje: ${cambiaApagado.error ?? ultima(cambiaApagado)}`);
+  const convenio = `select public.guardar_beneficio(null, '{"clave": "convenio_ci", "tipo": "convenio_tienda", "nombre": "Convenio de CI",
+    "descripcion": "Descuento de prueba en una tienda.", "porcentaje": 5, "proveedor": "Tienda de CI"}') \\g /dev/null\n`;
+  const convenioId = "(select id from public.beneficios where clave = 'convenio_ci')";
+  const apagado = como(ROLES.aal2, `${convenio} select public.otorgar_beneficio(${convenioId}, '${ROLES.A.ficha}')`);
+  exigir(!apagado.ok && /inactivo/.test(apagado.error), "se otorgó un beneficio del catálogo sin activarlo");
+  const otorga = como(ROLES.aal2, `${convenio} select public.guardar_beneficio(${convenioId}, '{"activo": true}') \\g /dev/null
+    select public.otorgar_beneficio(${convenioId}, '${ROLES.A.ficha}', 'Prueba') \\g /dev/null
+    select count(*) from public.beneficios_otorgados where beneficio_id = ${convenioId}`);
+  exigir(otorga.ok && ultima(otorga) === "1", `el dueño no pudo otorgar un convenio activo: ${otorga.error ?? ultima(otorga)}`);
+  const auto = como(ROLES.aal2, `reset role; ${activar} set local role authenticated; select public.otorgar_beneficio(${beneficio}, '${ROLES.A.ficha}')`);
+  exigir(!auto.ok && /automatico/.test(auto.error), "el descuento de renovación se otorgó a mano");
+  const mios = como(ROLES.B, "select count(*) from public.mis_beneficios()");
+  const suyos = sql(`select count(*) from public.beneficios_otorgados where participante_id = '${ROLES.B.ficha}'`);
+  exigir(mios.ok && ultima(mios) === suyos, `B no ve exactamente sus beneficios: ${mios.error ?? ultima(mios)} de ${suyos}`);
+}
+paso("reconocimientos y beneficios: se otorgan solos y una vez; el 10 % exige todo lo vigente del ciclo, se usa en una renovación y no se acumula; solo el dueño configura");
 
 paso("ranking: voluntario, solo con alias, por % de la semana; con menos de 3 no se muestra; quien sale deja de verlo");
 
