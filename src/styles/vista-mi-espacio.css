@@ -491,7 +491,7 @@
 .me-marcaste__lista { list-style: none; display: grid; gap: 8px; }
 .me-marcaste__lista li {
   display: grid;
-  gap: 2px;
+  gap: 6px;
   padding: 10px 14px;
   border-radius: var(--r-s);
   background: var(--cat-fondo);
@@ -499,11 +499,19 @@
 }
 .me-marcaste__meta { font: 600 var(--t-s)/1.35 var(--sans); }
 .me-marcaste__dato { font-size: var(--t-xs); font-weight: 500; font-variant-numeric: tabular-nums; color: var(--tinta-suave); }
-.me-respuesta { gap: var(--e-4); }
-.me-respuesta__cabeza { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: center; }
-.me-respuesta__rotulo { font-family: var(--sans); }
-.me-respuesta__parte { display: grid; gap: 4px; }
-.me-respuesta__parte h3 { font: 600 var(--t-s)/1.4 var(--sans); letter-spacing: 0; }
+/* «Así fue tu semana» (textos exactos de Diego). */
+.me-semana__cabeza { display: grid; gap: 2px; }
+.me-semana__titulo { font: 600 var(--t-h3)/1.2 var(--serif); color: var(--bosque); }
+.me-semana__subtitulo { font: 600 var(--t-xs)/1.3 var(--sans); color: var(--terracota-texto); }
+.me-semana__h3 { margin: 0; font: 600 var(--t-base)/1.3 var(--sans); color: var(--tinta); }
+.me-semana__sin-revision { padding: var(--e-4) var(--e-5); border-radius: var(--r-m); background: var(--papel-hondo); color: var(--tinta-suave); }
+.me-vimos { gap: var(--e-4); }
+.me-vimos__cabeza { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: center; }
+.me-vimos__cuerpo { display: grid; gap: var(--e-4); }
+.me-vimos__parte { display: grid; gap: 4px; }
+.me-vimos__parte h4 { font: 600 var(--t-s)/1.4 var(--sans); color: var(--terracota-texto); }
+.me-vimos__parte p { font-size: var(--t-s); line-height: 1.55; }
+.me-vimos__cuerpo.es-resumen .me-vimos__parte p { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
 .me-semana__principal { display: grid; gap: var(--e-5); min-inline-size: 0; }
 
 /* ========================================================================
@@ -678,7 +686,6 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 .me-titulo-seccion__ojo { font: 600 var(--t-micro)/1.2 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--terracota-texto); }
 .me-titulo-seccion__bajada { max-inline-size: var(--medida); font-size: var(--t-base); line-height: 1.55; color: var(--tinta-suave); }
 .me-titulo-seccion__bajada > * + * { margin-block-start: var(--e-2); }
-.me-acomp__intro { color: var(--tinta); font-weight: 500; }
 
 /* Pestañas de Mi plan: subrayado (distinto del control segmentado Día · Semana · Mes). */
 .me-pestanas ul { display: flex; gap: var(--e-5); list-style: none; border-block-end: 1px solid var(--linea); }
@@ -742,18 +749,69 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 .me-comunidad__privacidad .icono { margin-block-start: 2px; }
 
 /* Mi acompañamiento ---------------------------------------------------------------------- */
-.me-acomp__resumen { display: grid; gap: var(--e-4); }
-@media (min-width: 720px) { .me-acomp__resumen { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.me-acomp__tarjeta { display: grid; gap: var(--e-3); align-content: start; padding: var(--e-5); border-radius: var(--r-m); }
-.me-acomp__tarjeta.es-destacada { border-color: var(--bosque); background: var(--niebla); }
-.me-acomp__tarjeta.es-destacada .icono-mosaico { background: var(--superficie); }
-.me-acomp__tarjeta-cabeza { display: flex; align-items: center; gap: 12px; }
-.me-acomp__tarjeta-titulo { font: 600 var(--t-base)/1.3 var(--sans); color: var(--tinta); }
-.me-acomp__dato { font: 600 var(--t-h3)/1.25 var(--serif); color: var(--bosque); }
-.me-acomp__plan { font: 600 var(--t-xs)/1.3 var(--sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--terracota-texto); }
-.me-acomp__acuerdo { display: grid; gap: var(--e-1); }
-.me-acomp__cita { color: var(--tinta); }
+/* Mi acompañamiento (referencia visual v2): «Tu coach» con el mensaje de la semana, dos botones,
+   la próxima revisión y el historial. En escritorio, dos columnas como Mi Rumbo. */
+.me-acomp { gap: var(--e-6); }
+.me-acomp__cabeza { display: grid; gap: var(--e-2); justify-items: start; }
+.me-acomp__h1 { margin: 0; font: 600 var(--t-saludo)/1.08 var(--serif); letter-spacing: -0.015em; color: var(--bosque); }
+.me-acomp__intro { max-inline-size: 32ch; font-size: var(--t-lead); line-height: 1.4; color: var(--tinta-suave); }
+.me-acomp__principal, .me-acomp__lado { display: grid; gap: var(--e-4); align-content: start; }
+.me-coach { display: grid; gap: var(--e-4); padding: var(--e-4); border-radius: var(--r-l); background: var(--papel-hondo); }
+.me-coach__cabeza { display: flex; align-items: center; gap: var(--e-4); }
+.me-avatar--xl { inline-size: 64px; block-size: 64px; }
+.me-coach__quien { display: grid; gap: 2px; font-size: var(--t-xs); color: var(--tinta-suave); }
+.me-coach__titulo { font: 600 var(--t-h3)/1.2 var(--serif); color: var(--bosque); }
+.me-coach__mensaje { display: grid; gap: var(--e-3); padding: var(--e-4) var(--e-5) var(--e-5); border-radius: var(--r-m); background: var(--superficie); }
+.me-coach__mensaje-cabeza { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.me-coach__rotulo { margin: 0; font: 600 var(--t-xs)/1.3 var(--sans); color: var(--terracota-texto); }
+.me-coach__fecha { margin-inline-start: auto; font-size: var(--t-micro); color: var(--tinta-suave); }
+.me-coach__cita { font: italic 500 var(--t-lead)/1.4 var(--serif); color: var(--bosque); }
+.me-acomp__botones { display: grid; gap: var(--e-3); }
+.me-acomp__botones .boton { inline-size: 100%; justify-content: center; gap: 10px; }
+.me-proxima { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: start; gap: var(--e-3); padding: var(--e-4); border-radius: var(--r-m); background: var(--papel-hondo); }
+.me-proxima__icono { display: grid; place-items: center; inline-size: 44px; block-size: 44px; border-radius: var(--r-full); background: var(--superficie); color: var(--bosque); }
+.me-proxima__texto { display: grid; gap: 2px; font-size: var(--t-s); line-height: 1.45; color: var(--tinta-suave); }
+.me-proxima__titulo { font: 600 var(--t-base)/1.3 var(--sans); color: var(--tinta); }
+.me-proxima__fecha { font: 600 var(--t-h3)/1.25 var(--serif); color: var(--bosque); }
+.me-proxima__modalidad { margin-block-end: var(--e-2); font-weight: 600; color: var(--tinta); }
+.me-proxima .microcopia { margin-block-start: var(--e-2); }
+.me-acomp-historial { display: grid; gap: var(--e-3); }
+.me-acomp-historial__titulo { font: 600 var(--t-base)/1.3 var(--sans); color: var(--tinta); }
+.me-acomp-historial__lista { display: grid; gap: var(--e-3); margin: 0; padding: 0; list-style: none; }
+.me-acomp-historial__item { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: start; gap: var(--e-3); padding: var(--e-4); border-radius: var(--r-m); background: var(--superficie); box-shadow: var(--sombra-1); }
+.me-acomp-historial__icono { display: grid; place-items: center; inline-size: 40px; block-size: 40px; border-radius: var(--r-full); background: var(--salvia-suave); color: var(--bosque); }
+.me-acomp-historial__texto { display: grid; gap: 2px; font-size: var(--t-s); line-height: 1.45; color: var(--tinta); }
+.me-acomp-historial__tipo { font-weight: 600; }
+.me-acomp-historial__estado { margin-block-end: var(--e-1); font-size: var(--t-xs); color: var(--tinta-suave); }
+/* Cierre: una frase cálida (no una tarjeta) y el paisaje, secundario. */
+.me-acomp__cierre { display: grid; justify-items: center; gap: var(--e-4); text-align: center; }
+.me-acomp__cierre .voz { max-inline-size: 32ch; color: var(--bosque); }
+.me-acomp__paisaje { inline-size: calc(100% + 2 * var(--gutter)); max-inline-size: none; block-size: auto; aspect-ratio: 440 / 84; margin-inline: calc(-1 * var(--gutter)); }
+@media (min-width: 1024px) {
+  .me-acomp {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    grid-template-areas:
+      "cabeza    cabeza"
+      "principal lado"
+      "semanas   semanas"
+      "pronto    pronto"
+      "cierre    cierre";
+    column-gap: var(--e-6);
+    row-gap: var(--e-7);
+    align-items: start;
+  }
+  .me-acomp__cabeza { grid-area: cabeza; }
+  .me-acomp__principal { grid-area: principal; }
+  .me-acomp__lado { grid-area: lado; }
+  .me-acomp__semanas { grid-area: semanas; }
+  .me-acomp > .me-pronto { grid-area: pronto; }
+  .me-acomp__cierre { grid-area: cierre; }
+  .me-acomp__paisaje { inline-size: 100%; max-inline-size: 560px; margin-inline: auto; }
+  .me-coach { padding: var(--e-5); }
+  .me-acomp__botones { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .me-acomp__semanas { scroll-margin-block-start: calc(var(--cabecera-alto) + var(--e-4)); }
+#tu-registro { scroll-margin-block-start: calc(var(--cabecera-alto) + var(--e-4)); }
 
 /* Comunidad y «Lo que viene en Rumbo» ------------------------------------------------------ */
 .me-lqv { display: grid; gap: var(--e-4); list-style: none; }

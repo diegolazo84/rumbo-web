@@ -1,23 +1,31 @@
-// Rumbo 2.0, etapa 2 · Mi acompañamiento (antes «Semana»). El acompañamiento personalizado es lo
-// que distingue a Rumbo: primero quién te acompaña y cómo, luego los acuerdos de la semana, la
-// próxima revisión y las observaciones de tu coach, y debajo la semana con tu registro y la
-// revisión (Semana.tsx, sin cambios en su lógica).
-// Cada tarjeta se muestra solo con datos que existen: el foco y los ajustes salen de la última
-// revisión publicada (o del foco inicial del programa); las observaciones, del «Qué funcionó» de
-// esa revisión. Nada se inventa: sin revisión publicada, se dice cuándo llega la primera.
-// Estructura lista para lo que viene: la tarjeta «Quién te acompaña» mostrará la ficha del coach
-// asignado (etapa 4) y el asistente con IA entrará como otra tarjeta de esta grilla. Mientras no
-// existan, van en la tarjeta «Próximamente» del final, sin botones.
-import type { ReactNode } from "react";
+// Mi acompañamiento. El acompañamiento personalizado es lo que distingue a Rumbo.
+//
+// Referencia visual v2 (21-oct-2026, pantalla 3): «Tu coach» con el mensaje de la semana, los
+// botones «Me está costando» y «Escribir mi registro», la próxima revisión, el historial reciente
+// y un paisaje al pie. Debajo sigue la semana con tu registro y la revisión completa (Semana.tsx,
+// sin cambios en su lógica). En escritorio, la misma pieza en dos columnas, como Mi Rumbo.
+//
+// Textos y estructura exactos de Diego (21-oct-2026, 05:53 UTC).
+//
+// Todo sale de datos que existen y que el coach maneja desde el panel /equipo/:
+//   · mensaje de la semana = foco de la última revisión publicada (o el foco inicial del programa);
+//   · próxima revisión = día y modalidad del plan (y la ausencia del coach, si la hay);
+//   · historial = revisiones publicadas y solicitudes de ajuste, con su estado y su fecha reales.
+// Nada se inventa: «Tu coach» con avatar genérico hasta la asignación de coaches (etapa 4A), sin
+// nombre ni foto. Sin promesas de chat ni de respuesta inmediata.
+// Sin etiqueta «Nuevo»: lo visto se guarda solo en el navegador de cada dispositivo, así que no
+// es fiable (ver mi-acompanamiento/analisis-tecnico.md). Vuelve cuando se registre en la base.
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Icono } from "../../../components/app";
+import { HojaAyuda, Icono, Ilustracion, type NombreIconoApp } from "../../../components/app";
 import type { Escenario, Revision } from "../../../data/ejemplo-app";
-import { diaCorto, nombreDia, type Iso } from "../../../lib/fechas";
+import { diaCorto, fechaLarga, mayuscula, type Iso } from "../../../lib/fechas";
 import type { PropsPantalla } from "../registro";
-import { useEspacio } from "./comun";
-import { TarjetaPronto, TituloSeccion } from "./Seccion";
+import { EtiquetaEjemplo, useEspacio } from "./comun";
+import { HojaCostando, useProximaRevision } from "./Costando";
+import { TarjetaPronto } from "./Seccion";
 import Semana, { ESCENARIOS } from "./Semana";
-import { nombrePlan, T_ACOMPANAMIENTO as T, T_HOY, T_SECCIONES } from "./textos";
+import { T_ACOMPANAMIENTO as T, T_SECCIONES } from "./textos";
 
 export default function Acompanamiento({ estado = "sin-enviar" }: PropsPantalla) {
   const esp = useEspacio();
@@ -26,39 +34,50 @@ export default function Acompanamiento({ estado = "sin-enviar" }: PropsPantalla)
   const caso = esp.real ? null : (ESCENARIOS[estado] ?? ESCENARIOS["sin-enviar"]);
   const hoy = caso?.hoy ?? esp.hoy;
   const esc = caso?.esc ?? esp.esc;
-  const cercano = esc.plan === "cercano";
+  const [costando, setCostando] = useState(false);
+  const [ayuda, setAyuda] = useState(false);
 
   return (
     <div className="me-pantalla me-acomp">
-      <TituloSeccion
-        titulo={T_SECCIONES.acompanamiento}
-        icono="message-circle"
-        ojo={T.ojo}
-        bajada={
-          <>
-            <p className="me-acomp__intro">{T.intro}</p>
-            <p>{cercano ? T.bajadaCercano : T.bajadaCoach}</p>
-          </>
-        }
-        ejemplo
-      />
+      <header className="me-acomp__cabeza">
+        <h1 className="me-acomp__h1">{T_SECCIONES.acompanamiento}</h1>
+        <p className="me-acomp__intro">{T.intro}</p>
+        {!esp.real && <EtiquetaEjemplo />}
+      </header>
 
-      <section className="me-acomp__resumen" aria-labelledby="acomp-resumen">
-        <h2 id="acomp-resumen" className="sr-only">
-          {T.resumen}
-        </h2>
-        <QuienTeAcompana esc={esc} />
-        <Acuerdos hoy={hoy} esc={esc} />
+      <div className="me-acomp__principal">
+        <TuCoach hoy={hoy} esc={esc} />
+        <Botones onCostando={() => setCostando(true)} />
         <ProximaRevision hoy={hoy} esc={esc} />
-        <Observaciones hoy={hoy} esc={esc} />
-      </section>
+      </div>
 
-      {/* key: «Leer la revisión completa» cambia ?n= y la semana vuelve a leerlo. */}
+      <div className="me-acomp__lado">
+        <Historial hoy={hoy} esc={esc} />
+      </div>
+
+      {/* key: «Leer la revisión» cambia ?n= y la semana vuelve a leerlo. */}
       <div id="mis-semanas" className="me-acomp__semanas">
         <Semana key={search} estado={estado} />
       </div>
 
       <TarjetaPronto id="acomp-pronto" titulo={T.pronto.titulo} items={T.pronto.items} />
+      <div className="me-acomp__cierre">
+        <p className="voz">{T.cierre}</p>
+        <Ilustracion nombre="colinas" className="me-acomp__paisaje" />
+      </div>
+
+      <HojaCostando
+        abierta={costando}
+        hoy={hoy}
+        esc={esc}
+        ausencia={esp.real}
+        onCerrar={() => setCostando(false)}
+        onAyuda={() => {
+          setCostando(false);
+          setAyuda(true);
+        }}
+      />
+      <HojaAyuda abierta={ayuda} onCerrar={() => setAyuda(false)} />
     </div>
   );
 }
@@ -67,115 +86,144 @@ export default function Acompanamiento({ estado = "sin-enviar" }: PropsPantalla)
 const publicadas = (revs: Revision[], hoy: Iso) =>
   revs.filter((r) => r.publicadaEl && r.publicadaEl <= hoy).sort((a, b) => b.semana - a.semana);
 
-function Tarjeta({ id, icono, titulo, children, destacada }: { id: string; icono: "user-round" | "compass" | "calendar-days" | "message-circle"; titulo: string; children: ReactNode; destacada?: boolean }) {
-  return (
-    <article className={destacada ? "tarjeta me-acomp__tarjeta es-destacada" : "tarjeta me-acomp__tarjeta"} aria-labelledby={id}>
-      <div className="me-acomp__tarjeta-cabeza">
-        <span className="icono-mosaico">
-          <Icono nombre={icono} tamaño={20} />
-        </span>
-        <h3 id={id} className="me-acomp__tarjeta-titulo">
-          {titulo}
-        </h3>
-      </div>
-      {children}
-    </article>
-  );
-}
-
-// Quién te acompaña y cómo (lo acordado): hoy, el equipo de Rumbo; con la etapa 4, el coach asignado.
-function QuienTeAcompana({ esc }: { esc: Escenario }) {
-  const { fechaRevision } = useEspacio();
-  const dia = nombreDia(fechaRevision(1, esc.diaRevision));
-  return (
-    <Tarjeta id="acomp-quien" icono="user-round" titulo={T.quien.titulo} destacada>
-      <p className="me-acomp__dato">{T.quien.equipo}</p>
-      <p className="me-acomp__plan">{nombrePlan(esc.plan)}</p>
-      <p className="me-bloque__bajada">
-        {esc.plan === "cercano" ? T.quien.videollamada(dia, esc.horaVideollamada) : T.quien.escrita(dia)}
-      </p>
-    </Tarjeta>
-  );
-}
-
-// Acuerdos de la semana: el foco vigente y lo que se ajustó en la última revisión.
-function Acuerdos({ hoy, esc }: { hoy: Iso; esc: Escenario }) {
+// «Tu coach»: el mensaje de la semana (el foco vigente, que el coach escribe en su revisión) es
+// lo más destacado de la tarjeta después del título.
+function TuCoach({ hoy, esc }: { hoy: Iso; esc: Escenario }) {
   const { semanaDelCiclo, focoDeLaSemana } = useEspacio();
-  const n = semanaDelCiclo(hoy);
   const ultima = publicadas(esc.revisiones, hoy)[0];
-  const foco = ultima?.foco || focoDeLaSemana(n, esc.revisiones, esc.focoInicial);
-  const ajustamos = ultima?.ajustamos;
-  if (!foco && !ajustamos) return null;
+  const foco = ultima?.foco || focoDeLaSemana(semanaDelCiclo(hoy), esc.revisiones, esc.focoInicial);
   return (
-    <Tarjeta id="acomp-acuerdos" icono="compass" titulo={T.acuerdos.titulo}>
+    <section className="me-coach" aria-labelledby="acomp-coach">
+      <div className="me-coach__cabeza">
+        <span className="me-avatar me-avatar--xl" aria-hidden="true">
+          <Icono nombre="user-round" tamaño={24} />
+        </span>
+        <div className="me-coach__quien">
+          <h2 id="acomp-coach" className="me-coach__titulo">
+            {T.coach.titulo}
+          </h2>
+          <p>{T.coach.quien}</p>
+        </div>
+      </div>
       {foco && (
-        <div className="me-acomp__acuerdo">
-          <p className="me-rotulo">{ultima ? T.acuerdos.foco : T.acuerdos.inicial}</p>
-          <p className="voz">
+        <div className="me-coach__mensaje">
+          <div className="me-coach__mensaje-cabeza">
+            <h3 className="me-coach__rotulo">{T.mensaje.rotulo}</h3>
+            <span className="me-coach__fecha">{ultima?.publicadaEl ? mayuscula(diaCorto(ultima.publicadaEl)) : T.mensaje.inicial}</span>
+          </div>
+          <p className="me-coach__cita">
             <q>{foco}</q>
           </p>
         </div>
       )}
-      {ajustamos && (
-        <div className="me-acomp__acuerdo">
-          <p className="me-rotulo">{T.acuerdos.ajustamos}</p>
-          <p>{ajustamos}</p>
-        </div>
-      )}
-    </Tarjeta>
+    </section>
   );
 }
 
-// Próxima revisión: la misma regla que «Tu próxima revisión» en Mi Rumbo (y la ausencia del coach).
+// «Me está costando» abre la misma hoja de Mi Rumbo (ajuste, registro o ayuda inmediata);
+// «Escribir mi registro» lleva a «Lo que compartiste» y abre el formulario existente.
+function Botones({ onCostando }: { onCostando: () => void }) {
+  return (
+    <div className="me-acomp__botones">
+      <button type="button" className="boton boton--primario" aria-haspopup="dialog" onClick={onCostando}>
+        <Icono nombre="hand" tamaño={20} />
+        {T.botones.costando}
+      </button>
+      <a href="#tu-registro" className="boton boton--secundario">
+        <Icono nombre="pen-line" tamaño={20} />
+        {T.botones.escribir}
+      </a>
+    </div>
+  );
+}
+
+// Próxima revisión: fecha real del programa (con la ausencia del coach), la modalidad contratada y
+// una explicación breve. La aclaración «no es un chat» va solo aquí.
 function ProximaRevision({ hoy, esc }: { hoy: Iso; esc: Escenario }) {
-  const { semanaDelCiclo, fechaRevision, ausencia, ciclo, real } = useEspacio();
-  let n = semanaDelCiclo(hoy);
-  if (fechaRevision(n, esc.diaRevision) < hoy) n += 1;
+  const { ciclo, real } = useEspacio();
+  const { n, fecha } = useProximaRevision(hoy, esc, real);
   if (n > ciclo.semanas) return null;
-  let fecha = fechaRevision(n, esc.diaRevision);
-  if (real && ausencia && fecha <= ausencia.hasta) fecha = ausencia.vuelve;
-  const enviado = esc.registrosSemanales.some((r) => r.semana === n && r.enviadoEl);
   const cercano = esc.plan === "cercano";
   return (
-    <Tarjeta id="acomp-proxima" icono="calendar-days" titulo={T.proxima.titulo}>
-      <p className="me-acomp__dato">{fecha === hoy ? `Hoy, ${diaCorto(fecha)}` : diaCorto(fecha)}</p>
-      <p className="me-bloque__bajada">{cercano ? T.proxima.videollamada(esc.horaVideollamada) : T.proxima.escrita}</p>
-      <p className="microcopia">{enviado ? T.proxima.registroEnviado : T.proxima.registroPendiente}</p>
-      {!enviado && (
-        <a href="#mis-semanas" className="enlace-flecha">
-          {cercano ? T_HOY.revision.escribirOpcional : T.proxima.escribir}
-          <Icono nombre="arrow-right" tamaño={16} />
-        </a>
-      )}
-    </Tarjeta>
+    <section className="me-proxima" aria-labelledby="acomp-proxima">
+      <span className="me-proxima__icono" aria-hidden="true">
+        <Icono nombre="clock" tamaño={22} />
+      </span>
+      <div className="me-proxima__texto">
+        <h2 id="acomp-proxima" className="me-proxima__titulo">
+          {T.proxima.titulo}
+        </h2>
+        <p className="me-proxima__fecha">{fecha === hoy ? `Hoy, ${fechaLarga(fecha)}` : mayuscula(fechaLarga(fecha))}</p>
+        <p className="me-proxima__modalidad">{cercano ? T.proxima.videollamada(esc.horaVideollamada) : T.proxima.escrita}</p>
+        <p>{cercano ? T.proxima.explicaVideollamada : T.proxima.explicaEscrita}</p>
+        <p className="microcopia">{T.proxima.noEsChat}</p>
+      </div>
+    </section>
   );
 }
 
-// Observaciones de tu coach: «Qué funcionó» de la última revisión publicada.
-function Observaciones({ hoy, esc }: { hoy: Iso; esc: Escenario }) {
-  const { fechaRevision, R } = useEspacio();
-  const ultima = publicadas(esc.revisiones, hoy)[0];
-  if (!ultima) {
-    const primera = fechaRevision(1, esc.diaRevision);
-    if (primera < hoy) return null; // la semana muestra «todavía no está lista»
-    return (
-      <Tarjeta id="acomp-observaciones" icono="message-circle" titulo={T.observaciones.titulo}>
-        <p className="me-bloque__bajada">{T.observaciones.sinRevision(diaCorto(primera))}</p>
-      </Tarjeta>
-    );
-  }
+type Item = { id: string; fecha: Iso; icono: NombreIconoApp; tipo: string; estado: string; enlace: string; ruta: string };
+
+// Historial reciente: cada tarjeta dice el tipo de interacción, su estado real, la fecha y cómo
+// ver el detalle. Revisiones publicadas y solicitudes de ajuste (las que el coach responde en el
+// panel). Una solicitud respondida lleva la fecha de la respuesta; las demás, la de envío.
+function Historial({ hoy, esc }: { hoy: Iso; esc: Escenario }) {
+  const { R, fechaRevision, real } = useEspacio();
+  const H = T.historial;
+  const revisiones: Item[] = publicadas(esc.revisiones, hoy).map((r) => ({
+    id: `r${r.semana}`,
+    fecha: r.publicadaEl!,
+    icono: "message-circle",
+    tipo: H.revision(r.semana),
+    estado: H.fecha(H.estados.publicada, diaCorto(r.publicadaEl!)),
+    enlace: H.leerRevision,
+    // En la vista previa, la revisión publicada de ejemplo tiene su propia pantalla.
+    ruta: real ? `${R.semana}?n=${r.semana}#lo-que-vimos` : `${R.semanaPublicada}#lo-que-vimos`,
+  }));
+  const ajustes: Item[] = esc.solicitudesAjuste
+    .filter((s) => s.enviadaEl <= hoy)
+    .map((s) => {
+      // Respondida después de hoy (vista previa): todavía no se ve como respondida.
+      const respondida = (s.estado === "respondida" || s.estado === "sin_cambios") && (!s.respondidaEl || s.respondidaEl <= hoy);
+      const estado = respondida ? s.estado : s.estado === "en_revision" ? "en_revision" : "enviada";
+      return {
+        id: s.id,
+        fecha: respondida && s.respondidaEl ? s.respondidaEl : s.enviadaEl,
+        icono: "sliders-horizontal",
+        tipo: H.ajuste,
+        estado: estado === "en_revision" ? H.enRevision(diaCorto(s.enviadaEl)) : H.fecha(H.estados[estado], diaCorto(respondida && s.respondidaEl ? s.respondidaEl : s.enviadaEl)),
+        enlace: respondida ? H.verRespuesta : H.verSolicitud,
+        ruta: R.ajusteLista,
+      };
+    });
+  const items = [...revisiones, ...ajustes].sort((a, b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0)).slice(0, 4);
+  const primera = fechaRevision(1, esc.diaRevision);
   return (
-    <Tarjeta id="acomp-observaciones" icono="message-circle" titulo={T.observaciones.titulo}>
-      <p className="me-rotulo">{T.observaciones.deSemana(ultima.semana)}</p>
-      {ultima.funciono && (
-        <p className="voz me-acomp__cita">
-          <q>{ultima.funciono}</q>
-        </p>
+    <section className="me-acomp-historial" aria-labelledby="acomp-historial">
+      <h2 id="acomp-historial" className="me-acomp-historial__titulo">
+        {H.titulo}
+      </h2>
+      {items.length === 0 ? (
+        <p className="me-bloque__bajada">{primera >= hoy ? H.vacio(diaCorto(primera)) : H.vacioSinFecha}</p>
+      ) : (
+        <ul className="me-acomp-historial__lista">
+          {items.map((it) => (
+            <li key={it.id} className="me-acomp-historial__item">
+              <span className="me-acomp-historial__icono" aria-hidden="true">
+                <Icono nombre={it.icono} tamaño={16} />
+              </span>
+              <div className="me-acomp-historial__texto">
+                <p className="me-acomp-historial__tipo">{it.tipo}</p>
+                <p className="me-acomp-historial__estado">{it.estado}</p>
+                <Link to={it.ruta} className="enlace-flecha">
+                  {it.enlace}
+                  <Icono nombre="arrow-right" tamaño={16} />
+                </Link>
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
-      <Link to={`${R.semana}?n=${ultima.semana}#mis-semanas`} className="enlace-flecha">
-        {T.observaciones.leer}
-        <Icono nombre="arrow-right" tamaño={16} />
-      </Link>
-    </Tarjeta>
+    </section>
   );
 }

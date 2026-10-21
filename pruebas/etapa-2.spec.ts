@@ -138,11 +138,11 @@ test("Mi Rumbo: con dos novedades van juntas en un aviso compacto, cada una con 
   await sinViolaciones(page);
 });
 
-test("Mi acompañamiento: quién te acompaña, acuerdos, próxima revisión y observaciones", async ({ page }) => {
+test("Mi acompañamiento: tu coach, mensaje de la semana, próxima revisión e historial", async ({ page }) => {
   await abrir(page, "mi-espacio/acompanamiento/publicada/");
-  for (const t of ["Quién te acompaña", "Acuerdos de la semana", "Próxima revisión", "Observaciones de tu coach"])
-    await expect(page.getByRole("heading", { name: t })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "Semana 1 de 4." })).toBeVisible();
+  for (const t of ["Tu coach", "Un mensaje para ti esta semana", "Próxima revisión", "Historial reciente"])
+    await expect(page.getByRole("heading", { name: t, exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Así fue tu semana" })).toBeVisible();
   // El asistente y la ficha del coach todavía no existen: solo «Próximamente», sin botones.
   await expect(page.locator(".me-pronto")).toContainText("Asistente de Rumbo");
   await expect(page.locator(".me-pronto button")).toHaveCount(0);

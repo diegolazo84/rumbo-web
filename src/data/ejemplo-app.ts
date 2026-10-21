@@ -469,6 +469,7 @@ export type SolicitudAjuste = {
   enviadaEl: Iso;
   estado: EstadoAjuste;
   respuesta: string | null;
+  respondidaEl?: Iso | null; // solicitudes_ajuste.respondida_en (la escribe el panel al responder)
 };
 
 export const solicitudesAjuste: SolicitudAjuste[] = [
@@ -481,6 +482,7 @@ export const solicitudesAjuste: SolicitudAjuste[] = [
     enviadaEl: "2026-10-06",
     estado: "respondida",
     respuesta: "Dejamos «Revisar la agenda» a las 19:00, cuando ya saliste del trabajo.",
+    respondidaEl: "2026-10-06",
   },
   // La misma que el panel muestra pendiente (aj-2): «Para tu revisión del jueves 15».
   {
