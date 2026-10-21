@@ -24,7 +24,7 @@ legal de Diego).
 | 7 | Ranking voluntario | simulada | Alias, aceptación, cálculo semanal | #16 | — |
 | 8 | Roles y asignación de coaches | desarrollada (base de datos y pruebas) | Integrar, aplicar en producción; pantallas del coach y de asignación | migración, diseño | A1 |
 | 8b | Perfil del coach y «Tu coach» real | desarrollada (base de datos y pruebas) | Pantallas (Mi acompañamiento y panel); foto del coach con C1 | migración, diseño | A3 |
-| 9 | Panel del dueño | parcial | Tablero, pagos, módulos, pantalla de auditoría. Auditoría de cambios y «Ver con motivo»: desarrolladas en la base (A2). Indicadores de negocio: función `indicadores` desarrollada y probada (B3); falta la pantalla (maqueta) y los que dependen de pagos, minutos e IA | #8, diseño, migración | A2, B3 |
+| 9 | Panel del dueño | parcial | Tablero, pagos, módulos, pantalla de auditoría. Auditoría de cambios y «Ver con motivo»: desarrolladas en la base (A2). Indicadores de negocio: función `indicadores` desarrollada y probada (B3); falta la pantalla (maqueta) y los que dependen de minutos e IA. Registro de pagos y devoluciones: desarrollado y probado (B4) | #8, diseño, migración | A2, B3, B4 |
 | 10 | Panel del coach | parcial: datos de la bandeja de seguimiento desarrollados y probados (B2) | Pantalla de la bandeja y vista propia (maqueta), «Ver como» | #8, diseño | B2 |
 | 11 | Notificaciones sincronizadas | parcial: base de avisos desarrollada y probada (A5) | Centro de notificaciones en la app (espera maqueta); aplicar migración | migración, diseño | A5 |
 | 12 | Recordatorios automáticos | inexistente | Preferencias, envío programado, avisos en el teléfono | #11; externo (Brevo gratis 300/día) | — |

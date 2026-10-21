@@ -59,6 +59,7 @@ const TABLAS = {
   registros: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   progreso: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   progreso_diario: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
+  pagos: { leer: "propio", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   registros_semanales: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   programas: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // sin borradores
   metas: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // solo de programas publicados
@@ -79,6 +80,7 @@ const FUNCIONES = {
   "equipo-error": [
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
     "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion", "cambiar_modulo", "indicadores",
+    "registrar_pago", "devolucion_sugerida", "registrar_devolucion",
   ],
   equipo: ["mi_rol_equipo", "actualizar_mi_perfil"],
   "con-sesion": ["modulo_visible", "marcar_avisos_leidos"],
@@ -175,6 +177,10 @@ insert into public.peticiones_derechos (origen, participante_id, correo, tipo, f
 insert into public.solicitudes_ajuste (participante_id, ciclo_id, tipo, texto)
   select c.participante_id, c.id, 'horarios', 'Prueba de CI: otro horario.' from public.ciclos c
    where c.participante_id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+insert into public.pagos (participante_id, ciclo_id, monto, moneda, medio, pagado_en)
+  select c.participante_id, c.id, c.precio_acordado_clp, 'CLP', 'transferencia', current_date from public.ciclos c
+   where c.participante_id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}') and c.precio_acordado_clp is not null
+  on conflict (ciclo_id) do nothing;
 `);
 
 let pasos = 0;
@@ -501,6 +507,35 @@ exigir(by.salida === "0", "el coach Y ve en su bandeja a una persona que no acom
 const ajenos = como(ROLES.X, "select count(*) from public.bandeja_seguimiento() b join public.participantes p on p.id = b.participante_id where p.coach_id is distinct from auth.uid()");
 exigir(ajenos.ok && ajenos.salida === "0", "la bandeja del coach X incluye personas de otro coach");
 paso("bandeja de seguimiento: cada coach ve solo a sus participantes; el dueño ve a todos");
+
+// B4 · Pagos: solo el dueño registra; cada persona ve los suyos; la devolución no supera lo pagado.
+const pagoA = sql(`select id from public.pagos where participante_id = '${ROLES.A.ficha}' limit 1`);
+exigir(Boolean(pagoA), "no hay un pago de A para probar");
+if (pagoA) {
+  const cicloA = sql(`select ciclo_id from public.pagos where id = '${pagoA}'`);
+  const doble = como(ROLES.aal2, `select public.registrar_pago('${cicloA}', 'transferencia', current_date)`);
+  exigir(!doble.ok && /ya_registrado/.test(doble.error), "se registró dos veces el pago de un ciclo");
+  const futuro = como(ROLES.aal2, `reset role; delete from public.pagos where id = '${pagoA}'; set local role authenticated;
+    select public.registrar_pago('${cicloA}', 'transferencia', current_date + 1)`);
+  exigir(!futuro.ok && /fecha/.test(futuro.error), "se registró un pago con fecha futura");
+  const nuevo = como(ROLES.aal2, `reset role; delete from public.pagos where id = '${pagoA}'; set local role authenticated;
+    select public.registrar_pago('${cicloA}', 'transferencia', current_date);
+    select (monto = (select precio_acordado_clp from public.ciclos where id = '${cicloA}'))::int from public.pagos
+     where ciclo_id = '${cicloA}'`);
+  exigir(nuevo.ok && ultima(nuevo) === "1", `el pago no tomó el precio acordado del ciclo: ${nuevo.error ?? ultima(nuevo)}`);
+  const sug = como(ROLES.aal2, `select public.devolucion_sugerida('${pagoA}') <= monto from public.pagos where id = '${pagoA}'`);
+  exigir(sug.ok && ultima(sug) === "t", `la devolución sugerida supera lo pagado: ${sug.error ?? ultima(sug)}`);
+  const demas = como(ROLES.aal2, `select public.registrar_devolucion('${pagoA}', monto + 1, 'otro') from public.pagos where id = '${pagoA}'`);
+  exigir(!demas.ok && /monto/.test(demas.error), "se devolvió más de lo pagado");
+  const parcial = como(ROLES.aal2, `select public.registrar_devolucion('${pagoA}', 1, 'semanas_no_empezadas');
+    select devuelto from public.pagos where id = '${pagoA}'`);
+  exigir(parcial.ok && ultima(parcial) === "1", `no se pudo registrar una devolución: ${parcial.error ?? ultima(parcial)}`);
+  const export_ = como(ROLES.A, "select jsonb_array_length(public.exportar_mis_datos()->'pagos')");
+  exigir(export_.ok && Number(export_.salida) >= 1, `la copia de mis datos no incluye los pagos: ${export_.error ?? export_.salida}`);
+  const exportB = como(ROLES.B, `select count(*) from jsonb_array_elements(public.exportar_mis_datos()->'pagos') e where e->>'id' = '${pagoA}'`);
+  exigir(exportB.ok && exportB.salida === "0", "la copia de datos de B incluye un pago de A");
+}
+paso("pagos: solo el dueño registra; un pago por ciclo, con el precio acordado; la devolución no supera lo pagado");
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
 
