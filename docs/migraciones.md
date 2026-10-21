@@ -50,6 +50,7 @@ comentario. En producción ya está así: **no se pega**, solo se registra.
 | 20261031000000 | `20261031000000_fotos_en_cualquier_accion.sql` | (nuevo, C1: foto opcional en cualquier acción; **pendiente de aplicar, solo con autorización de Diego**) |
 | 20261101000000 | `20261101000000_videollamadas.sql` | (nuevo, C2: videollamada semanal del plan cercano; **pendiente de aplicar, solo con autorización de Diego**) |
 | 20261102000000 | `20261102000000_recordatorios.sql` | (nuevo, D1: recordatorios automáticos dentro de Rumbo; **pendiente de aplicar, solo con autorización de Diego**) |
+| 20261103000000 | `20261103000000_evolucion.sql` | (nuevo, C3: evolución semanal e informe de ciclo; **pendiente de aplicar, solo con autorización de Diego**) |
 
 Fuera de `migrations/` quedan las herramientas que no cambian la estructura:
 `verificacion.sql`, `historial-migraciones.sql`, `restaurar-antes.sql` y `restaurar-despues.sql`.

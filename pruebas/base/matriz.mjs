@@ -80,6 +80,7 @@ const FUNCIONES = {
     "soy_equipo", "mi_contexto", "marcar_accion", "desmarcar_accion", "dejar_pasar", "registrar_evidencia", "eliminar_evidencia",
     "guardar_registro_semanal", "pedir_ajuste", "actualizar_preferencias", "pedir_derecho", "exportar_mis_datos", "mi_coach",
     "adjuntar_foto", "quitar_foto", "guardar_recordatorios",
+    "evolucion_semanal", "informe_ciclo",
   ],
   "equipo-error": [
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
@@ -696,6 +697,34 @@ paso("videollamadas: solo en el plan cercano; las agenda y anota el coach de la 
   exigir(!persona.ok && persona.codigo === DENEGADO, "una persona puede disparar los recordatorios");
 }
 paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan a su hora, una vez al día y nunca en pausa");
+
+// C3 · Evolución: resume lo que hay en la base; la ve la persona, su coach y el dueño.
+{
+  const cicloA = deA.p_ciclo;
+  const enBase = sql(`select coalesce(sum(d.hechas), 0) || ' ' || coalesce(sum(d.programadas), 0) from public.progreso_diario d
+    join public.ciclos c on c.id = '${cicloA}' where d.participante_id = '${ROLES.A.ficha}' and d.fecha between c.inicio and least(c.fin, current_date)`);
+  exigir(enBase !== "0 0", "A no tiene progreso diario en su ciclo: la prueba de evolución quedó vacía");
+  const suma = "select coalesce(sum(hechas), 0) || ' ' || coalesce(sum(programadas), 0) from";
+  const propia = como(ROLES.A, `${suma} public.evolucion_semanal() where ciclo_id = '${cicloA}'`);
+  exigir(propia.ok && propia.salida === enBase, `la evolución de A no cuadra con su progreso diario: ${propia.error ?? propia.salida} (base: ${enBase})`);
+  const coach = como(ROLES.X, `${suma} public.evolucion_semanal('${ROLES.A.ficha}') where ciclo_id = '${cicloA}'`);
+  exigir(coach.ok && coach.salida === enBase, `el coach de A no ve su evolución: ${coach.error ?? coach.salida}`);
+  const dueno = como(ROLES.aal2, `${suma} public.evolucion_semanal('${ROLES.A.ficha}') where ciclo_id = '${cicloA}'`);
+  exigir(dueno.ok && dueno.salida === enBase, `el dueño no ve la evolución de A: ${dueno.error ?? dueno.salida}`);
+  for (const r of [ROLES.B, ROLES.Y, ROLES.aal1, ROLES.Xaal1]) {
+    const x = como(r, `select count(*) from public.evolucion_semanal('${ROLES.A.ficha}')`);
+    exigir(!x.ok && /no_autorizado/.test(x.error), `${r.nombre} ve la evolución de A: ${x.ok ? x.salida : x.error}`);
+    const i = como(r, `select public.informe_ciclo('${cicloA}')`);
+    exigir(!i.ok && /no_autorizado/.test(i.error), `${r.nombre} ve el informe del ciclo de A: ${i.ok ? "funcionó" : i.error}`);
+  }
+  const anon = como(ROLES.anon, "select count(*) from public.evolucion_semanal()");
+  exigir(!anon.ok && anon.codigo === DENEGADO, "sin sesión se puede pedir la evolución");
+  const informe = como(ROLES.A, `select (i->'acciones'->>'hechas') || ' ' || (i->'acciones'->>'programadas') || ' ' ||
+      jsonb_array_length(i->'focos') from (select public.informe_ciclo('${cicloA}') i) x`);
+  const focos = sql(`select count(*) from public.revisiones where ciclo_id = '${cicloA}' and publicada_en is not null`);
+  exigir(informe.ok && informe.salida === `${enBase} ${focos}`, `el informe del ciclo de A no cuadra: ${informe.error ?? informe.salida} (base: ${enBase} ${focos})`);
+}
+paso("evolución: semanas e informe de ciclo cuadran con la base; solo los ven la persona, su coach y el dueño");
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
 
