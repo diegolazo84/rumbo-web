@@ -19,13 +19,13 @@ import { TIPOS_PETICION } from "../../vista-previa/panel/ejemplo";
 import { ContenidoSolicitud, type AcuerdoSolicitud, type ServidorSolicitud } from "../../vista-previa/panel/FichaSolicitud";
 import { ListaEvidencias } from "../../vista-previa/panel/Fotos";
 import { ColaHoy } from "../../vista-previa/panel/Hoy";
-import { ListaParticipantes } from "../../vista-previa/panel/Participantes";
 import { ListaSolicitudes } from "../../vista-previa/panel/Solicitudes";
 import { CONTACTO_PANEL, MAS, PANEL_REAL, T_PANEL } from "../../vista-previa/panel/textos";
 import { ConstructorReal } from "./constructor";
-import { aAjuste, aFicha, aSolicitud, colaReal, nombreDe, reordenesDe, reordenesUsados, type FilaMensaje, type FilaPeticion } from "./datos";
+import { aAjuste, aSolicitud, colaReal, nombreDe, reordenesDe, reordenesUsados, type FilaMensaje, type FilaPeticion } from "./datos";
 import { RegistrarFactor, factoresTotp } from "./Mfa";
 import { FichaParticipanteReal, RevisionReal } from "./participante";
+import { MisParticipantesReal } from "./participantes";
 import { Alerta, NoEncontrada, useDatosPanel, useEscritura, useInstantanea } from "./comun";
 
 export default function Pantallas({ ruta }: { ruta: RutaPlataforma }) {
@@ -71,9 +71,9 @@ function SolicitudesReal() {
   return <ListaSolicitudes solicitudes={d.solicitudes.map(aSolicitud)} />;
 }
 
+// Referencia de ChatGPT (21-oct-2026): «Mis participantes» con el seguimiento de cada persona.
 function ParticipantesReal() {
-  const { d } = useDatosPanel();
-  return <ListaParticipantes lista={d.participantes.map((p) => aFicha(d, p))} />;
+  return <MisParticipantesReal />;
 }
 
 // ---------------------------------------------------------------------------
