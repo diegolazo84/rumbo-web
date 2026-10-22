@@ -333,3 +333,23 @@
 /* El color de la meta llena la tarjeta (fondo suave y barra ancha); la elegida se marca con el borde. */
 .pa-bloque[data-meta-color], .pa-metas__item[data-meta-color] { background: var(--cat-fondo); box-shadow: inset 6px 0 0 var(--cat); }
 .pa-bloque[data-meta-color].es-elegida, .pa-metas__item[data-meta-color].es-elegida { border-color: var(--tinta); border-width: 2px; }
+
+/* ========================================================================
+   Comunidad (moderación, grupos y desafíos)
+   ======================================================================== */
+.pa-co-texto { white-space: pre-line; overflow-wrap: anywhere; }
+.pa-co-foto { display: block; inline-size: 100%; max-inline-size: 24rem; block-size: auto; border-radius: var(--r-s); }
+.pa-co-detalles { display: grid; gap: 6px; margin: 0; padding-inline-start: var(--e-5); font-size: var(--t-s); color: var(--tinta-suave); }
+.pa-co-nuevo { justify-self: start; }
+@media (max-width: 479.98px) { .pa-co-nuevo { justify-self: stretch; } }
+.pa-co-reporte { gap: var(--e-4); }
+.pa-co-fecha { font: 400 var(--t-s)/1.4 var(--sans); color: var(--tinta-suave); }
+.pa-co-bloque { display: grid; gap: 8px; min-inline-size: 0; }
+.pa-co-rotulo { font: 600 var(--t-xs)/1.3 var(--sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--tinta-suave); }
+.pa-co-subrotulo { font: 600 var(--t-xs)/1.3 var(--sans); color: var(--tinta-suave); margin-block-start: 4px; }
+.pa-co-contenido { display: grid; gap: var(--e-3); padding: var(--e-4); border: 1px solid var(--linea); border-inline-start: 4px solid var(--bosque); border-radius: var(--r-s); background: var(--papel); }
+.pa-co-contenido--vacio { border-inline-start-color: var(--linea); color: var(--tinta-suave); }
+.pa-co-motivos { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; }
+.pa-co-motivo { display: inline-flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; border: 1px solid var(--linea); border-radius: var(--r-full); font-size: var(--t-s); }
+.pa-co-motivo__n { display: inline-grid; place-items: center; min-inline-size: 26px; block-size: 26px; padding-inline: 6px; border-radius: var(--r-full); background: var(--bosque); color: var(--papel); font-weight: 700; font-size: var(--t-xs); }
+.pa-co-decision { padding-block-start: var(--e-4); border-block-start: 1px solid var(--linea); }

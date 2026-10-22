@@ -21,11 +21,12 @@ import { ListaEvidencias } from "../../vista-previa/panel/Fotos";
 import { ColaHoy } from "../../vista-previa/panel/Hoy";
 import { ListaParticipantes } from "../../vista-previa/panel/Participantes";
 import { ListaSolicitudes } from "../../vista-previa/panel/Solicitudes";
-import { CONTACTO_PANEL, MAS, PANEL_REAL, T_PANEL } from "../../vista-previa/panel/textos";
+import { COMUNIDAD_PANEL, CONTACTO_PANEL, MAS, PANEL_REAL, T_PANEL } from "../../vista-previa/panel/textos";
 import { ConstructorReal } from "./constructor";
 import { aAjuste, aFicha, aSolicitud, colaReal, nombreDe, reordenesDe, reordenesUsados, type FilaMensaje, type FilaPeticion } from "./datos";
 import { RegistrarFactor, factoresTotp } from "./Mfa";
 import { FichaParticipanteReal, RevisionReal } from "./participante";
+import { ComunidadReal, R_COMUNIDAD } from "./comunidad";
 import { Alerta, NoEncontrada, useDatosPanel, useEscritura, useInstantanea } from "./comun";
 
 export default function Pantallas({ ruta }: { ruta: RutaPlataforma }) {
@@ -50,6 +51,8 @@ export default function Pantallas({ ruta }: { ruta: RutaPlataforma }) {
       return <RevisarReal />;
     case "/equipo/contacto/":
       return <ContactoReal />;
+    case "/equipo/comunidad/":
+      return <ComunidadReal />;
     case "/equipo/mas/":
       return <MasReal />;
     default:
@@ -483,6 +486,11 @@ function MasReal() {
       <Link to={R.contacto} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
         <Icono nombre="mail" tamaño={20} />
         <span>{MAS.contacto}</span>
+        <Icono nombre="arrow-right" tamaño={20} />
+      </Link>
+      <Link to={R_COMUNIDAD} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
+        <Icono nombre="users" tamaño={20} />
+        <span>{COMUNIDAD_PANEL.enlace}</span>
         <Icono nombre="arrow-right" tamaño={20} />
       </Link>
 

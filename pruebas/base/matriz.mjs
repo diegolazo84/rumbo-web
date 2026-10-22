@@ -680,7 +680,7 @@ paso("coaches: solo el dueño invita y cambia permisos; la invitación sirve una
 
 // C1 · Foto opcional en cualquier acción: la persona la adjunta a una acción suya sin evidencia obligatoria.
 const ocLibre = sql(`select o.id from public.ocurrencias o where o.participante_id = '${ROLES.A.ficha}' and not o.requiere_foto
-  and o.vigente and o.fecha between current_date - (select dias_registro_tardio from public.ajustes_operacion) and current_date
+  and o.vigente and o.fecha between privado.hoy_chile() - (select dias_registro_tardio from public.ajustes_operacion) and privado.hoy_chile()
   order by o.fecha desc limit 1`);
 exigir(Boolean(ocLibre), "no hay una acción de A sin evidencia obligatoria para probar la foto opcional");
 if (ocLibre) {
@@ -817,7 +817,7 @@ paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan 
 {
   const cicloA = deA.p_ciclo;
   const enBase = sql(`select coalesce(sum(d.hechas), 0) || ' ' || coalesce(sum(d.programadas), 0) from public.progreso_diario d
-    join public.ciclos c on c.id = '${cicloA}' where d.participante_id = '${ROLES.A.ficha}' and d.fecha between c.inicio and least(c.fin, current_date)`);
+    join public.ciclos c on c.id = '${cicloA}' where d.participante_id = '${ROLES.A.ficha}' and d.fecha between c.inicio and least(c.fin, privado.hoy_chile())`);
   exigir(enBase !== "0 0", "A no tiene progreso diario en su ciclo: la prueba de evolución quedó vacía");
   const suma = "select coalesce(sum(hechas), 0) || ' ' || coalesce(sum(programadas), 0) from";
   const propia = como(ROLES.A, `${suma} public.evolucion_semanal() where ciclo_id = '${cicloA}'`);

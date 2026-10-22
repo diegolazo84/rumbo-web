@@ -152,6 +152,20 @@ function baseInicial(): Base {
     ],
     ajustes_operacion: [{ id: true, postulaciones_abiertas: true, tope_solicitudes_dia: null, ausencia_hasta: null, ausencia_texto: null }],
     feriados: [{ fecha: "2026-10-12", nombre: "Encuentro de Dos Mundos" }],
+    // Comunidad (C6 a C9): una publicación con dos reportes abiertos, una oculta, un grupo y un desafío.
+    publicaciones: [
+      { id: "pub1", texto: "Compren mis suplementos, link en mi perfil.", tipo: "general", estado: "visible", respuesta_a: null, foto_ruta: null, creada_en: "2026-10-12T15:00:00Z", moderacion_motivo: null, moderada_en: null },
+      { id: "pub2", texto: "Un comentario fuera de tono.", tipo: "general", estado: "oculta", respuesta_a: "pub1", foto_ruta: null, creada_en: "2026-10-11T15:00:00Z", moderacion_motivo: "respeto", moderada_en: "2026-10-11T18:00:00Z" },
+    ],
+    reportes_comunidad: [
+      { id: "rep1", publicacion_id: "pub1", motivo: "spam", detalle: "Vende productos.", creado_en: "2026-10-12T16:00:00Z", resuelto_en: null },
+      { id: "rep2", publicacion_id: "pub1", motivo: "salud", detalle: null, creado_en: "2026-10-12T17:00:00Z", resuelto_en: null },
+    ],
+    grupos_comunidad: [{ id: "gr1", nombre: "Estudio", descripcion: "Para quienes estudian.", ilustracion: "brote", activo: true }],
+    miembros_grupo: [{ grupo_id: "gr1" }, { grupo_id: "gr1" }],
+    desafios: [{ id: "de1", titulo: "Semana de constancia", descripcion: null, reglas: "Haz todas tus acciones programadas cada día.", dias: 7, inicio: "2026-10-19", ilustracion: null, activo: true }],
+    participaciones_desafio: [{ desafio_id: "de1" }],
+    modulos: [{ clave: "comunidad", estado: "probado" }],
   };
 }
 
@@ -164,6 +178,7 @@ function filtrar(filas: Fila[], q: URLSearchParams) {
     const v = resto.join(".");
     if (op === "eq") r = r.filter((f) => String(f[col]) === v);
     else if (op === "neq") r = r.filter((f) => String(f[col]) !== v);
+    else if (op === "is" && v === "null") r = r.filter((f) => f[col] === null || f[col] === undefined);
     else if (op === "in") {
       const lista = v.replace(/^\(|\)$/g, "").split(",").map((x) => x.replace(/^"|"$/g, ""));
       r = r.filter((f) => lista.includes(String(f[col])));
@@ -205,13 +220,34 @@ function sesion(aal: "aal1" | "aal2", factores: Factor[]) {
 
 type Llamada = { tipo: "rpc" | "tabla" | "auth"; metodo: string; nombre: string; url: string; cuerpo: unknown; aal: string };
 
-const ADMIN = new Set(["crear_espacio", "nuevo_enlace_solicitud", "nuevo_borrador", "solapamientos", "carga_prevista", "publicar_programa", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "eliminar_participante"]);
+const ADMIN = new Set(["moderar_publicacion", "guardar_grupo_comunidad", "guardar_desafio", "crear_espacio", "nuevo_enlace_solicitud", "nuevo_borrador", "solapamientos", "carga_prevista", "publicar_programa", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "eliminar_participante"]);
 
 async function simular(page: Page, base: Base, { equipo = true, factores = [] as Factor[] } = {}) {
   const llamadas: Llamada[] = [];
   const auth = { factores: [...factores] };
   const rpc: Record<string, (c: Record<string, unknown>) => unknown> = {
     soy_equipo: () => equipo,
+    mi_rol_equipo: () => (equipo ? { rol: "dueno", puede_moderar: true } : null),
+    moderar_publicacion: (c) => {
+      const p = base.publicaciones.find((x) => x.id === c.p_id)!;
+      p.estado = c.p_ocultar ? "oculta" : "visible";
+      p.moderacion_motivo = c.p_ocultar ? c.p_motivo : null;
+      p.moderada_en = AHORA.toISOString();
+      for (const r of base.reportes_comunidad.filter((x) => x.publicacion_id === c.p_id && !x.resuelto_en)) r.resuelto_en = AHORA.toISOString();
+      return null;
+    },
+    guardar_grupo_comunidad: (c) => {
+      const p = c.p as Fila;
+      const g = p.id ? base.grupos_comunidad.find((x) => x.id === p.id)! : (base.grupos_comunidad[base.grupos_comunidad.push({ id: `gr${base.grupos_comunidad.length + 1}` }) - 1] as Fila);
+      Object.assign(g, { nombre: p.nombre, descripcion: p.descripcion, ilustracion: p.ilustracion, activo: p.activo });
+      return g.id;
+    },
+    guardar_desafio: (c) => {
+      const p = c.p as Fila;
+      const x = p.id ? base.desafios.find((y) => y.id === p.id)! : (base.desafios[base.desafios.push({ id: `de${base.desafios.length + 1}` }) - 1] as Fila);
+      Object.assign(x, { titulo: p.titulo, descripcion: p.descripcion, reglas: p.reglas, dias: p.dias, inicio: p.inicio, ilustracion: p.ilustracion, activo: p.activo });
+      return x.id;
+    },
     crear_espacio: (c) => {
       const s = base.solicitudes.find((x) => x.id === c.p_solicitud)!;
       s.estado = "con_espacio";
@@ -675,4 +711,127 @@ test("Más: postulaciones y cuenta con sus factores", async ({ page }) => {
   await seccion.getByRole("button", { name: "Guardar" }).click();
   await expect.poll(() => base.ajustes_operacion[0].postulaciones_abiertas).toBe(false);
   await expect(seccion.getByText("Guardado.")).toBeVisible();
+});
+
+test("Comunidad: ocultar un reporte con motivo, volver a mostrar, crear grupo y desafío", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  await page.getByRole("link", { name: "Comunidad: reportes, grupos y desafíos" }).click();
+  await expect(page.locator("h1")).toHaveText("Comunidad.");
+  await expect(page.getByText("Cerrada para participantes: solo el equipo la ve.")).toBeVisible();
+  // Reporte: el contenido y los motivos, sin quién reporta ni quién publicó.
+  const reporte = page.locator("li", { has: page.getByText("Compren mis suplementos, link en mi perfil.") });
+  await expect(reporte.getByText("2 reportes")).toBeVisible();
+  await expect(reporte.getByText("«Vende productos.»")).toBeVisible();
+  // Motivos agrupados con su cantidad, contenido aparte y la decisión en su propio bloque.
+  await expect(reporte.locator(".pa-co-motivo")).toHaveText(["Consejo de salud riesgoso1", "Publicidad o spam1"]);
+  await expect(reporte.getByRole("heading", { name: "Contenido reportado" })).toBeVisible();
+  await expect(reporte.getByRole("form", { name: "Decisión de moderación" })).toBeVisible();
+  await reporte.getByLabel("Motivo para ocultar").selectOption("spam");
+  await reporte.getByRole("button", { name: "Ocultar" }).click();
+  await expect.poll(() => base.publicaciones[0].estado).toBe("oculta");
+  expect(llamadas.find((l) => l.nombre === "moderar_publicacion")!.cuerpo).toEqual({ p_id: "pub1", p_ocultar: true, p_motivo: "spam" });
+  await expect(page.getByText("No hay reportes abiertos.")).toBeVisible();
+  // Oculta: volver a mostrar.
+  const oculta = page.locator("li", { has: page.getByText("Un comentario fuera de tono.") });
+  await oculta.getByRole("button", { name: "Volver a mostrar" }).click();
+  await expect.poll(() => base.publicaciones[1].estado).toBe("visible");
+  // Grupo nuevo: valida el nombre y guarda.
+  await expect(page.getByText("2 miembros")).toBeVisible();
+  await page.getByRole("button", { name: "Nuevo grupo" }).click();
+  await page.getByRole("button", { name: "Guardar grupo" }).click();
+  await expect(page.getByText("Escribe un nombre de 2 a 60 caracteres.")).toBeVisible();
+  await page.locator("#grupo-nuevo-nombre").fill("Deporte");
+  await page.locator("#grupo-nuevo-ilustracion").selectOption("montana");
+  await page.getByRole("button", { name: "Guardar grupo" }).click();
+  await expect(page.getByText("Grupo guardado.")).toBeVisible();
+  expect(base.grupos_comunidad.find((g) => g.nombre === "Deporte")).toMatchObject({ ilustracion: "montana", activo: true });
+  // Desafío con participantes: duración e inicio bloqueados al editar.
+  await expect(page.getByText("1 participante", { exact: true })).toBeVisible();
+  await page.locator("li", { hasText: "Semana de constancia" }).getByRole("button", { name: "Editar" }).click();
+  await expect(page.locator("#desafio-de1-dias")).toBeDisabled();
+  await page.getByRole("button", { name: "Cancelar" }).click();
+  // Desafío nuevo: valida y guarda.
+  await page.getByRole("button", { name: "Nuevo desafío" }).click();
+  await page.getByRole("button", { name: "Guardar desafío" }).click();
+  await expect(page.getByText("Escribe un título de 3 a 80 caracteres.")).toBeVisible();
+  await page.locator("#desafio-nuevo-titulo").fill("28 días de constancia");
+  await page.locator("#desafio-nuevo-reglas").fill("Un día cuenta si haces todas tus acciones programadas.");
+  await page.locator("#desafio-nuevo-inicio").fill("2026-10-26");
+  await page.getByRole("button", { name: "Guardar desafío" }).click();
+  await expect(page.getByText("Desafío guardado.")).toBeVisible();
+  expect(base.desafios.find((x) => x.titulo === "28 días de constancia")).toMatchObject({ dias: 28, inicio: "2026-10-26", activo: true });
+  await sinViolaciones(page);
+});
+
+test("Comunidad: una cuenta sin permiso de moderar no ve reportes", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/mi_rol_equipo`, (rt) => rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ rol: "coach", puede_moderar: false }) }));
+  await page.goto("equipo/comunidad/");
+  await hidratar(page);
+  await expect(page.getByText("Tu cuenta no tiene permiso para moderar la comunidad.", { exact: false })).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "reportes_comunidad")).toBe(false);
+});
+
+// Comportamiento real de la barra inferior en móvil: se desplaza la página con la rueda paso a
+// paso (la barra no se mueve ni queda bajo el contenido), cada control alcanzado con el teclado
+// queda entero entre la cabecera y la barra, y al final el último contenido queda sobre la barra.
+async function revisarBarra(page: Page) {
+  const barra = page.locator("nav.barra-inferior");
+  await expect(barra).toBeVisible();
+  const alto = await page.evaluate(() => window.innerHeight);
+  const topeBarra = async () => (await barra.boundingBox())!.y;
+  const inicial = await topeBarra();
+  await page.mouse.move(200, alto / 2);
+  for (let i = 0; i < 80; i++) {
+    const antes = await page.evaluate(() => window.scrollY);
+    await page.mouse.wheel(0, 400);
+    await page.waitForTimeout(60);
+    expect(await topeBarra()).toBeCloseTo(inicial, 0);
+    // Lo que se ve en el centro de la barra es la barra misma: ningún contenido queda encima.
+    expect(await page.evaluate((y) => !!document.elementFromPoint(window.innerWidth / 2, y + 20)?.closest("nav.barra-inferior"), inicial)).toBe(true);
+    if ((await page.evaluate(() => window.scrollY)) === antes) break;
+  }
+  const fin = await page.evaluate(() => {
+    const m = document.querySelector("main")!;
+    const hijos = [...m.querySelectorAll("*")].filter((e) => (e as HTMLElement).offsetParent !== null);
+    return Math.max(...hijos.map((e) => e.getBoundingClientRect().bottom));
+  });
+  expect(fin).toBeLessThanOrEqual(inicial + 0.5);
+  // Cada control con foco queda visible entero (cabecera arriba, barra abajo).
+  const cabeza = await page.evaluate(() => document.querySelector("header.cabecera, .cabecera-app")?.getBoundingClientRect().bottom ?? 0);
+  const fallas = await page.evaluate(
+    ({ abajo, arriba }) => {
+      const r: string[] = [];
+      // La página se desplaza con suavidad; aquí se mide la posición final de cada foco.
+      document.documentElement.style.scrollBehavior = "auto";
+      const controles = [...document.querySelectorAll<HTMLElement>("main a[href], main button, main input, main select, main textarea")].filter(
+        (e) => e.offsetParent !== null && !e.hasAttribute("disabled"),
+      );
+      for (const e of controles) {
+        e.focus({ preventScroll: false });
+        if (document.activeElement !== e) continue;
+        const b = e.getBoundingClientRect();
+        if (b.bottom > abajo + 0.5 || b.top < arriba - 0.5) r.push(`${e.tagName} «${(e.textContent || e.getAttribute("aria-label") || "").trim().slice(0, 30)}» ${Math.round(b.top)}-${Math.round(b.bottom)}`);
+      }
+      return r;
+    },
+    { abajo: inicial, arriba: cabeza },
+  );
+  expect(fallas).toEqual([]);
+}
+
+test("Comunidad en móvil: la barra inferior no tapa reportes ni botones al desplazarse", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "solo móvil");
+  await preparar(page, "aal2", VERIFICADO);
+  await simular(page, baseInicial(), { factores: VERIFICADO });
+  await page.goto("equipo/comunidad/");
+  await hidratar(page);
+  await expect(page.getByText("2 reportes").first()).toBeVisible();
+  await revisarBarra(page);
 });
