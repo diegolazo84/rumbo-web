@@ -726,6 +726,10 @@ test("Comunidad: ocultar un reporte con motivo, volver a mostrar, crear grupo y 
   const reporte = page.locator("li", { has: page.getByText("Compren mis suplementos, link en mi perfil.") });
   await expect(reporte.getByText("2 reportes")).toBeVisible();
   await expect(reporte.getByText("«Vende productos.»")).toBeVisible();
+  // Motivos agrupados con su cantidad, contenido aparte y la decisión en su propio bloque.
+  await expect(reporte.locator(".pa-co-motivo")).toHaveText(["Consejo de salud riesgoso1", "Publicidad o spam1"]);
+  await expect(reporte.getByRole("heading", { name: "Contenido reportado" })).toBeVisible();
+  await expect(reporte.getByRole("form", { name: "Decisión de moderación" })).toBeVisible();
   await reporte.getByLabel("Motivo para ocultar").selectOption("spam");
   await reporte.getByRole("button", { name: "Ocultar" }).click();
   await expect.poll(() => base.publicaciones[0].estado).toBe("oculta");

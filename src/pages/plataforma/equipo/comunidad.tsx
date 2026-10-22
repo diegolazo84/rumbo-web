@@ -181,42 +181,64 @@ function ItemReporte({ p, reportes, alCambiar }: { p: Publicacion; reportes: Rep
       setAviso(ocultar ? T.reportes.ocultada : T.reportes.dejada);
       alCambiar();
     });
-  const motivos = contar(reportes, "motivo");
+  const motivos = Object.entries(contar(reportes, "motivo")).sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]));
+  const detalles = reportes.filter((r) => r.detalle);
   return (
-    <li className="tarjeta pa-fila" aria-labelledby={`${id}-titulo`}>
+    <li className="tarjeta pa-fila pa-co-reporte" aria-labelledby={`${id}-titulo`}>
       <div className="pa-fila__cabeza">
         <h3 id={`${id}-titulo`} className="pa-h3">
           {p.respuesta_a ? T.reportes.respuesta : (T.tipos[p.tipo] ?? T.tipos.general)}
+          <span className="pa-co-fecha">{` · ${T.reportes.publicada} ${fechaLarga(p.creada_en.slice(0, 10) as Iso)}`}</span>
         </h3>
         <Etiqueta variante="activo">{T.reportes.reportes(reportes.length)}</Etiqueta>
       </div>
-      <Datos
-        className="pa-datos--apilada"
-        filas={[
-          [T.reportes.publicada, fechaDe(p.creada_en)],
-          ...Object.entries(motivos).map(([m, n]) => [T.motivos[m] ?? m, String(n)] as const),
-        ]}
-      />
-      {p.estado === "borrada" ? (
-        <p className="pa-vacio">{T.reportes.noDisponible}</p>
-      ) : (
-        <blockquote className="pa-cita">
-          <p className="pa-co-texto">{p.texto}</p>
-        </blockquote>
-      )}
-      {p.foto_ruta && p.estado !== "borrada" && <FotoPublicacion ruta={p.foto_ruta} />}
-      {reportes.some((r) => r.detalle) && (
-        <ul className="pa-co-detalles" aria-label={T.reportes.detalle}>
-          {reportes
-            .filter((r) => r.detalle)
-            .map((r) => (
-              <li key={r.id}>«{r.detalle}»</li>
-            ))}
+
+      <section className="pa-co-bloque" aria-labelledby={`${id}-contenido`}>
+        <h4 id={`${id}-contenido`} className="pa-co-rotulo">
+          {T.reportes.contenido}
+        </h4>
+        {p.estado === "borrada" ? (
+          <p className="pa-co-contenido pa-co-contenido--vacio">{T.reportes.noDisponible}</p>
+        ) : (
+          <div className="pa-co-contenido">
+            <p className="pa-co-texto">{p.texto}</p>
+            {p.foto_ruta && <FotoPublicacion ruta={p.foto_ruta} />}
+          </div>
+        )}
+      </section>
+
+      <section className="pa-co-bloque" aria-labelledby={`${id}-motivos`}>
+        <h4 id={`${id}-motivos`} className="pa-co-rotulo">
+          {T.reportes.motivos}
+        </h4>
+        <ul className="pa-co-motivos">
+          {motivos.map(([m, n]) => (
+            <li key={m} className="pa-co-motivo">
+              <span>{T.motivos[m] ?? m}</span>
+              <span className="pa-co-motivo__n" aria-label={T.reportes.reportes(n)}>
+                {n}
+              </span>
+            </li>
+          ))}
         </ul>
-      )}
+        {detalles.length > 0 && (
+          <>
+            <p className="pa-co-subrotulo">{T.reportes.detalle}</p>
+            <ul className="pa-co-detalles">
+              {detalles.map((r) => (
+                <li key={r.id}>«{r.detalle}»</li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+
       {p.estado === "visible" && (
-        <form className="pa-form" noValidate onSubmit={(e) => e.preventDefault()}>
-          <CampoSelect id={`${id}-motivo`} etiqueta={T.reportes.motivo} value={motivo} onChange={(e) => setMotivo(e.target.value)}>
+        <form className="pa-form pa-co-decision" noValidate onSubmit={(e) => e.preventDefault()} aria-labelledby={`${id}-decision`}>
+          <h4 id={`${id}-decision`} className="pa-co-rotulo">
+            {T.reportes.decision}
+          </h4>
+          <CampoSelect id={`${id}-motivo`} etiqueta={T.reportes.motivo} ayuda={T.reportes.motivoAyuda} value={motivo} onChange={(e) => setMotivo(e.target.value)}>
             {MOTIVOS.map((m) => (
               <option key={m} value={m}>
                 {T.motivos[m]}
