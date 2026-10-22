@@ -153,11 +153,25 @@ test("Proponer un grupo: valida, no repite nombres, máximo 3 en revisión y mue
 
 test("sin grupos: mensaje claro, sin destacado y con «Proponer un grupo»", async ({ page }) => {
   await abrir(page, "?grupos=0");
-  await expect(page.locator(".gr-principal").getByText(T.sinGrupos)).toBeVisible();
+  const vacio = page.locator(".gr-vacio");
+  await expect(vacio.getByRole("heading", { name: T.vacio.titulo })).toBeVisible();
+  await expect(vacio.getByText(T.vacio.texto)).toBeVisible();
   await expect(page.locator(".gr-destacado")).toHaveCount(0);
   await expect(tarjetas(page)).toHaveCount(0);
-  await expect(page.getByRole("navigation", { name: T.navegacion }).getByRole("button", { name: T.proponer })).toBeVisible();
   await sinViolaciones(page);
+  // El botón abre el formulario de propuestas aunque no haya grupos, y se puede enviar.
+  await vacio.getByRole("button", { name: T.proponer }).click();
+  const hoja = page.getByRole("dialog", { name: T.propuesta.titulo });
+  await hoja.getByLabel(T.propuesta.nombre).fill("Lectura");
+  await hoja.getByRole("button", { name: T.propuesta.enviar }).click();
+  await expect(page.locator(".tostada__texto")).toHaveText(T.propuesta.listo);
+});
+
+test("dirección directa a un grupo ajeno: no se ven sus publicaciones hasta unirse", async ({ page }) => {
+  await page.goto("vista-previa/mi-espacio/comunidad/?vista=grupos&grupo=g4");
+  await page.waitForFunction(() => document.documentElement.classList.contains("hidratado"));
+  await expect(page.getByText(T_COMU.feed.vacioGrupo)).toBeVisible();
+  await expect(page.locator("article.co-pub")).toHaveCount(0);
 });
 
 test("accesibilidad: sin violaciones WCAG 2.2 AA en la pantalla", async ({ page }) => {
@@ -172,6 +186,15 @@ test("móvil: sin desplazamiento horizontal y la barra inferior no tapa contenid
   await abrir(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await expect(page.locator(".gr-lateral")).toBeHidden();
+  // Cabecera corta; el título completo sigue en la portada y en la pestaña del navegador.
+  await expect(page.locator(".cabecera-app__seccion")).toHaveText("Grupos");
+  await expect(page.locator("main h1")).toHaveText(T.titulo);
+  await expect(page).toHaveTitle(/^Grupos de la comunidad/);
+  // Destacado: la ilustración ocupa menos que el texto y el botón de acceso queda a la vista.
+  const img = (await page.locator(".gr-destacado__img").boundingBox())!;
+  const texto = (await page.locator(".gr-destacado__texto").boundingBox())!;
+  expect(img.width).toBeLessThan(texto.width / 1.5);
+  await expect(page.locator(".gr-destacado").getByRole("link", { name: T.entrarGrupo })).toBeInViewport();
   await expect(page.locator(".gr-proponer.gr-solo-movil")).toBeVisible();
   await revisarBarra(page);
 });

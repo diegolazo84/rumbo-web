@@ -310,6 +310,10 @@ export const T_COMU = {
     orden: "Ordenar grupos",
     ordenes: { recientes: "Más recientes", miembros: "Más miembros", nombre: "Nombre" },
     sinGrupos: "Todavía no hay grupos. El equipo de Rumbo los abrirá pronto.",
+    vacio: {
+      titulo: "Aquí comenzarán nuevas conexiones",
+      texto: "Estamos preparando espacios para que encuentres personas que compartan tus intereses y objetivos",
+    },
     sinMios: "Aún no eres parte de ningún grupo. Explora Todos los grupos y únete a los que te interesen.",
     sinSugeridos: "No tenemos sugerencias por ahora. Las sugerencias usan las áreas de tus metas: cuando tengas metas, verás aquí grupos de esas áreas.",
     misGrupos: "Mis grupos",

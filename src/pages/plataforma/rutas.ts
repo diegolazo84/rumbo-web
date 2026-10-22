@@ -45,7 +45,7 @@ export const RUTAS_PLATAFORMA: RutaPlataforma[] = [
   me("acompanamiento/", "Mi acompañamiento", "acompanamiento"),
   me("comunidad/", "Comunidad", "comunidad"),
   me("comunidad/crear/", "Crear publicación", "comunidad"),
-  me("comunidad/grupos/", "Grupos de la comunidad", "comunidad"),
+  me("comunidad/grupos/", "Grupos", "comunidad", "Grupos de la comunidad"),
   me("logros/", "Mis logros", "logros"),
   me("logros/creditos/", "Créditos", "logros", "Créditos"),
   me("lo-que-viene/", "Lo que viene en Rumbo", ""),

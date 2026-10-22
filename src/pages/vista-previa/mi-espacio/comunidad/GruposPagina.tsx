@@ -250,7 +250,17 @@ function Explorador({ fuente }: { fuente: FuenteComunidad }) {
                       {T.limpiar}
                     </button>
                   </div>
-                ) : vista === "todos" && destacado ? null : (
+                ) : vista === "todos" && destacado ? null : vista === "todos" && todos.length === 0 ? (
+                  <div className="co-tarjeta gr-vacio">
+                    <Icono nombre="users" tamaño={24} />
+                    <h3 className="gr-vacio__titulo">{T.vacio.titulo}</h3>
+                    <p>{T.vacio.texto}</p>
+                    <button type="button" className="boton boton--primario" onClick={() => setHoja({ tipo: "proponer" })}>
+                      <Icono nombre="plus" tamaño={20} />
+                      {T.proponer}
+                    </button>
+                  </div>
+                ) : (
                   <p className="co-tarjeta co-estado co-estado--vacio">{vacio}</p>
                 )
               ) : (

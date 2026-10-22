@@ -636,8 +636,8 @@
 @media (max-width: 639.98px) {
   .gr-pestanas ul { gap: 6px; }
   .gr-pestanas .co-pestana { padding: 0 var(--e-3); font-size: var(--t-xs); }
-  .gr-destacado { grid-template-columns: minmax(0, 1fr) 40%; }
-  .gr-destacado__img { align-self: start; block-size: auto; min-block-size: 0; aspect-ratio: 4 / 5; }
+  .gr-destacado { grid-template-columns: minmax(0, 1fr) 32%; }
+  .gr-destacado__img { align-self: start; block-size: auto; min-block-size: 0; aspect-ratio: 1; }
   .gr-destacado__nombre { font-size: var(--t-lead); }
   .gr-destacado__desc { font-size: var(--t-xs); }
   .gr-destacado__botones .boton--primario { flex: 1 1 100%; justify-content: center; }
@@ -741,3 +741,10 @@
 .gr-mias ul { display: grid; gap: var(--e-2); margin: 0; padding: 0; list-style: none; }
 .gr-mias li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--e-2); font-size: var(--t-s); }
 .gr-mias__estado { color: var(--tinta-suave); }
+
+/* Sin grupos: invitación a proponer el primero. */
+.gr-vacio { display: grid; justify-items: center; gap: var(--e-2); padding: var(--e-6) var(--e-5); text-align: center; }
+.gr-vacio > .icono { inline-size: 40px; block-size: 40px; color: var(--bosque); }
+.gr-vacio__titulo { margin: 0; font: 600 var(--t-h3)/1.2 var(--serif); color: var(--bosque); }
+.gr-vacio p { margin: 0; max-inline-size: 42ch; font-size: var(--t-s); line-height: 1.5; color: var(--tinta); }
+.gr-vacio .boton { gap: 8px; margin-block-start: var(--e-2); }
