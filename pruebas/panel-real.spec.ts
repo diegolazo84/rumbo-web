@@ -165,7 +165,10 @@ function baseInicial(): Base {
     miembros_grupo: [{ grupo_id: "gr1" }, { grupo_id: "gr1" }],
     desafios: [{ id: "de1", titulo: "Semana de constancia", descripcion: null, reglas: "Haz todas tus acciones programadas cada día.", dias: 7, inicio: "2026-10-19", ilustracion: null, activo: true }],
     participaciones_desafio: [{ desafio_id: "de1" }],
-    modulos: [{ clave: "comunidad", estado: "probado" }],
+    modulos: [
+      { clave: "comunidad", nombre: "Comunidad con foro moderado", estado: "probado", probado_en: "2026-10-21T12:00:00Z", respaldo: null, que_falta: "Reglas y privacidad", orden: 1, cambiado_en: "2026-10-21T12:00:00Z" },
+      { clave: "ranking", nombre: "Ranking semanal voluntario", estado: "planificado", probado_en: null, respaldo: null, que_falta: "Requiere la comunidad", orden: 2, cambiado_en: "2026-10-21T12:00:00Z" },
+    ],
   };
 }
 
@@ -220,7 +223,7 @@ function sesion(aal: "aal1" | "aal2", factores: Factor[]) {
 
 type Llamada = { tipo: "rpc" | "tabla" | "auth"; metodo: string; nombre: string; url: string; cuerpo: unknown; aal: string };
 
-const ADMIN = new Set(["moderar_publicacion", "guardar_grupo_comunidad", "guardar_desafio", "crear_espacio", "nuevo_enlace_solicitud", "nuevo_borrador", "solapamientos", "carga_prevista", "publicar_programa", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "eliminar_participante"]);
+const ADMIN = new Set(["cambiar_modulo", "moderar_publicacion", "guardar_grupo_comunidad", "guardar_desafio", "crear_espacio", "nuevo_enlace_solicitud", "nuevo_borrador", "solapamientos", "carga_prevista", "publicar_programa", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "eliminar_participante"]);
 
 async function simular(page: Page, base: Base, { equipo = true, factores = [] as Factor[] } = {}) {
   const llamadas: Llamada[] = [];
@@ -234,6 +237,20 @@ async function simular(page: Page, base: Base, { equipo = true, factores = [] as
       p.moderacion_motivo = c.p_ocultar ? c.p_motivo : null;
       p.moderada_en = AHORA.toISOString();
       for (const r of base.reportes_comunidad.filter((x) => x.publicacion_id === c.p_id && !x.resuelto_en)) r.resuelto_en = AHORA.toISOString();
+      return null;
+    },
+    // Las mismas reglas que la base (A4): no se habilita sin «probado»; «operativo» con respaldo.
+    cambiar_modulo: (c) => {
+      const m = base.modulos.find((x) => x.clave === c.p_clave)!;
+      if (["habilitado", "operativo"].includes(String(c.p_estado)) && !m.probado_en) return { __error: "estado:sin_probar", __estado: 409 };
+      if (c.p_estado === "operativo" && !c.p_respaldo && !m.respaldo) return { __error: "respaldo:requerido", __estado: 400 };
+      Object.assign(m, {
+        estado: c.p_estado,
+        probado_en: c.p_estado === "probado" ? (m.probado_en ?? AHORA.toISOString()) : m.probado_en,
+        respaldo: c.p_respaldo ?? m.respaldo,
+        que_falta: c.p_que_falta === null || c.p_que_falta === undefined ? m.que_falta : String(c.p_que_falta) || null,
+        cambiado_en: AHORA.toISOString(),
+      });
       return null;
     },
     guardar_grupo_comunidad: (c) => {
@@ -291,7 +308,9 @@ async function simular(page: Page, base: Base, { equipo = true, factores = [] as
       if (ADMIN.has(nombre) && aal !== "aal2") return responder(rt, 403, { code: "PT403", message: "sesion:no_autorizado" });
       const f = rpc[nombre];
       if (!f) return responder(rt, 404, { code: "PGRST202", message: "sin simular" });
-      return responder(rt, 200, f((cuerpo ?? {}) as Record<string, unknown>) ?? null);
+      const r = f((cuerpo ?? {}) as Record<string, unknown>) as { __error?: string; __estado?: number } | null;
+      if (r && typeof r === "object" && "__error" in r) return responder(rt, r.__estado ?? 400, { code: "P0001", message: r.__error });
+      return responder(rt, 200, r ?? null);
     }
     const tabla = partes[2];
     llamadas.push({ tipo: "tabla", metodo, nombre: tabla, url: req.url(), cuerpo, aal });
@@ -776,6 +795,66 @@ test("Comunidad: una cuenta sin permiso de moderar no ve reportes", async ({ pag
   await hidratar(page);
   await expect(page.getByText("Tu cuenta no tiene permiso para moderar la comunidad.", { exact: false })).toBeVisible();
   expect(llamadas.some((l) => l.nombre === "reportes_comunidad")).toBe(false);
+});
+
+test("Módulos: el dueño ve el estado real y lo cambia con las reglas de la base", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  await page.getByRole("link", { name: "Módulos: qué está encendido" }).click();
+  await expect(page.locator("h1")).toHaveText("Módulos.");
+  await expect(page.getByText("0 de 2 módulos están a la vista de las personas.")).toBeVisible();
+  const ranking = page.locator("li", { has: page.getByRole("heading", { name: "Ranking semanal voluntario" }) });
+  const comunidad = page.locator("li", { has: page.getByRole("heading", { name: "Comunidad con foro moderado" }) });
+  await expect(ranking.getByText("Requiere la comunidad")).toBeVisible();
+  // Sin «probado» no se puede habilitar: la opción está apagada y se explica.
+  await ranking.getByRole("button", { name: "Cambiar estado" }).click();
+  await expect(ranking.locator("#modulo-ranking-estado option[value=habilitado]")).toBeDisabled();
+  await expect(ranking.getByText("Para habilitarlo, primero márcalo como probado.")).toBeVisible();
+  await ranking.getByRole("button", { name: "Cancelar" }).click();
+  // Operativo pide respaldo; habilitar avisa que las personas lo verán.
+  await comunidad.getByRole("button", { name: "Cambiar estado" }).click();
+  await comunidad.getByLabel("Estado").selectOption("operativo");
+  await expect(comunidad.getByText("Al guardar, las personas empezarán a ver este módulo.")).toBeVisible();
+  await comunidad.getByRole("button", { name: "Guardar" }).click();
+  await expect(comunidad.getByText("Anota qué lo respalda para marcarlo operativo.").first()).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "cambiar_modulo")).toBe(false);
+  await comunidad.getByLabel("Estado").selectOption("habilitado");
+  await comunidad.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByText("«Comunidad con foro moderado» quedó guardado.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "cambiar_modulo")!.cuerpo).toEqual({ p_clave: "comunidad", p_estado: "habilitado", p_respaldo: null, p_que_falta: null });
+  expect(base.modulos[0].estado).toBe("habilitado");
+  await expect(page.getByText("1 de 2 módulos están a la vista de las personas.")).toBeVisible();
+  await expect(comunidad.getByText("Las personas lo ven.")).toBeVisible();
+  await sinViolaciones(page);
+});
+
+test("Módulos: si la base rechaza, se explica; un coach no los ve", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  base.modulos[1].probado_en = null;
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/modulos/");
+  await hidratar(page);
+  // La base vuelve a exigir «probado» aunque la pantalla se salte el aviso.
+  const ranking = page.locator("li", { has: page.getByRole("heading", { name: "Ranking semanal voluntario" }) });
+  await ranking.getByRole("button", { name: "Cambiar estado" }).click();
+  await ranking.locator("#modulo-ranking-estado").evaluate((s: HTMLSelectElement) => {
+    s.querySelector("option[value=habilitado]")!.removeAttribute("disabled");
+  });
+  await ranking.getByLabel("Estado").selectOption("habilitado");
+  await ranking.getByRole("button", { name: "Guardar" }).click();
+  await expect(ranking.getByRole("alert")).toContainText("Para habilitarlo, primero márcalo como probado.");
+  expect(base.modulos[1].estado).toBe("planificado");
+  // Un coach (aunque modere) no ve ni lee los módulos.
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/mi_rol_equipo`, (rt) => rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ rol: "coach", puede_moderar: true }) }));
+  const antes = llamadas.filter((l) => l.nombre === "modulos").length;
+  await page.reload();
+  await hidratar(page);
+  await expect(page.getByText("Solo el dueño puede ver y cambiar los módulos.")).toBeVisible();
+  expect(llamadas.filter((l) => l.nombre === "modulos").length).toBe(antes);
 });
 
 // Comportamiento real de la barra inferior en móvil: se desplaza la página con la rueda paso a

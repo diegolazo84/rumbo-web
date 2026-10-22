@@ -584,6 +584,10 @@ export const PANEL_REAL = {
     "desafio:con_participantes": "Ya hay personas participando: la duración y el inicio no se pueden cambiar.",
     "publicacion:no_encontrada": "La publicación ya no está disponible.",
     "motivo:invalido": "Elige el motivo para ocultarla.",
+    "modulo:no_encontrado": "Ese módulo ya no existe.",
+    "estado:invalido": "Elige un estado de la lista.",
+    "estado:sin_probar": "Para habilitarlo, primero márcalo como probado.",
+    "respaldo:requerido": "Anota qué lo respalda para marcarlo operativo.",
   } as Record<string, string>,
   solicitud: {
     aceptada: (fecha: string) => `La persona aceptó el acuerdo el ${fecha}.`,
@@ -764,3 +768,45 @@ export const COMUNIDAD_PANEL = {
   },
   ilustraciones: { colinas: "Colinas", brote: "Brote", atardecer: "Atardecer", sendero: "Sendero", lago: "Lago", montana: "Montaña" } as Record<string, string>,
 } as const;
+
+// ---------------------------------------------------------------------------
+// Módulos (panel real, A4): solo el dueño. Estado real de cada función; habilitar la muestra a las personas.
+export const MODULOS_PANEL = {
+  ojo: "Panel",
+  titulo: "Módulos.",
+  bajada: "El estado real de cada función de Rumbo. Las personas solo ven un módulo cuando está habilitado u operativo.",
+  enlace: "Módulos: qué está encendido",
+  sinPermiso: "Solo el dueño puede ver y cambiar los módulos.",
+  resumen: (abiertos: number, total: number) => `${abiertos} de ${total} ${total === 1 ? "módulo está" : "módulos están"} a la vista de las personas.`,
+  vacio: "No hay módulos registrados.",
+  estados: {
+    planificado: "Planificado",
+    desarrollado: "Desarrollado",
+    probado: "Probado",
+    habilitado: "Habilitado",
+    operativo: "Operativo",
+  } as Record<string, string>,
+  visible: "Las personas lo ven.",
+  oculto: "Las personas no lo ven.",
+  queFalta: "Qué falta",
+  nada: "Nada anotado.",
+  respaldo: "Qué lo respalda",
+  sinRespaldo: "Sin anotar.",
+  probadoEl: "Probado por primera vez",
+  sinProbar: "Todavía no",
+  cambiadoEl: "Último cambio",
+  cambiar: "Cambiar estado",
+  estado: "Estado",
+  ayudaEstado: "Habilitado u operativo lo muestra a las personas.",
+  ayudaSinProbar: "Para habilitarlo, primero márcalo como probado.",
+  respaldoCampo: "Qué lo respalda",
+  ayudaRespaldo: "Por ejemplo: las pruebas que pasó o el primer ciclo en que funcionó. Es obligatorio para marcarlo operativo.",
+  respaldoActual: (r: string) => `Anotado: «${r}». Escribe solo si quieres reemplazarlo.`,
+  errorRespaldo: "Anota qué lo respalda para marcarlo operativo.",
+  avisoAbre: "Al guardar, las personas empezarán a ver este módulo.",
+  avisoCierra: "Al guardar, las personas dejarán de ver este módulo.",
+  guardar: "Guardar",
+  cancelar: "Cancelar",
+  guardado: (nombre: string) => `«${nombre}» quedó guardado.`,
+} as const;
+
