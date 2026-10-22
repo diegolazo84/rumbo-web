@@ -40,7 +40,14 @@ export type Grupo = {
   soyMiembro: boolean;
   ilustracion: Ilustracion | null;
   publicaciones: number;
+  // C13 (explorador): el destacado lo elige el equipo; sugerido = de un área de tus metas y aún no eres parte.
+  destacado: boolean;
+  categoria: CategoriaGrupo | null;
+  creadoEn: string | null;
+  sugerido: boolean;
 };
+export type CategoriaGrupo = "proyecto" | "orden" | "bienestar";
+export type PropuestaGrupo = { id: string; nombre: string; estado: "pendiente" | "creada" | "descartada"; creadaEn: string };
 
 export type Tema = { tema: string; publicaciones: number };
 export type Impacto = { publicaciones: number; comentarios: number; reacciones: number };
@@ -105,6 +112,8 @@ export interface FuenteComunidad {
   borrar(id: string): Promise<void>;
   unirmeGrupo(id: string): Promise<void>;
   salirGrupo(id: string): Promise<void>;
+  proponerGrupo(nombre: string, descripcion: string | null): Promise<void>;
+  misPropuestas(): Promise<PropuestaGrupo[]>;
   unirmeDesafio(id: string): Promise<void>;
   salirDesafio(id: string): Promise<void>;
   urlFoto(ruta: string): Promise<string | null>;
@@ -244,7 +253,19 @@ export function fuenteReal(): FuenteComunidad {
     },
     async grupos() {
       const filas = await rpc<
-        { id: string; nombre: string; descripcion: string | null; miembros: number; soy_miembro: boolean; ilustracion: Ilustracion | null; publicaciones: number }[]
+        {
+          id: string;
+          nombre: string;
+          descripcion: string | null;
+          miembros: number;
+          soy_miembro: boolean;
+          ilustracion: Ilustracion | null;
+          publicaciones: number;
+          destacado?: boolean;
+          categoria?: CategoriaGrupo | null;
+          creado_en?: string | null;
+          sugerido?: boolean;
+        }[]
       >("comunidad_grupos");
       return (filas ?? []).map((g) => ({
         id: g.id,
@@ -254,6 +275,10 @@ export function fuenteReal(): FuenteComunidad {
         soyMiembro: g.soy_miembro,
         ilustracion: g.ilustracion,
         publicaciones: g.publicaciones ?? 0,
+        destacado: !!g.destacado,
+        categoria: g.categoria ?? null,
+        creadoEn: g.creado_en ?? null,
+        sugerido: !!g.sugerido,
       }));
     },
     async temas() {
@@ -339,6 +364,13 @@ export function fuenteReal(): FuenteComunidad {
     borrar: (id) => rpc("borrar_mi_publicacion", { p_id: id }),
     unirmeGrupo: (id) => rpc("unirme_a_grupo", { p_grupo: id }),
     salirGrupo: (id) => rpc("salir_de_grupo", { p_grupo: id }),
+    async proponerGrupo(nombre, descripcion) {
+      await rpc("proponer_grupo", { p_nombre: nombre, p_descripcion: descripcion });
+    },
+    async misPropuestas() {
+      const filas = await rpc<{ id: string; nombre: string; estado: PropuestaGrupo["estado"]; creada_en: string }[]>("mis_propuestas_grupo");
+      return (filas ?? []).map((f) => ({ id: f.id, nombre: f.nombre, estado: f.estado, creadaEn: f.creada_en }));
+    },
     unirmeDesafio: (id) => rpc("unirme_a_desafio", { p_desafio: id }),
     salirDesafio: (id) => rpc("salir_de_desafio", { p_desafio: id }),
     urlFoto(ruta) {
@@ -380,11 +412,12 @@ export function fuenteEjemploCompartida(acceso: Acceso = "abierta"): FuenteComun
 export function fuenteEjemplo(acceso: Acceso = "abierta"): FuenteComunidad {
   const yo = "Tu alias";
   const grupos: Grupo[] = [
-    { id: "g1", nombre: "Vida saludable", descripcion: "Hábitos simples para sentirte mejor cada día.", miembros: 14, soyMiembro: true, ilustracion: "sendero", publicaciones: 0 },
-    { id: "g2", nombre: "Actividad física", descripcion: "Caminar, moverse y disfrutarlo.", miembros: 11, soyMiembro: true, ilustracion: "montana", publicaciones: 0 },
-    { id: "g3", nombre: "Bienestar emocional", descripcion: "Un espacio para hablar de cómo nos sentimos.", miembros: 9, soyMiembro: true, ilustracion: "lago", publicaciones: 0 },
-    { id: "g4", nombre: "Alimentación consciente", descripcion: "Comer con calma y sin culpa.", miembros: 7, soyMiembro: false, ilustracion: "brote", publicaciones: 0 },
-    { id: "g5", nombre: "Organización y hábitos", descripcion: "Ordenar la semana para avanzar.", miembros: 6, soyMiembro: false, ilustracion: "colinas", publicaciones: 0 },
+    { id: "g1", nombre: "Vida saludable", descripcion: "Hábitos simples para sentirte mejor cada día.", miembros: 14, soyMiembro: true, ilustracion: "sendero", publicaciones: 0, destacado: true, categoria: "bienestar", creadoEn: diaMas(-40), sugerido: false },
+    { id: "g2", nombre: "Actividad física", descripcion: "Caminar, moverse y disfrutarlo.", miembros: 11, soyMiembro: true, ilustracion: "montana", publicaciones: 0, destacado: false, categoria: "bienestar", creadoEn: diaMas(-35), sugerido: false },
+    { id: "g3", nombre: "Bienestar emocional", descripcion: "Un espacio para hablar de cómo nos sentimos.", miembros: 9, soyMiembro: true, ilustracion: "lago", publicaciones: 0, destacado: false, categoria: "bienestar", creadoEn: diaMas(-30), sugerido: false },
+    { id: "g4", nombre: "Alimentación consciente", descripcion: "Comer con calma y sin culpa.", miembros: 7, soyMiembro: false, ilustracion: "brote", publicaciones: 0, destacado: false, categoria: "bienestar", creadoEn: diaMas(-20), sugerido: true },
+    { id: "g5", nombre: "Organización y hábitos", descripcion: "Ordenar la semana para avanzar.", miembros: 6, soyMiembro: false, ilustracion: "colinas", publicaciones: 0, destacado: false, categoria: "orden", creadoEn: diaMas(-10), sugerido: true },
+    { id: "g6", nombre: "Proyectos personales", descripcion: "Avanzar en eso que siempre postergas, paso a paso.", miembros: 4, soyMiembro: false, ilustracion: "atardecer", publicaciones: 0, destacado: false, categoria: "proyecto", creadoEn: diaMas(-3), sugerido: false },
   ];
   let lista: Publicacion[] = [
     {
@@ -414,6 +447,7 @@ export function fuenteEjemplo(acceso: Acceso = "abierta"): FuenteComunidad {
     { id: "r3", respuestaA: "e2", alias: "Sofía", texto: "Gracias, la voy a probar esta semana.", creadaEn: hace(20), mia: false, respuestas: 0, grupoId: "g2", grupo: "Actividad física", foto: null, fotos: [], permiteComentarios: true, reacciones: 0, miReaccion: false, tipo: "general", guardada: false },
   ];
   const bloqueados: Bloqueo[] = [];
+  const propuestas: PropuestaGrupo[] = [];
   const desafios: Desafio[] = [
     {
       id: "d1", titulo: "28 días de constancia", descripcion: "Pequeños pasos, grandes cambios. Completa tus acciones diarias y comparte tu experiencia.",
@@ -540,11 +574,22 @@ export function fuenteEjemplo(acceso: Acceso = "abierta"): FuenteComunidad {
     },
     async unirmeGrupo(gid) {
       const g = grupos.find((x) => x.id === gid);
-      if (g && !g.soyMiembro) Object.assign(g, { soyMiembro: true, miembros: g.miembros + 1 });
+      if (g && !g.soyMiembro) Object.assign(g, { soyMiembro: true, miembros: g.miembros + 1, sugerido: false });
     },
     async salirGrupo(gid) {
       const g = grupos.find((x) => x.id === gid);
       if (g?.soyMiembro) Object.assign(g, { soyMiembro: false, miembros: g.miembros - 1 });
+    },
+    async proponerGrupo(nombre) {
+      await espera();
+      const n = nombre.trim();
+      if (n.length < 2 || n.length > 60) throw new ErrorBase(400, "nombre", "largo");
+      if (grupos.some((g) => g.nombre.toLowerCase() === n.toLowerCase())) throw new ErrorBase(409, "nombre", "en_uso");
+      if (propuestas.filter((x) => x.estado === "pendiente").length >= 3) throw new ErrorBase(429, "propuestas", "demasiadas");
+      propuestas.unshift({ id: `pr${++id}`, nombre: n, estado: "pendiente", creadaEn: new Date().toISOString() });
+    },
+    async misPropuestas() {
+      return propuestas.map((x) => ({ ...x }));
     },
     async unirmeDesafio(did) {
       const d = desafios.find((x) => x.id === did);

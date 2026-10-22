@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Icono } from "../../../../components/app";
+import { useEspacio } from "../comun";
 import { useComunidad } from "./contexto";
 import type { Desafio, FuenteComunidad, Grupo, Impacto, Tema } from "./fuente";
 import { PaisajeMini } from "./Paisaje";
@@ -27,6 +28,7 @@ export function useDato<D>(leer: (f: FuenteComunidad) => Promise<D>, deps: unkno
 
 export function TarjetaGrupos() {
   const { enlace } = useComunidad();
+  const { R } = useEspacio();
   const { dato } = useDato((f) => f.grupos());
   const grupos = [...(dato ?? [])].sort((a, b) => b.miembros - a.miembros).slice(0, 5);
   return (
@@ -49,7 +51,7 @@ export function TarjetaGrupos() {
         ))}
       </ul>
       {dato && dato.length > 0 && (
-        <Link to={enlace({ vista: "grupos" })} className="boton boton--secundario co-lateral__boton">
+        <Link to={R.comunidadGrupos} className="boton boton--secundario co-lateral__boton">
           {T.grupos.verTodos}
         </Link>
       )}

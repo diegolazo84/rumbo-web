@@ -25,6 +25,7 @@ import ProgresoPantalla from "../../vista-previa/mi-espacio/Progreso";
 import Acompanamiento from "../../vista-previa/mi-espacio/Acompanamiento";
 import Comunidad from "../../vista-previa/mi-espacio/Comunidad";
 import CrearPublicacion from "../../vista-previa/mi-espacio/CrearPublicacion";
+import GruposComunidad from "../../vista-previa/mi-espacio/GruposComunidad";
 import LoQueViene from "../../vista-previa/mi-espacio/LoQueViene";
 import MisMetas from "../../vista-previa/mi-espacio/MisMetas";
 import { T_SIN_FICHA } from "../../vista-previa/mi-espacio/textos";
@@ -409,6 +410,8 @@ function PantallaReal({ ruta, espacio }: { ruta: RutaPlataforma; espacio: Espaci
       return <Comunidad />;
     case "/mi-espacio/comunidad/crear/":
       return <CrearPublicacion />;
+    case "/mi-espacio/comunidad/grupos/":
+      return <GruposComunidad />;
     case "/mi-espacio/logros/":
       return <ProgresoPantalla />;
     case "/mi-espacio/logros/creditos/":
