@@ -240,6 +240,29 @@ const trazosPlataforma = {
       <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
     </>
   ),
+  "chevron-down": <path d="m6 9 6 6 6-6" />,
+  "arrow-left": (
+    <>
+      <path d="m12 19-7-7 7-7" />
+      <path d="M19 12H5" />
+    </>
+  ),
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+      <path d="M2 12h20" />
+    </>
+  ),
+  "chart-column-increasing": (
+    <>
+      <path d="M13 17V9" />
+      <path d="M18 17V5" />
+      <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+      <path d="M8 17v-3" />
+    </>
+  ),
+  "message-square": <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
 } satisfies Record<string, ReactElement>;
 
 const trazos = { ...trazosWeb, ...trazosPlataforma };

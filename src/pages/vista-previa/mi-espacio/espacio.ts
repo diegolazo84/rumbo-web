@@ -25,6 +25,7 @@ export type RutasEspacio = {
   progreso: string;
   semana: string;
   comunidad: string;
+  comunidadCrear: string;
   loQueViene: string;
   misDatos: string;
   ajuste: string;
@@ -53,6 +54,7 @@ export const R_PREVIA: RutasEspacio = {
   progreso: RUTAS_MI_ESPACIO.logros,
   semana: RUTAS_MI_ESPACIO.acompanamiento,
   comunidad: RUTAS_MI_ESPACIO.comunidad,
+  comunidadCrear: rutaPrevia("mi-espacio/comunidad/crear/"),
   loQueViene: RUTAS_MI_ESPACIO.loQueViene,
   misDatos: RUTAS_MI_ESPACIO.misDatos,
   ajuste: RUTAS_MI_ESPACIO.ajuste,
@@ -82,6 +84,7 @@ export const R_REAL: RutasEspacio = {
   progreso: "/mi-espacio/logros/",
   semana: "/mi-espacio/acompanamiento/",
   comunidad: "/mi-espacio/comunidad/",
+  comunidadCrear: "/mi-espacio/comunidad/crear/",
   loQueViene: "/mi-espacio/lo-que-viene/",
   misDatos: "/mi-espacio/preferencias/#mis-datos",
   ajuste: "/mi-espacio/plan/ajuste/",

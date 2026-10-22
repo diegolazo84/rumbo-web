@@ -112,6 +112,7 @@ const creditos = () => import("./mi-espacio/Creditos");
 const acompanamiento = () => import("./mi-espacio/Acompanamiento");
 const misMetas = () => import("./mi-espacio/MisMetas");
 const comunidad = () => import("./mi-espacio/Comunidad");
+const crearPublicacion = () => import("./mi-espacio/CrearPublicacion");
 const loQueViene = () => import("./mi-espacio/LoQueViene");
 const ajuste = () => import("./mi-espacio/Ajuste");
 const preferencias = () => import("./mi-espacio/Preferencias");
@@ -174,6 +175,7 @@ const MI_ESPACIO_FILAS: Fila[] = [
   { ruta: "mi-espacio/plan/ajuste/enviado/", nombre: "Ajuste enviado", estado: "enviado", titulo: MI_ESPACIO("Pedir un ajuste"), marco: "mi-espacio", seccion: "Pedir un ajuste", activo: "plan", apartado: "Ajuste", cargar: ajuste },
   { ruta: "mi-espacio/plan/metas/", nombre: "Mis metas", titulo: MI_ESPACIO("Mis metas"), marco: "mi-espacio", seccion: "Mi plan", activo: "plan", apartado: "Mi plan", cargar: misMetas },
   { ruta: "mi-espacio/comunidad/", nombre: "Comunidad (informativa)", titulo: MI_ESPACIO("Comunidad"), marco: "mi-espacio", seccion: "Comunidad", activo: "comunidad", apartado: "Comunidad y Lo que viene", sinDatos: true, cargar: comunidad },
+  { ruta: "mi-espacio/comunidad/crear/", nombre: "Crear publicación", titulo: MI_ESPACIO("Crear publicación"), marco: "mi-espacio", seccion: "Crear publicación", activo: "comunidad", apartado: "Comunidad y Lo que viene", sinDatos: true, cargar: crearPublicacion },
   { ruta: "mi-espacio/lo-que-viene/", nombre: "Lo que viene en Rumbo", titulo: MI_ESPACIO("Lo que viene en Rumbo"), marco: "mi-espacio", seccion: "Lo que viene en Rumbo", apartado: "Comunidad y Lo que viene", sinDatos: true, cargar: loQueViene },
   { ruta: "mi-espacio/preferencias/", nombre: "Preferencias y Mis datos", estado: "preferencias", titulo: MI_ESPACIO("Preferencias"), marco: "mi-espacio", seccion: "Preferencias", apartado: "Preferencias", cargar: preferencias },
   { ruta: "mi-espacio/preferencias/eliminar/", nombre: "Pedir que eliminen mis datos", estado: "eliminar", titulo: MI_ESPACIO("Preferencias"), marco: "mi-espacio", seccion: "Preferencias", apartado: "Preferencias", cargar: preferencias },

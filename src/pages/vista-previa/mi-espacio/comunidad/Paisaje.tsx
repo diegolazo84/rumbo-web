@@ -7,6 +7,10 @@
 import { useId } from "react";
 import type { Ilustracion } from "./fuente";
 
+// Fotografía definitiva de la portada (pendiente de ChatGPT). Cuando llegue, se pone aquí su ruta
+// en /public y Comunidad y Crear publicación la usan en lugar de la ilustración.
+export const FOTO_PORTADA: string | null = null;
+
 export function PaisajePortada({ className }: { className?: string }) {
   const id = useId().replace(/:/g, "");
   return (
