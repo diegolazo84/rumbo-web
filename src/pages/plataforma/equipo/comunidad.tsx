@@ -33,7 +33,8 @@ type Publicacion = {
   moderacion_motivo: string | null;
   moderada_en: string | null;
 };
-type Grupo = { id: string; nombre: string; descripcion: string | null; ilustracion: string | null; activo: boolean };
+type Grupo = { id: string; nombre: string; descripcion: string | null; ilustracion: string | null; activo: boolean; categoria: string | null; destacado: boolean };
+type Propuesta = { id: string; nombre: string; descripcion: string | null; alias: string | null; estado: string; creada_en: string };
 type Desafio = { id: string; titulo: string; descripcion: string | null; reglas: string; dias: number; inicio: Iso; ilustracion: string | null; activo: boolean };
 type Modulo = { estado: string } | null;
 
@@ -46,6 +47,7 @@ type Datos = {
   desafios: Desafio[];
   participantes: Record<string, number>;
   modulo: Modulo;
+  propuestas: Propuesta[];
 };
 
 const COLUMNAS_PUB = "id,texto,tipo,estado,respuesta_a,foto_ruta,fotos,creada_en,moderacion_motivo,moderada_en";
@@ -66,14 +68,15 @@ export function ComunidadReal() {
       return;
     }
     setPermiso(true);
-    const [reportes, ocultas, grupos, miembros, desafios, participaciones, modulo] = await Promise.all([
+    const [reportes, ocultas, grupos, miembros, desafios, participaciones, modulo, propuestas] = await Promise.all([
       sb.from("reportes_comunidad").select("id,publicacion_id,motivo,detalle,creado_en").is("resuelto_en", null).order("creado_en", { ascending: true }),
       sb.from("publicaciones").select(COLUMNAS_PUB).eq("estado", "oculta").order("moderada_en", { ascending: false }).limit(30),
-      sb.from("grupos_comunidad").select("id,nombre,descripcion,ilustracion,activo").order("nombre", { ascending: true }),
+      sb.from("grupos_comunidad").select("id,nombre,descripcion,ilustracion,activo,categoria,destacado").order("nombre", { ascending: true }),
       sb.from("miembros_grupo").select("grupo_id"),
       sb.from("desafios").select("id,titulo,descripcion,reglas,dias,inicio,ilustracion,activo").order("inicio", { ascending: false }),
       sb.from("participaciones_desafio").select("desafio_id"),
       sb.from("modulos").select("estado").eq("clave", "comunidad").maybeSingle(),
+      sb.rpc("propuestas_grupo_equipo"),
     ]);
     const rep = datos(reportes) as Reporte[];
     const ids = [...new Set(rep.map((r) => r.publicacion_id))];
@@ -87,6 +90,7 @@ export function ComunidadReal() {
       desafios: datos(desafios) as Desafio[],
       participantes: contar(datos(participaciones) as { desafio_id: string }[], "desafio_id"),
       modulo: datos(modulo) as Modulo,
+      propuestas: (datos(propuestas) as Propuesta[] | null) ?? [],
     });
   }, [sb]);
 
@@ -125,6 +129,7 @@ export function ComunidadReal() {
       <Reportes d={d} alCambiar={cargar} />
       <Ocultas d={d} alCambiar={cargar} />
       <Grupos d={d} alCambiar={cargar} />
+      <Propuestas d={d} alCambiar={cargar} />
       <Desafios d={d} alCambiar={cargar} />
     </div>
   );
@@ -369,6 +374,7 @@ function ItemGrupo({ g, miembros, alGuardar }: { g: Grupo; miembros: number; alG
           {g.nombre}
         </h3>
         <Etiqueta variante={g.activo ? "activo" : "nota"}>{g.activo ? T.grupos.miembros(miembros) : T.grupos.inactivo}</Etiqueta>
+        {g.destacado && <Etiqueta variante="nota">{T.grupos.esDestacado}</Etiqueta>}
       </div>
       {editando ? (
         <FormGrupo
@@ -383,7 +389,13 @@ function ItemGrupo({ g, miembros, alGuardar }: { g: Grupo; miembros: number; alG
       ) : (
         <>
           {g.descripcion && <p>{g.descripcion}</p>}
-          <Datos className="pa-datos--apilada" filas={[[T.grupos.ilustracion, g.ilustracion ? T.ilustraciones[g.ilustracion] : T.grupos.sinIlustracion]]} />
+          <Datos
+            className="pa-datos--apilada"
+            filas={[
+              [T.grupos.ilustracion, g.ilustracion ? T.ilustraciones[g.ilustracion] : T.grupos.sinIlustracion],
+              [T.grupos.categoria, g.categoria ? T.grupos.categorias[g.categoria] : T.grupos.sinCategoria],
+            ]}
+          />
           <div className="acciones">
             <button type="button" className="boton boton--terciario" onClick={() => setEditando(true)} aria-describedby={`${id}-titulo`}>
               <Icono nombre="pencil" tamaño={20} />
@@ -402,6 +414,8 @@ function FormGrupo({ id, g, alGuardar, alCancelar }: { id: string; g?: Grupo; al
   const [descripcion, setDescripcion] = useState(g?.descripcion ?? "");
   const [ilustracion, setIlustracion] = useState(g?.ilustracion ?? "");
   const [activo, setActivo] = useState(g?.activo ?? true);
+  const [categoria, setCategoria] = useState(g?.categoria ?? "");
+  const [destacado, setDestacado] = useState(g?.destacado ?? false);
   const [errNombre, setErrNombre] = useState<string | null>(null);
   const [correr, error, ocupado] = useEscritura();
   return (
@@ -418,7 +432,7 @@ function FormGrupo({ id, g, alGuardar, alCancelar }: { id: string; g?: Grupo; al
         }
         setErrNombre(null);
         const ok = await correr(async () =>
-          datos(await sb.rpc("guardar_grupo_comunidad", { p: { id: g?.id ?? null, nombre: n, descripcion: descripcion.trim() || null, ilustracion: ilustracion || null, activo } })),
+          datos(await sb.rpc("guardar_grupo_comunidad", { p: { id: g?.id ?? null, nombre: n, descripcion: descripcion.trim() || null, ilustracion: ilustracion || null, activo, categoria: categoria || null, destacado } })),
         );
         if (ok) alGuardar();
       }}
@@ -426,7 +440,16 @@ function FormGrupo({ id, g, alGuardar, alCancelar }: { id: string; g?: Grupo; al
       <CampoTexto id={`${id}-nombre`} etiqueta={T.grupos.nombre} maxLength={60} value={nombre} error={errNombre} onChange={(e) => setNombre(e.target.value)} />
       <CampoArea id={`${id}-descripcion`} etiqueta={T.grupos.descripcion} opcional max={200} rows={2} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
       <SelectIlustracion id={`${id}-ilustracion`} valor={ilustracion} alCambiar={setIlustracion} />
+      <CampoSelect id={`${id}-categoria`} etiqueta={T.grupos.categoria} ayuda={T.grupos.categoriaAyuda} opcional value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+        <option value="">{T.grupos.sinCategoria}</option>
+        {Object.entries(T.grupos.categorias).map(([k, v]) => (
+          <option key={k} value={k}>
+            {v}
+          </option>
+        ))}
+      </CampoSelect>
       <Interruptor id={`${id}-activo`} texto={T.grupos.activo} valor={activo} alCambiar={setActivo} />
+      <Interruptor id={`${id}-destacado`} texto={T.grupos.destacado} valor={destacado} alCambiar={setDestacado} />
       <Alerta texto={error} />
       <div className="acciones">
         <button type="submit" className="boton boton--primario" disabled={ocupado}>
@@ -437,6 +460,62 @@ function FormGrupo({ id, g, alGuardar, alCancelar }: { id: string; g?: Grupo; al
         </button>
       </div>
     </form>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Propuestas de grupos (C13): con el alias de quien propone; se marcan creadas o descartadas.
+
+function Propuestas({ d, alCambiar }: { d: Datos; alCambiar: () => void }) {
+  return (
+    <Seccion titulo={T.propuestas.titulo} id="co-propuestas">
+      <p className="microcopia">{T.propuestas.ayuda}</p>
+      {d.propuestas.length ? (
+        <ul className="pa-filas">
+          {d.propuestas.map((x) => (
+            <ItemPropuesta key={x.id} x={x} alCambiar={alCambiar} />
+          ))}
+        </ul>
+      ) : (
+        <p className="pa-vacio">{T.propuestas.vacio}</p>
+      )}
+    </Seccion>
+  );
+}
+
+function ItemPropuesta({ x, alCambiar }: { x: Propuesta; alCambiar: () => void }) {
+  const { sb } = useDatosPanel();
+  const [correr, error, ocupado] = useEscritura();
+  const id = `propuesta-${x.id}`;
+  const responder = (estado: "creada" | "descartada") =>
+    void correr(async () => {
+      datos(await sb.rpc("responder_propuesta_grupo", { p_id: x.id, p_estado: estado }));
+      alCambiar();
+    });
+  return (
+    <li className="tarjeta pa-fila" aria-labelledby={`${id}-titulo`}>
+      <div className="pa-fila__cabeza">
+        <h3 id={`${id}-titulo`} className="pa-h3">
+          {x.nombre}
+        </h3>
+        <Etiqueta variante={x.estado === "pendiente" ? "pronto" : "nota"}>{T.propuestas.estados[x.estado] ?? x.estado}</Etiqueta>
+      </div>
+      {x.descripcion && <p>{x.descripcion}</p>}
+      <p className="microcopia">{T.propuestas.propuso(x.alias ?? T.propuestas.sinAlias, fechaDe(x.creada_en))}</p>
+      {x.estado === "pendiente" && (
+        <>
+          <Alerta texto={error} />
+          <div className="acciones">
+            <button type="button" className="boton boton--secundario" disabled={ocupado} aria-describedby={`${id}-titulo`} onClick={() => responder("creada")}>
+              {T.propuestas.creada}
+            </button>
+            <button type="button" className="boton boton--terciario" disabled={ocupado} aria-describedby={`${id}-titulo`} onClick={() => responder("descartada")}>
+              {T.propuestas.descartar}
+            </button>
+          </div>
+        </>
+      )}
+    </li>
   );
 }
 

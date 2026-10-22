@@ -161,7 +161,8 @@ function baseInicial(): Base {
       { id: "rep1", publicacion_id: "pub1", motivo: "spam", detalle: "Vende productos.", creado_en: "2026-10-12T16:00:00Z", resuelto_en: null },
       { id: "rep2", publicacion_id: "pub1", motivo: "salud", detalle: null, creado_en: "2026-10-12T17:00:00Z", resuelto_en: null },
     ],
-    grupos_comunidad: [{ id: "gr1", nombre: "Estudio", descripcion: "Para quienes estudian.", ilustracion: "brote", activo: true }],
+    grupos_comunidad: [{ id: "gr1", nombre: "Estudio", descripcion: "Para quienes estudian.", ilustracion: "brote", activo: true, categoria: null, destacado: false }],
+    propuestas_grupo: [{ id: "pg1", nombre: "Lectura", descripcion: "Para leer un poco cada día.", alias: "Brote Sereno", estado: "pendiente", creada_en: "2026-10-21T12:00:00Z" }],
     miembros_grupo: [{ grupo_id: "gr1" }, { grupo_id: "gr1" }],
     desafios: [{ id: "de1", titulo: "Semana de constancia", descripcion: null, reglas: "Haz todas tus acciones programadas cada día.", dias: 7, inicio: "2026-10-19", ilustracion: null, activo: true }],
     participaciones_desafio: [{ desafio_id: "de1" }],
@@ -223,7 +224,7 @@ function sesion(aal: "aal1" | "aal2", factores: Factor[]) {
 
 type Llamada = { tipo: "rpc" | "tabla" | "auth"; metodo: string; nombre: string; url: string; cuerpo: unknown; aal: string };
 
-const ADMIN = new Set(["cambiar_modulo", "moderar_publicacion", "guardar_grupo_comunidad", "guardar_desafio", "crear_espacio", "nuevo_enlace_solicitud", "nuevo_borrador", "solapamientos", "carga_prevista", "publicar_programa", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "eliminar_participante"]);
+const ADMIN = new Set(["cambiar_modulo", "propuestas_grupo_equipo", "responder_propuesta_grupo", "moderar_publicacion", "guardar_grupo_comunidad", "guardar_desafio", "crear_espacio", "nuevo_enlace_solicitud", "nuevo_borrador", "solapamientos", "carga_prevista", "publicar_programa", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "eliminar_participante"]);
 
 async function simular(page: Page, base: Base, { equipo = true, factores = [] as Factor[] } = {}) {
   const llamadas: Llamada[] = [];
@@ -256,8 +257,18 @@ async function simular(page: Page, base: Base, { equipo = true, factores = [] as
     guardar_grupo_comunidad: (c) => {
       const p = c.p as Fila;
       const g = p.id ? base.grupos_comunidad.find((x) => x.id === p.id)! : (base.grupos_comunidad[base.grupos_comunidad.push({ id: `gr${base.grupos_comunidad.length + 1}` }) - 1] as Fila);
-      Object.assign(g, { nombre: p.nombre, descripcion: p.descripcion, ilustracion: p.ilustracion, activo: p.activo });
+      // Como la base (C13): solo un grupo destacado, y debe estar activo.
+      if (p.destacado && !p.activo) return { __error: "destacado:inactivo", __estado: 400 };
+      if (p.destacado) for (const x of base.grupos_comunidad) x.destacado = false;
+      Object.assign(g, { nombre: p.nombre, descripcion: p.descripcion, ilustracion: p.ilustracion, activo: p.activo, categoria: p.categoria ?? null, destacado: Boolean(p.destacado) });
       return g.id;
+    },
+    propuestas_grupo_equipo: () => base.propuestas_grupo,
+    responder_propuesta_grupo: (c) => {
+      const x = base.propuestas_grupo.find((y) => y.id === c.p_id && y.estado === "pendiente");
+      if (!x) return { __error: "propuesta:no_encontrada", __estado: 404 };
+      x.estado = c.p_estado;
+      return null;
     },
     guardar_desafio: (c) => {
       const p = c.p as Fila;
@@ -767,7 +778,26 @@ test("Comunidad: ocultar un reporte con motivo, volver a mostrar, crear grupo y 
   await page.locator("#grupo-nuevo-ilustracion").selectOption("montana");
   await page.getByRole("button", { name: "Guardar grupo" }).click();
   await expect(page.getByText("Grupo guardado.")).toBeVisible();
-  expect(base.grupos_comunidad.find((g) => g.nombre === "Deporte")).toMatchObject({ ilustracion: "montana", activo: true });
+  expect(base.grupos_comunidad.find((g) => g.nombre === "Deporte")).toMatchObject({ ilustracion: "montana", activo: true, categoria: null, destacado: false });
+  // Destacado y categoría (C13): un grupo inactivo no se destaca; al destacar uno, el anterior deja de serlo.
+  const estudio = page.locator("li", { has: page.getByRole("heading", { name: "Estudio" }) });
+  await estudio.getByRole("button", { name: "Editar" }).click();
+  await page.locator("#grupo-gr1-categoria").selectOption("orden");
+  await page.getByRole("switch", { name: /^Grupo destacado/ }).click();
+  await page.getByRole("switch", { name: /^Activo \(/ }).click();
+  await page.getByRole("button", { name: "Guardar grupo" }).click();
+  await expect(page.getByText("Un grupo inactivo no puede ser el destacado.", { exact: false })).toBeVisible();
+  await page.getByRole("switch", { name: /^Activo \(/ }).click();
+  await page.getByRole("button", { name: "Guardar grupo" }).click();
+  await expect.poll(() => base.grupos_comunidad[0]).toMatchObject({ categoria: "orden", destacado: true });
+  await expect(estudio.getByText("Destacado", { exact: true })).toBeVisible();
+  await expect(estudio.getByText("Organización")).toBeVisible();
+  // Propuestas: alias de quien propone, sin otros datos; se marca creada.
+  const propuesta = page.locator("li", { has: page.getByRole("heading", { name: "Lectura" }) });
+  await expect(propuesta.getByText("Brote Sereno", { exact: false })).toBeVisible();
+  await propuesta.getByRole("button", { name: "Marcar como creada" }).click();
+  await expect.poll(() => base.propuestas_grupo[0].estado).toBe("creada");
+  expect(llamadas.find((l) => l.nombre === "responder_propuesta_grupo")!.cuerpo).toEqual({ p_id: "pg1", p_estado: "creada" });
   // Desafío con participantes: duración e inicio bloqueados al editar.
   await expect(page.getByText("1 participante", { exact: true })).toBeVisible();
   await page.locator("li", { hasText: "Semana de constancia" }).getByRole("button", { name: "Editar" }).click();

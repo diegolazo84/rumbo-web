@@ -69,6 +69,7 @@ const TABLAS = {
   publicaciones: { leer: "equipo", escribir: "funciones", dueno: "autor", coach: { leer: "nada", escribir: "nada" } },
   reportes_comunidad: { leer: "equipo", escribir: "funciones", dueno: "reportante", coach: { leer: "nada", escribir: "nada" } },
   grupos_comunidad: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  propuestas_grupo: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   miembros_grupo: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   reacciones_comunidad: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   guardadas_comunidad: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
@@ -112,7 +113,7 @@ const FUNCIONES = {
     "evolucion_semanal", "informe_ciclo", "mis_medibles", "anotar_cantidad",
     "guardar_alias", "participar_en_ranking", "ranking_semanal",
     "aceptar_reglas_comunidad", "publicar_en_comunidad", "borrar_mi_publicacion", "reportar_publicacion", "comunidad_publicaciones",
-    "reaccionar_publicacion", "unirme_a_grupo", "salir_de_grupo", "comunidad_grupos",
+    "reaccionar_publicacion", "unirme_a_grupo", "salir_de_grupo", "comunidad_grupos", "proponer_grupo", "mis_propuestas_grupo",
     "guardar_publicacion", "bloquear_autor", "desbloquear_alias", "mis_bloqueos", "comunidad_temas", "mi_impacto_comunidad",
     "unirme_a_desafio", "salir_de_desafio", "comunidad_desafios", "mi_avance_desafio",
     "mis_reconocimientos", "mis_beneficios",
@@ -124,7 +125,7 @@ const FUNCIONES = {
     "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion", "cambiar_modulo", "indicadores",
     "registrar_pago", "devolucion_sugerida", "registrar_devolucion",
     "invitar_coach", "revocar_invitacion", "cambiar_coach", "programar_videollamada", "anotar_videollamada",
-    "moderar_publicacion", "guardar_grupo_comunidad", "guardar_desafio", "guardar_reconocimiento", "guardar_beneficio", "otorgar_beneficio", "aplicar_beneficio",
+    "moderar_publicacion", "guardar_grupo_comunidad", "propuestas_grupo_equipo", "responder_propuesta_grupo", "guardar_desafio", "guardar_reconocimiento", "guardar_beneficio", "otorgar_beneficio", "aplicar_beneficio",
     "ia_pedir_borrador", "ia_revisar", "guardar_ia_config", "ia_gasto",
     "invitar_especialista", "revisar_credencial", "decidir_especialista", "guardar_config_especialistas", "guardar_especialidad",
     "guardar_perfil_especialista", "agregar_credencial", "guardar_servicio_especialista", "enviar_perfil_a_revision",
@@ -245,6 +246,8 @@ insert into public.reportes_comunidad (publicacion_id, reportante, motivo)
 insert into public.grupos_comunidad (id, nombre, descripcion) values ('00000000-0000-0000-0000-0000000000c1', 'Grupo de CI', 'Semilla de CI')
   on conflict do nothing;
 insert into public.miembros_grupo (grupo_id, participante_id) values ('00000000-0000-0000-0000-0000000000c1', '${ROLES.B.ficha}') on conflict do nothing;
+insert into public.propuestas_grupo (id, participante_id, nombre) values ('00000000-0000-0000-0000-0000000000c9', '${ROLES.B.ficha}', 'Semilla de CI')
+  on conflict do nothing;
 insert into public.reacciones_comunidad (publicacion_id, participante_id) values ('00000000-0000-0000-0000-0000000000b1', '${ROLES.A.ficha}')
   on conflict do nothing;
 insert into public.guardadas_comunidad (publicacion_id, participante_id) values ('00000000-0000-0000-0000-0000000000b1', '${ROLES.A.ficha}')
@@ -1242,6 +1245,104 @@ paso("desafíos C9: voluntarios, avance verificable con los días realmente cump
   exigir(!respuestaFotos.ok && /solo_publicaciones/.test(respuestaFotos.error), "una respuesta llevó fotos");
 }
 paso("crear publicación C11: hasta 5 fotos propias y subidas, comentarios apagados también en la base, sin duplicados");
+
+// C13 · Grupos de la comunidad: destacado elegido por moderación, sugeridos por las áreas de las metas,
+// propuestas de grupo con alias y sin ficha, membresías solo propias.
+{
+  const abrir = `reset role; update public.modulos set estado = 'habilitado' where clave = 'comunidad';
+    update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    update public.alias set reglas_comunidad_en = now(); set local role authenticated;`;
+  const catsA = sql(`select coalesce(string_agg(distinct m.categoria, ','), '') from public.metas m join public.programas g on g.id = m.programa_id
+    where m.participante_id = '${ROLES.A.ficha}' and g.estado <> 'borrador'`).split(",").filter(Boolean);
+  exigir(catsA.length > 0, "A no tiene metas publicadas para probar «sugeridos»");
+  const otra = ["proyecto", "orden", "bienestar"].find((c) => !catsA.includes(c));
+  const IDS = { Afín: "00000000-0000-4000-8000-0000000013a1", Otro: "00000000-0000-4000-8000-0000000013a2", Cerrado: "00000000-0000-4000-8000-0000000013a3" };
+  const grupos = `reset role; delete from public.grupos_comunidad where nombre like 'C13 %';
+    insert into public.grupos_comunidad (id, nombre, categoria, activo) values ('${IDS.Afín}', 'C13 Afín', '${catsA[0]}', true),
+      ('${IDS.Otro}', 'C13 Otro', ${otra ? `'${otra}'` : "null"}, true), ('${IDS.Cerrado}', 'C13 Cerrado', '${catsA[0]}', false);`;
+  const id = (n) => `'${IDS[n]}'::uuid`;
+  const destacar = (n, extra = "") => `select public.guardar_grupo_comunidad(jsonb_build_object('id', ${id(n)}, 'nombre', 'C13 ${n}', 'destacado', true${extra})) \\g /dev/null\n`;
+
+  const dest = como(ROLES.aal2, `${grupos} set local role authenticated; ${destacar("Afín")} ${destacar("Otro")}
+    select string_agg(nombre, ',') from public.grupos_comunidad where destacado`);
+  exigir(dest.ok && ultima(dest) === "C13 Otro", `el destacado no es único: ${dest.error ?? ultima(dest)}`);
+  const inactivo = como(ROLES.aal2, `${grupos} set local role authenticated; ${destacar("Cerrado")}`);
+  exigir(!inactivo.ok && /destacado:inactivo/.test(inactivo.error), "se destacó un grupo inactivo");
+  const personaDestaca = como(ROLES.A, `${abrir} ${grupos} set local role authenticated; ${destacar("Afín")}`);
+  exigir(!personaDestaca.ok && /no_autorizado/.test(personaDestaca.error), "una persona eligió el grupo destacado");
+
+  const vista = como(ROLES.A, `${abrir} ${grupos} update public.grupos_comunidad set destacado = true where nombre = 'C13 Afín';
+    set local role authenticated;
+    select string_agg(nombre || ':' || destacado::int || sugerido::int, ',' order by nombre) from public.comunidad_grupos() where nombre like 'C13 %'`);
+  exigir(vista.ok && ultima(vista) === "C13 Afín:11,C13 Otro:00", `A no ve bien destacado y sugeridos (o ve un grupo cerrado): ${vista.error ?? ultima(vista)}`);
+  const unido = como(ROLES.A, `${abrir} ${grupos} set local role authenticated; select public.unirme_a_grupo(${id("Afín")}) \\g /dev/null
+    select sugerido::int || ' ' || soy_miembro::int from public.comunidad_grupos() where nombre = 'C13 Afín'`);
+  exigir(unido.ok && ultima(unido) === "0 1", `un grupo propio sigue sugerido: ${unido.error ?? ultima(unido)}`);
+  const cerradoUnirse = como(ROLES.A, `${abrir} ${grupos} set local role authenticated; select public.unirme_a_grupo(${id("Cerrado")})`);
+  exigir(!cerradoUnirse.ok && /no_encontrado/.test(cerradoUnirse.error), "A se unió a un grupo cerrado");
+  const ajenaMembresia = como(ROLES.A, `${abrir} ${grupos} set local role authenticated;
+    insert into public.miembros_grupo (grupo_id, participante_id) values (${id("Afín")}, '${ROLES.B.ficha}')`);
+  exigir(!ajenaMembresia.ok, "A agregó a B a un grupo");
+  const saleOtro = como(ROLES.A, `${abrir} ${grupos} insert into public.miembros_grupo values (${id("Afín")}, '${ROLES.B.ficha}');
+    set local role authenticated; select public.salir_de_grupo(${id("Afín")}) \\g /dev/null
+    reset role; select count(*) from public.miembros_grupo where participante_id = '${ROLES.B.ficha}' and grupo_id = ${id("Afín")}`);
+  exigir(saleOtro.ok && ultima(saleOtro) === "1", `salir de un grupo sacó a otra persona: ${saleOtro.error ?? ultima(saleOtro)}`);
+
+  // Privacidad del explorador: quien no es miembro no llega a lo del grupo por dirección directa ni
+  // por la base; al salir pierde el acceso, lo que publicó no se borra y los contadores solo cuentan lo visible.
+  const conPosts = `${abrir} ${grupos} insert into public.miembros_grupo values (${id("Afín")}, '${ROLES.B.ficha}');
+    insert into public.publicaciones (id, autor, texto, grupo_id) values ('00000000-0000-4000-8000-0000000013b1', '${ROLES.B.ficha}', 'C13 privado de B', ${id("Afín")}),
+      ('00000000-0000-4000-8000-0000000013b2', '${ROLES.B.ficha}', 'C13 oculto', ${id("Afín")});
+    update public.publicaciones set estado = 'oculta', moderacion_motivo = 'respeto' where id = '00000000-0000-4000-8000-0000000013b2';
+    insert into public.publicaciones (autor, texto, grupo_id, respuesta_a) values ('${ROLES.B.ficha}', 'C13 respuesta', ${id("Afín")}, '00000000-0000-4000-8000-0000000013b1');
+    set local role authenticated;`;
+  const ajeno = como(ROLES.A, `${conPosts}
+    select (select count(*) from public.comunidad_publicaciones(p_grupo => ${id("Afín")}))
+      || ' ' || (select count(*) from public.comunidad_publicaciones(p_hilo => '00000000-0000-4000-8000-0000000013b1'))
+      || ' ' || (select count(*) from public.publicaciones where grupo_id = ${id("Afín")})`);
+  exigir(ajeno.ok && ultima(ajeno) === "0 0 0", `quien no es miembro llega a lo del grupo: ${ajeno.error ?? ultima(ajeno)}`);
+  const contador = como(ROLES.A, `${conPosts} select publicaciones || ' ' || miembros from public.comunidad_grupos() where id = ${id("Afín")}`);
+  exigir(contador.ok && ultima(contador) === "1 1", `el contador cuenta lo oculto o las respuestas: ${contador.error ?? ultima(contador)}`);
+  const sale = como(ROLES.B, `${conPosts}
+    select (select count(*) from public.comunidad_publicaciones(p_grupo => ${id("Afín")})) \\g /dev/null
+    select public.salir_de_grupo(${id("Afín")}) \\g /dev/null
+    select (select count(*) from public.comunidad_publicaciones(p_grupo => ${id("Afín")}))
+      || ' ' || (select count(*) from public.comunidad_publicaciones(p_hilo => '00000000-0000-4000-8000-0000000013b1'))
+      || ' ' || (select count(*) from public.comunidad_publicaciones() where texto like 'C13 %')`);
+  exigir(sale.ok && ultima(sale) === "0 0 0", `al salir sigue viendo el grupo: ${sale.error ?? ultima(sale)}`);
+  const quedan = como(ROLES.B, `${conPosts} select public.salir_de_grupo(${id("Afín")}) \\g /dev/null
+    reset role; select count(*) from public.publicaciones where texto like 'C13 %'`);
+  exigir(quedan.ok && ultima(quedan) === "3", `al salir se borraron sus publicaciones: ${quedan.error ?? ultima(quedan)}`);
+  const vuelve = como(ROLES.B, `${conPosts} select public.salir_de_grupo(${id("Afín")}) \\g /dev/null
+    select public.unirme_a_grupo(${id("Afín")}) \\g /dev/null
+    select count(*) from public.comunidad_publicaciones(p_grupo => ${id("Afín")})`);
+  exigir(vuelve.ok && ultima(vuelve) === "1", `al volver no recupera lo visible del grupo: ${vuelve.error ?? ultima(vuelve)}`);
+
+  const reclamosDe = (r) => `select set_config('request.jwt.claims', '${JSON.stringify({ sub: r.uid, role: "authenticated", aal: r.aal ?? "aal1" })}', true) \\g /dev/null\n`;
+  const proponer = (n) => `select public.proponer_grupo('Propuesta ${n}', 'Para probar') \\g /dev/null\n`;
+  const props = como(ROLES.A, `${abrir} ${proponer(1)} ${proponer(2)} ${proponer(3)} select count(*) from public.mis_propuestas_grupo()`);
+  exigir(props.ok && ultima(props) === "3", `A no pudo proponer grupos: ${props.error ?? ultima(props)}`);
+  const cuarta = como(ROLES.A, `${abrir} ${proponer(1)} ${proponer(2)} ${proponer(3)} ${proponer(4)}`);
+  exigir(!cuarta.ok && /propuestas:demasiadas/.test(cuarta.error), "A dejó más de 3 propuestas pendientes");
+  const repetida = como(ROLES.A, `${abrir} ${grupos} set local role authenticated; select public.proponer_grupo('c13 afín')`);
+  exigir(!repetida.ok && /nombre:en_uso/.test(repetida.error), "se propuso un grupo que ya existe");
+  const tablaDirecta = como(ROLES.A, `${abrir} ${proponer(1)} select count(*) from public.propuestas_grupo`);
+  exigir(tablaDirecta.ok && ultima(tablaDirecta) === "0", `una persona lee la tabla de propuestas: ${tablaDirecta.error ?? ultima(tablaDirecta)}`);
+  const deB = como(ROLES.B, `${abrir} reset role; ${reclamosDe(ROLES.A)} set local role authenticated; ${proponer(1)}
+    reset role; ${reclamosDe(ROLES.B)} set local role authenticated; select count(*) from public.mis_propuestas_grupo() where nombre like 'Propuesta %'`);
+  exigir(deB.ok && ultima(deB) === "0", `B ve las propuestas de A: ${deB.error ?? ultima(deB)}`);
+  const equipo = como(ROLES.aal2, `reset role; ${reclamosDe(ROLES.A)} ${abrir} ${proponer(9)}
+    reset role; ${reclamosDe(ROLES.aal2)} set local role authenticated;
+    select public.responder_propuesta_grupo((select id from public.propuestas_grupo_equipo() where nombre = 'Propuesta 9'), 'creada') \\g /dev/null
+    select estado || ' ' || (alias is not null)::int || ' ' || (to_jsonb(x) ? 'participante_id')::int from public.propuestas_grupo_equipo() x where nombre = 'Propuesta 9'`);
+  exigir(equipo.ok && ultima(equipo) === "creada 1 0", `el equipo no ve o no responde la propuesta (o ve la ficha): ${equipo.error ?? ultima(equipo)}`);
+  const otraVez = como(ROLES.aal2, `reset role; ${reclamosDe(ROLES.A)} ${abrir} ${proponer(9)}
+    reset role; ${reclamosDe(ROLES.aal2)} set local role authenticated;
+    select public.responder_propuesta_grupo((select id from public.propuestas_grupo_equipo() where nombre = 'Propuesta 9'), 'descartada') \\g /dev/null
+    select public.responder_propuesta_grupo((select id from public.propuestas_grupo_equipo() where nombre = 'Propuesta 9'), 'creada')`);
+  exigir(!otraVez.ok && /no_encontrada/.test(otraVez.error), "una propuesta respondida se respondió de nuevo");
+}
+paso("grupos C13: destacado único y elegido por moderación, sugeridos por las áreas de las metas, propuestas con alias y sin ficha, membresías solo propias; sin acceso al grupo por dirección ni por la base, al salir se pierde y lo publicado queda, contadores solo de lo visible");
 
 
 // E1 · Reconocimientos y beneficios. Fechas relativas al ciclo de A que deja rls.mjs.
