@@ -62,6 +62,7 @@ comentario. En producción ya está así: **no se pega**, solo se registra.
 | 20261112000000 | `20261112000000_comunidad_reacciones_fotos_grupos.sql` | (nuevo, C7: grupos, reacciones y foto opcional en Comunidad; **pendiente de aplicar, solo con autorización de Diego**) |
 | 20261113000000 | `20261113000000_comunidad_tipos_guardar_bloquear.sql` | (nuevo, C8: tipos, guardadas, bloqueos, temas e impacto en Comunidad; **pendiente de aplicar, solo con autorización de Diego**) |
 | 20261114000000 | `20261114000000_desafios.sql` | (nuevo, C9: desafíos de la comunidad con avance verificable; **pendiente de aplicar, solo con autorización de Diego**) |
+| 20261115000000 | `20261115000000_crear_publicacion.sql` | (nuevo, C11: crear publicación con hasta 5 fotos, «Permitir comentarios» y sin duplicados; **pendiente de aplicar, solo con autorización de Diego**) |
 
 Fuera de `migrations/` quedan las herramientas que no cambian la estructura:
 `verificacion.sql`, `historial-migraciones.sql`, `restaurar-antes.sql` y `restaurar-despues.sql`.

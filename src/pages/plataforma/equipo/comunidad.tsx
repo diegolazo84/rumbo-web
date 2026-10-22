@@ -28,6 +28,7 @@ type Publicacion = {
   estado: "visible" | "oculta" | "borrada";
   respuesta_a: string | null;
   foto_ruta: string | null;
+  fotos?: string[] | null; // C11: hasta 5 (foto_ruta es la primera)
   creada_en: string;
   moderacion_motivo: string | null;
   moderada_en: string | null;
@@ -47,7 +48,7 @@ type Datos = {
   modulo: Modulo;
 };
 
-const COLUMNAS_PUB = "id,texto,tipo,estado,respuesta_a,foto_ruta,creada_en,moderacion_motivo,moderada_en";
+const COLUMNAS_PUB = "id,texto,tipo,estado,respuesta_a,foto_ruta,fotos,creada_en,moderacion_motivo,moderada_en";
 const contar = (filas: { [k: string]: unknown }[], clave: string) =>
   filas.reduce<Record<string, number>>((r, f) => ({ ...r, [String(f[clave])]: (r[String(f[clave])] ?? 0) + 1 }), {});
 const fechaDe = (ts: string) => mayuscula(fechaLarga(ts.slice(0, 10) as Iso));
@@ -202,7 +203,9 @@ function ItemReporte({ p, reportes, alCambiar }: { p: Publicacion; reportes: Rep
         ) : (
           <div className="pa-co-contenido">
             <p className="pa-co-texto">{p.texto}</p>
-            {p.foto_ruta && <FotoPublicacion ruta={p.foto_ruta} />}
+            {(p.fotos?.length ? p.fotos : p.foto_ruta ? [p.foto_ruta] : []).map((r) => (
+              <FotoPublicacion key={r} ruta={r} />
+            ))}
           </div>
         )}
       </section>
