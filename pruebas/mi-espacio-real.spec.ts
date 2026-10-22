@@ -172,7 +172,11 @@ async function simular(page: Page, base: Base, rpc: Record<string, (c: Record<st
       llamadas.push({ tipo: "rpc", nombre, url: req.url(), cuerpo });
       const f = rpc[nombre] ?? porDefecto[nombre];
       if (!f) return rt.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ code: "PGRST202", message: "sin simular" }) });
-      return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(f(cuerpo) ?? null) });
+      const r = f(cuerpo);
+      // Error de la base («campo:codigo» con su estado HTTP), como lo devuelve PostgREST.
+      if (r && typeof r === "object" && "__error" in r)
+        return rt.fulfill({ status: Number((r as Fila).__estado ?? 400), contentType: "application/json", body: JSON.stringify({ code: "PT400", message: (r as Fila).__error }) });
+      return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(r ?? null) });
     }
     const tabla = partes[2];
     llamadas.push({ tipo: "tabla", nombre: tabla, url: req.url(), cuerpo: {} });
@@ -487,4 +491,118 @@ test("las rutas de Mi espacio y del panel son noindex y conectan solo con el pro
     expect(html, ruta).toContain(`connect-src 'self' ${SUPABASE_URL}`);
     expect(html, ruta).not.toContain('rel="canonical"');
   }
+});
+
+// ---------------------------------------------------------------------------
+// Comunidad real (C6 a C9): todo sale de las funciones de la base; nada de ejemplo.
+
+const PUB = (id: string, extra: Fila = {}): Fila => ({
+  id, respuesta_a: null, alias_publico: "Caminante", texto: "Hoy caminé 20 minutos #Hábitos", creada_en: new Date(Date.now() - 3 * 3600_000).toISOString(),
+  mia: false, respuestas: 0, grupo_id: "gr1", grupo_titulo: "Actividad física", foto_ruta: null, reacciones: 2, mi_reaccion: false, tipo: "progreso", guardada: false, ...extra,
+});
+
+test("Comunidad real: cerrada mientras el dueño no la habilite (sin datos de ejemplo)", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial(), { mi_impacto_comunidad: () => ({ __error: "comunidad:no_disponible", __estado: 409 }) });
+  await page.goto("mi-espacio/comunidad/");
+  await hidratar(page);
+  await expect(page.getByRole("heading", { name: "La comunidad aún no está abierta" })).toBeVisible();
+  await expect(page.locator("article.co-pub")).toHaveCount(0);
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+});
+
+test("Comunidad real: alias y reglas antes de participar", async ({ page }) => {
+  await conSesion(page);
+  let estado: "sin_alias" | "sin_reglas" | "abierta" = "sin_alias";
+  const llamadas = await simular(page, baseInicial(), {
+    mi_impacto_comunidad: () =>
+      estado === "sin_alias" ? { __error: "alias:sin_alias", __estado: 409 } : estado === "sin_reglas" ? { __error: "comunidad:sin_reglas", __estado: 409 } : [{ publicaciones: 0, comentarios: 0, reacciones_recibidas: 0 }],
+    guardar_alias: () => ((estado = "sin_reglas"), null),
+    aceptar_reglas_comunidad: () => ((estado = "abierta"), null),
+    comunidad_publicaciones: () => [],
+    comunidad_grupos: () => [],
+    comunidad_temas: () => [],
+    comunidad_desafios: () => [],
+  });
+  await page.goto("mi-espacio/comunidad/");
+  await hidratar(page);
+  await page.getByLabel("Tu alias").fill("Caminante");
+  await page.getByRole("button", { name: "Guardar alias" }).click();
+  await page.getByRole("button", { name: "Acepto las reglas" }).click();
+  await expect(page.locator(".co-compositor")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "guardar_alias")?.cuerpo).toEqual({ p_alias: "Caminante" });
+  expect(llamadas.some((l) => l.nombre === "aceptar_reglas_comunidad")).toBe(true);
+});
+
+test("Comunidad real: publicaciones, grupos, temas, impacto y desafíos de la base; apoyar, publicar y reportar", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.alias = [{ participante_id: "p1", alias: "Ana C" }];
+  const llamadas = await simular(page, base, {
+    mi_impacto_comunidad: () => [{ publicaciones: 3, comentarios: 5, reacciones_recibidas: 9 }],
+    comunidad_publicaciones: () => [PUB("x1")],
+    comunidad_grupos: () => [{ id: "gr1", nombre: "Actividad física", descripcion: "Moverse", miembros: 4, soy_miembro: true, ilustracion: "montana", publicaciones: 1 }],
+    comunidad_temas: () => [{ tema: "Hábitos", publicaciones: 1 }],
+    comunidad_desafios: () => [
+      { id: "d1", titulo: "Constancia", descripcion: "Un mes", reglas: "Completa tus acciones del día.", dias: 28, inicio: "2026-10-05", fin: "2026-11-01", ilustracion: "sendero", participantes: 2, participo: true, dias_cumplidos: 3, dias_transcurridos: 9, completado: false },
+    ],
+    reaccionar_publicacion: () => true,
+    publicar_en_comunidad: () => "nueva",
+    reportar_publicacion: () => null,
+  });
+  await page.goto("mi-espacio/comunidad/");
+  await hidratar(page);
+  const pub = page.locator("article.co-pub").first();
+  await expect(pub.locator(".co-pub__alias")).toHaveText("Caminante");
+  await expect(pub.locator(".co-pub__meta")).toContainText("En Actividad física");
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  if (!(await page.locator(".co-col--izq").isVisible())) await page.setViewportSize({ width: 1366, height: 900 });
+  await expect(page.locator(".co-col--izq")).toContainText("4 miembros");
+  await expect(page.locator(".co-col--izq")).toContainText("2 participantes");
+  await expect(page.locator(".co-col--izq")).toContainText("3 de 28 días cumplidos");
+  await expect(page.locator(".co-col--der")).toContainText("#Hábitos");
+  await expect(page.locator(".co-col--der .co-impacto__numeros dd")).toHaveText(["3", "5", "9"]);
+  await expect(page.locator(".co-compositor .co-avatar")).toHaveText("AC");
+
+  await pub.locator(".co-pub__accion--apoyo").click();
+  await expect(pub.locator(".co-pub__accion--apoyo")).toHaveAttribute("aria-pressed", "true");
+  expect(llamadas.find((l) => l.nombre === "reaccionar_publicacion")?.cuerpo).toEqual({ p_id: "x1" });
+
+  await page.locator(".co-compositor").getByRole("button", { name: "Consejo" }).click();
+  const hoja = page.getByRole("dialog", { name: "Crear publicación" });
+  await hoja.getByLabel("Tu publicación").fill("Partir con poco ayuda #Hábitos");
+  await hoja.getByRole("button", { name: "Publicar" }).click();
+  await expect(hoja).toBeHidden();
+  expect(llamadas.find((l) => l.nombre === "publicar_en_comunidad")?.cuerpo).toEqual({
+    p_texto: "Partir con poco ayuda #Hábitos", p_respuesta_a: null, p_grupo: null, p_foto_ruta: null, p_tipo: "consejo",
+  });
+
+  await pub.getByRole("button", { name: /Más acciones/ }).click();
+  await pub.getByRole("button", { name: "Reportar" }).click();
+  const reporte = page.getByRole("dialog", { name: "Reportar" });
+  await reporte.getByRole("radio", { name: "Expone datos personales" }).check();
+  await reporte.getByRole("button", { name: "Enviar reporte" }).click();
+  await expect(reporte).toBeHidden();
+  expect(llamadas.find((l) => l.nombre === "reportar_publicacion")?.cuerpo).toEqual({ p_id: "x1", p_motivo: "privacidad", p_detalle: null });
+  await sinViolaciones(page);
+});
+
+test("Comunidad real: el límite de 20 publicaciones al día se explica sin perder el texto", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial(), {
+    mi_impacto_comunidad: () => [{ publicaciones: 0, comentarios: 0, reacciones_recibidas: 0 }],
+    comunidad_publicaciones: () => [],
+    comunidad_grupos: () => [],
+    comunidad_temas: () => [],
+    comunidad_desafios: () => [],
+    publicar_en_comunidad: () => ({ __error: "comunidad:demasiadas", __estado: 429 }),
+  });
+  await page.goto("mi-espacio/comunidad/");
+  await hidratar(page);
+  await page.locator(".co-compositor__invitacion").click();
+  const hoja = page.getByRole("dialog", { name: "Crear publicación" });
+  await hoja.getByLabel("Tu publicación").fill("Una más");
+  await hoja.getByRole("button", { name: "Publicar" }).click();
+  await expect(hoja.getByRole("alert")).toContainText("20 publicaciones en 24 horas");
+  await expect(hoja.getByLabel("Tu publicación")).toHaveValue("Una más");
 });
