@@ -1184,6 +1184,65 @@ paso("comunidad C8: tipos, guardadas solo mías, bloqueo en ambos sentidos, tema
 }
 paso("desafíos C9: voluntarios, avance verificable con los días realmente cumplidos y conteo real sin nombres");
 
+// C11 · Crear publicación: hasta 5 fotos propias, «Permitir comentarios» en la base y sin duplicados.
+{
+  const abrir = `reset role; update public.modulos set estado = 'habilitado' where clave = 'comunidad';
+    update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    update public.alias set reglas_comunidad_en = now(); set local role authenticated;`;
+  const reclamos = (r) => `set local request.jwt.claims to '${JSON.stringify({ sub: r.uid, role: "authenticated", aal: "aal1" })}';`;
+  const foto = (r, n) => `${r.ficha}/00000000-0000-4000-8000-00000000c1${String(n).padStart(2, "0")}.webp`;
+  const subir = (r, ns) => `reset role; ${ns.map((n) => `insert into storage.objects (bucket_id, name) values ('comunidad', '${foto(r, n)}');`).join(" ")} set local role authenticated;`;
+  const lista = (r, ns) => `array[${ns.map((n) => `'${foto(r, n)}'`).join(",")}]`;
+  const dos = como(ROLES.A, `${abrir} ${subir(ROLES.A, [1, 2])}
+    select public.publicar_en_comunidad('Dos fotos', null, null, null, 'progreso', ${lista(ROLES.A, [2, 1, 2])}) \\g /dev/null
+    select cardinality(fotos) || ' ' || (foto_ruta = fotos[1] and fotos[1] = '${foto(ROLES.A, 2)}')::int || ' ' || permite_comentarios from public.comunidad_publicaciones() where texto = 'Dos fotos'`);
+  exigir(dos.ok && ultima(dos) === "2 1 true", `A no publicó con dos fotos (sin repetir y en su orden): ${dos.error ?? ultima(dos)}`);
+  const seis = como(ROLES.A, `${abrir} ${subir(ROLES.A, [1, 2, 3, 4, 5, 6])}
+    select public.publicar_en_comunidad('Seis fotos', null, null, null, 'general', ${lista(ROLES.A, [1, 2, 3, 4, 5, 6])})`);
+  exigir(!seis.ok && /fotos:demasiadas/.test(seis.error), "se publicaron más de 5 fotos");
+  const ajena = como(ROLES.A, `${abrir} ${subir(ROLES.B, [1])} ${subir(ROLES.A, [1])}
+    select public.publicar_en_comunidad('Foto ajena', null, null, null, 'general', ${lista(ROLES.A, [1])} || ${lista(ROLES.B, [1])})`);
+  exigir(!ajena.ok && /ruta_invalida/.test(ajena.error), "A publicó una foto de la carpeta de B");
+  const noSubida = como(ROLES.A, `${abrir} select public.publicar_en_comunidad('Sin subir', null, null, null, 'general', ${lista(ROLES.A, [9])})`);
+  exigir(!noSubida.ok && /ruta_invalida/.test(noSubida.error), "se publicó una foto que no se subió");
+  // B ve la segunda foto de A solo si puede ver la publicación (no queda ninguna foto suelta a la vista).
+  const ve = como(ROLES.B, `${abrir} ${subir(ROLES.A, [1, 2, 3])} reset role; ${reclamos(ROLES.A)} set local role authenticated;
+    select public.publicar_en_comunidad('Para B', null, null, null, 'general', ${lista(ROLES.A, [1, 2])}) \\g /dev/null
+    reset role; ${reclamos(ROLES.B)} set local role authenticated;
+    select count(*) from storage.objects where bucket_id = 'comunidad'`);
+  exigir(ve.ok && ultima(ve) === "2", `B no ve exactamente las 2 fotos publicadas (la 3.ª suelta debe quedar oculta): ${ve.error ?? ultima(ve)}`);
+  // Comentarios apagados: B no puede responder, ni llamando directo a la función; A sí.
+  const cerrados = `${abrir} reset role; ${reclamos(ROLES.A)} set local role authenticated;
+    select public.publicar_en_comunidad('Sin comentarios', null, null, null, 'general', null, false) \\g /dev/null
+    reset role; ${reclamos(ROLES.B)} set local role authenticated;`;
+  const bComenta = como(ROLES.B, `${cerrados}
+    select public.publicar_en_comunidad('Comento', (select id from public.comunidad_publicaciones() where texto = 'Sin comentarios'))`);
+  exigir(!bComenta.ok && /comentarios:cerrados/.test(bComenta.error), "B comentó una publicación con comentarios apagados");
+  const bInserta = como(ROLES.B, `${cerrados}
+    insert into public.publicaciones (autor, respuesta_a, texto) select '${ROLES.B.ficha}', id, 'Directo' from public.comunidad_publicaciones() where texto = 'Sin comentarios'`);
+  exigir(!bInserta.ok, "B escribió directo en la tabla de publicaciones");
+  const aComenta = como(ROLES.A, `${abrir} select public.publicar_en_comunidad('Sin comentarios', null, null, null, 'general', null, false) \\g /dev/null
+    select public.publicar_en_comunidad('Gracias', (select id from public.comunidad_publicaciones() where texto = 'Sin comentarios')) is not null`);
+  exigir(aComenta.ok && ultima(aComenta) === "t", `quien publicó no pudo responder en su publicación: ${aComenta.error ?? ultima(aComenta)}`);
+  // El mismo intento dos veces: una sola publicación.
+  const cid = "'00000000-0000-4000-8000-0000000c1d01'";
+  const doble = como(ROLES.A, `${abrir}
+    select public.publicar_en_comunidad('Una vez', null, null, null, 'consejo', null, true, ${cid}) \\g /dev/null
+    select public.publicar_en_comunidad('Una vez', null, null, null, 'consejo', null, true, ${cid}) \\g /dev/null
+    select count(*) from public.comunidad_publicaciones() where texto = 'Una vez'`);
+  exigir(doble.ok && ultima(doble) === "1", `un doble envío creó dos publicaciones: ${doble.error ?? ultima(doble)}`);
+  const otroCid = como(ROLES.B, `${abrir} reset role; ${reclamos(ROLES.A)} set local role authenticated;
+    select public.publicar_en_comunidad('De A', null, null, null, 'general', null, true, ${cid}) \\g /dev/null
+    reset role; ${reclamos(ROLES.B)} set local role authenticated;
+    select public.publicar_en_comunidad('De B', null, null, null, 'general', null, true, ${cid}) \\g /dev/null
+    select count(*) from public.comunidad_publicaciones() where texto in ('De A', 'De B')`);
+  exigir(otroCid.ok && ultima(otroCid) === "2", `el identificador de intento de A bloqueó a B: ${otroCid.error ?? ultima(otroCid)}`);
+  const respuestaFotos = como(ROLES.A, `${abrir} ${subir(ROLES.A, [1])}
+    select public.publicar_en_comunidad('R', '00000000-0000-0000-0000-0000000000b1', null, null, 'general', ${lista(ROLES.A, [1])})`);
+  exigir(!respuestaFotos.ok && /solo_publicaciones/.test(respuestaFotos.error), "una respuesta llevó fotos");
+}
+paso("crear publicación C11: hasta 5 fotos propias y subidas, comentarios apagados también en la base, sin duplicados");
+
 
 // E1 · Reconocimientos y beneficios. Fechas relativas al ciclo de A que deja rls.mjs.
 {
