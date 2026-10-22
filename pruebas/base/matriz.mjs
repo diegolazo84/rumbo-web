@@ -1288,6 +1288,36 @@ paso("crear publicación C11: hasta 5 fotos propias y subidas, comentarios apaga
     reset role; select count(*) from public.miembros_grupo where participante_id = '${ROLES.B.ficha}' and grupo_id = ${id("Afín")}`);
   exigir(saleOtro.ok && ultima(saleOtro) === "1", `salir de un grupo sacó a otra persona: ${saleOtro.error ?? ultima(saleOtro)}`);
 
+  // Privacidad del explorador: quien no es miembro no llega a lo del grupo por dirección directa ni
+  // por la base; al salir pierde el acceso, lo que publicó no se borra y los contadores solo cuentan lo visible.
+  const conPosts = `${abrir} ${grupos} insert into public.miembros_grupo values (${id("Afín")}, '${ROLES.B.ficha}');
+    insert into public.publicaciones (id, autor, texto, grupo_id) values ('00000000-0000-4000-8000-0000000013b1', '${ROLES.B.ficha}', 'C13 privado de B', ${id("Afín")}),
+      ('00000000-0000-4000-8000-0000000013b2', '${ROLES.B.ficha}', 'C13 oculto', ${id("Afín")});
+    update public.publicaciones set estado = 'oculta', moderacion_motivo = 'respeto' where id = '00000000-0000-4000-8000-0000000013b2';
+    insert into public.publicaciones (autor, texto, grupo_id, respuesta_a) values ('${ROLES.B.ficha}', 'C13 respuesta', ${id("Afín")}, '00000000-0000-4000-8000-0000000013b1');
+    set local role authenticated;`;
+  const ajeno = como(ROLES.A, `${conPosts}
+    select (select count(*) from public.comunidad_publicaciones(p_grupo => ${id("Afín")}))
+      || ' ' || (select count(*) from public.comunidad_publicaciones(p_hilo => '00000000-0000-4000-8000-0000000013b1'))
+      || ' ' || (select count(*) from public.publicaciones where grupo_id = ${id("Afín")})`);
+  exigir(ajeno.ok && ultima(ajeno) === "0 0 0", `quien no es miembro llega a lo del grupo: ${ajeno.error ?? ultima(ajeno)}`);
+  const contador = como(ROLES.A, `${conPosts} select publicaciones || ' ' || miembros from public.comunidad_grupos() where id = ${id("Afín")}`);
+  exigir(contador.ok && ultima(contador) === "1 1", `el contador cuenta lo oculto o las respuestas: ${contador.error ?? ultima(contador)}`);
+  const sale = como(ROLES.B, `${conPosts}
+    select (select count(*) from public.comunidad_publicaciones(p_grupo => ${id("Afín")})) \\g /dev/null
+    select public.salir_de_grupo(${id("Afín")}) \\g /dev/null
+    select (select count(*) from public.comunidad_publicaciones(p_grupo => ${id("Afín")}))
+      || ' ' || (select count(*) from public.comunidad_publicaciones(p_hilo => '00000000-0000-4000-8000-0000000013b1'))
+      || ' ' || (select count(*) from public.comunidad_publicaciones() where texto like 'C13 %')`);
+  exigir(sale.ok && ultima(sale) === "0 0 0", `al salir sigue viendo el grupo: ${sale.error ?? ultima(sale)}`);
+  const quedan = como(ROLES.B, `${conPosts} select public.salir_de_grupo(${id("Afín")}) \\g /dev/null
+    reset role; select count(*) from public.publicaciones where texto like 'C13 %'`);
+  exigir(quedan.ok && ultima(quedan) === "3", `al salir se borraron sus publicaciones: ${quedan.error ?? ultima(quedan)}`);
+  const vuelve = como(ROLES.B, `${conPosts} select public.salir_de_grupo(${id("Afín")}) \\g /dev/null
+    select public.unirme_a_grupo(${id("Afín")}) \\g /dev/null
+    select count(*) from public.comunidad_publicaciones(p_grupo => ${id("Afín")})`);
+  exigir(vuelve.ok && ultima(vuelve) === "1", `al volver no recupera lo visible del grupo: ${vuelve.error ?? ultima(vuelve)}`);
+
   const reclamosDe = (r) => `select set_config('request.jwt.claims', '${JSON.stringify({ sub: r.uid, role: "authenticated", aal: r.aal ?? "aal1" })}', true) \\g /dev/null\n`;
   const proponer = (n) => `select public.proponer_grupo('Propuesta ${n}', 'Para probar') \\g /dev/null\n`;
   const props = como(ROLES.A, `${abrir} ${proponer(1)} ${proponer(2)} ${proponer(3)} select count(*) from public.mis_propuestas_grupo()`);
@@ -1312,7 +1342,7 @@ paso("crear publicación C11: hasta 5 fotos propias y subidas, comentarios apaga
     select public.responder_propuesta_grupo((select id from public.propuestas_grupo_equipo() where nombre = 'Propuesta 9'), 'creada')`);
   exigir(!otraVez.ok && /no_encontrada/.test(otraVez.error), "una propuesta respondida se respondió de nuevo");
 }
-paso("grupos C13: destacado único y elegido por moderación, sugeridos por las áreas de las metas, propuestas con alias y sin ficha, membresías solo propias");
+paso("grupos C13: destacado único y elegido por moderación, sugeridos por las áreas de las metas, propuestas con alias y sin ficha, membresías solo propias; sin acceso al grupo por dirección ni por la base, al salir se pierde y lo publicado queda, contadores solo de lo visible");
 
 
 // E1 · Reconocimientos y beneficios. Fechas relativas al ciclo de A que deja rls.mjs.
