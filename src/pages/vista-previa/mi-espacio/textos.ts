@@ -585,19 +585,19 @@ export const T_LO_QUE_VIENE = {
     {
       titulo: "Para el lanzamiento",
       items: [
-        { titulo: "Comunidad con foro moderado", texto: "Comparte avances con un alias, solo si quieres." },
-        { titulo: "Ranking semanal voluntario", texto: "Por cumplimiento relativo a tu propio plan, con participación opcional." },
-        { titulo: "Fotografías opcionales y privadas", texto: "Respalda una acción con una foto que solo ve tu coach." },
-        { titulo: "Asistente con inteligencia artificial", texto: "Propone ideas para tu plan y tu registro. Tu coach revisa y aprueba." },
+        { clave: "comunidad", titulo: "Comunidad con foro moderado", texto: "Comparte avances con un alias, solo si quieres." },
+        { clave: "ranking", titulo: "Ranking semanal voluntario", texto: "Por cumplimiento relativo a tu propio plan, con participación opcional." },
+        { clave: "fotos", titulo: "Fotografías opcionales y privadas", texto: "Respalda una acción con una foto que solo ve tu coach." },
+        { clave: "asistente_ia", titulo: "Asistente con inteligencia artificial", texto: "Propone ideas para tu plan y tu registro. Tu coach revisa y aprueba." },
       ],
     },
     {
       titulo: "Más adelante",
       items: [
-        { titulo: "Marketplace de especialistas", texto: "Sesiones con profesionales verificados de distintas áreas." },
-        { titulo: "Premios y recompensas", texto: "Beneficios por tu constancia, con criterios iguales para todos los planes." },
-        { titulo: "Inteligencia artificial avanzada", texto: "Análisis más profundos de tus patrones y tu evolución." },
-        { titulo: "Aplicación móvil", texto: "Una aplicación para iOS y Android." },
+        { clave: "especialistas", titulo: "Marketplace de especialistas", texto: "Sesiones con profesionales verificados de distintas áreas." },
+        { clave: "reconocimientos", titulo: "Premios y recompensas", texto: "Beneficios por tu constancia, con criterios iguales para todos los planes." },
+        { clave: "ia_avanzada", titulo: "Inteligencia artificial avanzada", texto: "Análisis más profundos de tus patrones y tu evolución." },
+        { clave: "app_movil", titulo: "Aplicación móvil", texto: "Una aplicación para iOS y Android." },
       ],
     },
   ],
