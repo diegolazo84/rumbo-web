@@ -51,8 +51,11 @@ begin
     select x.id into v_id from public.publicaciones x where x.autor = v_yo and x.cliente_id = p_cliente_id;
     if v_id is not null then return v_id; end if;
   end if;
-  select coalesce(array_agg(distinct f), '{}') into v_fotos
-    from unnest(coalesce(p_fotos, case when p_foto_ruta is not null then array[p_foto_ruta] end)) f where f is not null;
+  -- Sin repetidas y en el orden elegido (la primera es la portada de la publicación).
+  select coalesce(array_agg(x.f order by x.n), '{}') into v_fotos
+    from (select u.f, min(u.n) as n
+            from unnest(coalesce(p_fotos, case when p_foto_ruta is not null then array[p_foto_ruta] end)) with ordinality as u(f, n)
+           where u.f is not null group by u.f) x;
   if v_texto is null or char_length(v_texto) not between 1 and 1000 then perform privado.error('texto','invalido'); end if;
   if v_tipo not in ('general','progreso','pregunta','consejo','logro') then perform privado.error('tipo','invalido'); end if;
   if cardinality(v_fotos) > 5 then perform privado.error('fotos','demasiadas'); end if;

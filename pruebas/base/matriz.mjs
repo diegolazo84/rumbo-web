@@ -1194,9 +1194,9 @@ paso("desafíos C9: voluntarios, avance verificable con los días realmente cump
   const subir = (r, ns) => `reset role; ${ns.map((n) => `insert into storage.objects (bucket_id, name) values ('comunidad', '${foto(r, n)}');`).join(" ")} set local role authenticated;`;
   const lista = (r, ns) => `array[${ns.map((n) => `'${foto(r, n)}'`).join(",")}]`;
   const dos = como(ROLES.A, `${abrir} ${subir(ROLES.A, [1, 2])}
-    select public.publicar_en_comunidad('Dos fotos', null, null, null, 'progreso', ${lista(ROLES.A, [1, 2])}) \\g /dev/null
-    select cardinality(fotos) || ' ' || (foto_ruta = fotos[1])::int || ' ' || permite_comentarios from public.comunidad_publicaciones() where texto = 'Dos fotos'`);
-  exigir(dos.ok && ultima(dos) === "2 1 true", `A no publicó con dos fotos: ${dos.error ?? ultima(dos)}`);
+    select public.publicar_en_comunidad('Dos fotos', null, null, null, 'progreso', ${lista(ROLES.A, [2, 1, 2])}) \\g /dev/null
+    select cardinality(fotos) || ' ' || (foto_ruta = fotos[1] and fotos[1] = '${foto(ROLES.A, 2)}')::int || ' ' || permite_comentarios from public.comunidad_publicaciones() where texto = 'Dos fotos'`);
+  exigir(dos.ok && ultima(dos) === "2 1 true", `A no publicó con dos fotos (sin repetir y en su orden): ${dos.error ?? ultima(dos)}`);
   const seis = como(ROLES.A, `${abrir} ${subir(ROLES.A, [1, 2, 3, 4, 5, 6])}
     select public.publicar_en_comunidad('Seis fotos', null, null, null, 'general', ${lista(ROLES.A, [1, 2, 3, 4, 5, 6])})`);
   exigir(!seis.ok && /fotos:demasiadas/.test(seis.error), "se publicaron más de 5 fotos");
