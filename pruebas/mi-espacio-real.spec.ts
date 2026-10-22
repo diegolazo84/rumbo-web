@@ -569,12 +569,14 @@ test("Comunidad real: publicaciones, grupos, temas, impacto y desafíos de la ba
   expect(llamadas.find((l) => l.nombre === "reaccionar_publicacion")?.cuerpo).toEqual({ p_id: "x1" });
 
   await page.locator(".co-compositor").getByRole("button", { name: "Consejo" }).click();
-  const hoja = page.getByRole("dialog", { name: "Crear publicación" });
-  await hoja.getByLabel("Tu publicación").fill("Partir con poco ayuda #Hábitos");
-  await hoja.getByRole("button", { name: "Publicar" }).click();
-  await expect(hoja).toBeHidden();
-  expect(llamadas.find((l) => l.nombre === "publicar_en_comunidad")?.cuerpo).toEqual({
-    p_texto: "Partir con poco ayuda #Hábitos", p_respuesta_a: null, p_grupo: null, p_foto_ruta: null, p_tipo: "consejo",
+  await expect(page).toHaveURL(/mi-espacio\/comunidad\/crear\/\?tipo=consejo/);
+  await page.getByRole("textbox", { name: /Escribe tu publicación/ }).fill("Partir con poco ayuda #Hábitos");
+  await page.getByRole("switch", { name: "Permitir comentarios" }).uncheck();
+  await page.getByRole("button", { name: "Publicar" }).click();
+  await expect(page.locator(".tostada__texto")).toHaveText("Tu publicación ya está en la comunidad.");
+  const cuerpo = llamadas.find((l) => l.nombre === "publicar_en_comunidad")?.cuerpo as Record<string, unknown>;
+  expect({ ...cuerpo, p_cliente_id: typeof cuerpo.p_cliente_id }).toEqual({
+    p_texto: "Partir con poco ayuda #Hábitos", p_respuesta_a: null, p_grupo: null, p_tipo: "consejo", p_fotos: [], p_permite_comentarios: false, p_cliente_id: "string",
   });
 
   await pub.getByRole("button", { name: /Más acciones/ }).click();
@@ -600,9 +602,61 @@ test("Comunidad real: el límite de 20 publicaciones al día se explica sin perd
   await page.goto("mi-espacio/comunidad/");
   await hidratar(page);
   await page.locator(".co-compositor__invitacion").click();
-  const hoja = page.getByRole("dialog", { name: "Crear publicación" });
-  await hoja.getByLabel("Tu publicación").fill("Una más");
-  await hoja.getByRole("button", { name: "Publicar" }).click();
-  await expect(hoja.getByRole("alert")).toContainText("20 publicaciones en 24 horas");
-  await expect(hoja.getByLabel("Tu publicación")).toHaveValue("Una más");
+  const texto = page.getByRole("textbox", { name: /Escribe tu publicación/ });
+  await texto.fill("Una más");
+  await page.getByRole("button", { name: "Publicar" }).click();
+  await expect(page.getByRole("alert")).toContainText("20 publicaciones en 24 horas");
+  await expect(texto).toHaveValue("Una más");
+});
+
+test("Crear publicación real: las fotos suben a la carpeta propia, en orden, y se borran si la base rechaza", async ({ page }) => {
+  await conSesion(page);
+  let rechazar = false;
+  const llamadas = await simular(page, baseInicial(), {
+    mi_impacto_comunidad: () => [{ publicaciones: 0, comentarios: 0, reacciones_recibidas: 0 }],
+    comunidad_publicaciones: () => [],
+    comunidad_grupos: () => [
+      { id: "gr1", nombre: "Actividad física", descripcion: null, miembros: 4, soy_miembro: true, ilustracion: null, publicaciones: 0 },
+      { id: "gr2", nombre: "Ajeno", descripcion: null, miembros: 4, soy_miembro: false, ilustracion: null, publicaciones: 0 },
+    ],
+    comunidad_temas: () => [],
+    comunidad_desafios: () => [],
+    publicar_en_comunidad: () => (rechazar ? { __error: "foto:ruta_invalida", __estado: 400 } : "nueva"),
+  });
+  const subidas: string[] = [];
+  const borradas: string[] = [];
+  await page.route(`${SUPABASE_URL}/storage/v1/object/**`, async (rt) => {
+    const req = rt.request();
+    if (req.method() === "DELETE") {
+      borradas.push(...((req.postDataJSON() as { prefixes: string[] }).prefixes ?? []));
+      return rt.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+    }
+    subidas.push(new URL(req.url()).pathname.replace(/^.*\/object\/comunidad\//, ""));
+    return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ Key: "x" }) });
+  });
+  await page.goto("mi-espacio/comunidad/crear/");
+  await hidratar(page);
+  // Solo los grupos a los que pertenece.
+  await expect(page.locator(".co-destino__select option")).toHaveText(["Toda la comunidad", "Actividad física"]);
+  await page.locator(".co-destino__select").selectOption("gr1");
+  await page.getByRole("textbox", { name: /Escribe tu publicación/ }).fill("Con fotos");
+  const png = (n: number) => ({ name: `f${n}.png`, mimeType: "image/png", buffer: Buffer.from("89504e470d0a1a0a", "hex") });
+  await page.locator('input[type="file"]').setInputFiles([png(1), png(2)]);
+  await page.getByRole("button", { name: "Publicar" }).click();
+  await expect(page).toHaveURL(/vista=grupos&grupo=gr1/);
+  expect(subidas).toHaveLength(2);
+  for (const s of subidas) expect(s).toMatch(/^[^/]+\/[0-9a-f-]{36}\.(png|webp|jpg)$/);
+  const cuerpo = llamadas.filter((l) => l.nombre === "publicar_en_comunidad").at(-1)!.cuerpo;
+  expect(cuerpo.p_fotos).toEqual(subidas);
+  expect(cuerpo.p_grupo).toBe("gr1");
+
+  rechazar = true;
+  subidas.length = 0;
+  await page.goto("mi-espacio/comunidad/crear/");
+  await hidratar(page);
+  await page.getByRole("textbox", { name: /Escribe tu publicación/ }).fill("Otra");
+  await page.locator('input[type="file"]').setInputFiles([png(3)]);
+  await page.getByRole("button", { name: "Publicar" }).click();
+  await expect(page.getByRole("alert")).toContainText("No pudimos subir la foto");
+  expect(borradas).toEqual(subidas);
 });

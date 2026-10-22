@@ -5,6 +5,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { T_COMU as T } from "../src/pages/vista-previa/mi-espacio/comunidad/textos";
+import { revisarBarra } from "./barra-movil";
 
 const ETIQUETAS_AXE = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const RUTA = "vista-previa/mi-espacio/comunidad/";
@@ -74,37 +75,15 @@ test("móvil: una columna, crear publicación antes de las publicaciones y la ba
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
-test("crear publicación: valida, publica con alias y tipo, y confirma", async ({ page }) => {
+test("cada acceso de «crear publicación» lleva a su pantalla con ese tipo elegido", async ({ page }) => {
   await abrir(page);
   await page.locator(".co-compositor").getByRole("button", { name: T.compositor.accesos.pregunta }).click();
-  const hoja = page.getByRole("dialog", { name: T.formulario.titulo });
-  await expect(hoja).toBeVisible();
-  await expect(hoja.getByRole("radio", { name: T.tipos.pregunta })).toBeChecked();
-  await hoja.getByRole("button", { name: T.formulario.publicar }).click();
-  await expect(hoja.getByRole("alert")).toHaveText(T.formulario.errores.vacio);
-  await hoja.getByLabel(T.formulario.texto).fill("x".repeat(1001));
-  await hoja.getByRole("button", { name: T.formulario.publicar }).click();
-  await expect(hoja.getByRole("alert")).toHaveText(T.formulario.errores.largo(1000));
-  await hoja.getByLabel(T.formulario.texto).fill("¿Cómo ordenan su semana? #Hábitos");
-  await hoja.getByLabel(T.formulario.donde).selectOption({ label: T.formulario.soloGrupo("Vida saludable") });
-  await hoja.getByRole("button", { name: T.formulario.publicar }).click();
-  await expect(hoja).toBeHidden();
-  await expect(page.locator(".tostada__texto")).toHaveText(T.formulario.listo);
-  const mia = page.locator("article.co-pub").first();
-  await expect(mia.locator(".co-pub__alias")).toHaveText("Tu alias");
-  await expect(mia.locator(".co-pub__meta")).toContainText("En Vida saludable");
-  await expect(mia.locator(".co-pub__tipo")).toHaveText(T.rotuloTipo.pregunta);
-  await expect(page.locator(".co-col--der .co-impacto__numeros dd").first()).toHaveText("1");
-});
-
-test("foto: el acceso «Foto» abre el formulario y rechaza archivos que no son imágenes", async ({ page }) => {
-  await abrir(page);
-  const selector = page.waitForEvent("filechooser");
-  await page.locator(".co-compositor").getByRole("button", { name: T.compositor.accesos.foto }).click();
-  const elegir = await selector;
-  await elegir.setFiles({ name: "nota.txt", mimeType: "text/plain", buffer: Buffer.from("hola") });
-  const hoja = page.getByRole("dialog", { name: T.formulario.titulo });
-  await expect(hoja.getByRole("alert")).toHaveText(T.formulario.errores.fotoTipo);
+  await expect(page).toHaveURL(/comunidad\/crear\/\?tipo=pregunta/);
+  await expect(page.getByRole("radio", { name: T.crearPagina.categorias.pregunta.titulo, exact: true })).toBeChecked();
+  await page.goBack();
+  await page.locator(".co-compositor__invitacion").click();
+  await expect(page.locator("main h1")).toHaveText(T.crearPagina.titulo);
+  await expect(page).toHaveURL(/comunidad\/crear\/$/);
 });
 
 test("apoyos, guardar y comentarios", async ({ page }) => {
@@ -194,7 +173,10 @@ test("historias de logro: solo publicaciones de logro, y se crea con ese tipo", 
   await expect(page.locator("article.co-pub")).toHaveCount(1);
   await expect(page.locator("article.co-pub .co-pub__tipo")).toHaveText(T.rotuloTipo.logro);
   await page.locator(".co-compositor__invitacion").click();
-  await expect(page.getByRole("dialog", { name: T.formulario.titulo }).getByRole("radio", { name: T.tipos.logro })).toBeChecked();
+  await expect(page).toHaveURL(/tipo=logro/);
+  // Una historia de logro se muestra dentro de «Tu progreso» y conserva su tipo.
+  await expect(page.getByRole("radio", { name: T.crearPagina.categorias.progreso.titulo, exact: true })).toBeChecked();
+  await expect(page.locator(".co-crear__previa .co-pub__tipo")).toHaveText(T.rotuloTipo.logro);
 });
 
 test("antes de participar: comunidad cerrada, elegir alias y aceptar reglas", async ({ page }) => {
@@ -211,61 +193,10 @@ test("antes de participar: comunidad cerrada, elegir alias y aceptar reglas", as
   await sinViolaciones(page);
 });
 
-test("accesibilidad de la pantalla completa y del formulario abierto", async ({ page }) => {
+test("accesibilidad de la pantalla completa", async ({ page }) => {
   await abrir(page);
   await sinViolaciones(page);
-  await page.locator(".co-compositor__invitacion").click();
-  await expect(page.getByRole("dialog", { name: T.formulario.titulo })).toBeVisible();
-  await sinViolaciones(page);
 });
-
-// Comportamiento real de la barra inferior en móvil: se desplaza la página con la rueda paso a
-// paso (la barra no se mueve ni queda bajo el contenido), cada control alcanzado con el teclado
-// queda entero entre la cabecera y la barra, y al final el último contenido queda sobre la barra.
-async function revisarBarra(page: Page) {
-  const barra = page.locator("nav.barra-inferior");
-  await expect(barra).toBeVisible();
-  const alto = await page.evaluate(() => window.innerHeight);
-  const topeBarra = async () => (await barra.boundingBox())!.y;
-  const inicial = await topeBarra();
-  await page.mouse.move(200, alto / 2);
-  for (let i = 0; i < 80; i++) {
-    const antes = await page.evaluate(() => window.scrollY);
-    await page.mouse.wheel(0, 400);
-    await page.waitForTimeout(60);
-    expect(await topeBarra()).toBeCloseTo(inicial, 0);
-    // Lo que se ve en el centro de la barra es la barra misma: ningún contenido queda encima.
-    expect(await page.evaluate((y) => !!document.elementFromPoint(window.innerWidth / 2, y + 20)?.closest("nav.barra-inferior"), inicial)).toBe(true);
-    if ((await page.evaluate(() => window.scrollY)) === antes) break;
-  }
-  const fin = await page.evaluate(() => {
-    const m = document.querySelector("main")!;
-    const hijos = [...m.querySelectorAll("*")].filter((e) => (e as HTMLElement).offsetParent !== null);
-    return Math.max(...hijos.map((e) => e.getBoundingClientRect().bottom));
-  });
-  expect(fin).toBeLessThanOrEqual(inicial + 0.5);
-  // Cada control con foco queda visible entero (cabecera arriba, barra abajo).
-  const cabeza = await page.evaluate(() => document.querySelector("header.cabecera, .cabecera-app")?.getBoundingClientRect().bottom ?? 0);
-  const fallas = await page.evaluate(
-    ({ abajo, arriba }) => {
-      const r: string[] = [];
-      // La página se desplaza con suavidad; aquí se mide la posición final de cada foco.
-      document.documentElement.style.scrollBehavior = "auto";
-      const controles = [...document.querySelectorAll<HTMLElement>("main a[href], main button, main input, main select, main textarea")].filter(
-        (e) => e.offsetParent !== null && !e.hasAttribute("disabled"),
-      );
-      for (const e of controles) {
-        e.focus({ preventScroll: false });
-        if (document.activeElement !== e) continue;
-        const b = e.getBoundingClientRect();
-        if (b.bottom > abajo + 0.5 || b.top < arriba - 0.5) r.push(`${e.tagName} «${(e.textContent || e.getAttribute("aria-label") || "").trim().slice(0, 30)}» ${Math.round(b.top)}-${Math.round(b.bottom)}`);
-      }
-      return r;
-    },
-    { abajo: inicial, arriba: cabeza },
-  );
-  expect(fallas).toEqual([]);
-}
 
 for (const vista of ["", "?vista=grupos", "?vista=desafios", "?vista=logros", "?vista=actividad"]) {
   test(`móvil: la barra inferior no tapa contenido ni controles al desplazarse ${vista || "(todas)"}`, async ({ page, isMobile }) => {
@@ -274,18 +205,3 @@ for (const vista of ["", "?vista=grupos", "?vista=desafios", "?vista=logros", "?
     await revisarBarra(page);
   });
 }
-
-test("móvil: con el teclado abierto, el texto y «Publicar» siguen a la vista", async ({ page, isMobile }) => {
-  test.skip(!isMobile, "solo móvil");
-  await abrir(page);
-  await page.locator(".co-compositor").getByRole("button", { name: T.compositor.accesos.progreso }).click();
-  const hoja = page.getByRole("dialog", { name: T.formulario.titulo });
-  await hoja.getByLabel(T.formulario.texto).focus();
-  // El teclado del teléfono deja ~55 % de la altura: se simula achicando la ventana.
-  const v = page.viewportSize()!;
-  await page.setViewportSize({ width: v.width, height: Math.round(v.height * 0.55) });
-  await hoja.getByLabel(T.formulario.texto).fill("Hoy caminé 30 minutos.");
-  await expect(hoja.getByLabel(T.formulario.texto)).toBeInViewport();
-  await hoja.getByRole("button", { name: T.formulario.publicar }).scrollIntoViewIfNeeded();
-  await expect(hoja.getByRole("button", { name: T.formulario.publicar })).toBeInViewport({ ratio: 1 });
-});

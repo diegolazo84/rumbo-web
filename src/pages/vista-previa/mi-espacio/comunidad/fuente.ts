@@ -22,7 +22,9 @@ export type Publicacion = {
   respuestas: number;
   grupoId: string | null;
   grupo: string | null;
-  foto: string | null; // ruta en el bucket privado «comunidad»
+  foto: string | null; // ruta en el bucket privado «comunidad» (la primera)
+  fotos: string[]; // hasta 5 (C11)
+  permiteComentarios: boolean; // C11: si quien publica los apagó, solo esa persona responde
   reacciones: number;
   miReaccion: boolean;
   tipo: TipoPublicacion;
@@ -77,8 +79,10 @@ export type NuevaPublicacion = {
   texto: string;
   tipo: TipoPublicacion;
   grupo: string | null;
-  foto: Blob | null;
+  fotos?: Blob[]; // ya reducidas (prepararFoto); hasta 5
   respuestaA?: string | null;
+  permiteComentarios?: boolean; // por defecto, sí
+  clienteId?: string; // un identificador por intento: si llega dos veces, la base no duplica
 };
 
 export interface FuenteComunidad {
@@ -92,7 +96,7 @@ export interface FuenteComunidad {
   desafios(): Promise<Desafio[]>;
   avance(desafio: string): Promise<DiaDesafio[]>;
   bloqueos(): Promise<Bloqueo[]>;
-  publicar(p: NuevaPublicacion): Promise<void>;
+  publicar(p: NuevaPublicacion): Promise<string | null>; // id de la publicación creada
   reaccionar(id: string): Promise<boolean>;
   guardar(id: string): Promise<boolean>;
   reportar(id: string, motivo: MotivoReporte, detalle: string | null): Promise<void>;
@@ -109,7 +113,9 @@ export interface FuenteComunidad {
 }
 
 export const LIMITE_TEXTO = 1000;
-export const LIMITE_FOTO = 4 * 1024 * 1024; // el bucket acepta hasta 4 MB
+export const LIMITE_FOTO = 4 * 1024 * 1024; // el bucket acepta hasta 4 MB por archivo, ya reducido
+export const LIMITE_FOTO_ORIGINAL = 10 * 1024 * 1024; // lo que la persona puede elegir: se reduce antes de subir
+export const MAX_FOTOS = 5;
 export const TIPOS_FOTO = ["image/jpeg", "image/png", "image/webp"];
 
 // ---------------------------------------------------------------------------
@@ -130,6 +136,8 @@ type FilaPublicacion = {
   mi_reaccion: boolean;
   tipo: TipoPublicacion;
   guardada: boolean;
+  fotos?: string[] | null;
+  permite_comentarios?: boolean | null;
 };
 
 const aPublicacion = (f: FilaPublicacion): Publicacion => ({
@@ -143,6 +151,8 @@ const aPublicacion = (f: FilaPublicacion): Publicacion => ({
   grupoId: f.grupo_id,
   grupo: f.grupo_titulo,
   foto: f.foto_ruta,
+  fotos: f.fotos?.length ? f.fotos : f.foto_ruta ? [f.foto_ruta] : [],
+  permiteComentarios: f.permite_comentarios ?? true,
   reacciones: f.reacciones,
   miReaccion: f.mi_reaccion,
   tipo: f.tipo ?? "general",
@@ -294,21 +304,32 @@ export function fuenteReal(): FuenteComunidad {
       return ((await rpc<{ alias_publico: string; desde: string }[]>("mis_bloqueos")) ?? []).map((b) => ({ alias: b.alias_publico, desde: b.desde }));
     },
     async publicar(p) {
-      let ruta: string | null = null;
-      if (p.foto) {
-        const sb = await supabase();
-        const id = await miFicha();
-        ruta = `${id}/${crypto.randomUUID()}.${extension(p.foto)}`;
-        const { error } = await sb.storage.from("comunidad").upload(ruta, p.foto, { contentType: p.foto.type, upsert: false });
-        if (error) throw new ErrorBase(0, "foto", "no_subio");
+      // Las fotos se suben primero a la carpeta propia (bucket privado); si algo falla, se borran.
+      const sb = await supabase();
+      const rutas: string[] = [];
+      try {
+        if (p.fotos?.length) {
+          const id = await miFicha();
+          for (const f of p.fotos) {
+            const ruta = `${id}/${crypto.randomUUID()}.${extension(f)}`;
+            const { error } = await sb.storage.from("comunidad").upload(ruta, f, { contentType: f.type, upsert: false });
+            if (error) throw new ErrorBase(0, "foto", "no_subio");
+            rutas.push(ruta);
+          }
+        }
+        return await rpc<string | null>("publicar_en_comunidad", {
+          p_texto: p.texto,
+          p_respuesta_a: p.respuestaA ?? null,
+          p_grupo: p.respuestaA ? null : p.grupo,
+          p_tipo: p.respuestaA ? "general" : p.tipo,
+          p_fotos: p.respuestaA ? null : rutas,
+          p_permite_comentarios: p.permiteComentarios ?? true,
+          p_cliente_id: p.clienteId ?? null,
+        });
+      } catch (e) {
+        if (rutas.length) await sb.storage.from("comunidad").remove(rutas).catch(() => undefined);
+        throw e;
       }
-      await rpc("publicar_en_comunidad", {
-        p_texto: p.texto,
-        p_respuesta_a: p.respuestaA ?? null,
-        p_grupo: p.respuestaA ? null : p.grupo,
-        p_foto_ruta: ruta,
-        p_tipo: p.respuestaA ? "general" : p.tipo,
-      });
     },
     reaccionar: (id) => rpc<boolean>("reaccionar_publicacion", { p_id: id }),
     guardar: (id) => rpc<boolean>("guardar_publicacion", { p_id: id }),
@@ -347,6 +368,15 @@ const diaMas = (n: number) => {
   return isoDia(d);
 };
 
+// Vista previa: Comunidad y Crear publicación comparten la misma memoria mientras la página siga
+// abierta (lo publicado aparece en la lista al volver). Al recargar, todo vuelve al ejemplo.
+const compartidas = new Map<Acceso, FuenteComunidad>();
+export function fuenteEjemploCompartida(acceso: Acceso = "abierta"): FuenteComunidad {
+  let f = compartidas.get(acceso);
+  if (!f) compartidas.set(acceso, (f = fuenteEjemplo(acceso)));
+  return f;
+}
+
 export function fuenteEjemplo(acceso: Acceso = "abierta"): FuenteComunidad {
   const yo = "Tu alias";
   const grupos: Grupo[] = [
@@ -360,28 +390,28 @@ export function fuenteEjemplo(acceso: Acceso = "abierta"): FuenteComunidad {
     {
       id: "e1", respuestaA: null, alias: "Sofía", creadaEn: hace(2), mia: false, respuestas: 2, grupoId: "g1", grupo: "Vida saludable",
       texto: "Hoy completé mi primera semana 🎉\nCostó, pero se puede. Gracias a todos por la motivación y las ideas que comparten. Me ha servido mucho leer sus experiencias. #VidaSaludable",
-      foto: null, ilustracionEjemplo: "atardecer", reacciones: 6, miReaccion: false, tipo: "logro", guardada: false,
+      foto: null, fotos: [], permiteComentarios: true, ilustracionEjemplo: "atardecer", reacciones: 6, miReaccion: false, tipo: "logro", guardada: false,
     },
     {
       id: "e2", respuestaA: null, alias: "Matías", creadaEn: hace(22), mia: false, respuestas: 1, grupoId: "g2", grupo: "Actividad física",
       texto: "Les comparto mi rutina de caminatas para quienes están empezando: 15 minutos los primeros días, 25 la segunda semana y 40 cuando ya se sientan cómodos. ¡Espero que les sirva! #Hábitos",
-      foto: null, reacciones: 4, miReaccion: true, tipo: "consejo", guardada: true,
+      foto: null, fotos: [], permiteComentarios: true, reacciones: 4, miReaccion: true, tipo: "consejo", guardada: true,
     },
     {
       id: "e3", respuestaA: null, alias: "Valentina", creadaEn: hace(30), mia: false, respuestas: 0, grupoId: "g3", grupo: "Bienestar emocional",
       texto: "Una reflexión que me ha ayudado mucho esta semana:\n«No se trata de tenerlo todo resuelto, sino de seguir avanzando un día a la vez».\n¿Cuál ha sido tu mayor aprendizaje últimamente? #Motivación",
-      foto: null, reacciones: 5, miReaccion: false, tipo: "pregunta", guardada: false,
+      foto: null, fotos: [], permiteComentarios: true, reacciones: 5, miReaccion: false, tipo: "pregunta", guardada: false,
     },
     {
       id: "e4", respuestaA: null, alias: "Andrés", creadaEn: hace(50), mia: false, respuestas: 0, grupoId: null, grupo: null,
       texto: "Tercera semana sin saltarme la pausa de la tarde. Pequeño, pero mío. #Hábitos",
-      foto: null, reacciones: 3, miReaccion: false, tipo: "progreso", guardada: false,
+      foto: null, fotos: [], permiteComentarios: true, reacciones: 3, miReaccion: false, tipo: "progreso", guardada: false,
     },
   ];
   let respuestas: Publicacion[] = [
-    { id: "r1", respuestaA: "e1", alias: "Camila", texto: "¡Felicitaciones! La primera semana es la más difícil.", creadaEn: hace(1.5), mia: false, respuestas: 0, grupoId: "g1", grupo: "Vida saludable", foto: null, reacciones: 0, miReaccion: false, tipo: "general", guardada: false },
-    { id: "r2", respuestaA: "e1", alias: "Matías", texto: "Vamos por la segunda 💪", creadaEn: hace(1), mia: false, respuestas: 0, grupoId: "g1", grupo: "Vida saludable", foto: null, reacciones: 0, miReaccion: false, tipo: "general", guardada: false },
-    { id: "r3", respuestaA: "e2", alias: "Sofía", texto: "Gracias, la voy a probar esta semana.", creadaEn: hace(20), mia: false, respuestas: 0, grupoId: "g2", grupo: "Actividad física", foto: null, reacciones: 0, miReaccion: false, tipo: "general", guardada: false },
+    { id: "r1", respuestaA: "e1", alias: "Camila", texto: "¡Felicitaciones! La primera semana es la más difícil.", creadaEn: hace(1.5), mia: false, respuestas: 0, grupoId: "g1", grupo: "Vida saludable", foto: null, fotos: [], permiteComentarios: true, reacciones: 0, miReaccion: false, tipo: "general", guardada: false },
+    { id: "r2", respuestaA: "e1", alias: "Matías", texto: "Vamos por la segunda 💪", creadaEn: hace(1), mia: false, respuestas: 0, grupoId: "g1", grupo: "Vida saludable", foto: null, fotos: [], permiteComentarios: true, reacciones: 0, miReaccion: false, tipo: "general", guardada: false },
+    { id: "r3", respuestaA: "e2", alias: "Sofía", texto: "Gracias, la voy a probar esta semana.", creadaEn: hace(20), mia: false, respuestas: 0, grupoId: "g2", grupo: "Actividad física", foto: null, fotos: [], permiteComentarios: true, reacciones: 0, miReaccion: false, tipo: "general", guardada: false },
   ];
   const bloqueados: Bloqueo[] = [];
   const desafios: Desafio[] = [
@@ -392,6 +422,7 @@ export function fuenteEjemplo(acceso: Acceso = "abierta"): FuenteComunidad {
     },
   ];
   let id = 100;
+  const intentos = new Map<string, string>();
   const visible = (p: Publicacion) => !bloqueados.some((b) => b.alias === p.alias);
   const contar = () => grupos.forEach((g) => (g.publicaciones = lista.filter((p) => p.grupoId === g.id).length));
   contar();
@@ -459,11 +490,16 @@ export function fuenteEjemplo(acceso: Acceso = "abierta"): FuenteComunidad {
     async publicar(p) {
       await espera();
       const g = grupos.find((x) => x.id === p.grupo);
+      // Vista previa: el mismo intento no se publica dos veces.
+      if (p.clienteId && intentos.has(p.clienteId)) return intentos.get(p.clienteId)!;
+      // Las fotos elegidas se muestran desde la memoria del navegador; no se guardan en ninguna parte.
+      const fotos = p.respuestaA ? [] : (p.fotos ?? []).map((f) => URL.createObjectURL(f));
       const nueva: Publicacion = {
         id: `n${id++}`, respuestaA: p.respuestaA ?? null, alias: yo, texto: p.texto.trim(), creadaEn: new Date().toISOString(), mia: true, respuestas: 0,
-        grupoId: g?.id ?? null, grupo: g?.nombre ?? null, foto: null, ilustracionEjemplo: p.foto ? "colinas" : undefined, reacciones: 0, miReaccion: false,
-        tipo: p.respuestaA ? "general" : p.tipo, guardada: false,
+        grupoId: g?.id ?? null, grupo: g?.nombre ?? null, foto: fotos[0] ?? null, fotos, permiteComentarios: p.permiteComentarios ?? true,
+        reacciones: 0, miReaccion: false, tipo: p.respuestaA ? "general" : p.tipo, guardada: false,
       };
+      if (p.clienteId) intentos.set(p.clienteId, nueva.id);
       if (p.respuestaA) {
         const madre = lista.find((x) => x.id === p.respuestaA);
         nueva.grupoId = madre?.grupoId ?? null;
@@ -471,6 +507,7 @@ export function fuenteEjemplo(acceso: Acceso = "abierta"): FuenteComunidad {
         respuestas = [...respuestas, nueva];
       } else lista = [nueva, ...lista];
       contar();
+      return nueva.id;
     },
     async reaccionar(pid) {
       const p = encontrar(pid);
@@ -517,8 +554,8 @@ export function fuenteEjemplo(acceso: Acceso = "abierta"): FuenteComunidad {
       const d = desafios.find((x) => x.id === did);
       if (d?.participo) Object.assign(d, { participo: false, participantes: d.participantes - 1, diasCumplidos: 0 });
     },
-    async urlFoto() {
-      return null;
+    async urlFoto(ruta) {
+      return ruta.startsWith("blob:") ? ruta : null;
     },
     async guardarAlias() {
       await espera();

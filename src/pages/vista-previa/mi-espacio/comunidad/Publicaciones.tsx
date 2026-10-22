@@ -39,16 +39,21 @@ function TextoConTemas({ texto }: { texto: string }) {
   );
 }
 
-function Foto({ p }: { p: Publicacion }) {
+function UnaFoto({ ruta, alt }: { ruta: string; alt: string }) {
   const { fuente } = useComunidad();
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     let vivo = true;
-    if (p.foto) void fuente.urlFoto(p.foto).then((u) => vivo && setUrl(u));
+    void fuente.urlFoto(ruta).then((u) => vivo && setUrl(u));
     return () => {
       vivo = false;
     };
-  }, [fuente, p.foto]);
+  }, [fuente, ruta]);
+  return url ? <img src={url} alt={alt} loading="lazy" decoding="async" /> : <span className="co-pub__foto-carga" />;
+}
+
+// Hasta 5 fotos (C11): una grande, o una cuadrícula con todas.
+function Foto({ p }: { p: Publicacion }) {
   if (p.ilustracionEjemplo)
     return (
       <figure className="co-pub__foto co-pub__foto--ilustracion">
@@ -56,10 +61,13 @@ function Foto({ p }: { p: Publicacion }) {
         <figcaption className="sr-only">{T.publicacion.ilustracionEjemplo}</figcaption>
       </figure>
     );
-  if (!p.foto) return null;
+  const fotos = p.fotos.length ? p.fotos : p.foto ? [p.foto] : [];
+  if (!fotos.length) return null;
   return (
-    <figure className="co-pub__foto">
-      {url ? <img src={url} alt={T.publicacion.fotoAlt(p.alias)} loading="lazy" decoding="async" /> : <span className="co-pub__foto-carga" />}
+    <figure className={`co-pub__foto co-pub__fotos co-pub__fotos--${Math.min(fotos.length, 5)}`}>
+      {fotos.map((r, i) => (
+        <UnaFoto key={r} ruta={r} alt={fotos.length > 1 ? T.publicacion.fotoAltN(p.alias, i + 1, fotos.length) : T.publicacion.fotoAlt(p.alias)} />
+      ))}
     </figure>
   );
 }
@@ -308,6 +316,8 @@ function Hilo({ p, acciones, onRespuestas }: { p: Publicacion; acciones: Accione
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
   const idCampo = useId();
+  // Quien publicó apagó los comentarios: solo esa persona puede seguir respondiendo (lo exige la base).
+  const cerrados = !p.permiteComentarios && !p.mia;
   const leer = useCallback(async () => {
     try {
       const h = await fuente.hilo(p.id);
@@ -331,12 +341,18 @@ function Hilo({ p, acciones, onRespuestas }: { p: Publicacion; acciones: Accione
     setEnviando(true);
     setErrorEnvio(null);
     try {
-      await fuente.publicar({ texto: t, tipo: "general", grupo: null, foto: null, respuestaA: p.id });
+      await fuente.publicar({ texto: t, tipo: "general", grupo: null, respuestaA: p.id });
       setTexto("");
       await leer();
       cambio();
     } catch (err) {
-      setErrorEnvio(err instanceof ErrorBase && err.codigo === "demasiadas" ? T.formulario.errores.demasiadas : T.formulario.errores.general);
+      setErrorEnvio(
+        err instanceof ErrorBase && err.codigo === "demasiadas"
+          ? T.formulario.errores.demasiadas
+          : err instanceof ErrorBase && err.codigo === "cerrados"
+            ? T.hilo.cerrados
+            : T.formulario.errores.general,
+      );
     } finally {
       setEnviando(false);
     }
@@ -346,7 +362,7 @@ function Hilo({ p, acciones, onRespuestas }: { p: Publicacion; acciones: Accione
     <section className="co-hilo" aria-label={T.publicacion.comentarios(lista?.length ?? p.respuestas)}>
       {error && <p className="co-hilo__estado">{T.hilo.error}</p>}
       {!lista && !error && <p className="co-hilo__estado">{T.hilo.cargando}</p>}
-      {lista && lista.length === 0 && <p className="co-hilo__estado">{T.hilo.vacio}</p>}
+      {lista && lista.length === 0 && <p className="co-hilo__estado">{cerrados ? T.hilo.cerrados : T.hilo.vacio}</p>}
       {lista && lista.length > 0 && (
         <ul className="co-hilo__lista">
           {lista.map((r) => (
@@ -366,6 +382,8 @@ function Hilo({ p, acciones, onRespuestas }: { p: Publicacion; acciones: Accione
           ))}
         </ul>
       )}
+      {cerrados && lista && lista.length > 0 && <p className="co-hilo__estado">{T.hilo.cerrados}</p>}
+      {!cerrados && (
       <form className="co-hilo__form" onSubmit={enviar} noValidate>
         <label htmlFor={idCampo} className="sr-only">
           {T.hilo.escribir}
@@ -390,6 +408,7 @@ function Hilo({ p, acciones, onRespuestas }: { p: Publicacion; acciones: Accione
           </p>
         )}
       </form>
+      )}
     </section>
   );
 }

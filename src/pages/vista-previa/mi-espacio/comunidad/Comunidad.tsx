@@ -9,24 +9,20 @@
 //     temas como fila deslizable.
 // Antes de participar: módulo habilitado por el dueño, alias y reglas aceptadas (lo dice la base).
 // Mi espacio real: todo sale de la base (C6 a C9). Vista previa: datos rotulados «Ejemplo».
-import { useCallback, useEffect, useId, useMemo, useState, type FormEvent } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Icono, Tostada } from "../../../../components/app";
 import { ErrorBase } from "../../../../lib/supabase";
 import { EtiquetaEjemplo, useEspacio } from "../comun";
-import { ComunidadCtx, VISTAS, useComunidad, type Comunidad as Ctx, type PresetCrear, type Vista } from "./contexto";
-import { Compositor, HojaCrear } from "./Crear";
-import { fuenteEjemplo, fuenteReal, type Acceso, type FuenteComunidad } from "./fuente";
+import { ComunidadCtx, VISTAS, useComunidad, type Comunidad as Ctx, type Vista } from "./contexto";
+import { Compositor } from "./Crear";
+import { fuenteEjemploCompartida, fuenteReal, type Acceso, type FuenteComunidad } from "./fuente";
 import { DesafioDestacado, TarjetaGrupos, TarjetaImpacto, TarjetaTemas, useDato } from "./Laterales";
-import { PaisajePortada } from "./Paisaje";
+import { FOTO_PORTADA, PaisajePortada } from "./Paisaje";
 import { Feed } from "./Publicaciones";
 import { T_COMU as T } from "./textos";
 import { VistaActividad, VistaDesafios, VistaGrupos, VistaLogros } from "./Vistas";
 import "../../../../styles/vista-comunidad.css";
-
-// Fotografía definitiva de la portada (pendiente de ChatGPT). Cuando llegue, se pone aquí su ruta
-// en /public y la ilustración deja de usarse.
-const FOTO_PORTADA: string | null = null;
 
 export function Portada() {
   return (
@@ -51,7 +47,7 @@ export default function Comunidad() {
   const { pathname } = useLocation();
   // Vista previa: ?acceso= muestra cada estado de ingreso (cerrada, sin alias, sin reglas).
   const accesoPrevia = (ACCESOS_PREVIA as string[]).includes(params.get("acceso") ?? "") ? (params.get("acceso") as Acceso) : "abierta";
-  const fuente = useMemo<FuenteComunidad>(() => (esp.real ? fuenteReal() : fuenteEjemplo(accesoPrevia)), [esp.real, accesoPrevia]);
+  const fuente = useMemo<FuenteComunidad>(() => (esp.real ? fuenteReal() : fuenteEjemploCompartida(accesoPrevia)), [esp.real, accesoPrevia]);
   const [acceso, setAcceso] = useState<{ estado: Acceso; alias: string | null } | null>(null);
   const [errorAcceso, setErrorAcceso] = useState(false);
   const [intento, setIntento] = useState(0);
@@ -101,8 +97,15 @@ function Abierta({ fuente, alias, ruta }: { fuente: FuenteComunidad; alias: stri
   const tema = params.get("tema");
   const desafio = params.get("desafio");
   const [version, setVersion] = useState(0);
-  const [mensaje, setMensaje] = useState<string | null>(null);
-  const [crear, setCrear] = useState<PresetCrear | null>(null);
+  const { state } = useLocation();
+  const navegar = useNavigate();
+  const { R } = useEspacio();
+  // Al volver de Crear publicación llega su confirmación.
+  const [mensaje, setMensaje] = useState<string | null>(() => {
+    const a = (state as { aviso?: unknown } | null)?.aviso;
+    return typeof a === "string" ? a : null;
+  });
+  const primera = useRef(true);
 
   const enlace = useCallback<Ctx["enlace"]>(
     (p) => {
@@ -124,14 +127,28 @@ function Abierta({ fuente, alias, ruta }: { fuente: FuenteComunidad; alias: stri
       version,
       cambio: () => setVersion((v) => v + 1),
       aviso: setMensaje,
-      abrirCrear: (p) => setCrear(p ?? {}),
+      // Crear publicación es su propia pantalla; el acceso elegido viaja en la dirección.
+      abrirCrear: (p) => {
+        const q = new URLSearchParams();
+        if (p?.tipo) q.set("tipo", p.tipo);
+        if (p?.grupo) q.set("grupo", p.grupo);
+        if (p?.foto) q.set("foto", "1");
+        const s = q.toString();
+        navegar(s ? `${R.comunidadCrear}?${s}` : R.comunidadCrear, { state: p?.texto ? { texto: p.texto } : null });
+      },
       enlace,
     }),
-    [fuente, alias, version, enlace],
+    [fuente, alias, version, enlace, navegar, R.comunidadCrear],
   );
 
   // Al cambiar de pestaña, el aviso anterior ya no corresponde.
-  useEffect(() => setMensaje(null), [vista, grupo, tema]);
+  useEffect(() => {
+    if (primera.current) {
+      primera.current = false;
+      return;
+    }
+    setMensaje(null);
+  }, [vista, grupo, tema]);
 
   return (
     <ComunidadCtx.Provider value={ctx}>
@@ -153,7 +170,6 @@ function Abierta({ fuente, alias, ruta }: { fuente: FuenteComunidad; alias: stri
           <TarjetaImpacto />
         </aside>
       </div>
-      <HojaCrear abierta={!!crear} preset={crear ?? {}} onCerrar={() => setCrear(null)} />
       <Tostada mensaje={mensaje} onCerrar={() => setMensaje(null)} />
     </ComunidadCtx.Provider>
   );
