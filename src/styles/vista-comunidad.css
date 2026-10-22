@@ -436,7 +436,7 @@
 .co-crear-volver__texto { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .co-crear-volver:focus-visible { outline: var(--foco-ancho) solid var(--foco-color); outline-offset: var(--foco-offset); }
 @media (min-width: 1024px) {
-  .co-portada--crear { display: grid; grid-template-columns: minmax(0, 1fr); align-content: space-between; justify-items: start; gap: var(--e-5); min-block-size: 210px; padding: var(--e-4) var(--e-7) var(--e-5); }
+  .co-portada--crear { display: grid; grid-template-columns: minmax(0, 1fr); align-content: space-between; justify-items: start; gap: var(--e-3); min-block-size: 168px; padding: var(--e-3) var(--e-7) var(--e-4); }
   .co-portada--crear .co-portada__fondo, .co-portada--crear::after { display: block; }
   .co-portada--crear .co-portada__texto { text-align: start; }
   .co-portada--crear .co-portada__h1 { font: 600 var(--t-titulo)/1.05 var(--serif); letter-spacing: -0.015em; color: var(--superficie); }

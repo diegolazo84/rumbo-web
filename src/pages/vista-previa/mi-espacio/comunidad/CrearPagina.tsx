@@ -568,7 +568,7 @@ function Formulario({ fuente, alias }: { fuente: FuenteComunidad; alias: string 
 
           <p className="co-form__nota co-crear__privacidad">
             <Icono nombre="shield-check" tamaño={16} />
-            <span>{T.privacidad(alias)}</span>
+            <span>{T.privacidad}</span>
           </p>
           <div className="co-crear__botones">
             <button type="button" className="boton boton--secundario co-crear__cancelar" onClick={() => salir(R.comunidad)}>
