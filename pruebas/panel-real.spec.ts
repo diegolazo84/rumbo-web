@@ -152,6 +152,20 @@ function baseInicial(): Base {
     ],
     ajustes_operacion: [{ id: true, postulaciones_abiertas: true, tope_solicitudes_dia: null, ausencia_hasta: null, ausencia_texto: null }],
     feriados: [{ fecha: "2026-10-12", nombre: "Encuentro de Dos Mundos" }],
+    // Comunidad (C6 a C9): una publicación con dos reportes abiertos, una oculta, un grupo y un desafío.
+    publicaciones: [
+      { id: "pub1", texto: "Compren mis suplementos, link en mi perfil.", tipo: "general", estado: "visible", respuesta_a: null, foto_ruta: null, creada_en: "2026-10-12T15:00:00Z", moderacion_motivo: null, moderada_en: null },
+      { id: "pub2", texto: "Un comentario fuera de tono.", tipo: "general", estado: "oculta", respuesta_a: "pub1", foto_ruta: null, creada_en: "2026-10-11T15:00:00Z", moderacion_motivo: "respeto", moderada_en: "2026-10-11T18:00:00Z" },
+    ],
+    reportes_comunidad: [
+      { id: "rep1", publicacion_id: "pub1", motivo: "spam", detalle: "Vende productos.", creado_en: "2026-10-12T16:00:00Z", resuelto_en: null },
+      { id: "rep2", publicacion_id: "pub1", motivo: "salud", detalle: null, creado_en: "2026-10-12T17:00:00Z", resuelto_en: null },
+    ],
+    grupos_comunidad: [{ id: "gr1", nombre: "Estudio", descripcion: "Para quienes estudian.", ilustracion: "brote", activo: true }],
+    miembros_grupo: [{ grupo_id: "gr1" }, { grupo_id: "gr1" }],
+    desafios: [{ id: "de1", titulo: "Semana de constancia", descripcion: null, reglas: "Haz todas tus acciones programadas cada día.", dias: 7, inicio: "2026-10-19", ilustracion: null, activo: true }],
+    participaciones_desafio: [{ desafio_id: "de1" }],
+    modulos: [{ clave: "comunidad", estado: "probado" }],
   };
 }
 
@@ -164,6 +178,7 @@ function filtrar(filas: Fila[], q: URLSearchParams) {
     const v = resto.join(".");
     if (op === "eq") r = r.filter((f) => String(f[col]) === v);
     else if (op === "neq") r = r.filter((f) => String(f[col]) !== v);
+    else if (op === "is" && v === "null") r = r.filter((f) => f[col] === null || f[col] === undefined);
     else if (op === "in") {
       const lista = v.replace(/^\(|\)$/g, "").split(",").map((x) => x.replace(/^"|"$/g, ""));
       r = r.filter((f) => lista.includes(String(f[col])));
@@ -205,13 +220,34 @@ function sesion(aal: "aal1" | "aal2", factores: Factor[]) {
 
 type Llamada = { tipo: "rpc" | "tabla" | "auth"; metodo: string; nombre: string; url: string; cuerpo: unknown; aal: string };
 
-const ADMIN = new Set(["crear_espacio", "nuevo_enlace_solicitud", "nuevo_borrador", "solapamientos", "carga_prevista", "publicar_programa", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "eliminar_participante"]);
+const ADMIN = new Set(["moderar_publicacion", "guardar_grupo_comunidad", "guardar_desafio", "crear_espacio", "nuevo_enlace_solicitud", "nuevo_borrador", "solapamientos", "carga_prevista", "publicar_programa", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "eliminar_participante"]);
 
 async function simular(page: Page, base: Base, { equipo = true, factores = [] as Factor[] } = {}) {
   const llamadas: Llamada[] = [];
   const auth = { factores: [...factores] };
   const rpc: Record<string, (c: Record<string, unknown>) => unknown> = {
     soy_equipo: () => equipo,
+    mi_rol_equipo: () => (equipo ? { rol: "dueno", puede_moderar: true } : null),
+    moderar_publicacion: (c) => {
+      const p = base.publicaciones.find((x) => x.id === c.p_id)!;
+      p.estado = c.p_ocultar ? "oculta" : "visible";
+      p.moderacion_motivo = c.p_ocultar ? c.p_motivo : null;
+      p.moderada_en = AHORA.toISOString();
+      for (const r of base.reportes_comunidad.filter((x) => x.publicacion_id === c.p_id && !x.resuelto_en)) r.resuelto_en = AHORA.toISOString();
+      return null;
+    },
+    guardar_grupo_comunidad: (c) => {
+      const p = c.p as Fila;
+      const g = p.id ? base.grupos_comunidad.find((x) => x.id === p.id)! : (base.grupos_comunidad[base.grupos_comunidad.push({ id: `gr${base.grupos_comunidad.length + 1}` }) - 1] as Fila);
+      Object.assign(g, { nombre: p.nombre, descripcion: p.descripcion, ilustracion: p.ilustracion, activo: p.activo });
+      return g.id;
+    },
+    guardar_desafio: (c) => {
+      const p = c.p as Fila;
+      const x = p.id ? base.desafios.find((y) => y.id === p.id)! : (base.desafios[base.desafios.push({ id: `de${base.desafios.length + 1}` }) - 1] as Fila);
+      Object.assign(x, { titulo: p.titulo, descripcion: p.descripcion, reglas: p.reglas, dias: p.dias, inicio: p.inicio, ilustracion: p.ilustracion, activo: p.activo });
+      return x.id;
+    },
     crear_espacio: (c) => {
       const s = base.solicitudes.find((x) => x.id === c.p_solicitud)!;
       s.estado = "con_espacio";
@@ -675,4 +711,65 @@ test("Más: postulaciones y cuenta con sus factores", async ({ page }) => {
   await seccion.getByRole("button", { name: "Guardar" }).click();
   await expect.poll(() => base.ajustes_operacion[0].postulaciones_abiertas).toBe(false);
   await expect(seccion.getByText("Guardado.")).toBeVisible();
+});
+
+test("Comunidad: ocultar un reporte con motivo, volver a mostrar, crear grupo y desafío", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  await page.getByRole("link", { name: "Comunidad: reportes, grupos y desafíos" }).click();
+  await expect(page.locator("h1")).toHaveText("Comunidad.");
+  await expect(page.getByText("Cerrada para participantes: solo el equipo la ve.")).toBeVisible();
+  // Reporte: el contenido y los motivos, sin quién reporta ni quién publicó.
+  const reporte = page.locator("li", { has: page.getByText("Compren mis suplementos, link en mi perfil.") });
+  await expect(reporte.getByText("2 reportes")).toBeVisible();
+  await expect(reporte.getByText("«Vende productos.»")).toBeVisible();
+  await reporte.getByLabel("Motivo para ocultar").selectOption("spam");
+  await reporte.getByRole("button", { name: "Ocultar" }).click();
+  await expect.poll(() => base.publicaciones[0].estado).toBe("oculta");
+  expect(llamadas.find((l) => l.nombre === "moderar_publicacion")!.cuerpo).toEqual({ p_id: "pub1", p_ocultar: true, p_motivo: "spam" });
+  await expect(page.getByText("No hay reportes abiertos.")).toBeVisible();
+  // Oculta: volver a mostrar.
+  const oculta = page.locator("li", { has: page.getByText("Un comentario fuera de tono.") });
+  await oculta.getByRole("button", { name: "Volver a mostrar" }).click();
+  await expect.poll(() => base.publicaciones[1].estado).toBe("visible");
+  // Grupo nuevo: valida el nombre y guarda.
+  await expect(page.getByText("2 miembros")).toBeVisible();
+  await page.getByRole("button", { name: "Nuevo grupo" }).click();
+  await page.getByRole("button", { name: "Guardar grupo" }).click();
+  await expect(page.getByText("Escribe un nombre de 2 a 60 caracteres.")).toBeVisible();
+  await page.locator("#grupo-nuevo-nombre").fill("Deporte");
+  await page.locator("#grupo-nuevo-ilustracion").selectOption("montana");
+  await page.getByRole("button", { name: "Guardar grupo" }).click();
+  await expect(page.getByText("Grupo guardado.")).toBeVisible();
+  expect(base.grupos_comunidad.find((g) => g.nombre === "Deporte")).toMatchObject({ ilustracion: "montana", activo: true });
+  // Desafío con participantes: duración e inicio bloqueados al editar.
+  await expect(page.getByText("1 participante", { exact: true })).toBeVisible();
+  await page.locator("li", { hasText: "Semana de constancia" }).getByRole("button", { name: "Editar" }).click();
+  await expect(page.locator("#desafio-de1-dias")).toBeDisabled();
+  await page.getByRole("button", { name: "Cancelar" }).click();
+  // Desafío nuevo: valida y guarda.
+  await page.getByRole("button", { name: "Nuevo desafío" }).click();
+  await page.getByRole("button", { name: "Guardar desafío" }).click();
+  await expect(page.getByText("Escribe un título de 3 a 80 caracteres.")).toBeVisible();
+  await page.locator("#desafio-nuevo-titulo").fill("28 días de constancia");
+  await page.locator("#desafio-nuevo-reglas").fill("Un día cuenta si haces todas tus acciones programadas.");
+  await page.locator("#desafio-nuevo-inicio").fill("2026-10-26");
+  await page.getByRole("button", { name: "Guardar desafío" }).click();
+  await expect(page.getByText("Desafío guardado.")).toBeVisible();
+  expect(base.desafios.find((x) => x.titulo === "28 días de constancia")).toMatchObject({ dias: 28, inicio: "2026-10-26", activo: true });
+  await sinViolaciones(page);
+});
+
+test("Comunidad: una cuenta sin permiso de moderar no ve reportes", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/mi_rol_equipo`, (rt) => rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ rol: "coach", puede_moderar: false }) }));
+  await page.goto("equipo/comunidad/");
+  await hidratar(page);
+  await expect(page.getByText("Tu cuenta no tiene permiso para moderar la comunidad.", { exact: false })).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "reportes_comunidad")).toBe(false);
 });

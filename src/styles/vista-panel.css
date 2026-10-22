@@ -333,3 +333,12 @@
 /* El color de la meta llena la tarjeta (fondo suave y barra ancha); la elegida se marca con el borde. */
 .pa-bloque[data-meta-color], .pa-metas__item[data-meta-color] { background: var(--cat-fondo); box-shadow: inset 6px 0 0 var(--cat); }
 .pa-bloque[data-meta-color].es-elegida, .pa-metas__item[data-meta-color].es-elegida { border-color: var(--tinta); border-width: 2px; }
+
+/* ========================================================================
+   Comunidad (moderación, grupos y desafíos)
+   ======================================================================== */
+.pa-co-texto { white-space: pre-line; overflow-wrap: anywhere; }
+.pa-co-foto { display: block; inline-size: 100%; max-inline-size: 24rem; block-size: auto; border-radius: var(--r-s); }
+.pa-co-detalles { display: grid; gap: 6px; margin: 0; padding-inline-start: var(--e-5); font-size: var(--t-s); color: var(--tinta-suave); }
+.pa-co-nuevo { justify-self: start; }
+@media (max-width: 479.98px) { .pa-co-nuevo { justify-self: stretch; } }
