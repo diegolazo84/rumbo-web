@@ -511,6 +511,49 @@ test("Comunidad real: cerrada mientras el dueño no la habilite (sin datos de ej
   await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
 });
 
+test("Grupos real: cerrada sin pedir grupos; abierta con destacado, sugeridos, unirse y proponer en la base", async ({ page }) => {
+  await conSesion(page);
+  let llamadas = await simular(page, baseInicial(), { mi_impacto_comunidad: () => ({ __error: "comunidad:no_disponible", __estado: 409 }) });
+  await page.goto("mi-espacio/comunidad/grupos/");
+  await hidratar(page);
+  await expect(page.getByText("Para ver los grupos, primero entra a Comunidad.")).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "comunidad_grupos")).toBe(false);
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+  await conSesion(page);
+  const grupos = [
+    { id: "gr1", nombre: "Actividad física", descripcion: "Moverse", miembros: 4, soy_miembro: true, ilustracion: "montana", publicaciones: 2, destacado: true, categoria: "bienestar", creado_en: "2026-10-01T00:00:00Z", sugerido: false },
+    { id: "gr2", nombre: "Orden", descripcion: "Semana ordenada", miembros: 1, soy_miembro: false, ilustracion: null, publicaciones: 0, destacado: false, categoria: "orden", creado_en: "2026-10-02T00:00:00Z", sugerido: true },
+  ];
+  llamadas = await simular(page, baseInicial(), {
+    mi_impacto_comunidad: () => [{ publicaciones: 0, comentarios: 0, reacciones_recibidas: 0 }],
+    comunidad_grupos: () => grupos,
+    unirme_a_grupo: (c) => {
+      const g = grupos.find((x) => x.id === c.p_grupo)!;
+      Object.assign(g, { soy_miembro: true, miembros: g.miembros + 1, sugerido: false });
+      return null;
+    },
+    mis_propuestas_grupo: () => [],
+    proponer_grupo: (c) => (c.p_nombre === "Orden" ? { __error: "nombre:en_uso", __estado: 409 } : "pg1"),
+  });
+  await page.goto("mi-espacio/comunidad/grupos/");
+  await hidratar(page);
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".gr-destacado")).toContainText("Actividad física");
+  await expect(page.locator(".gr-destacado")).toContainText("2 publicaciones");
+  await page.getByRole("button", { name: "Unirse: Orden" }).first().click();
+  await expect.poll(() => llamadas.find((l) => l.nombre === "unirme_a_grupo")?.cuerpo).toEqual({ p_grupo: "gr2" });
+  await expect(page.locator(".gr-grilla")).toContainText("2 miembros");
+  await page.getByRole("navigation", { name: "Secciones de Grupos de la comunidad" }).getByRole("button", { name: "Proponer un grupo" }).click();
+  const hoja = page.getByRole("dialog", { name: "Proponer un grupo" });
+  await hoja.getByLabel("Nombre del grupo").fill("Orden");
+  await hoja.getByRole("button", { name: "Enviar propuesta" }).click();
+  await expect(hoja.getByRole("alert")).toHaveText("Ya existe un grupo con ese nombre. Búscalo en Todos los grupos.");
+  await hoja.getByLabel("Nombre del grupo").fill("Lectura");
+  await hoja.getByRole("button", { name: "Enviar propuesta" }).click();
+  await expect(page.locator(".tostada__texto")).toHaveText("Enviamos tu propuesta al equipo de Rumbo.");
+  expect(llamadas.filter((l) => l.nombre === "proponer_grupo").at(-1)!.cuerpo).toEqual({ p_nombre: "Lectura", p_descripcion: null });
+});
+
 test("Comunidad real: alias y reglas antes de participar", async ({ page }) => {
   await conSesion(page);
   let estado: "sin_alias" | "sin_reglas" | "abierta" = "sin_alias";

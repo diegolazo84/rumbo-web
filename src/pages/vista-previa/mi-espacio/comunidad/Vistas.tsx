@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Icono } from "../../../../components/app";
+import { useEspacio } from "../comun";
 import { fechaLargaIso, fechaRelativa, useComunidad } from "./contexto";
 import type { Desafio, Grupo } from "./fuente";
 import { BarraDesafio, TarjetaImpacto, useDato } from "./Laterales";
@@ -42,6 +43,7 @@ function BotonGrupo({ g }: { g: Grupo }) {
 
 export function VistaGrupos({ grupo }: { grupo: string | null }) {
   const { enlace } = useComunidad();
+  const { R } = useEspacio();
   const { dato, error } = useDato((f) => f.grupos());
   const actual = grupo ? dato?.find((g) => g.id === grupo) : null;
 
@@ -77,6 +79,9 @@ export function VistaGrupos({ grupo }: { grupo: string | null }) {
           {T.grupos.descubrir}
         </h2>
         <p className="co-bajada">{T.grupos.descubrirBajada}</p>
+        <Link to={R.comunidadGrupos} className="enlace-flecha">
+          {T.grupos.verTodos}
+        </Link>
         {error && <p className="co-tarjeta co-estado">{T.errorGeneral}</p>}
         {dato && dato.length === 0 && <p className="co-tarjeta co-estado co-estado--vacio">{T.grupos.vacio}</p>}
         <ul className="co-grupos-grilla">
