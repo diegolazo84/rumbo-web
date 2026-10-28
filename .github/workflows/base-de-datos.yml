@@ -67,8 +67,7 @@ jobs:
         run: |
           set -euo pipefail
           supabase --version
-          supabase db diff --db-url "$PGURL" -s public,privado --output-format json > diff.json 2> diff.err \
-            || { cat diff.json diff.err; echo "::error::supabase db diff no pudo ejecutarse"; exit 1; }
+          pruebas/base/db-diff.sh diff.json || { cat diff.json; echo "::error::supabase db diff no pudo ejecutarse"; exit 1; }
           jq -r '"motor: " + .engine' diff.json
           if [ -n "$(jq -r '.diff' diff.json | tr -d '[:space:]')" ]; then
             jq -r '.diff' diff.json; echo "::error::supabase db diff encontró diferencias"; exit 1
@@ -163,6 +162,83 @@ jobs:
           export ANON_KEY="${ANON_KEY:-${PUBLISHABLE_KEY:-}}"
           node pruebas/base/rls.mjs
 
+      # Rumbo 2.0, A0: matriz de acceso tabla por tabla y rol por rol (anon, persona A, persona B,
+      # equipo sin y con segundo factor), sobre los datos que deja el paso anterior. Toda tabla o
+      # función nueva debe declararse en pruebas/base/matriz.mjs con quién puede usarla.
+      - name: Matriz de acceso
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: node pruebas/base/matriz.mjs
+
+      # La matriz debe fallar ante 6 errores típicos de permisos hechos a mano, y volver a pasar
+      # al deshacerlos. Solo en la base local de prueba.
+      - name: La matriz detecta fugas de permisos
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          set -uo pipefail
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q <<'SQL'
+          create policy prueba_ci_fuga on public.participantes for select to authenticated using (true);
+          create policy prueba_ci_escribir on public.ciclos for update to authenticated using (true);
+          grant execute on function public.crear_espacio(uuid) to anon;
+          create table public.prueba_ci (id int);
+          create or replace function privado.gestiona(p_participante uuid) returns boolean
+          language sql stable security definer set search_path = '' as $$
+            select privado.es_dueno() or privado.es_coach();
+          $$;
+          create or replace function privado.es_admin() returns boolean
+          language sql stable security definer set search_path = '' as $$
+            select exists (select 1 from public.equipo e where e.user_id = auth.uid());
+          $$;
+          SQL
+          if node pruebas/base/matriz.mjs > matriz.txt 2>&1; then cat matriz.txt; echo "::error::la matriz no detectó los cambios"; exit 1; fi
+          for buscado in 'public.prueba_ci no tiene RLS' 'funciones que anon ejecuta' 'persona A lee public.participantes: ve' 'persona A en public.ciclos: modificar alcanza filas' 'equipo sin segundo factor lee public.solicitudes' 'coach Y lee public.ciclos: ve'; do
+            grep -qF "$buscado" matriz.txt || { cat matriz.txt; echo "::error::la matriz no detectó: $buscado"; exit 1; }
+          done
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q <<'SQL'
+          drop policy prueba_ci_fuga on public.participantes;
+          drop policy prueba_ci_escribir on public.ciclos;
+          revoke execute on function public.crear_espacio(uuid) from anon;
+          drop table public.prueba_ci;
+          create or replace function privado.es_admin() returns boolean
+          language sql stable security definer set search_path = '' as $$ select privado.es_dueno(); $$;
+          create or replace function privado.gestiona(p_participante uuid) returns boolean
+          language sql stable security definer set search_path = '' as $$
+            select privado.es_dueno()
+                or (privado.es_coach() and exists (select 1 from public.participantes p
+                                                    where p.id = p_participante and p.coach_id = auth.uid()));
+          $$;
+          SQL
+          node pruebas/base/matriz.mjs > /dev/null || { echo "::error::la base no volvió a su estado"; exit 1; }
+          echo "la matriz detectó los 6 cambios"
+
+      # Rumbo 2.0: cada migración nueva trae su archivo en supabase/deshacer/. Se deshacen todas,
+      # de la más nueva a la más antigua, y la herramienta oficial compara con las migraciones que
+      # quedan: la diferencia debe ser vacía. Luego se vuelven a aplicar, en orden, para el paso
+      # siguiente.
+      - name: Deshacer deja la base como antes
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/apartadas"
+          for d in $(ls supabase/deshacer/*.sql | sort -r); do
+            m="supabase/migrations/$(basename "$d")"
+            [ -f "$m" ] || { echo "::error::$d no corresponde a ninguna migración"; exit 1; }
+            psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$d"
+            mv "$m" "$RUNNER_TEMP/apartadas/"
+            pruebas/base/db-diff.sh deshacer.json
+            if [ -n "$(jq -r '.diff' deshacer.json | tr -d '[:space:]')" ]; then
+              jq -r '.diff' deshacer.json; echo "::error::$d no dejó la base como antes"; exit 1
+            fi
+            echo "$(basename "$d"): deshecha sin diferencias"
+          done
+          for m in $(ls "$RUNNER_TEMP/apartadas/"*.sql | sort); do
+            mv "$m" supabase/migrations/
+            psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "supabase/migrations/$(basename "$m")"
+          done
+          echo "migraciones vueltas a aplicar"
+
       # Etapa 1: las dos revisiones deben detectar cambios hechos a mano. Va al final porque altera
       # la base local de prueba (nunca producción).
       - name: Las revisiones detectan cambios
@@ -180,7 +256,8 @@ jobs:
           insert into storage.buckets (id, name) values ('prueba-ci', 'prueba-ci');
           drop trigger al_crear_usuario on auth.users;
           SQL
-          supabase db diff --db-url "$PGURL" -s public,privado --output-format json | jq -r '.diff' > diff.sql
+          pruebas/base/db-diff.sh cambios.json
+          jq -r '.diff' cambios.json > diff.sql
           for buscado in 'GRANT SELECT ON TABLE "public"."solicitudes" TO "anon"' 'prueba_ci' 'privado.tareas_por_hora'; do
             grep -qF "$buscado" diff.sql || { cat diff.sql; echo "::error::db diff no detectó: $buscado"; exit 1; }
           done
@@ -189,3 +266,4 @@ jobs:
           cat verificacion.txt
           if [ "$FALLAS" != 4 ]; then echo "::error::verificacion.sql detectó $FALLAS de 4 cambios"; exit 1; fi
           echo "las dos revisiones detectaron todos los cambios"
+
