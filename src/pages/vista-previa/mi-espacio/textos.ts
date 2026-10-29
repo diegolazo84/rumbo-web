@@ -9,6 +9,7 @@
 // «PROPUESTO» en el comentario: los decide Diego.
 import { ciclo, type PlanParam } from "../../../data/ejemplo-app";
 import { planes } from "../../../data/rumbo";
+import { miles } from "../../../lib/fechas";
 
 const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : varios);
 export const acciones = (n: number) => `${n} ${plural(n, "acción", "acciones")}`;
@@ -380,6 +381,131 @@ export const T_PROGRESO = {
   detalle: "Ver el detalle de tus créditos",
 } as const;
 
+// Mis logros (maqueta de ChatGPT, 29-oct-2026). Cifras, fechas y beneficios salen de la base.
+export const T_LOGROS = {
+  portada: {
+    ojo: "Mis logros",
+    titulo: "Cada paso cuenta",
+    bajada: ["Has avanzado más de lo que imaginas.", "Aquí puedes ver tu progreso, reconocer tus logros", "y descubrir todo lo que has conseguido en tu camino."],
+  },
+  nivel: {
+    titulo: "Mi nivel",
+    ver: "Ver los 10 niveles",
+    nivel: (n: number) => `Nivel ${n}`,
+    faltan: (c: number, n: number) => `Te faltan ${c} ${plural(c, "crédito", "créditos")} para el nivel ${n}.`,
+    maximo: "Llegaste al nivel más alto. Tus créditos siguen sumando.",
+    barra: (n: number) => `Créditos hacia el nivel ${n}`,
+    hoja: "Los 10 niveles",
+    desde: (c: number) => `desde ${miles(c)} créditos`,
+    actual: "Tu nivel",
+    reglas: "Cómo se cuentan los créditos",
+  },
+  creditos: {
+    titulo: "Mis créditos",
+    historial: "Ver historial",
+    acumulados: (c: number) => `${plural(c, "crédito acumulado", "créditos acumulados")}`,
+    semana: "Créditos de esta semana, por día",
+    dia: (dia: string, c: number | null) => (c === null ? `${dia}: todavía no llega` : `${dia}: ${c} ${plural(c, "crédito", "créditos")}`),
+    bono: (b: number) => `+${b}`,
+    bonoTexto: "Bono al completar tu próximo día",
+    sube: (b: number, d: number) => `Sube a +${b} con ${d} ${plural(d, "día completo", "días completos")} más`,
+  },
+  constancia: {
+    titulo: "Mi constancia",
+    actual: "Racha actual",
+    mejor: "Mejor racha",
+    mejorTexto: "Tu mejor racha en este ciclo.",
+    dias: (n: number) => `${n} ${plural(n, "día", "días")}`,
+    llamas: (n: number) => `${Math.min(n, 7)} de 7 días seguidos hacia el bono más alto`,
+    ayuda: "Un día cuenta cuando completas todas tus acciones programadas. Un día sin acciones no corta la racha.",
+  },
+  evolucion: {
+    titulo: "Mi evolución",
+    bajada: (n: number) => `Tu progreso en ${n === 4 ? "las últimas 4 semanas" : `las ${n} semanas de tu ciclo`}`,
+    semana: (n: number) => `Semana ${n}`,
+    futura: "Por venir",
+    sinAcciones: "Sin acciones",
+    pct: (p: number) => `${p} %`,
+    etiqueta: (n: number, p: number | null, futura: boolean) =>
+      futura ? `Semana ${n}: todavía no llega` : p === null ? `Semana ${n}: sin acciones programadas` : `Semana ${n}: ${p} % de lo programado hecho`,
+    nota: "Porcentaje de acciones hechas sobre las programadas de cada semana, hasta hoy.",
+  },
+  estaSemana: {
+    titulo: "Esta semana",
+    texto: (h: number, n: number) => `Has completado ${h} de ${n} ${plural(n, "acción", "acciones")} de tu plan esta semana.`,
+    sinAcciones: "Esta semana no tienes acciones programadas.",
+    verPlan: "Ver mi plan",
+    hechas: "Ver lo que hiciste",
+  },
+  frase: ["La constancia de hoy", "te acerca a la vida que quieres."],
+  reconocimientos: {
+    titulo: "Mis reconocimientos",
+    bajada: "Insignias que celebran tus avances en Rumbo.",
+    ver: "Ver todos",
+    obtenido: (fecha: string) => `Obtenido el ${fecha}`,
+    porLograr: "Por lograr",
+    veces: (n: number) => `${n} ${plural(n, "meta", "metas")}`,
+    progreso: (a: number, b: number) => `${a}/${b}`,
+    corto: {
+      primer_paso: "¡Comenzaste tu camino!",
+      primera_semana: "Tu primera semana con acciones hechas",
+      constancia: (u: number) => `${u} días seguidos completos`,
+      mitad_del_camino: (u: number) => `${u} % de lo programado a mitad del ciclo`,
+      ciclo_completado: "Llega al final de tu ciclo",
+      meta_alcanzada: "Logra todos los hitos de una meta",
+    },
+    hoja: "Tus reconocimientos",
+    hojaNota: "Se otorgan solos con tus registros. No suman créditos ni cambian tu nivel.",
+    resumen: (n: number, t: number) => `${n} de ${t} obtenidos`,
+  },
+  recompensas: {
+    titulo: "Mis recompensas",
+    bajada: "Beneficios que puedes obtener al alcanzar tus objetivos.",
+    detalles: "Ver detalles",
+    descuento: (p: number) => `${p} % de descuento`,
+    renovacion: "en tu próxima renovación",
+    progreso: (h: number, n: number) => `${h}/${n} acciones`,
+    barra: "Acciones hechas del ciclo",
+    condicion: (d: number, p: number) => `Completa todas las acciones de tus ${d} días para obtener tu descuento del ${p} %.`,
+    alFinal: "El beneficio se activa al finalizar el ciclo.",
+    noAlcanza: "En este ciclo quedó alguna acción sin hacer. Puedes lograrlo en el próximo.",
+    obtenido: (p: number | null) => (p ? `Obtuviste ${p} % de descuento` : "Obtuviste un beneficio"),
+    obtenidoTexto: "Se descuenta en tu próxima renovación.",
+    hoja: "Tu descuento por renovación",
+    hojaNota: "Cuentan las acciones programadas y los ajustes autorizados. Lo anulado por un ajuste o una pausa no cuenta. Se usa en una renovación y no se suma a otros descuentos.",
+  },
+  ranking: {
+    titulo: "Ranking (opcional)",
+    ver: "Ver ranking",
+    bajada: "Participa solo si lo deseas.",
+    texto: ["Motívate con otras personas", "que también están en su camino."],
+    participar: "Quiero participar",
+    saberMas: "Saber más",
+    alias: "Elige tu alias",
+    aliasAyuda: "Es el nombre que verán las demás personas. De 3 a 24 caracteres.",
+    entrar: "Entrar al ranking",
+    cancelar: "Cancelar",
+    puesto: (p: number, t: number, c: number) => `La semana pasada quedaste en el puesto ${p} de ${t}, con ${c} % de tus acciones.`,
+    sinPuesto: "El ranking se muestra cuando hay al menos 3 personas participando con acciones la semana pasada.",
+    como: (a: string) => `Participas como «${a}».`,
+    salir: "Salir del ranking",
+    hoja: "Cómo funciona el ranking",
+    reglas: [
+      "Es voluntario: entras y sales cuando quieras.",
+      "Cada semana compara el porcentaje de tus acciones hechas sobre las programadas, no la cantidad.",
+      "Solo se ve tu alias. Nadie ve tu nombre ni tus acciones.",
+      "Con menos de 3 participantes no se muestra.",
+    ],
+    errores: {
+      "alias:invalido": "El alias debe tener de 3 a 24 caracteres: letras, números, espacios, punto, guion o guion bajo.",
+      "alias:en_uso": "Ese alias ya lo usa otra persona. Prueba con otro.",
+    } as Record<string, string>,
+    error: "No se pudo guardar. Inténtalo de nuevo.",
+  },
+  metas: "Tus metas",
+  error: "No pudimos cargar esta parte. Inténtalo de nuevo más tarde.",
+} as const;
+
 export const T_CREDITOS = {
   ojo: "Mis logros",
   // La especificación no fija el H1 del historial: se usa el texto del enlace que lleva aquí.
@@ -700,11 +826,6 @@ export const T_COMUNIDAD = {
     "La estamos diseñando para que participes solo si quieres, con un alias y con moderación de nuestro equipo. Tu plan y tus registros seguirán siendo privados.",
   cuando: "Abriremos la comunidad cuando haya participantes y moderación suficientes. Mientras tanto, tu acompañamiento sigue igual.",
   verMas: "Ver todo lo que viene en Rumbo",
-} as const;
-
-export const T_LOGROS_PRONTO = {
-  titulo: "Lo que viene en Mis logros",
-  items: ["Gráfico de tu cumplimiento semanal", "Reconocimientos por tu constancia", "Ranking semanal voluntario, en la comunidad"],
 } as const;
 
 // Tarjetas de «Lo que viene en Rumbo» en Mi espacio. Coinciden con loQueViene de data/rumbo.ts

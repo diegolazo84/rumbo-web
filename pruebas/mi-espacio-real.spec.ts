@@ -726,3 +726,62 @@ test("Crear publicación real: las fotos suben a la carpeta propia, en orden, y 
   await expect(page.getByRole("alert")).toContainText("No pudimos subir la foto");
   expect(borradas).toEqual(subidas);
 });
+
+test("Mis logros real (C17): todo de la base; recompensas y ranking solo con su función activa", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.reconocimientos = [
+    { clave: "primer_paso", nombre: "Primer paso", descripcion: "Marcaste tu primera acción.", umbral: null, activo: true },
+    { clave: "constancia", nombre: "Constancia", descripcion: "Sostuviste una racha de días seguidos en tu ciclo.", umbral: 5, activo: true },
+  ];
+  base.alias = [{ participante_id: "p1", alias: "Ana C", en_ranking: false }];
+  const apagado = { modulo_visible: () => false, mis_beneficios: () => [], mi_beneficio_renovacion: () => [] };
+  let llamadas = await simular(page, base, apagado);
+  await page.goto("mi-espacio/logros/");
+  await hidratar(page);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mis logros");
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".ml-cifra")).toHaveText("3 créditos acumulados");
+  await expect(page.locator(".ml-nivel__nombre")).toHaveText("Inicio");
+  // Módulos sin habilitar y beneficio apagado: ni reconocimientos, ni recompensas, ni ranking.
+  await expect(page.locator(".ml-cifra")).toBeVisible();
+  await expect.poll(() => llamadas.filter((l) => l.nombre === "modulo_visible").length).toBe(2);
+  await expect(page.getByRole("heading", { name: "Mis reconocimientos" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Mis recompensas" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /Ranking/ })).toHaveCount(0);
+  expect(llamadas.some((l) => l.nombre === "mis_reconocimientos" || l.nombre === "ranking_semanal")).toBe(false);
+
+  // Habilitados: aparecen solos, con lo que dice la base.
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+  await conSesion(page);
+  const ranking = [
+    { puesto: 1, alias_publico: "Sol", cumplimiento: 100, soy_yo: false },
+    { puesto: 2, alias_publico: "Ana C", cumplimiento: 80, soy_yo: true },
+    { puesto: 3, alias_publico: "Río", cumplimiento: 60, soy_yo: false },
+  ];
+  llamadas = await simular(page, base, {
+    modulo_visible: () => true,
+    mis_reconocimientos: () => [{ clave: "primer_paso", nombre: "Primer paso", descripcion: "x", referencia: "unico", otorgado_en: "2026-10-05T15:00:00Z" }],
+    mi_beneficio_renovacion: () => [{ nombre: "10 % en tu próxima renovación", descripcion: "Por completar todas las acciones programadas de tu ciclo de 28 días.", porcentaje: 10, dias_ciclo: 28 }],
+    mis_beneficios: () => [],
+    participar_en_ranking: (c) => {
+      base.alias[0].en_ranking = c.p_participar;
+      return null;
+    },
+    ranking_semanal: () => ranking,
+  });
+  await page.goto("mi-espacio/logros/");
+  await hidratar(page);
+  const rec = page.locator(".ml-reconocimientos");
+  await expect(rec.locator(".ml-insignia")).toHaveCount(2);
+  await expect(rec.locator(".ml-insignia.es-obtenida")).toContainText("5 de octubre");
+  await expect(rec.locator('[data-clave="constancia"]')).toContainText("5 días seguidos completos");
+  await expect(page.locator(".ml-recompensas")).toContainText("10 % de descuento");
+  await expect(page.locator(".ml-recompensas")).toContainText("1/16 acciones");
+  await expect(page.locator(".ml-recompensas")).toContainText("En este ciclo quedó alguna acción sin hacer.");
+  await page.locator(".ml-ranking").getByRole("button", { name: "Quiero participar" }).click();
+  await expect.poll(() => llamadas.find((l) => l.nombre === "participar_en_ranking")?.cuerpo).toEqual({ p_participar: true });
+  expect(llamadas.some((l) => l.nombre === "guardar_alias")).toBe(false);
+  await expect(page.locator(".ml-ranking")).toContainText("La semana pasada quedaste en el puesto 2 de 3, con 80 % de tus acciones.");
+  await expect(page.locator(".ml-ranking")).toContainText("Participas como «Ana C».");
+});

@@ -913,3 +913,199 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 
 /* «Nuevo» en el foco: se distingue de lo ya visto (desaparece al abrir la revisión). */
 .etiqueta.me-nuevo { border-color: var(--terracota-texto); background: var(--terracota-texto); color: var(--superficie); }
+
+/* ---------------------------------------------------------------------------
+   Mis logros (maqueta de ChatGPT, 29-oct-2026): portada «Cada paso cuenta», tres tarjetas
+   (nivel, créditos, constancia), evolución con la semana y una frase, y abajo reconocimientos,
+   recompensas y ranking. Sin recompensas ni ranking, los reconocimientos ocupan el ancho.
+   En móvil, todo apilado en el mismo orden. Solo tokens. */
+.ml { gap: var(--e-5); }
+.ml-fila { display: grid; gap: var(--e-4); align-items: stretch; }
+@media (min-width: 1024px) {
+  .app__contenido:has(.ml) { max-inline-size: calc(var(--ancho-sitio) + 2 * var(--gutter)); }
+  .ml-fila--tres { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ml-fila--tres > .ml-constancia { grid-column: 1 / -1; }
+  .ml-fila--evolucion { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+  .ml-fila--logros.ml-fila--laterales-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ml-fila--logros.ml-fila--laterales-2 > .ml-reconocimientos { grid-column: 1 / -1; }
+  .ml-fila--logros.ml-fila--laterales-1 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+}
+@media (min-width: 1360px) {
+  .app__contenido:has(.ml) { max-inline-size: calc(var(--ancho-sitio) + 12rem + 2 * var(--gutter)); }
+  .ml-fila--tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ml-fila--tres > .ml-constancia { grid-column: auto; }
+  .ml-fila--logros.ml-fila--laterales-2 { grid-template-columns: minmax(0, 2fr) minmax(0, 1.1fr) minmax(0, 1fr); }
+  .ml-fila--logros.ml-fila--laterales-2 > .ml-reconocimientos { grid-column: auto; }
+}
+
+/* Portada */
+.ml-portada {
+  position: relative;
+  display: grid;
+  align-content: end;
+  min-block-size: 300px;
+  margin-inline: calc(-1 * var(--gutter));
+  margin-block-start: calc(-1 * var(--e-5));
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--crema);
+}
+.ml-portada__fondo { position: absolute; inset: 0 0 auto; z-index: -2; inline-size: 100%; block-size: 170px; }
+.ml-portada__texto { display: grid; gap: var(--e-2); padding: 186px var(--gutter) var(--e-5); }
+.ml-portada__fila { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-3); }
+.ml-portada__h1 { margin: 0; font: 600 var(--t-h3)/1.2 var(--serif); color: var(--bosque); }
+.ml-portada__titulo { margin: 0; font: 600 var(--t-titulo)/1.05 var(--serif); letter-spacing: -0.015em; color: var(--bosque); }
+.ml-portada__bajada { max-inline-size: 46ch; font-size: var(--t-base); line-height: 1.45; color: var(--tinta); }
+@media (min-width: 1024px) {
+  .ml-portada { min-block-size: 280px; margin: 0; border-radius: var(--r-l); box-shadow: var(--sombra-1); }
+  .ml-portada__fondo { inset: 0 0 0 30%; inline-size: 70%; block-size: 100%; }
+  .ml-portada::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 30%;
+    z-index: -1;
+    inline-size: 24%;
+    background: linear-gradient(90deg, var(--crema), transparent);
+  }
+  .ml-portada__texto { align-self: center; max-inline-size: 58%; padding: var(--e-6) var(--e-7); }
+  .ml-portada__titulo { font-size: var(--t-display); }
+  .ml-portada__bajada { font-size: var(--t-lead); }
+}
+
+/* Tarjetas */
+.ml-tarjeta { display: grid; align-content: start; gap: var(--e-4); min-inline-size: 0; padding: var(--e-5); border-radius: var(--r-l); background: var(--superficie); box-shadow: var(--sombra-1); }
+.ml-tarjeta__cabeza { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--e-3); }
+.ml-recompensas .ml-tarjeta__cabeza, .ml-ranking .ml-tarjeta__cabeza { grid-template-columns: auto minmax(0, 1fr); }
+.ml-recompensas .ml-tarjeta__extra, .ml-ranking .ml-tarjeta__extra { grid-column: 2; margin-block-start: calc(-1 * var(--e-3)); }
+.ml-tarjeta__icono { display: grid; place-items: center; inline-size: 44px; block-size: 44px; border-radius: 50%; background: var(--terracota-suave); color: var(--terracota-texto); }
+.ml-tarjeta__titulos { display: grid; gap: 2px; min-inline-size: 0; }
+.ml-tarjeta__h2 { margin: 0; font: 600 var(--t-h3)/1.2 var(--serif); color: var(--bosque); }
+.ml-tarjeta__bajada { font-size: var(--t-xs); line-height: 1.4; color: var(--tinta-suave); }
+.ml-tarjeta__extra { align-self: start; }
+.ml-enlace {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 500 var(--t-xs)/1.3 var(--sans);
+  color: var(--bosque);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.ml-nota { font-size: var(--t-xs); line-height: 1.45; color: var(--tinta-suave); }
+
+/* Mi nivel */
+.ml-nivel__actual { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--e-4); }
+.ml-nivel__insignia { display: grid; place-items: center; inline-size: 64px; block-size: 64px; border-radius: 50%; background: var(--terracota-suave); color: var(--bosque); }
+.ml-nivel__insignia .icono { inline-size: 32px; block-size: 32px; fill: var(--bosque); }
+.ml-nivel__texto { display: grid; gap: 2px; margin: 0; }
+.ml-nivel__n { font: 600 var(--t-saludo)/1.1 var(--serif); color: var(--tinta); }
+.ml-nivel__nombre { font-size: var(--t-lead); color: var(--tinta-suave); }
+.ml-nivel__barra { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--e-3); }
+.ml-nivel__cifra { font-size: var(--t-xs); font-weight: 600; color: var(--tinta); white-space: nowrap; }
+
+/* Mis créditos */
+.ml-creditos__cuerpo { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--e-4); align-items: end; }
+.ml-cifra { display: grid; margin: 0; }
+.ml-cifra__n { font: 600 var(--t-precio)/1 var(--serif); color: var(--tinta); }
+.ml-cifra__u { font-size: var(--t-s); color: var(--tinta-suave); }
+.ml-barras { display: grid; gap: 4px; margin: var(--e-3) 0 0; }
+.ml-barras svg { display: block; inline-size: 100%; block-size: 64px; }
+.ml-barras rect { fill: var(--arena); }
+.ml-barras rect.con-creditos { fill: var(--salvia); }
+.ml-barras rect.es-hoy { fill: var(--bosque); }
+.ml-barras rect.es-futuro { fill: var(--papel-hondo); }
+.ml-barras__ejes { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); list-style: none; margin: 0; padding: 0; font-size: var(--t-micro); color: var(--tinta-suave); text-align: center; }
+.ml-creditos__bono { display: grid; justify-items: center; gap: 2px; max-inline-size: 140px; padding: var(--e-4) var(--e-3); border-radius: var(--r-m); background: var(--crema); text-align: center; }
+.ml-creditos__hoja { display: grid; place-items: center; inline-size: 44px; block-size: 44px; border-radius: 50%; background: var(--salvia-suave); color: var(--bosque); }
+.ml-creditos__bono-n { margin: 0; font: 600 var(--t-saludo)/1.1 var(--serif); color: var(--bosque); }
+.ml-creditos__bono-t { font-size: var(--t-micro); line-height: 1.35; color: var(--tinta-suave); }
+
+/* Mi constancia */
+.ml-constancia__cajas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--e-3); }
+.ml-caja { display: grid; align-content: start; gap: var(--e-2); padding: var(--e-4); border-radius: var(--r-m); background: var(--crema); }
+.ml-caja__titulo { display: flex; justify-content: space-between; align-items: center; gap: var(--e-2); margin: 0; font-size: var(--t-xs); font-weight: 600; color: var(--tinta); }
+.ml-caja__info { color: var(--tinta-suave); }
+.ml-caja__corona { color: var(--sol); }
+.ml-caja__corona .icono { fill: var(--sol); }
+.ml-caja__n { margin: 0; font: 600 var(--t-saludo)/1.1 var(--serif); color: var(--tinta); }
+.ml-caja__texto { font-size: var(--t-xs); line-height: 1.4; color: var(--tinta-suave); }
+.ml-llamas { display: flex; flex-wrap: nowrap; gap: 2px; margin: 0; color: var(--linea); }
+.ml-llamas .icono { flex: 0 1 20px; min-inline-size: 0; color: var(--linea); }
+.ml-llamas .icono.es-encendida { color: var(--terracota); fill: var(--ambar); }
+
+/* Mi evolución y esta semana */
+.ml-evolucion__cuerpo { display: grid; gap: var(--e-5); }
+@media (min-width: 640px) { .ml-evolucion__cuerpo { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: center; } }
+.ml-semanas { display: grid; gap: var(--e-2); margin: 0; }
+.ml-semanas__lista { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: var(--e-2); list-style: none; margin: 0; padding: var(--e-3); border: 1px solid var(--linea); border-radius: var(--r-m); }
+.ml-semanas__lista li { display: grid; justify-items: center; gap: 2px; text-align: center; }
+.ml-semanas__barra { display: block; inline-size: 100%; max-inline-size: 64px; block-size: 120px; border-block-end: 1px solid var(--linea); }
+.ml-semanas__barra rect { fill: var(--salvia); }
+.ml-semanas__lista li.es-actual .ml-semanas__barra rect { fill: var(--ambar); }
+.ml-semanas__n { font-size: var(--t-micro); color: var(--tinta-suave); white-space: nowrap; }
+.ml-semanas__pct { font: 600 var(--t-base)/1.2 var(--sans); color: var(--tinta); }
+.ml-esta-semana { display: grid; gap: var(--e-3); padding: var(--e-4); border-radius: var(--r-m); background: var(--salvia-suave); }
+.ml-esta-semana__h3 { margin: 0; font: 600 var(--t-lead)/1.2 var(--serif); color: var(--bosque); }
+.ml-esta-semana__fila { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--e-4); }
+.ml-esta-semana .anillo { inline-size: 88px; block-size: 88px; }
+.ml-esta-semana__texto { display: grid; gap: var(--e-1); font-size: var(--t-xs); line-height: 1.45; color: var(--tinta); }
+.ml-esta-semana__hechas summary { min-block-size: 44px; display: flex; align-items: center; font-size: var(--t-xs); font-weight: 600; color: var(--bosque); cursor: pointer; }
+
+/* Frase */
+.ml-frase { position: relative; display: grid; align-content: end; min-block-size: 200px; overflow: hidden; border-radius: var(--r-l); background: var(--terracota-suave); box-shadow: var(--sombra-1); }
+.ml-frase__img { position: absolute; inset: 0 0 auto; inline-size: 100%; block-size: 62%; }
+.ml-frase__texto { position: relative; display: flex; align-items: center; justify-content: center; gap: var(--e-3); margin: 0; padding: var(--e-4); font: 500 var(--t-lead)/1.3 var(--serif); color: var(--bosque); text-align: center; }
+.ml-frase__icono { flex: none; color: var(--terracota-texto); }
+
+/* Mis reconocimientos */
+.ml-insignias { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: var(--e-4) var(--e-3); list-style: none; margin: 0; padding: 0; }
+@media (max-width: 479.98px) { .ml-insignias { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ml-insignia { display: grid; justify-items: center; align-content: start; gap: 4px; text-align: center; }
+.ml-insignia__circulo { display: grid; place-items: center; inline-size: 72px; block-size: 72px; margin-block-end: var(--e-2); border-radius: 50%; background: var(--papel-hondo); color: var(--linea-fuerte); }
+.ml-reconocimientos.es-amplio .ml-insignia__circulo { inline-size: 88px; block-size: 88px; }
+.ml-insignia__circulo .icono { inline-size: 32px; block-size: 32px; }
+.ml-insignia.es-obtenida[data-clave="primer_paso"] .ml-insignia__circulo { background: var(--salvia-suave); color: var(--salvia-honda); }
+.ml-insignia.es-obtenida[data-clave="primera_semana"] .ml-insignia__circulo { background: var(--ambar); color: var(--terracota-texto); }
+.ml-insignia.es-obtenida[data-clave="constancia"] .ml-insignia__circulo { background: var(--niebla); color: var(--bosque); }
+.ml-insignia.es-obtenida[data-clave="mitad_del_camino"] .ml-insignia__circulo { background: var(--terracota-suave); color: var(--terracota); }
+.ml-insignia.es-obtenida[data-clave="ciclo_completado"] .ml-insignia__circulo { background: var(--sol); color: var(--bosque); }
+.ml-insignia.es-obtenida[data-clave="meta_alcanzada"] .ml-insignia__circulo { background: var(--arena); color: var(--terracota-texto); }
+.ml-insignia.es-obtenida .ml-insignia__circulo .icono { fill: currentColor; fill-opacity: 0.25; }
+.ml-insignia__nombre { margin: 0; font: 600 var(--t-xs)/1.25 var(--sans); color: var(--tinta); }
+.ml-insignia__texto { font-size: var(--t-micro); line-height: 1.35; color: var(--tinta-suave); }
+.ml-insignia__fecha { margin-block-start: var(--e-1); font-size: var(--t-micro); color: var(--tinta-suave); }
+.ml-insignia__barra { inline-size: 100%; max-inline-size: 96px; }
+.ml-insignia__barra .barra-texto { font-size: var(--t-micro); text-align: center; }
+
+/* Mis recompensas */
+.ml-premio { display: grid; gap: var(--e-3); padding: var(--e-4); border-radius: var(--r-m); background: var(--crema); }
+.ml-premio.es-obtenido { background: var(--niebla); }
+.ml-premio__titulo { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--e-3); margin: 0; font-size: var(--t-s); line-height: 1.35; color: var(--tinta); }
+.ml-premio__titulo strong { font: 600 var(--t-lead)/1.2 var(--serif); color: var(--tinta); }
+.ml-premio__icono { color: var(--terracota-texto); }
+.ml-premio__candado { color: var(--tinta-suave); }
+
+/* Ranking */
+.ml-ranking { justify-items: stretch; }
+.ml-podio { display: block; inline-size: 100%; block-size: auto; }
+.ml-podio__cerro { fill: var(--terracota-suave); }
+.ml-podio__cerro2 { fill: var(--salvia-suave); }
+.ml-podio__base { fill: var(--superficie); stroke: var(--linea); }
+.ml-podio__persona { fill: var(--bosque); }
+.ml-podio__bandera { fill: var(--terracota); stroke: var(--bosque); stroke-width: 1.5; }
+.ml-ranking__texto { font-size: var(--t-xs); line-height: 1.45; color: var(--tinta); text-align: center; }
+.ml-ranking__boton { inline-size: 100%; }
+.ml-ranking .ml-enlace { justify-self: center; }
+.ml-ranking__estado { display: grid; gap: var(--e-2); font-size: var(--t-xs); line-height: 1.45; }
+.ml-ranking__estado .boton { justify-self: start; }
+.ml-ranking__form { display: grid; gap: var(--e-2); }
+.ml-ranking__etiqueta { font-size: var(--t-xs); font-weight: 600; }
+
+/* Hojas y metas */
+.ml-hoja__h3 { margin: var(--e-5) 0 var(--e-2); font: 600 var(--t-lead)/1.2 var(--serif); color: var(--bosque); }
+.ml-hoja__lista { display: grid; gap: var(--e-3); list-style: none; margin: 0 0 var(--e-4); padding: 0; font-size: var(--t-s); line-height: 1.45; }
+.ml-metas { margin-block-start: var(--e-3); }

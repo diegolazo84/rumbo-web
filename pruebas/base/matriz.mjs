@@ -116,7 +116,7 @@ const FUNCIONES = {
     "reaccionar_publicacion", "unirme_a_grupo", "salir_de_grupo", "comunidad_grupos", "proponer_grupo", "mis_propuestas_grupo",
     "guardar_publicacion", "bloquear_autor", "desbloquear_alias", "mis_bloqueos", "comunidad_temas", "mi_impacto_comunidad",
     "unirme_a_desafio", "salir_de_desafio", "comunidad_desafios", "mi_avance_desafio",
-    "mis_reconocimientos", "mis_beneficios",
+    "mis_reconocimientos", "mis_beneficios", "mi_beneficio_renovacion",
     "ia_guardar_consentimiento", "ia_retirar_consentimiento", "ia_preguntar", "mis_consultas_ia",
     "autorizar_especialista", "retirar_especialista", "pedir_reserva", "cancelar_reserva", "enviar_mensaje_especialista",
   ],
@@ -1463,6 +1463,21 @@ paso("grupos C13: destacado único y elegido por moderación, sugeridos por las 
   exigir(mios.ok && ultima(mios) === suyos, `B no ve exactamente sus beneficios: ${mios.error ?? ultima(mios)} de ${suyos}`);
 }
 paso("reconocimientos y beneficios: se otorgan solos y una vez; el 10 % exige todo lo vigente del ciclo, se usa en una renovación y no se acumula; solo el dueño configura");
+
+// C17 · Mis logros: la persona sabe si el 10 % está activo (y nada más del catálogo).
+{
+  const leer = `select coalesce(string_agg(porcentaje || ' ' || dias_ciclo, ','), 'nada') from public.mi_beneficio_renovacion()`;
+  const apagado = como(ROLES.A, leer);
+  exigir(apagado.ok && ultima(apagado) === "nada", `con el beneficio apagado, la persona lo ve: ${apagado.error ?? ultima(apagado)}`);
+  const activo = como(ROLES.A, `reset role; update public.beneficios set activo = true, activado_en = now() where tipo = 'descuento_renovacion';
+    set local role authenticated; ${leer}`);
+  exigir(activo.ok && ultima(activo) === "10 28", `con el beneficio activo, la persona no lo ve: ${activo.error ?? ultima(activo)}`);
+  const sinFicha = como(ROLES.aal1, leer);
+  exigir(!sinFicha.ok && /sin_ficha/.test(sinFicha.error), "una cuenta sin ficha leyó el beneficio");
+  const tabla = como(ROLES.A, `select count(*) from public.beneficios`);
+  exigir(!tabla.ok || ultima(tabla) === "0", `una persona lee la tabla de beneficios: ${ultima(tabla)}`);
+}
+paso("mis logros C17: la persona sabe si el 10 % está activo, sin leer el catálogo de beneficios");
 
 // E2 · Asistente de IA (OpenAI): apagado por defecto, con consentimiento, revisión del coach, crisis y topes de gasto.
 {
