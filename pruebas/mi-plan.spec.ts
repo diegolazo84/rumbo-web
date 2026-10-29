@@ -48,6 +48,7 @@ test("«Ver mis acciones de hoy» abre el día de hoy en el calendario", async (
   await expect(page.getByRole("radio", { name: "Día" })).toBeChecked();
   await expect(page.locator(".me-calendario__titulo")).toHaveText(fecha);
   await expect(page.locator(".me-calendario__titulo")).toBeFocused();
+  await expect(page.locator(".me-calendario__titulo")).toBeInViewport();
   await expect(page.locator(".me-cal-dia .accion").first()).toBeVisible();
 });
 
@@ -62,6 +63,11 @@ test("calendario semanal: hoy destacado, días completos con check, futuros neut
   await expect(page.locator(".me-dia--futuro.me-dia--completo")).toHaveCount(0);
   const fondo = (sel: string) => page.locator(sel).first().evaluate((e) => getComputedStyle(e).backgroundColor);
   expect(await fondo(".me-dia--futuro")).not.toBe(await fondo(".me-dia--hoy"));
+  // Resumen semanal: lo registrado y lo programado de lunes a hoy, igual a lo que muestran los días.
+  const hasta = page.locator(".me-dia:not(.me-dia--futuro)");
+  const n = await hasta.locator(".me-filas > li").count();
+  const r = await hasta.locator("input:checked").count();
+  await expect(page.locator(".me-cal-semana__pie")).toContainText(`registraste ${r} de ${n} acciones`);
   // Las vistas Día, Semana y Mes siguen ahí.
   for (const v of ["Día", "Semana", "Mes"]) await expect(page.getByRole("radio", { name: v })).toBeVisible();
 });

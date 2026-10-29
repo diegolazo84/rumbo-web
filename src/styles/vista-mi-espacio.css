@@ -383,9 +383,10 @@
 .me-camino__semana { margin: 0 0 var(--e-1); padding: 4px 12px; border-radius: var(--r-full); background: var(--niebla); font: 600 var(--t-xs)/1.3 var(--sans); color: var(--bosque); }
 .me-camino__titulo { margin: 0; font: 600 var(--t-h2)/1.15 var(--serif); letter-spacing: -0.01em; color: var(--bosque); text-wrap: balance; }
 .me-camino__bajada { margin: 0; font-size: var(--t-s); line-height: 1.45; color: var(--tinta-suave); }
-.me-plan-tarjetas { display: grid; gap: var(--e-4); }
+.me-plan-tarjetas { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--e-4); }
+.me-plan-hoy, .me-construyendo, .me-construyendo__meta, .me-construyendo__nombre, .me-construyendo__para { min-inline-size: 0; }
 @media (min-width: 900px) { .me-plan-tarjetas { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); align-items: stretch; } }
-.me-plan-hoy { display: grid; align-content: start; gap: var(--e-3); padding: var(--e-5); border-radius: var(--r-l); background: var(--salvia-suave); box-shadow: var(--sombra-1); }
+.me-plan-hoy { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: var(--e-3); padding: var(--e-5); border-radius: var(--r-l); background: var(--salvia-suave); box-shadow: var(--sombra-1); }
 .me-plan-hoy__cabeza { display: grid; gap: 2px; }
 .me-plan-hoy__titulo { margin: 0; font: 600 var(--t-lead)/1.2 var(--serif); color: var(--bosque); }
 .me-plan-hoy__fecha { margin: 0; font-size: var(--t-xs); font-weight: 600; color: var(--tinta); }
@@ -395,18 +396,18 @@
 .me-plan-hoy .barra { background: var(--superficie); }
 .me-plan-hoy__boton { justify-self: start; gap: 8px; }
 .me-plan-hoy__vacio { margin: 0; font-size: var(--t-s); line-height: 1.45; color: var(--tinta); }
-.me-construyendo { display: grid; align-content: start; gap: var(--e-3); padding: var(--e-5); border: 1px solid var(--linea); border-radius: var(--r-l); background: var(--superficie); }
+.me-construyendo { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: var(--e-3); padding: var(--e-5); border: 1px solid var(--linea); border-radius: var(--r-l); background: var(--superficie); }
 .me-construyendo__cabeza { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--e-2) var(--e-4); }
 .me-construyendo__titulo { margin: 0; font: 600 var(--t-lead)/1.2 var(--serif); color: var(--tinta); }
-.me-construyendo__lista { display: grid; gap: var(--e-2); list-style: none; margin: 0; padding: 0; }
-.me-construyendo__meta { display: grid; gap: 2px; padding: var(--e-2) var(--e-3); border-radius: var(--r-s); background: var(--cat-fondo); box-shadow: inset 3px 0 0 var(--cat); }
+.me-construyendo__lista { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--e-2); list-style: none; margin: 0; padding: 0; }
+.me-construyendo__meta { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; padding: var(--e-2) var(--e-3); border-radius: var(--r-s); background: var(--cat-fondo); box-shadow: inset 3px 0 0 var(--cat); }
 .me-construyendo__nombre { font-size: var(--t-s); font-weight: 600; line-height: 1.3; color: var(--tinta); }
 .me-construyendo__para { font-size: var(--t-xs); line-height: 1.4; color: var(--tinta-suave); }
 /* En móvil, bloque compacto: nombre de cada meta en una línea y el «para qué» abreviado a una. */
 @media (max-width: 639.98px) {
   .me-plan-hoy, .me-construyendo { padding: var(--e-4); }
   .me-construyendo__lista { gap: 6px; }
-  .me-construyendo__para { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; }
+  .me-construyendo__para { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 }
 
 /* Mes: grilla de 7 columnas, celdas de 44 px o más, sin desborde a 320 px. */

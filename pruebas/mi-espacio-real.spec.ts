@@ -910,3 +910,44 @@ test("Mi plan real sin programa publicado: sin progreso inventado", async ({ pag
   await expect(page.getByRole("button", { name: "Ver mis acciones de hoy" })).toHaveCount(0);
   await expect(page.locator(".me-construyendo__meta")).toHaveCount(0);
 });
+
+test("Mi plan real: marcar hoy actualiza «Tu día de hoy»; futuras y fuera de plazo no se marcan", async ({ page }) => {
+  await conSesion(page);
+  const llamadas = await simular(page, baseInicial());
+  await page.goto("mi-espacio/plan/");
+  await hidratar(page);
+  // Resumen semanal: de lunes 12 a hoy hay 2 programadas y 1 hecha (progreso diario del 12).
+  await expect(page.locator(".me-cal-semana__pie")).toHaveText("Esta semana registraste 1 de 2 acciones programadas hasta hoy.");
+  await page.locator("#dia-2026-10-13").getByRole("checkbox").check();
+  await expect(page.locator(".me-plan-hoy__n")).toHaveText("1 de 1");
+  await expect(page.locator(".me-cal-semana__pie")).toHaveText("Esta semana registraste 2 de 2 acciones programadas hasta hoy.");
+  const m = llamadas.filter((l) => l.nombre === "marcar_accion");
+  expect(m).toHaveLength(1);
+  expect(m[0].cuerpo).toEqual({ p_ocurrencia: `o-${HOY}`, p_version: "completa" });
+  // Futura (14): deshabilitada, explica desde cuándo y no llama a la base.
+  const futura = page.locator("#dia-2026-10-14").getByRole("checkbox");
+  await expect(futura).toHaveAttribute("aria-disabled", "true");
+  await futura.click({ force: true });
+  await expect(futura).not.toBeChecked();
+  // Registro tardío (7 días): la semana anterior, el 5 quedó fuera de plazo y el 6 se puede marcar.
+  await page.getByRole("button", { name: "Semana anterior" }).click();
+  await expect(page.locator("#dia-2026-10-05").getByRole("checkbox")).toHaveAttribute("aria-disabled", "true");
+  await expect(page.locator("#dia-2026-10-05")).toContainText("Esta acción ya quedó cerrada en tu registro.");
+  await expect(page.locator("#dia-2026-10-06").getByRole("checkbox")).not.toHaveAttribute("aria-disabled", "true");
+  expect(llamadas.filter((l) => l.nombre === "marcar_accion")).toHaveLength(1);
+});
+
+for (const semanas of [8, 12]) {
+  test(`Mi plan real: ciclo de ${semanas} semanas`, async ({ page }) => {
+    await conSesion(page);
+    const base = baseInicial();
+    base.ciclos[0].semanas = semanas;
+    base.ciclos[0].fin = sumar("2026-10-05", semanas * 7 - 1);
+    await simular(page, base);
+    await page.goto("mi-espacio/plan/");
+    await hidratar(page);
+    await expect(page.locator(".me-camino__semana")).toHaveText(`Semana 2 de ${semanas}`);
+    await expect(page.locator(".me-calendario__titulo")).toContainText(`Semana 2 de ${semanas}`);
+    await expect(page.locator(".me-plan-hoy__n")).toHaveText("0 de 1");
+  });
+}
