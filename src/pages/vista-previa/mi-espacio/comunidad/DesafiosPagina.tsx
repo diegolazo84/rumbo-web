@@ -116,6 +116,7 @@ type Acciones = {
   ocupado: string | null;
   cambiar: (d: Desafio, unirme: boolean) => Promise<void>;
   detalle: (d: Desafio) => void;
+  urlFoto: (ruta: string) => Promise<string | null>;
 };
 
 function Desafios({ fuente, alias, hoy }: { fuente: FuenteComunidad; alias: string; hoy: string }) {
@@ -169,7 +170,7 @@ function Desafios({ fuente, alias, hoy }: { fuente: FuenteComunidad; alias: stri
       setOcupado(null);
     }
   };
-  const acciones: Acciones = { hoy, ocupado, cambiar, detalle: (d) => setHoja({ tipo: "detalle", id: d.id }) };
+  const acciones: Acciones = { hoy, ocupado, cambiar, detalle: (d) => setHoja({ tipo: "detalle", id: d.id }), urlFoto: fuente.urlFotoDesafio };
 
   const todos = desafios ?? [];
   const destacado = todos.find((d) => estadoDe(d, hoy) === "en-curso") ?? todos.find((d) => estadoDe(d, hoy) === "proximo") ?? null;
@@ -308,7 +309,7 @@ function Desafios({ fuente, alias, hoy }: { fuente: FuenteComunidad; alias: stri
 function Portada({ d, acciones, continuar }: { d: Desafio; acciones: Acciones; continuar: string }) {
   return (
     <section className="de-portada" aria-labelledby="de-portada-t">
-      {FOTO_PORTADA ? <img className="de-portada__fondo" src={FOTO_PORTADA} alt="" /> : <PaisajePortada className="de-portada__fondo" />}
+      <ImagenDesafio d={d} acciones={acciones} className="de-portada__fondo" portada />
       <div className="de-portada__texto">
         <p className="de-portada__sello">{T.destacado}</p>
         <h2 id="de-portada-t" className="de-portada__h">
@@ -329,6 +330,36 @@ function Portada({ d, acciones, continuar }: { d: Desafio; acciones: Acciones; c
       </p>
     </section>
   );
+}
+
+// Foto del desafío (C16) cuando el equipo la cargó; si no hay o no carga, la ilustración de siempre.
+function ImagenDesafio({ d, acciones, className, portada }: { d: Desafio; acciones: Acciones; className?: string; portada?: boolean }) {
+  const { urlFoto } = acciones;
+  const [url, setUrl] = useState<string | null>(null);
+  const [fallo, setFallo] = useState(false);
+  useEffect(() => {
+    setUrl(null);
+    setFallo(false);
+    if (!d.foto) return;
+    let vivo = true;
+    void urlFoto(d.foto).then((u) => vivo && setUrl(u));
+    return () => {
+      vivo = false;
+    };
+  }, [d.foto, urlFoto]);
+  if (url && !fallo)
+    return (
+      <img
+        className={className ? `${className} de-foto` : "de-foto"}
+        src={url}
+        alt=""
+        loading={portada ? "eager" : "lazy"}
+        decoding="async"
+        onError={() => setFallo(true)}
+      />
+    );
+  if (portada) return FOTO_PORTADA ? <img className={className} src={FOTO_PORTADA} alt="" /> : <PaisajePortada className={className} />;
+  return <PaisajeMini nombre={d.ilustracion ?? "sendero"} className={className} />;
 }
 
 function PortadaVacia() {
@@ -410,7 +441,7 @@ function Tarjeta({ d, acciones, continuar, chica }: { d: Desafio; acciones: Acci
   return (
     <li className={`co-tarjeta de-tarjeta${chica ? " de-tarjeta--chica" : ""}`}>
       <div className="de-tarjeta__img">
-        <PaisajeMini nombre={d.ilustracion ?? "sendero"} />
+        <ImagenDesafio d={d} acciones={acciones} />
         {!chica && <span className={`de-sello de-sello--${e}`}>{T.estados[e]}</span>}
       </div>
       <div className="de-tarjeta__texto">
@@ -501,7 +532,7 @@ function Participacion({ desafios, hoy, acciones }: { desafios: Desafio[]; hoy: 
                 : T.filaFinalizado;
         return (
           <li key={d.id} className="de-mia">
-            <PaisajeMini nombre={d.ilustracion ?? "sendero"} className="de-mia__img" />
+            <ImagenDesafio d={d} acciones={acciones} className="de-mia__img" />
             <div className="de-mia__texto">
               <button type="button" className="gr-enlace de-mia__nombre" onClick={() => acciones.detalle(d)}>
                 {d.titulo}
@@ -596,7 +627,7 @@ function Detalle({ d, fuente, acciones, continuar }: { d: Desafio; fuente: Fuent
   return (
     <div className="gr-detalle de-detalle">
       <div className="de-detalle__img">
-        <PaisajeMini nombre={d.ilustracion ?? "sendero"} />
+        <ImagenDesafio d={d} acciones={acciones} />
         <span className={`de-sello de-sello--${e}`}>{T.estados[e]}</span>
       </div>
       <p className="de-detalle__fechas">{T.fechas(fechaLargaIso(d.inicio), fechaLargaIso(d.fin), d.dias)}</p>

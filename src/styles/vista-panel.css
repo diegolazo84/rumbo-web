@@ -335,6 +335,12 @@
 .pa-co-foto { display: block; inline-size: 100%; max-inline-size: 24rem; block-size: auto; border-radius: var(--r-s); }
 .pa-co-detalles { display: grid; gap: 6px; margin: 0; padding-inline-start: var(--e-5); font-size: var(--t-s); color: var(--tinta-suave); }
 .pa-co-nuevo { justify-self: start; }
+/* C16: foto de portada del desafío (recorte 2:1, como en la pantalla). */
+.pa-co-desafio-foto { display: grid; gap: var(--e-2); padding-block-start: var(--e-3); border-block-start: 1px solid var(--linea); }
+.pa-co-desafio-foto__img { display: block; inline-size: 100%; max-inline-size: 24rem; aspect-ratio: 2 / 1; object-fit: cover; border-radius: var(--r-s); background: var(--papel); }
+.pa-co-desafio-foto__subir { cursor: pointer; }
+.pa-co-desafio-foto__subir:focus-within { outline: 2px solid var(--bosque); outline-offset: 2px; }
+.pa-co-desafio-foto__subir[aria-disabled] { cursor: progress; opacity: 0.7; }
 @media (max-width: 479.98px) { .pa-co-nuevo { justify-self: stretch; } }
 .pa-co-reporte { gap: var(--e-4); }
 .pa-co-fecha { font: 400 var(--t-s)/1.4 var(--sans); color: var(--tinta-suave); }

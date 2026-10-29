@@ -35,7 +35,17 @@ type Publicacion = {
 };
 type Grupo = { id: string; nombre: string; descripcion: string | null; ilustracion: string | null; activo: boolean; categoria: string | null; destacado: boolean };
 type Propuesta = { id: string; nombre: string; descripcion: string | null; alias: string | null; estado: string; creada_en: string };
-type Desafio = { id: string; titulo: string; descripcion: string | null; reglas: string; dias: number; inicio: Iso; ilustracion: string | null; activo: boolean };
+type Desafio = {
+  id: string;
+  titulo: string;
+  descripcion: string | null;
+  reglas: string;
+  dias: number;
+  inicio: Iso;
+  ilustracion: string | null;
+  activo: boolean;
+  foto_ruta: string | null;
+};
 type Modulo = { estado: string } | null;
 
 type Datos = {
@@ -74,7 +84,7 @@ export function ComunidadReal() {
       sb.from("publicaciones").select(COLUMNAS_PUB).eq("estado", "oculta").order("moderada_en", { ascending: false }).limit(30),
       sb.from("grupos_comunidad").select("id,nombre,descripcion,ilustracion,activo,categoria,destacado").order("nombre", { ascending: true }),
       sb.from("miembros_grupo").select("grupo_id"),
-      sb.from("desafios").select("id,titulo,descripcion,reglas,dias,inicio,ilustracion,activo").order("inicio", { ascending: false }),
+      sb.from("desafios").select("id,titulo,descripcion,reglas,dias,inicio,ilustracion,activo,foto_ruta").order("inicio", { ascending: false }),
       sb.from("participaciones_desafio").select("desafio_id"),
       sb.from("modulos").select("estado").eq("clave", "comunidad").maybeSingle(),
       sb.rpc("propuestas_grupo_equipo"),
@@ -545,7 +555,7 @@ function Desafios({ d, alCambiar }: { d: Datos; alCambiar: () => void }) {
       {d.desafios.length ? (
         <ul className="pa-filas">
           {d.desafios.map((x) => (
-            <ItemDesafio key={x.id} x={x} participantes={d.participantes[x.id] ?? 0} alGuardar={listo} />
+            <ItemDesafio key={x.id} x={x} participantes={d.participantes[x.id] ?? 0} alGuardar={listo} alCambiar={alCambiar} />
           ))}
         </ul>
       ) : (
@@ -568,7 +578,7 @@ function Desafios({ d, alCambiar }: { d: Datos; alCambiar: () => void }) {
   );
 }
 
-function ItemDesafio({ x, participantes, alGuardar }: { x: Desafio; participantes: number; alGuardar: () => void }) {
+function ItemDesafio({ x, participantes, alGuardar, alCambiar }: { x: Desafio; participantes: number; alGuardar: () => void; alCambiar: () => void }) {
   const [editando, setEditando] = useState(false);
   const id = `desafio-${x.id}`;
   return (
@@ -601,6 +611,7 @@ function ItemDesafio({ x, participantes, alGuardar }: { x: Desafio; participante
               [T.desafios.reglas, <span className="pa-co-texto">{x.reglas}</span>],
             ]}
           />
+          <FotoDesafio x={x} alCambiar={alCambiar} />
           <div className="acciones">
             <button type="button" className="boton boton--terciario" onClick={() => setEditando(true)} aria-describedby={`${id}-titulo`}>
               <Icono nombre="pencil" tamaño={20} />
@@ -610,6 +621,141 @@ function ItemDesafio({ x, participantes, alGuardar }: { x: Desafio; participante
         </>
       )}
     </li>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Foto de portada del desafío (C16): bucket privado «desafios», ruta <desafío>/<uuid>.webp.
+// Solo moderación con segundo factor puede subir, poner y borrar (lo exige la base).
+
+const FOTO_DESAFIO = {
+  tipos: ["image/jpeg", "image/png", "image/webp"],
+  original: 10 * 1024 * 1024,
+  maximo: 2 * 1024 * 1024, // igual que el bucket
+  lado: 1600,
+} as const;
+const errorFoto = (codigo: string) => Object.assign(new Error(codigo), { campo: "foto", codigo });
+
+// Siempre se vuelve a dibujar en un lienzo y se guarda en WebP: así sale sin EXIF (ni ubicación).
+async function optimizarFotoDesafio(archivo: File): Promise<{ blob: Blob; ancho: number; alto: number }> {
+  if (!(FOTO_DESAFIO.tipos as readonly string[]).includes(archivo.type)) throw errorFoto("tipo");
+  if (archivo.size > FOTO_DESAFIO.original) throw errorFoto("original");
+  let img: ImageBitmap;
+  try {
+    img = await createImageBitmap(archivo);
+  } catch {
+    throw errorFoto("ilegible");
+  }
+  const escala = Math.min(1, FOTO_DESAFIO.lado / Math.max(img.width, img.height));
+  const lienzo = document.createElement("canvas");
+  lienzo.width = Math.max(1, Math.round(img.width * escala));
+  lienzo.height = Math.max(1, Math.round(img.height * escala));
+  lienzo.getContext("2d")?.drawImage(img, 0, 0, lienzo.width, lienzo.height);
+  img.close();
+  for (const calidad of [0.82, 0.7, 0.6]) {
+    const blob = await new Promise<Blob | null>((ok) => lienzo.toBlob(ok, "image/webp", calidad));
+    if (!blob || blob.type !== "image/webp") throw errorFoto("webp");
+    if (blob.size <= FOTO_DESAFIO.maximo) return { blob, ancho: lienzo.width, alto: lienzo.height };
+  }
+  throw errorFoto("grande");
+}
+
+function FotoDesafio({ x, alCambiar }: { x: Desafio; alCambiar: () => void }) {
+  const { sb } = useDatosPanel();
+  const [correr, error, ocupado] = useEscritura();
+  const [url, setUrl] = useState<string | null>(null);
+  const [aviso, setAviso] = useState("");
+  const [nota, setNota] = useState("");
+  const id = `desafio-${x.id}-foto`;
+  useEffect(() => {
+    setUrl(null);
+    if (!x.foto_ruta) return;
+    let vivo = true;
+    void sb.storage
+      .from("desafios")
+      .createSignedUrl(x.foto_ruta, 600)
+      .then((r) => vivo && setUrl(r.data?.signedUrl ?? null))
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [sb, x.foto_ruta]);
+  const bucket = () => sb.storage.from("desafios");
+  const subir = (archivo: File) =>
+    void correr(async () => {
+      setAviso("");
+      setNota("");
+      const { blob, ancho, alto } = await optimizarFotoDesafio(archivo);
+      const ruta = `${x.id}/${crypto.randomUUID()}.webp`;
+      const { error: e } = await bucket().upload(ruta, blob, { contentType: "image/webp", upsert: false });
+      if (e) throw errorFoto("invalida");
+      let anterior: string | null;
+      try {
+        anterior = datos(await sb.rpc("poner_foto_desafio", { p_desafio: x.id, p_ruta: ruta })) as string | null;
+      } catch (err) {
+        await bucket().remove([ruta]);
+        throw err;
+      }
+      if (anterior && anterior !== ruta) await bucket().remove([anterior]);
+      if (ancho < 1200 || alto < 600) setNota(T.desafios.foto.chica(ancho, alto));
+      setAviso(T.desafios.foto.subida);
+      alCambiar();
+    });
+  const quitar = () =>
+    void correr(async () => {
+      setAviso("");
+      setNota("");
+      const anterior = datos(await sb.rpc("poner_foto_desafio", { p_desafio: x.id, p_ruta: null })) as string | null;
+      if (anterior) await bucket().remove([anterior]);
+      setAviso(T.desafios.foto.quitada);
+      alCambiar();
+    });
+  return (
+    <div className="pa-co-desafio-foto" role="group" aria-labelledby={`${id}-t`}>
+      <p id={`${id}-t`} className="pa-co-rotulo">
+        {T.desafios.foto.titulo}
+      </p>
+      <p id={`${id}-ayuda`} className="microcopia">
+        {T.desafios.foto.ayuda}
+      </p>
+      {x.foto_ruta ? (
+        url ? (
+          <img src={url} alt={T.desafios.foto.vistaPrevia(x.titulo)} className="pa-co-desafio-foto__img" />
+        ) : (
+          <span className="pa-co-desafio-foto__img pa-co-desafio-foto__img--carga" aria-hidden="true" />
+        )
+      ) : (
+        <p className="microcopia">{T.desafios.foto.sinFoto}</p>
+      )}
+      <div className="acciones">
+        <label className="boton boton--secundario pa-co-desafio-foto__subir" aria-disabled={ocupado || undefined}>
+          <Icono nombre="image" tamaño={20} />
+          {ocupado ? T.desafios.foto.subiendo : x.foto_ruta ? T.desafios.foto.cambiar : T.desafios.foto.subir}
+          <input
+            type="file"
+            className="sr-only"
+            accept={FOTO_DESAFIO.tipos.join(",")}
+            disabled={ocupado}
+            aria-describedby={`${id}-ayuda`}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) subir(f);
+            }}
+          />
+        </label>
+        {x.foto_ruta && (
+          <button type="button" className="boton boton--terciario" onClick={quitar} disabled={ocupado}>
+            {T.desafios.foto.quitar}
+          </button>
+        )}
+      </div>
+      {nota && <p className="microcopia">{nota}</p>}
+      <p role="status" className="microcopia">
+        {aviso}
+      </p>
+      <Alerta texto={error} />
+    </div>
   );
 }
 
