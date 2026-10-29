@@ -442,6 +442,7 @@ export function armarDatos(filas: Filas, ctx: Contexto) {
       enviadaEl: fechaDe(a.creada_en) ?? ctx.hoy,
       estado: a.estado,
       respuesta: a.respuesta,
+      respondidaEl: fechaDe(a.respondida_en ?? null),
     }));
   const notasCambios: NotaCambios[] = filas.programas
     .filter((x) => x.nota_cambios)

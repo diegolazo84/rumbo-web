@@ -172,7 +172,11 @@ async function simular(page: Page, base: Base, rpc: Record<string, (c: Record<st
       llamadas.push({ tipo: "rpc", nombre, url: req.url(), cuerpo });
       const f = rpc[nombre] ?? porDefecto[nombre];
       if (!f) return rt.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ code: "PGRST202", message: "sin simular" }) });
-      return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(f(cuerpo) ?? null) });
+      const r = f(cuerpo);
+      // Error de la base («campo:codigo» con su estado HTTP), como lo devuelve PostgREST.
+      if (r && typeof r === "object" && "__error" in r)
+        return rt.fulfill({ status: Number((r as Fila).__estado ?? 400), contentType: "application/json", body: JSON.stringify({ code: "PT400", message: (r as Fila).__error }) });
+      return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(r ?? null) });
     }
     const tabla = partes[2];
     llamadas.push({ tipo: "tabla", nombre: tabla, url: req.url(), cuerpo: {} });
@@ -259,9 +263,9 @@ test("Hoy real: sin «Ejemplo», marcar llama a marcar_accion y los créditos vi
   const llamadas = await simular(page, baseInicial());
   await page.goto("mi-espacio/");
   await expect(page.locator("h1")).toHaveText("Mi Rumbo");
-  await expect(page.getByRole("heading", { level: 2, name: "Hoy, martes 13." })).toBeVisible();
+  await expect(page.locator(".me-bienvenida__ojo")).toContainText("Martes 13 · Semana");
   await hidratar(page);
-  await expect(page.getByText("Hola, Ana.")).toBeVisible();
+  await expect(page.getByText("¡Hola, Ana!")).toBeVisible();
   await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
   await expect(page.getByText("BORRADOR SECRETO")).toHaveCount(0);
   const creditos = page.locator(".me-hoy .me-resumen__creditos");
@@ -317,7 +321,8 @@ test("registro semanal y solicitud de ajuste van a sus RPC", async ({ page }) =>
   await page.goto("mi-espacio/acompanamiento/");
   await hidratar(page);
   await expect(page.locator("h1")).toHaveText("Mi acompañamiento");
-  await expect(page.getByRole("heading", { level: 2, name: "Semana 2 de 4." })).toBeVisible();
+  await expect(page.locator(".me-semana__subtitulo")).toHaveText("Semana 2 de 4");
+  await page.locator("#tu-registro").getByRole("button", { name: "Escribir mi registro" }).click();
   await page.locator("#registro-funciono").fill("Escribir temprano.");
   await page.getByRole("button", { name: "Enviar mi registro" }).click();
   await expect.poll(() => llamadas.filter((l) => l.nombre === "guardar_registro_semanal").length).toBe(1);
@@ -379,6 +384,29 @@ test("Mi espacio real nunca muestra «Ejemplo» ni el aviso de la vista previa",
   }
 });
 
+test("Lo que viene real: lo que el dueño ya habilitó deja de aparecer; sin la tabla, la lista completa", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.modulos = [
+    { clave: "comunidad", estado: "habilitado" },
+    { clave: "ranking", estado: "probado" },
+    { clave: "app_movil", estado: "operativo" },
+  ];
+  await simular(page, base);
+  await page.goto("mi-espacio/lo-que-viene/");
+  await hidratar(page);
+  const titulos = page.locator(".me-lqv__titulo");
+  await expect(titulos).toHaveCount(6);
+  await expect(titulos).not.toContainText(["Comunidad con foro moderado"]);
+  await expect(page.getByText("Ranking semanal voluntario")).toBeVisible(); // probado no basta
+  await expect(page.getByText("Aplicación móvil")).toHaveCount(0);
+  // Sin la tabla (migración sin aplicar): las 8 funciones, como hasta ahora.
+  await page.route("**/rest/v1/modulos**", (rt) => rt.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ code: "42P01", message: "no existe" }) }));
+  await page.reload();
+  await hidratar(page);
+  await expect(titulos).toHaveCount(8);
+});
+
 // Rumbo 2.0, etapa 2: Mi acompañamiento muestra solo lo que existe en la base.
 test("Mi acompañamiento real: foco inicial y fecha de la primera revisión, sin inventar observaciones", async ({ page }) => {
   await conSesion(page);
@@ -386,14 +414,84 @@ test("Mi acompañamiento real: foco inicial y fecha de la primera revisión, sin
   await page.goto("mi-espacio/acompanamiento/");
   await hidratar(page);
   await expect(page.locator("h1")).toHaveText("Mi acompañamiento");
-  await expect(page.getByRole("heading", { name: "Quién te acompaña" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tu coach", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Próxima revisión" })).toBeVisible();
-  await expect(page.locator(".me-acomp__resumen")).toContainText("jueves 15");
-  // Intro de cercanía y, debajo, la modalidad real del plan (sin atención permanente).
-  await expect(page.locator(".me-acomp__intro")).toContainText("No tienes que avanzar solo.");
-  await expect(page.locator(".me-titulo-seccion__bajada")).toContainText(/una vez por semana/);
-  // Sin revisión publicada: no hay «Observaciones de tu coach» con texto inventado.
-  await expect(page.getByText("De tu revisión de la semana")).toHaveCount(0);
+  await expect(page.locator(".me-proxima")).toContainText("Jueves 15 de octubre");
+  // Intro de cercanía y la modalidad real del plan (sin atención permanente ni chat).
+  await expect(page.locator(".me-acomp-portada__bajada")).toHaveText("No tienes que hacerlo solo. Estamos contigo en este camino.");
+  await expect(page.locator(".me-proxima__modalidad")).toHaveText("Revisión por escrito");
+  await expect(page.locator(".me-proxima")).toContainText("Este espacio no es un chat de respuesta inmediata.");
+  // Sin revisión publicada, el historial lo dice sin inventar observaciones.
+  await expect(page.locator(".me-acomp-historial")).toContainText("Aquí verás las respuestas de tu coach.");
+  await expect(page.locator(".me-coach img")).toHaveCount(0);
+  // Sin coach asignado (mi_coach no responde): «Tu coach» genérico, sin nombre inventado.
+  await expect(page.locator(".me-coach__titulo")).toHaveText("Tu coach");
+  await expect(page.locator(".me-coach__rotulo-coach")).toHaveCount(0);
+  await sinViolaciones(page);
+});
+
+// Referencia de ChatGPT: el nombre y la presentación del coach llegan de mi_coach (A3) y, en el
+// plan cercano, la videollamada de la semana de la tabla videollamadas (C2). Nada más.
+test("Mi acompañamiento real: coach asignado y videollamada agendada por el coach", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.ciclos[0].plan_id = "cercano";
+  base.ciclos[0].hora_videollamada = "19:00:00";
+  base.videollamadas = [
+    { participante_id: "p1", ciclo_id: "c1", semana: 1, programada_para: "2026-10-08T22:00:00Z", enlace: "https://meet.example.org/s1", estado: "realizada" },
+    { participante_id: "p1", ciclo_id: "c1", semana: 2, programada_para: "2026-10-15T23:30:00Z", enlace: "https://meet.example.org/s2", estado: "programada" },
+  ];
+  base.revisiones.push({ participante_id: "p1", ciclo_id: "c1", semana: 1, tipo: "videollamada", que_funciono: "Las mañanas te funcionaron.", que_ajustamos: null, foco: "Una cosa a la vez.", iniciada_en: "2026-10-08T22:30:00Z", publicada_en: "2026-10-08T23:00:00Z" });
+  const llamadas = await simular(page, base, { mi_coach: () => ({ nombre: "Diego Muñoz", presentacion: "Acompaño procesos de cambio de hábitos." }) });
+  await page.goto("mi-espacio/acompanamiento/");
+  await hidratar(page);
+  const coach = page.locator(".me-coach");
+  await expect(coach.locator(".me-coach__titulo")).toHaveText("Diego Muñoz");
+  await expect(coach.locator(".me-coach__rotulo-coach")).toHaveText("Tu coach");
+  await expect(coach).toContainText("Acompaño procesos de cambio de hábitos.");
+  await expect(coach.locator(".me-coach__avatar")).toHaveText("DM");
+  await expect(coach.locator(".me-coach__cita")).toContainText("Una cosa a la vez.");
+  await expect(coach.locator(".me-coach__firma")).toHaveText("Diego Muñoz, tu coach");
+  // Sin «En línea» ni foto: no existen en la base.
+  await expect(coach).not.toContainText("En línea");
+  // La videollamada de la semana 2: hora de Chile (20:30) y el enlace que dejó el coach.
+  const proxima = page.locator(".me-proxima");
+  await expect(proxima.locator(".me-proxima__modalidad")).toHaveText("Videollamada · 20 min · 20:30 (hora de Chile)");
+  await expect(proxima.getByRole("link", { name: /Unirme a la videollamada/ })).toHaveAttribute("href", "https://meet.example.org/s2");
+  await expect(page.locator(".me-acomp-acciones").getByRole("link", { name: /Mi videollamada/ })).toHaveAttribute("href", "https://meet.example.org/s2");
+  // La de la semana 1 ya se anotó: queda en el historial con su estado real.
+  await expect(page.locator(".me-acomp-historial")).toContainText("Videollamada de la semana 1");
+  await expect(page.locator(".me-acomp-historial")).toContainText("Realizada el jueves 8");
+  // No hay forma de agendar ni reprogramar desde aquí: la agenda el coach.
+  await expect(page.getByRole("button", { name: /Agendar|Reprogramar/ })).toHaveCount(0);
+  expect(llamadas.some((l) => l.tipo === "rpc" && l.nombre === "mi_coach")).toBe(true);
+  expect(llamadas.some((l) => l.tipo === "tabla" && l.nombre === "videollamadas" && l.url.includes("ciclo_id=eq.c1"))).toBe(true);
+  await sinViolaciones(page);
+});
+
+// Revisión real extensa: primero un resumen y «Leer revisión completa»; la solicitud respondida
+// lleva la fecha real de la respuesta (solicitudes_ajuste.respondida_en). Sin «Nuevo».
+test("Mi acompañamiento real: revisión extensa con resumen y fechas reales en el historial", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  const largo = "Marcaste casi todo lo de la mañana y eso muestra que el horario temprano te funciona. ".repeat(4).trim();
+  base.revisiones.push({ participante_id: "p1", ciclo_id: "c1", semana: 1, tipo: "escrita", que_funciono: largo, que_ajustamos: null, foco: "Una cosa a la vez.", iniciada_en: "2026-10-08T18:00:00Z", publicada_en: "2026-10-08T20:00:00Z" });
+  base.solicitudes_ajuste.push({ id: "s9", participante_id: "p1", ciclo_id: "c1", creada_en: "2026-10-06T15:00:00Z", tipo: "horarios", ocurrencias: [], desde: "2026-10-06", texto: "Salgo tarde los martes.", estado: "respondida", respuesta: "Movimos la acción a la noche.", cuenta_como_reorden: false, respondida_en: "2026-10-07T15:00:00Z" });
+  await simular(page, base);
+  await page.goto("mi-espacio/acompanamiento/?n=1");
+  await hidratar(page);
+  const vimos = page.locator("#lo-que-vimos");
+  await expect(vimos).toContainText("Lo que funcionó");
+  // «Lo que podemos ajustar» venía vacío: no se inventa.
+  await expect(vimos).not.toContainText("Lo que podemos ajustar");
+  const boton = vimos.getByRole("button", { name: "Leer revisión completa" });
+  await expect(boton).toHaveAttribute("aria-expanded", "false");
+  await boton.click();
+  await expect(vimos.getByRole("button", { name: "Ver menos" })).toHaveAttribute("aria-expanded", "true");
+  const historial = page.locator(".me-acomp-historial");
+  await expect(historial).toContainText("Respondida el miércoles 7");
+  await expect(historial).toContainText("Publicada el jueves 8");
+  await expect(page.locator(".me-acomp .me-nuevo")).toHaveCount(0);
   await sinViolaciones(page);
 });
 
@@ -416,4 +514,215 @@ test("las rutas de Mi espacio y del panel son noindex y conectan solo con el pro
     expect(html, ruta).toContain(`connect-src 'self' ${SUPABASE_URL}`);
     expect(html, ruta).not.toContain('rel="canonical"');
   }
+});
+
+// ---------------------------------------------------------------------------
+// Comunidad real (C6 a C9): todo sale de las funciones de la base; nada de ejemplo.
+
+const PUB = (id: string, extra: Fila = {}): Fila => ({
+  id, respuesta_a: null, alias_publico: "Caminante", texto: "Hoy caminé 20 minutos #Hábitos", creada_en: new Date(Date.now() - 3 * 3600_000).toISOString(),
+  mia: false, respuestas: 0, grupo_id: "gr1", grupo_titulo: "Actividad física", foto_ruta: null, reacciones: 2, mi_reaccion: false, tipo: "progreso", guardada: false, ...extra,
+});
+
+test("Comunidad real: cerrada mientras el dueño no la habilite (sin datos de ejemplo)", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial(), { mi_impacto_comunidad: () => ({ __error: "comunidad:no_disponible", __estado: 409 }) });
+  await page.goto("mi-espacio/comunidad/");
+  await hidratar(page);
+  await expect(page.getByRole("heading", { name: "La comunidad aún no está abierta" })).toBeVisible();
+  await expect(page.locator("article.co-pub")).toHaveCount(0);
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+});
+
+test("Grupos real: cerrada sin pedir grupos; abierta con destacado, sugeridos, unirse y proponer en la base", async ({ page }) => {
+  await conSesion(page);
+  let llamadas = await simular(page, baseInicial(), { mi_impacto_comunidad: () => ({ __error: "comunidad:no_disponible", __estado: 409 }) });
+  await page.goto("mi-espacio/comunidad/grupos/");
+  await hidratar(page);
+  await expect(page.getByText("Para ver los grupos, primero entra a Comunidad.")).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "comunidad_grupos")).toBe(false);
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+  await conSesion(page);
+  const grupos = [
+    { id: "gr1", nombre: "Actividad física", descripcion: "Moverse", miembros: 4, soy_miembro: true, ilustracion: "montana", publicaciones: 2, destacado: true, categoria: "bienestar", creado_en: "2026-10-01T00:00:00Z", sugerido: false },
+    { id: "gr2", nombre: "Orden", descripcion: "Semana ordenada", miembros: 1, soy_miembro: false, ilustracion: null, publicaciones: 0, destacado: false, categoria: "orden", creado_en: "2026-10-02T00:00:00Z", sugerido: true },
+  ];
+  llamadas = await simular(page, baseInicial(), {
+    mi_impacto_comunidad: () => [{ publicaciones: 0, comentarios: 0, reacciones_recibidas: 0 }],
+    comunidad_grupos: () => grupos,
+    unirme_a_grupo: (c) => {
+      const g = grupos.find((x) => x.id === c.p_grupo)!;
+      Object.assign(g, { soy_miembro: true, miembros: g.miembros + 1, sugerido: false });
+      return null;
+    },
+    mis_propuestas_grupo: () => [],
+    proponer_grupo: (c) => (c.p_nombre === "Orden" ? { __error: "nombre:en_uso", __estado: 409 } : "pg1"),
+  });
+  await page.goto("mi-espacio/comunidad/grupos/");
+  await hidratar(page);
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".gr-destacado")).toContainText("Actividad física");
+  await expect(page.locator(".gr-destacado")).toContainText("2 publicaciones");
+  await page.getByRole("button", { name: "Unirse: Orden" }).first().click();
+  await expect.poll(() => llamadas.find((l) => l.nombre === "unirme_a_grupo")?.cuerpo).toEqual({ p_grupo: "gr2" });
+  await expect(page.locator(".gr-grilla")).toContainText("2 miembros");
+  await page.getByRole("navigation", { name: "Secciones de Grupos de la comunidad" }).getByRole("button", { name: "Proponer un grupo" }).click();
+  const hoja = page.getByRole("dialog", { name: "Proponer un grupo" });
+  await hoja.getByLabel("Nombre del grupo").fill("Orden");
+  await hoja.getByRole("button", { name: "Enviar propuesta" }).click();
+  await expect(hoja.getByRole("alert")).toHaveText("Ya existe un grupo con ese nombre. Búscalo en Todos los grupos.");
+  await hoja.getByLabel("Nombre del grupo").fill("Lectura");
+  await hoja.getByRole("button", { name: "Enviar propuesta" }).click();
+  await expect(page.locator(".tostada__texto")).toHaveText("Enviamos tu propuesta al equipo de Rumbo.");
+  expect(llamadas.filter((l) => l.nombre === "proponer_grupo").at(-1)!.cuerpo).toEqual({ p_nombre: "Lectura", p_descripcion: null });
+});
+
+test("Comunidad real: alias y reglas antes de participar", async ({ page }) => {
+  await conSesion(page);
+  let estado: "sin_alias" | "sin_reglas" | "abierta" = "sin_alias";
+  const llamadas = await simular(page, baseInicial(), {
+    mi_impacto_comunidad: () =>
+      estado === "sin_alias" ? { __error: "alias:sin_alias", __estado: 409 } : estado === "sin_reglas" ? { __error: "comunidad:sin_reglas", __estado: 409 } : [{ publicaciones: 0, comentarios: 0, reacciones_recibidas: 0 }],
+    guardar_alias: () => ((estado = "sin_reglas"), null),
+    aceptar_reglas_comunidad: () => ((estado = "abierta"), null),
+    comunidad_publicaciones: () => [],
+    comunidad_grupos: () => [],
+    comunidad_temas: () => [],
+    comunidad_desafios: () => [],
+  });
+  await page.goto("mi-espacio/comunidad/");
+  await hidratar(page);
+  await page.getByLabel("Tu alias").fill("Caminante");
+  await page.getByRole("button", { name: "Guardar alias" }).click();
+  await page.getByRole("button", { name: "Acepto las reglas" }).click();
+  await expect(page.locator(".co-compositor")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "guardar_alias")?.cuerpo).toEqual({ p_alias: "Caminante" });
+  expect(llamadas.some((l) => l.nombre === "aceptar_reglas_comunidad")).toBe(true);
+});
+
+test("Comunidad real: publicaciones, grupos, temas, impacto y desafíos de la base; apoyar, publicar y reportar", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.alias = [{ participante_id: "p1", alias: "Ana C" }];
+  const llamadas = await simular(page, base, {
+    mi_impacto_comunidad: () => [{ publicaciones: 3, comentarios: 5, reacciones_recibidas: 9 }],
+    comunidad_publicaciones: () => [PUB("x1")],
+    comunidad_grupos: () => [{ id: "gr1", nombre: "Actividad física", descripcion: "Moverse", miembros: 4, soy_miembro: true, ilustracion: "montana", publicaciones: 1 }],
+    comunidad_temas: () => [{ tema: "Hábitos", publicaciones: 1 }],
+    comunidad_desafios: () => [
+      { id: "d1", titulo: "Constancia", descripcion: "Un mes", reglas: "Completa tus acciones del día.", dias: 28, inicio: "2026-10-05", fin: "2026-11-01", ilustracion: "sendero", participantes: 2, participo: true, dias_cumplidos: 3, dias_transcurridos: 9, completado: false },
+    ],
+    reaccionar_publicacion: () => true,
+    publicar_en_comunidad: () => "nueva",
+    reportar_publicacion: () => null,
+  });
+  await page.goto("mi-espacio/comunidad/");
+  await hidratar(page);
+  const pub = page.locator("article.co-pub").first();
+  await expect(pub.locator(".co-pub__alias")).toHaveText("Caminante");
+  await expect(pub.locator(".co-pub__meta")).toContainText("En Actividad física");
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  if (!(await page.locator(".co-col--izq").isVisible())) await page.setViewportSize({ width: 1366, height: 900 });
+  await expect(page.locator(".co-col--izq")).toContainText("4 miembros");
+  await expect(page.locator(".co-col--izq")).toContainText("2 participantes");
+  await expect(page.locator(".co-col--izq")).toContainText("3 de 28 días cumplidos");
+  await expect(page.locator(".co-col--der")).toContainText("#Hábitos");
+  await expect(page.locator(".co-col--der .co-impacto__numeros dd")).toHaveText(["3", "5", "9"]);
+  await expect(page.locator(".co-compositor .co-avatar")).toHaveText("AC");
+
+  await pub.locator(".co-pub__accion--apoyo").click();
+  await expect(pub.locator(".co-pub__accion--apoyo")).toHaveAttribute("aria-pressed", "true");
+  expect(llamadas.find((l) => l.nombre === "reaccionar_publicacion")?.cuerpo).toEqual({ p_id: "x1" });
+
+  await page.locator(".co-compositor").getByRole("button", { name: "Consejo" }).click();
+  await expect(page).toHaveURL(/mi-espacio\/comunidad\/crear\/\?tipo=consejo/);
+  await page.getByRole("textbox", { name: /Escribe tu publicación/ }).fill("Partir con poco ayuda #Hábitos");
+  await page.getByRole("switch", { name: "Permitir comentarios" }).uncheck();
+  await page.getByRole("button", { name: "Publicar" }).click();
+  await expect(page.locator(".tostada__texto")).toHaveText("Tu publicación ya está en la comunidad.");
+  const cuerpo = llamadas.find((l) => l.nombre === "publicar_en_comunidad")?.cuerpo as Record<string, unknown>;
+  expect({ ...cuerpo, p_cliente_id: typeof cuerpo.p_cliente_id }).toEqual({
+    p_texto: "Partir con poco ayuda #Hábitos", p_respuesta_a: null, p_grupo: null, p_tipo: "consejo", p_fotos: [], p_permite_comentarios: false, p_cliente_id: "string",
+  });
+
+  await pub.getByRole("button", { name: /Más acciones/ }).click();
+  await pub.getByRole("button", { name: "Reportar" }).click();
+  const reporte = page.getByRole("dialog", { name: "Reportar" });
+  await reporte.getByRole("radio", { name: "Expone datos personales" }).check();
+  await reporte.getByRole("button", { name: "Enviar reporte" }).click();
+  await expect(reporte).toBeHidden();
+  expect(llamadas.find((l) => l.nombre === "reportar_publicacion")?.cuerpo).toEqual({ p_id: "x1", p_motivo: "privacidad", p_detalle: null });
+  await sinViolaciones(page);
+});
+
+test("Comunidad real: el límite de 20 publicaciones al día se explica sin perder el texto", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial(), {
+    mi_impacto_comunidad: () => [{ publicaciones: 0, comentarios: 0, reacciones_recibidas: 0 }],
+    comunidad_publicaciones: () => [],
+    comunidad_grupos: () => [],
+    comunidad_temas: () => [],
+    comunidad_desafios: () => [],
+    publicar_en_comunidad: () => ({ __error: "comunidad:demasiadas", __estado: 429 }),
+  });
+  await page.goto("mi-espacio/comunidad/");
+  await hidratar(page);
+  await page.locator(".co-compositor__invitacion").click();
+  const texto = page.getByRole("textbox", { name: /Escribe tu publicación/ });
+  await texto.fill("Una más");
+  await page.getByRole("button", { name: "Publicar" }).click();
+  await expect(page.getByRole("alert")).toContainText("20 publicaciones en 24 horas");
+  await expect(texto).toHaveValue("Una más");
+});
+
+test("Crear publicación real: las fotos suben a la carpeta propia, en orden, y se borran si la base rechaza", async ({ page }) => {
+  await conSesion(page);
+  let rechazar = false;
+  const llamadas = await simular(page, baseInicial(), {
+    mi_impacto_comunidad: () => [{ publicaciones: 0, comentarios: 0, reacciones_recibidas: 0 }],
+    comunidad_publicaciones: () => [],
+    comunidad_grupos: () => [
+      { id: "gr1", nombre: "Actividad física", descripcion: null, miembros: 4, soy_miembro: true, ilustracion: null, publicaciones: 0 },
+      { id: "gr2", nombre: "Ajeno", descripcion: null, miembros: 4, soy_miembro: false, ilustracion: null, publicaciones: 0 },
+    ],
+    comunidad_temas: () => [],
+    comunidad_desafios: () => [],
+    publicar_en_comunidad: () => (rechazar ? { __error: "foto:ruta_invalida", __estado: 400 } : "nueva"),
+  });
+  const subidas: string[] = [];
+  const borradas: string[] = [];
+  await page.route(`${SUPABASE_URL}/storage/v1/object/**`, async (rt) => {
+    const req = rt.request();
+    if (req.method() === "DELETE") {
+      borradas.push(...((req.postDataJSON() as { prefixes: string[] }).prefixes ?? []));
+      return rt.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+    }
+    subidas.push(new URL(req.url()).pathname.replace(/^.*\/object\/comunidad\//, ""));
+    return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ Key: "x" }) });
+  });
+  await page.goto("mi-espacio/comunidad/crear/");
+  await hidratar(page);
+  // Solo los grupos a los que pertenece.
+  await expect(page.locator(".co-destino__select option")).toHaveText(["Toda la comunidad", "Actividad física"]);
+  await page.locator(".co-destino__select").selectOption("gr1");
+  await page.getByRole("textbox", { name: /Escribe tu publicación/ }).fill("Con fotos");
+  const png = (n: number) => ({ name: `f${n}.png`, mimeType: "image/png", buffer: Buffer.from("89504e470d0a1a0a", "hex") });
+  await page.locator('input[type="file"]').setInputFiles([png(1), png(2)]);
+  await page.getByRole("button", { name: "Publicar" }).click();
+  await expect(page).toHaveURL(/vista=grupos&grupo=gr1/);
+  expect(subidas).toHaveLength(2);
+  for (const s of subidas) expect(s).toMatch(/^[^/]+\/[0-9a-f-]{36}\.(png|webp|jpg)$/);
+  const cuerpo = llamadas.filter((l) => l.nombre === "publicar_en_comunidad").at(-1)!.cuerpo;
+  expect(cuerpo.p_fotos).toEqual(subidas);
+  expect(cuerpo.p_grupo).toBe("gr1");
+
+  rechazar = true;
+  subidas.length = 0;
+  await page.goto("mi-espacio/comunidad/crear/");
+  await hidratar(page);
+  await page.getByRole("textbox", { name: /Escribe tu publicación/ }).fill("Otra");
+  await page.locator('input[type="file"]').setInputFiles([png(3)]);
+  await page.getByRole("button", { name: "Publicar" }).click();
+  await expect(page.getByRole("alert")).toContainText("No pudimos subir la foto");
+  expect(borradas).toEqual(subidas);
 });

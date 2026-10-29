@@ -121,10 +121,11 @@ test.describe("tokens y contraste", () => {
     expect(ratio("ambar", "papel")).toBeLessThan(3);
   });
 
-  test("tokens: 13 tamaños, 4 radios y 2 sombras", () => {
+  // 14 tamaños desde la referencia visual de Mi Rumbo (21-oct-2026): --t-saludo, «¡Hola, Camila!».
+  test("tokens: 14 tamaños, 4 radios y 2 sombras", () => {
     const nombres = Object.keys(tokens);
     expect(nombres.filter((n) => n.startsWith("t-"))).toEqual([
-      "t-display", "t-titulo", "t-h2", "t-h3", "t-precio", "t-voz", "t-lead",
+      "t-display", "t-titulo", "t-h2", "t-h3", "t-precio", "t-saludo", "t-voz", "t-lead",
       "t-base", "t-s", "t-xs", "t-micro", "t-logo", "t-logo-chico",
     ]);
     expect(nombres.filter((n) => n.startsWith("r-"))).toEqual(["r-s", "r-m", "r-l", "r-full"]);

@@ -205,6 +205,9 @@
   }
   .lateral .nav-app__icono { inline-size: 44px; block-size: 32px; }
   .lateral .nav-app__contador { margin-inline-start: auto; }
+  /* Referencia de ChatGPT (21-oct-2026): el destino activo es una pastilla bosque con texto claro. */
+  .lateral .nav-app__item[aria-current="page"] { background: var(--bosque); color: var(--sobre-oscuro); }
+  .lateral .nav-app__item[aria-current="page"] .nav-app__icono { background: transparent; }
   .lateral__pie { display: grid; gap: 4px; justify-items: start; }
   .lateral__pie hr { justify-self: stretch; margin-block: var(--e-2); }
   .lateral__pie .boton { margin-block-end: var(--e-2); }
@@ -317,6 +320,17 @@ button.enlace-util { padding: 0; border: 0; background: transparent; cursor: poi
 .tostada__texto { flex: 1; padding-block: 8px; }
 .tostada .boton--terciario, .tostada .boton-icono { color: var(--papel); }
 @media (hover: hover) { .tostada .boton-icono:hover { background: rgb(245 239 228 / 0.12); } }
+
+/* Un color por meta (en orden, lib/mi-rumbo.ts): el constructor del panel y Mi Rumbo (etapa 2A).
+   Pisa el color de la categoría, también en los elementos con data-cat de adentro. */
+[data-meta-color="0"], [data-meta-color="0"][data-cat], [data-meta-color="0"] [data-cat] { --cat: var(--meta-0); --cat-texto: var(--meta-0-texto); --cat-fondo: var(--meta-0-fondo); }
+[data-meta-color="1"], [data-meta-color="1"][data-cat], [data-meta-color="1"] [data-cat] { --cat: var(--meta-1); --cat-texto: var(--meta-1-texto); --cat-fondo: var(--meta-1-fondo); }
+[data-meta-color="2"], [data-meta-color="2"][data-cat], [data-meta-color="2"] [data-cat] { --cat: var(--meta-2); --cat-texto: var(--meta-2-texto); --cat-fondo: var(--meta-2-fondo); }
+[data-meta-color="3"], [data-meta-color="3"][data-cat], [data-meta-color="3"] [data-cat] { --cat: var(--meta-3); --cat-texto: var(--meta-3-texto); --cat-fondo: var(--meta-3-fondo); }
+[data-meta-color="4"], [data-meta-color="4"][data-cat], [data-meta-color="4"] [data-cat] { --cat: var(--meta-4); --cat-texto: var(--meta-4-texto); --cat-fondo: var(--meta-4-fondo); }
+[data-meta-color="5"], [data-meta-color="5"][data-cat], [data-meta-color="5"] [data-cat] { --cat: var(--meta-5); --cat-texto: var(--meta-5-texto); --cat-fondo: var(--meta-5-fondo); }
+[data-meta-color="6"], [data-meta-color="6"][data-cat], [data-meta-color="6"] [data-cat] { --cat: var(--meta-6); --cat-texto: var(--meta-6-texto); --cat-fondo: var(--meta-6-fondo); }
+[data-meta-color="7"], [data-meta-color="7"][data-cat], [data-meta-color="7"] [data-cat] { --cat: var(--meta-7); --cat-texto: var(--meta-7-texto); --cat-fondo: var(--meta-7-fondo); }
 
 /* ========================================================================
    Tarjeta de acción (.accion.accion--app): la fila abre el detalle; el control marca
@@ -546,3 +560,130 @@ a.accion__abrir, button.accion__abrir { cursor: pointer; }
   .interruptor__control:checked { background: Highlight; border-color: Highlight; }
   .interruptor__control:checked::before { background: HighlightText; }
 }
+
+/* ========================================================================
+   Etapa 2A · Mi Rumbo: fila con icono y meta, y anillo del día
+   ======================================================================== */
+/* Fila de Mi Rumbo (referencia visual): tarjeta clara sin borde visible, sombra suave, mosaico
+   del icono en el fondo de la meta y check grande con el contorno del color de la meta. */
+.accion.accion--app.accion--hoy {
+  padding: 8px 8px 8px 0;
+  border: 1px solid transparent;
+  border-radius: var(--r-m);
+  background: var(--superficie);
+  box-shadow: var(--sombra-1);
+}
+.accion--hoy .accion__abrir { grid-template-columns: 44px minmax(0, 1fr); column-gap: 12px; padding-inline-start: 12px; }
+.accion-icono {
+  display: grid;
+  place-items: center;
+  inline-size: 44px;
+  block-size: 44px;
+  border-radius: var(--r-m);
+  background: var(--cat-fondo);
+  color: var(--cat-texto);
+}
+.accion--hoy .accion-titulo { font-size: var(--t-base); }
+.accion-meta { font: 600 var(--t-xs)/1.4 var(--sans); color: var(--cat-texto); }
+.accion-meta::before {
+  content: "";
+  display: inline-block;
+  inline-size: 8px;
+  block-size: 8px;
+  margin-inline-end: 6px;
+  vertical-align: 1px;
+  border-radius: var(--r-full);
+  background: var(--cat);
+}
+.accion--hoy .accion__control input { inline-size: 34px; block-size: 34px; border-width: 2px; border-color: var(--cat); }
+.accion--hoy .accion__control input::before { inline-size: 18px; block-size: 18px; }
+.accion--hoy .accion__control input[aria-disabled="true"] { border-color: var(--linea); }
+/* Hecha: la tarjeta baja de intensidad (sin sombra, contorno fino), sin moverse de su lugar. */
+.accion.accion--app.accion--hoy.accion--hecha { background: transparent; border-color: var(--linea); box-shadow: none; }
+.accion--hoy.accion--hecha .accion-titulo { color: var(--tinta-suave); }
+.accion--hoy .accion__extra { padding-inline-start: 68px; }
+/* Marcar: un pulso corto del check (nada con movimiento reducido). */
+@media (prefers-reduced-motion: no-preference) {
+  .accion--hoy .accion__control input:checked { animation: check-pulso var(--dur-3) var(--curva); }
+}
+@keyframes check-pulso { 40% { scale: 1.18; } }
+@media (max-width: 359.98px) {
+  .accion--hoy .accion__abrir { grid-template-columns: minmax(0, 1fr); }
+  .accion--hoy .accion-icono { display: none; }
+  .accion--hoy .accion__extra { padding-inline-start: 12px; }
+}
+
+/* ========================================================================
+   Referencia visual (21-oct-2026): ilustraciones, avatar y celebración
+   ======================================================================== */
+/* Ilustraciones propias (components/app/Ilustracion.tsx): solo decoración, en la paleta. */
+.ilustracion { display: block; pointer-events: none; }
+.il-sol { fill: var(--sol); }
+.il-destello { fill: var(--terracota); }
+.il-lejos, .il-fondo { fill: var(--salvia-suave); }
+.il-colina, .il-hoja-clara { fill: var(--salvia); }
+.il-planta, .il-hoja { fill: var(--salvia-honda); }
+.il-tierra { fill: var(--arena); }
+.il-camino { fill: none; stroke: var(--arena); stroke-width: 7; stroke-linecap: round; }
+.il-aves { fill: none; stroke: var(--tinta-suave); stroke-width: 1.2; stroke-linecap: round; opacity: 0.5; }
+.il-aro { fill: none; stroke: var(--bosque); stroke-width: 6; }
+.il-tallo { fill: none; stroke: var(--bosque); stroke-width: 3; stroke-linecap: round; }
+@media (forced-colors: active) { .ilustracion { display: none; } }
+
+/* Avatar de quien acompaña: genérico (icono) hasta la etapa 4A; después, iniciales o foto. */
+.me-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: var(--r-full);
+  background: var(--bosque);
+  color: var(--crema);
+}
+.me-avatar--grande { inline-size: 48px; block-size: 48px; }
+
+/* Celebración de un nuevo nivel: hoja centrada, crema, con el brote. */
+.hoja.hoja--celebracion { background: var(--crema); text-align: center; }
+.hoja--celebracion .hoja__cabeza { justify-content: center; position: relative; }
+.hoja--celebracion .hoja__titulo { padding-inline: 44px; font-size: var(--t-saludo); line-height: 1.1; color: var(--bosque); }
+.hoja--celebracion .hoja__cabeza .boton-icono { position: absolute; inset-inline-end: 0; }
+.me-celebracion { display: grid; justify-items: center; gap: var(--e-3); }
+.me-celebracion__ilus { order: -2; inline-size: 120px; block-size: 120px; }
+.me-celebracion__ojo { order: -1; font: 600 var(--t-micro)/1.2 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--terracota-texto); }
+.me-celebracion__siguiente { inline-size: 100%; padding: 12px 16px; border-radius: var(--r-m); background: var(--superficie); }
+.me-celebracion__botones { display: grid; gap: 8px; inline-size: 100%; }
+@media (min-width: 1024px) {
+  .hoja.hoja--celebracion {
+    inline-size: min(440px, calc(100% - 2 * var(--gutter)));
+    block-size: fit-content;
+    max-block-size: 90dvh;
+    margin: auto;
+    border-radius: var(--r-l);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hoja--celebracion[open] .me-celebracion__ilus { animation: brote-crecer var(--dur-4) var(--curva); }
+}
+@keyframes brote-crecer { from { scale: 0.8; opacity: 0; } }
+
+/* Anillo del día: hechas sobre programadas, sin porcentaje. */
+.anillo { position: relative; flex: none; inline-size: 64px; block-size: 64px; }
+.anillo svg { display: block; inline-size: 100%; block-size: 100%; rotate: -90deg; }
+.anillo__carril, .anillo__arco { fill: none; stroke-width: 4; }
+.anillo__carril { stroke: var(--niebla); }
+.anillo__arco { stroke: var(--bosque); stroke-linecap: round; }
+.anillo__texto {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font: 600 var(--t-s)/1 var(--sans);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--bosque);
+}
+.anillo--chico { inline-size: 40px; block-size: 40px; }
+.anillo--chico .anillo__texto { font-size: var(--t-micro); }
+@media (prefers-reduced-motion: no-preference) { .anillo__arco { transition: stroke-dasharray var(--dur-3) var(--curva); } }
