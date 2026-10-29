@@ -347,7 +347,6 @@
 .pa-co-motivo { display: inline-flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; border: 1px solid var(--linea); border-radius: var(--r-full); font-size: var(--t-s); }
 .pa-co-motivo__n { display: inline-grid; place-items: center; min-inline-size: 26px; block-size: 26px; padding-inline: 6px; border-radius: var(--r-full); background: var(--bosque); color: var(--papel); font-weight: 700; font-size: var(--t-xs); }
 .pa-co-decision { padding-block-start: var(--e-4); border-block-start: 1px solid var(--linea); }
-=======
 /* Panel del coach, «Mis participantes» (referencia de ChatGPT, 21-oct-2026): filtros en pastillas
    con contador, búsqueda, tabla en tarjeta y, debajo, actividad reciente y revisiones de hoy.
    En pantallas angostas, cada fila de la tabla pasa a ser una tarjeta. */
