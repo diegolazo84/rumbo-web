@@ -406,7 +406,8 @@ export const T_COMU = {
   pagina: {
     titulo: "Desafíos de la comunidad",
     destacado: "Desafío destacado",
-    mano: "Disciplina hoy, una vida más plena mañana.",
+    // La maqueta dice «Disciplina hoy…»: «disciplina» es una palabra que Rumbo no usa (regla de lenguaje).
+    mano: "Constancia hoy, una vida más plena mañana.",
     todos: "Todos los desafíos",
     mas: "Más desafíos",
     filtros: { todos: "Todos", "en-curso": "En curso", proximos: "Próximos", finalizados: "Finalizados" },
