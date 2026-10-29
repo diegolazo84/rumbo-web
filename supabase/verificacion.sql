@@ -67,18 +67,21 @@ select 'etapa 1: tareas programadas exactas (nombre, horario y comando)',
              and (select bool_and(active) from cron.job where jobname like 'rumbo-%')
             then 'ok' else 'FALLA: las tareas programadas no coinciden con supabase/migrations/20261008000006_cron.sql' end
 union all
-select 'etapa 1: políticas de archivos exactas (evid_subir, evid_ver, evid_borrar)',
-       case when (select count(*) from pg_policies where schemaname = 'storage') = 3
+select 'etapa 1: políticas de archivos exactas (evidencias y, desde C7, comunidad)',
+       case when (select count(*) from pg_policies where schemaname = 'storage') = 6
              and (select string_agg(policyname || ' ' || cmd || ' ' || array_to_string(roles, ',') || ' '
                                     || coalesce(qual, '-') || ' ' || coalesce(with_check, '-'), '; ' order by policyname)
                     from pg_policies where schemaname = 'storage')
-                 = 'evid_borrar DELETE authenticated ((bucket_id = ''evidencias''::text) AND privado.foto_permitida(name, false)) -; '
+                 = 'comunidad_borrar DELETE authenticated ((bucket_id = ''comunidad''::text) AND privado.foto_comunidad_permitida(name, ''borrar''::text)) -; '
+                || 'comunidad_subir INSERT authenticated - ((bucket_id = ''comunidad''::text) AND privado.foto_comunidad_permitida(name, ''subir''::text)); '
+                || 'comunidad_ver SELECT authenticated ((bucket_id = ''comunidad''::text) AND privado.foto_comunidad_permitida(name, ''ver''::text)) -; '
+                || 'evid_borrar DELETE authenticated ((bucket_id = ''evidencias''::text) AND privado.foto_permitida(name, false)) -; '
                 || 'evid_subir INSERT authenticated - ((bucket_id = ''evidencias''::text) AND privado.foto_permitida(name, true)); '
                 || 'evid_ver SELECT authenticated ((bucket_id = ''evidencias''::text) AND privado.foto_permitida(name, false)) -'
-            then 'ok' else 'FALLA: las políticas de storage no coinciden con supabase/migrations/20261008000003_storage.sql' end
+            then 'ok' else 'FALLA: las políticas de storage no coinciden con 20261008000003_storage.sql y 20261112000000_comunidad_reacciones_fotos_grupos.sql' end
 union all
-select 'etapa 1: un solo bucket y es el de evidencias',
-       case when (select string_agg(id, ',') from storage.buckets) = 'evidencias' then 'ok'
+select 'etapa 1: buckets privados (evidencias y, desde C7, comunidad)',
+       case when (select string_agg(id || ':' || public::text, ',' order by id) from storage.buckets) = 'comunidad:false,evidencias:false' then 'ok'
             else 'FALLA: buckets ' || coalesce((select string_agg(id, ',') from storage.buckets), 'ninguno') end
 union all
 select 'etapa 1: disparador de cuentas nuevas activo',
