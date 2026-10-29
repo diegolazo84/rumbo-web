@@ -126,7 +126,7 @@ const FUNCIONES = {
     "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion", "cambiar_modulo", "indicadores",
     "registrar_pago", "devolucion_sugerida", "registrar_devolucion",
     "invitar_coach", "revocar_invitacion", "cambiar_coach", "programar_videollamada", "anotar_videollamada",
-    "moderar_publicacion", "guardar_grupo_comunidad", "propuestas_grupo_equipo", "responder_propuesta_grupo", "propuestas_desafio_equipo", "responder_propuesta_desafio", "guardar_desafio", "guardar_reconocimiento", "guardar_beneficio", "otorgar_beneficio", "aplicar_beneficio",
+    "moderar_publicacion", "guardar_grupo_comunidad", "propuestas_grupo_equipo", "responder_propuesta_grupo", "propuestas_desafio_equipo", "responder_propuesta_desafio", "guardar_desafio", "poner_foto_desafio", "guardar_reconocimiento", "guardar_beneficio", "otorgar_beneficio", "aplicar_beneficio",
     "ia_pedir_borrador", "ia_revisar", "guardar_ia_config", "ia_gasto",
     "invitar_especialista", "revisar_credencial", "decidir_especialista", "guardar_config_especialistas", "guardar_especialidad",
     "guardar_perfil_especialista", "agregar_credencial", "guardar_servicio_especialista", "enviar_perfil_a_revision",
@@ -138,7 +138,7 @@ const FUNCIONES = {
   "equipo-vacio": ["solapamientos", "carga_prevista", "bandeja_seguimiento", "ia_bandeja"],
 };
 // Funciones de privado que authenticated necesita porque las usan las políticas de RLS.
-const PRIVADO_EJECUTABLES = ["mi_especialista_id", "es_admin", "es_dueno", "es_coach", "gestiona", "puede_moderar", "foto_permitida", "foto_comunidad_permitida", "mi_participante_id"];
+const PRIVADO_EJECUTABLES = ["mi_especialista_id", "es_admin", "es_dueno", "es_coach", "gestiona", "puede_moderar", "foto_permitida", "foto_comunidad_permitida", "foto_desafio_permitida", "mi_participante_id"];
 // Del coach: las usa con sus participantes; con los de otro coach, «sin autorización».
 const DEL_COACH = ["publicar_programa", "nuevo_borrador", "revisar_evidencia", "solapamientos", "carga_prevista", "ver_postulacion",
   "programar_videollamada", "anotar_videollamada", "ia_pedir_borrador", "ia_revisar"];
@@ -1783,6 +1783,62 @@ paso("especialistas, trabajo: solo con vínculo y lo autorizado; reservas con co
   exigir(exp.ok && Number(ultima(exp)) >= 1, `la copia de mis datos no incluye mis propuestas de desafío: ${exp.error ?? ultima(exp)}`);
 }
 paso("desafíos C15: propuestas solo propias y con alias para el equipo; actividad solo propia con días cumplidos y completado; inscripción solo propia");
+
+// C16 · Foto por desafío: solo moderación con segundo factor la sube, pone, cambia y borra;
+// quienes participan en Comunidad ven solo la foto vigente de un desafío activo.
+{
+  const abrir = `reset role; update public.modulos set estado = 'habilitado' where clave = 'comunidad';
+    update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    update public.alias set reglas_comunidad_en = now(); set local role authenticated;`;
+  const D = "00000000-0000-0000-0000-0000000000d1";
+  const ruta = (n) => `${D}/00000000-0000-0000-0000-00000000f0${n}0.webp`;
+  const reclamosDe = (r) => `select set_config('request.jwt.claims', '${JSON.stringify({ sub: r.uid, role: "authenticated", aal: r.aal ?? "aal1" })}', true) \\g /dev/null\n`;
+  const subir = (n) => `insert into storage.objects (bucket_id, name) values ('desafios', '${ruta(n)}');`;
+  const subirSistema = (n) => `reset role; ${subir(n)} set local role authenticated;`;
+  for (const r of [ROLES.A, ROLES.X, ROLES.aal1]) {
+    const s = como(r, `${abrir} ${subir(1)}`);
+    exigir(!s.ok, `${r.nombre} subió una foto de desafío`);
+    const p = como(r, `${abrir} ${subirSistema(1)} select public.poner_foto_desafio('${D}', '${ruta(1)}')`);
+    exigir(!p.ok && /no_autorizado/.test(p.error), `${r.nombre} puso la foto de un desafío`);
+  }
+  const dueno = como(ROLES.aal2, `${abrir} ${subir(1)} select coalesce(public.poner_foto_desafio('${D}', '${ruta(1)}'), '-') \\g /dev/null
+    select foto_ruta from public.comunidad_desafios() where id = '${D}'`);
+  exigir(dueno.ok && ultima(dueno) === ruta(1), `el dueño con TOTP no pudo poner la foto: ${dueno.error ?? ultima(dueno)}`);
+  const modera = como(ROLES.X, `reset role; update public.equipo set puede_moderar = true where user_id = '${ROLES.X.uid}'; ${abrir} ${subir(1)}
+    select coalesce(public.poner_foto_desafio('${D}', '${ruta(1)}'), '-')`);
+  exigir(modera.ok && ultima(modera) === "-", `un coach con permiso de moderar no pudo poner la foto: ${modera.error ?? ultima(modera)}`);
+  const otraCarpeta = como(ROLES.aal2, `${abrir} insert into storage.objects (bucket_id, name) values ('desafios', '00000000-0000-0000-0000-000000000000/00000000-0000-0000-0000-00000000f010.webp')`);
+  exigir(!otraCarpeta.ok, "se subió una foto a la carpeta de un desafío que no existe");
+  const sinArchivo = como(ROLES.aal2, `${abrir} select public.poner_foto_desafio('${D}', '${ruta(2)}')`);
+  exigir(!sinArchivo.ok && /foto/.test(sinArchivo.error), "se puso como foto un archivo que no está subido");
+  const ajena = como(ROLES.aal2, `${abrir} ${subir(1)} reset role; insert into public.desafios (id, titulo, reglas, dias, inicio)
+    values ('00000000-0000-0000-0000-0000000000d2', 'Otro desafío de CI', 'Semilla de CI: otro desafío para probar fotos.', 7, current_date); set local role authenticated; select public.poner_foto_desafio('00000000-0000-0000-0000-0000000000d2', '${ruta(1)}')`);
+  exigir(!ajena.ok && /foto/.test(ajena.error), `se puso la foto de otro desafío: ${ajena.error}`);
+  const conFoto = `${abrir} reset role; ${subir(1)} ${subir(2)} update public.desafios set foto_ruta = '${ruta(1)}' where id = '${D}'; set local role authenticated;`;
+  const ve = como(ROLES.A, `${conFoto} select string_agg(name, ',' order by name) from storage.objects where bucket_id = 'desafios'`);
+  exigir(ve.ok && ultima(ve) === ruta(1), `quien participa no ve solo la foto vigente: ${ve.error ?? ultima(ve)}`);
+  const cerrada = como(ROLES.A, `${conFoto} reset role; update public.modulos set estado = 'planificado' where clave = 'comunidad'; set local role authenticated;
+    select count(*) from storage.objects where bucket_id = 'desafios'`);
+  exigir(cerrada.ok && ultima(cerrada) === "0", `con Comunidad cerrada se ven fotos de desafíos: ${cerrada.error ?? ultima(cerrada)}`);
+  const inactivo = como(ROLES.A, `${conFoto} reset role; update public.desafios set activo = false where id = '${D}'; set local role authenticated;
+    select count(*) from storage.objects where bucket_id = 'desafios'`);
+  exigir(inactivo.ok && ultima(inactivo) === "0", `se ve la foto de un desafío inactivo: ${inactivo.error ?? ultima(inactivo)}`);
+  const cambia = como(ROLES.A, `${conFoto} reset role; ${reclamosDe(ROLES.aal2)} set local role authenticated;
+    select public.poner_foto_desafio('${D}', '${ruta(2)}') \\g /dev/null
+    select set_config('storage.allow_delete_query', 'true', true) \\g /dev/null
+    delete from storage.objects where bucket_id = 'desafios' and name = '${ruta(1)}';
+    reset role; ${reclamosDe(ROLES.A)} set local role authenticated;
+    select string_agg(name, ',') from storage.objects where bucket_id = 'desafios'`);
+  exigir(cambia.ok && ultima(cambia) === ruta(2), `al cambiar la foto, la anterior sigue visible o la nueva no: ${cambia.error ?? ultima(cambia)}`);
+  const borraPersona = como(ROLES.A, `${conFoto} select set_config('storage.allow_delete_query', 'true', true) \\g /dev/null
+    delete from storage.objects where bucket_id = 'desafios' \\g /dev/null
+    reset role; select count(*) from storage.objects where bucket_id = 'desafios'`);
+  exigir(borraPersona.ok && ultima(borraPersona) === "2", `una persona borró fotos de desafíos: ${borraPersona.error ?? ultima(borraPersona)}`);
+  const quita = como(ROLES.aal2, `${conFoto} select public.poner_foto_desafio('${D}', null) \\g /dev/null
+    select coalesce(foto_ruta, 'sin foto') from public.comunidad_desafios() where id = '${D}'`);
+  exigir(quita.ok && ultima(quita) === "sin foto", `no se pudo quitar la foto: ${quita.error ?? ultima(quita)}`);
+}
+paso("fotos de desafíos C16: solo moderación con TOTP sube, pone, cambia y borra; se ve solo la foto vigente de un desafío activo con Comunidad abierta");
 
 paso("ranking: voluntario, solo con alias, por % de la semana; con menos de 3 no se muestra; quien sale deja de verlo");
 
