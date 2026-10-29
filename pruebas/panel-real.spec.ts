@@ -474,6 +474,57 @@ test("Hoy real: la cola por vencimiento, sin «Ejemplo»", async ({ page }) => {
   await sinViolaciones(page);
 });
 
+// Referencia de ChatGPT (21-oct-2026): «Mis participantes» con datos de la plataforma.
+test("mis participantes: filtros, progreso de la semana, estado, actividad y revisiones de hoy", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const llamadas = await simular(page, baseInicial(), { factores: VERIFICADO });
+  await page.goto("equipo/participantes/");
+  await hidratar(page);
+  await expect(page.locator("h1")).toHaveText("Mis participantes");
+  const filtros = page.getByRole("group", { name: "Filtrar participantes" });
+  await expect(filtros.getByRole("button", { name: /Todos/ })).toHaveText("Todos2");
+  await expect(filtros.getByRole("button", { name: /Revisión esta semana/ })).toHaveText("Revisión esta semana1");
+  await expect(filtros.getByRole("button", { name: /Necesita atención/ })).toHaveText("Necesita atención1");
+  await expect(filtros.getByRole("button", { name: /Sin registro/ })).toHaveText("Sin registro0");
+  const filas = page.locator(".pa-coach__tabla tbody tr");
+  await expect(filas).toHaveCount(2);
+  // Ana: semana 2 (12 al 18), 1 de 7 hechas; revisión hoy; ajuste sin responder y evidencia por revisar.
+  const ana = filas.filter({ hasText: "Ana" });
+  await expect(ana).toContainText("Plan: Con acompañamiento");
+  await expect(ana).toContainText("1 de 7");
+  await expect(ana).toContainText("Hoy");
+  await expect(ana.locator(".pa-estado")).toHaveText("Necesita apoyo");
+  await expect(ana).toContainText("ajuste sin responder · evidencia por revisar · no envió su registro semanal");
+  await expect(ana.getByRole("link", { name: "Ver a Ana" })).toHaveAttribute("href", /\/equipo\/participante\/\?id=p1$/);
+  // Bruno: empieza el 19 y su programa está en preparación.
+  const bruno = filas.filter({ hasText: "Bruno" });
+  await expect(bruno.locator(".pa-estado")).toHaveText("Programa en preparación");
+  await expect(bruno).toContainText("Sin acciones");
+  // Sin fotos ni nombres de ejemplo: iniciales.
+  await expect(page.locator(".pa-coach img")).toHaveCount(0);
+  await expect(ana.locator(".pa-coach__avatar")).toHaveText("A");
+  // Filtro y búsqueda.
+  await filtros.getByRole("button", { name: /Necesita atención/ }).click();
+  await expect(filas).toHaveCount(1);
+  await expect(filtros.getByRole("button", { name: /Necesita atención/ })).toHaveAttribute("aria-pressed", "true");
+  await filtros.getByRole("button", { name: /Todos/ }).click();
+  await page.getByLabel("Buscar participante por nombre").fill("bru");
+  await expect(filas).toHaveCount(1);
+  await expect(filas.first()).toContainText("Bruno");
+  // Actividad reciente: lo que hicieron, con su hora real (Chile).
+  const actividad = page.locator(".pa-coach__bloque").filter({ hasText: "Actividad reciente" }).locator("li");
+  await expect(actividad.nth(0)).toContainText("Ana envió una solicitud de ajuste");
+  await expect(actividad.nth(0)).toContainText("Ayer, 18:00");
+  await expect(actividad.nth(1)).toContainText("Ana completó una acción");
+  // Revisiones de hoy: la de Ana, con «Iniciar» a su revisión.
+  const deHoy = page.locator(".pa-coach__bloque").filter({ hasText: "Revisiones de hoy" }).locator("li");
+  await expect(deHoy).toHaveCount(1);
+  await expect(deHoy).toContainText("Revisión escrita de Ana");
+  await expect(deHoy.getByRole("link", { name: "Iniciar la revisión de Ana" })).toHaveAttribute("href", /\/equipo\/revision\/\?id=p1$/);
+  expect(llamadas.some((l) => l.tipo === "tabla" && l.nombre === "ocurrencias")).toBe(true);
+  await sinViolaciones(page);
+});
+
 test("ficha de solicitud: abrirla la pasa a «en revisión»; acuerdo y enlace privado", async ({ page }) => {
   await preparar(page, "aal2", VERIFICADO);
   const base = baseInicial();
