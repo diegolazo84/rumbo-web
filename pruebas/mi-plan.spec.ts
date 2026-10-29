@@ -97,3 +97,21 @@ test("accesible, sin desborde y en móvil el orden pone primero lo de hoy", asyn
   // La rueda del mouse no existe en WebKit móvil: la barra se revisa en Chromium móvil.
   if (test.info().project.name !== "iphone") await revisarBarra(page);
 });
+
+test("sin desborde horizontal a 320, 375, 390 y 430 px (Semana y Día)", async ({ page }) => {
+  await abrir(page);
+  for (const ancho of [320, 375, 390, 430]) {
+    await page.setViewportSize({ width: ancho, height: 800 });
+    for (const vista of ["Semana", "Día"]) {
+      await page.getByRole("radio", { name: vista }).check();
+      const d = await page.evaluate(() => {
+        const w = window.innerWidth;
+        const fuera = [...document.querySelectorAll("body *")]
+          .filter((e) => e.getBoundingClientRect().right > w + 0.5)
+          .map((e) => `${e.tagName.toLowerCase()}.${[...e.classList].join(".")} → ${Math.round(e.getBoundingClientRect().right)}`);
+        return { exceso: document.documentElement.scrollWidth - w, fuera: fuera.slice(0, 20) };
+      });
+      expect(d.exceso, `${ancho} px · ${vista}\n${d.fuera.join("\n")}`).toBeLessThanOrEqual(0);
+    }
+  }
+});
