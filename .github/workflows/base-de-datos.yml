@@ -176,7 +176,7 @@ jobs:
 
       # C21: borrado automático de fotos privadas con la base, Storage y la lógica reales de la
       # Edge Function (la clave de servicio es la de esta base local y efímera). Después, la Edge
-      # Function misma: sin la llave interna responde 401; con ella, corre y deja la ejecución.
+      # Function misma: sin una firma válida responde 401; con ella, corre y deja la ejecución.
       - name: Borrado automático de fotos
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
@@ -185,22 +185,39 @@ jobs:
           eval "$(cd "$RUNNER_TEMP/sb" && supabase status -o env)"
           export API_URL="${API_URL:-http://127.0.0.1:54321}"
           export SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:-${SECRET_KEY:-}}"
+          export ANON_KEY="${ANON_KEY:-${PUBLISHABLE_KEY:-}}"
           node pruebas/base/depuracion.mjs
+          # Dos veces: la prueba deja la base como la encontró.
+          node pruebas/base/depuracion.mjs > /dev/null
 
           FN="$API_URL/functions/v1/depurar-fotos"
           codigo() { curl -sS -o respuesta.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' "$@" -d '{"origen":"manual"}' "$FN"; }
+          firma() { psql "$PGURL" -At -c "select privado.depuracion_firma($1, '$2')"; }
           # La función tarda en arrancar la primera vez: se espera a que responda algo distinto de 5xx.
           for i in $(seq 1 30); do c=$(codigo || true); case "$c" in 5*|000) sleep 3 ;; *) break ;; esac; done
-          [ "$(codigo)" = 401 ] || { cat respuesta.json; echo "::error::sin llave la función no respondió 401"; exit 1; }
-          [ "$(codigo -H "x-rumbo-token: $(printf 'f%.0s' $(seq 1 64))")" = 401 ] || { echo "::error::con una llave falsa no respondió 401"; exit 1; }
+          [ "$(codigo)" = 401 ] || { cat respuesta.json; echo "::error::sin firma la función no respondió 401"; exit 1; }
+          [ ! -s respuesta.json ] || { echo "::error::la respuesta 401 trae contenido"; exit 1; }
+          TS=$(date +%s)
+          [ "$(codigo -H "x-rumbo-hora: $TS" -H "x-rumbo-firma: $(printf 'f%.0s' $(seq 1 64))")" = 401 ] || { echo "::error::con una firma falsa no respondió 401"; exit 1; }
+          [ "$(codigo -H "x-rumbo-hora: $TS" -H "x-rumbo-firma: $(firma "$TS" programada)")" = 401 ] || { echo "::error::una firma de otro origen no respondió 401"; exit 1; }
+          VIEJA=$((TS - 600))
+          [ "$(codigo -H "x-rumbo-hora: $VIEJA" -H "x-rumbo-firma: $(firma "$VIEJA" manual)")" = 401 ] || { echo "::error::una firma vencida no respondió 401"; exit 1; }
+          LLAVE=$(psql "$PGURL" -At -c "select decrypted_secret from vault.decrypted_secrets where name = 'depurar_fotos_llave'")
+          [ "$(codigo -H "x-rumbo-hora: $TS" -H "x-rumbo-firma: $LLAVE")" = 401 ] || { echo "::error::la llave misma no debe servir como firma"; exit 1; }
           [ "$(codigo -X GET)" = 405 ] || { echo "::error::GET no respondió 405"; exit 1; }
-          TOKEN=$(psql "$PGURL" -At -c "select decrypted_secret from vault.decrypted_secrets where name = 'depurar_fotos_token'")
-          [ "$(codigo -H "x-rumbo-token: $TOKEN")" = 200 ] || { cat respuesta.json; echo "::error::con la llave interna la función no corrió"; exit 1; }
+          FIRMA=$(firma "$TS" manual)
+          [ "$(codigo -H "x-rumbo-hora: $TS" -H "x-rumbo-firma: $FIRMA")" = 200 ] || { cat respuesta.json; echo "::error::con una firma válida la función no corrió"; exit 1; }
           jq -e '.estado == "ok" and .origen == "manual"' respuesta.json || { cat respuesta.json; echo "::error::la función no cerró bien la ejecución"; exit 1; }
+          ! grep -qF "$LLAVE" respuesta.json || { echo "::error::la respuesta contiene la llave"; exit 1; }
+          [ "$(codigo -H "x-rumbo-hora: $TS" -H "x-rumbo-firma: $FIRMA")" = 401 ] || { echo "::error::la misma firma sirvió dos veces"; exit 1; }
           [ "$(psql "$PGURL" -At -c "select count(*) from privado.depuracion_fotos where origen = 'manual' and estado = 'ok'")" = 1 ] \
             || { echo "::error::la ejecución de la función no quedó registrada"; exit 1; }
-          psql "$PGURL" -q -c "delete from privado.depuracion_fotos"
-          echo "Edge Function: 401 sin llave o con llave falsa, 405 con GET y ejecución completa con la llave interna"
+          # Lo que dejó la función en los registros del contenedor no debe traer la llave ni la firma.
+          docker logs "$(docker ps --format '{{.Names}}' | grep edge_runtime | head -1)" > funcion.log 2>&1 || true
+          ! grep -qF "$LLAVE" funcion.log || { echo "::error::la llave aparece en los registros de la función"; exit 1; }
+          ! grep -qF "$FIRMA" funcion.log || { echo "::error::la firma aparece en los registros de la función"; exit 1; }
+          psql "$PGURL" -q -c "delete from privado.depuracion_fotos; delete from privado.depuracion_firmas"
+          echo "Edge Function: 401 sin firma, con firma falsa, de otro origen, vencida, repetida o con la llave; 405 con GET; ejecución completa con firma válida; sin llave ni firma en registros"
 
       # La matriz debe fallar ante 6 errores típicos de permisos hechos a mano, y volver a pasar
       # al deshacerlos. Solo en la base local de prueba.
