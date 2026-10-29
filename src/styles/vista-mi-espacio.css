@@ -46,27 +46,141 @@
 /* ========================================================================
    Hoy (4.4)
    ======================================================================== */
-.me-hoy { row-gap: var(--e-6); }
-.me-hoy__cabeza { display: grid; gap: var(--e-5); }
-.me-hoy__cuerpo, .me-hoy__lado { display: grid; gap: var(--e-6); align-content: start; min-inline-size: 0; }
-/* Escritorio: encabezado y acciones en 7 columnas; foco, resumen y próxima revisión en 5. */
+.me-hoy { row-gap: var(--e-3); }
+.me-hoy__cuerpo, .me-hoy__lado { display: grid; gap: var(--e-4); align-content: start; min-inline-size: 0; }
+/* Escritorio: bienvenida a lo ancho; meta principal y acciones en 7 columnas; «Tu acompañamiento»
+   (con el foco) y el avance en 5. En móvil el orden es el del documento: bienvenida, meta,
+   foco, acciones, acompañamiento, avance y días anteriores. */
 @media (min-width: 1024px) {
   .me-hoy {
     grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
     grid-template-areas:
-      "cabeza foco"
-      "cabeza lado"
-      "cuerpo lado"
-      "pie    lado";
+      "cabeza     cabeza"
+      "meta       lado"
+      "cuerpo     lado"
+      "anteriores lado"
+      "pie        lado";
     column-gap: var(--e-6);
+    row-gap: var(--e-5);
     align-items: start;
   }
   .me-hoy__cabeza { grid-area: cabeza; }
-  .me-hoy .me-foco { grid-area: foco; }
+  .me-hoy .me-meta-principal { grid-area: meta; }
+  .me-hoy > .me-foco--franja { display: none; }
   .me-hoy__cuerpo { grid-area: cuerpo; }
   .me-hoy__lado { grid-area: lado; }
+  .me-hoy__anteriores { grid-area: anteriores; }
   .me-hoy__pie { grid-area: pie; }
 }
+/* En móvil el foco va en la franja; en escritorio, dentro de la tarjeta. */
+@media (max-width: 1023.98px) { .me-acomp-hoy .me-foco--tarjeta { display: none; } }
+
+/* Bienvenida (referencia visual): crema, de borde a borde, con el paisaje a la derecha. Baja a
+   propósito para que la primera acción se vea sin desplazar. El texto nunca va sobre el dibujo. */
+.me-bienvenida {
+  position: relative;
+  display: grid;
+  margin-inline: calc(-1 * var(--gutter));
+  margin-block-start: calc(-1 * var(--e-5));
+  padding: var(--e-4) var(--gutter) var(--e-6);
+  overflow: hidden;
+  background: var(--crema);
+}
+.me-bienvenida__ilus { position: absolute; inset-block-end: 0; inset-inline-end: 0; inline-size: 46%; max-inline-size: 240px; block-size: auto; }
+.me-bienvenida__texto { position: relative; display: grid; gap: 4px; }
+.me-bienvenida__saludo, .me-bienvenida__frase { max-inline-size: 68%; }
+.me-bienvenida__ojo { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font: 600 var(--t-micro)/1.3 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--terracota-texto); }
+.me-bienvenida__h1 { margin: 0; font: inherit; letter-spacing: inherit; color: var(--bosque); }
+.me-bienvenida__ojo .etiqueta { letter-spacing: 0; text-transform: none; }
+.me-bienvenida__saludo { font: 600 var(--t-saludo)/1.08 var(--serif); letter-spacing: -0.015em; color: var(--bosque); }
+.me-bienvenida__frase { font-size: var(--t-s); line-height: 1.4; color: var(--tinta-suave); }
+@media (min-width: 1024px) {
+  .me-bienvenida { margin-inline: 0; margin-block-start: 0; padding: var(--e-6) var(--e-6) var(--e-7); border-radius: var(--r-l); }
+  .me-bienvenida__ilus { inline-size: auto; block-size: 100%; max-inline-size: 48%; }
+  .me-bienvenida__texto { gap: 6px; }
+  .me-bienvenida__saludo, .me-bienvenida__frase { max-inline-size: 56%; }
+  .me-bienvenida__frase { font-size: var(--t-base); }
+}
+
+/* Meta principal: ¿qué quiero conseguir? Sube sobre el borde de la bienvenida. */
+.me-meta-principal {
+  position: relative;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 12px;
+  margin-block-start: calc(-1 * var(--e-5));
+  padding: 12px;
+  border-radius: var(--r-m);
+  background: var(--superficie);
+  box-shadow: var(--sombra-1);
+  color: var(--tinta);
+  text-decoration: none;
+}
+.me-meta-principal__icono { display: grid; place-items: center; inline-size: 52px; block-size: 52px; border-radius: var(--r-m); background: var(--cat-fondo); color: var(--cat-texto); }
+.me-meta-principal__texto { display: grid; gap: 2px; min-inline-size: 0; }
+.me-meta-principal__rotulo { font: 600 var(--t-micro)/1.3 var(--sans); color: var(--tinta-suave); }
+.me-meta-principal__titulo { font: 600 var(--t-h3)/1.2 var(--serif); letter-spacing: -0.005em; }
+.me-meta-principal__hitos, .me-meta-principal__otras { display: flex; align-items: center; gap: 8px; font: 600 var(--t-micro)/1.3 var(--sans); color: var(--cat-texto); }
+.me-meta-principal__otras { color: var(--tinta-suave); }
+.me-meta-principal__puntos { display: inline-flex; gap: 4px; }
+.me-meta-principal__puntos > span { inline-size: 8px; block-size: 8px; border: 1.5px solid var(--cat); border-radius: var(--r-full); }
+.me-meta-principal__puntos > .es-logrado { background: var(--cat); }
+.me-meta-principal__flecha { color: var(--tinta-suave); }
+@media (hover: hover) { .me-meta-principal:hover .me-meta-principal__titulo { text-decoration: underline; text-underline-offset: 3px; } }
+@media (min-width: 1024px) { .me-meta-principal { margin-block-start: calc(-1 * var(--e-7)); } }
+
+/* «Tus acciones de hoy» con el anillo. */
+.me-hoy__acciones-cabeza { display: flex; align-items: center; justify-content: space-between; gap: var(--e-4); }
+.me-hoy__acciones-cabeza .me-h2 { font-size: var(--t-h3); }
+.me-hoy__acciones-cabeza .me-bloque__bajada { font-size: var(--t-xs); }
+.me-hoy .anillo { inline-size: 60px; block-size: 60px; }
+.me-hoy-vacio { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; gap: var(--e-4); padding: var(--e-4); border-radius: var(--r-m); background: var(--superficie); box-shadow: var(--sombra-1); }
+.me-hoy-vacio__ilus { inline-size: 88px; block-size: 88px; }
+.me-hoy-vacio > div { display: grid; gap: var(--e-2); }
+
+/* Avance compacto con la hoja. */
+.me-resumen__icono { display: grid; place-items: center; inline-size: 40px; block-size: 40px; border-radius: var(--r-s); background: var(--salvia-suave); color: var(--bosque); }
+.me-resumen__fila .etiqueta { margin-inline-end: auto; }
+
+/* Tarjeta «Tu acompañamiento». */
+.me-acomp-hoy { display: grid; gap: 0; padding: 0; overflow: hidden; border: 0; box-shadow: var(--sombra-1); font-size: var(--t-s); line-height: 1.55; }
+.me-acomp-hoy__cabeza { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--salvia-suave); }
+.me-acomp-hoy__quien { font-size: var(--t-xs); color: var(--tinta-suave); }
+.me-acomp-hoy__cuerpo { display: grid; gap: var(--e-3); padding: 16px; }
+.me-acomp-hoy__ilus { inline-size: 100%; block-size: 56px; }
+@media (min-width: 1024px) { .me-acomp-hoy__cabeza { padding: 16px 20px; } .me-acomp-hoy__cuerpo { padding: 20px; } .me-acomp-hoy__ilus { block-size: 80px; } }
+.me-acomp-hoy__botones { display: flex; flex-wrap: wrap; gap: 8px; }
+.me-acomp-hoy__botones .boton { gap: 8px; }
+.me-acomp-hoy .me-novedades { margin-block-start: var(--e-1); }
+
+/* Hoja «Me está costando»: tres opciones grandes y la nota de plazos. */
+.me-costando__accion { font-weight: 600; color: var(--tinta); }
+.me-costando__bajada { color: var(--tinta-suave); font-size: var(--t-s); }
+.me-costando { list-style: none; display: grid; margin-block: var(--e-3); }
+.me-costando > li + li { border-block-start: 1px solid var(--linea); }
+.me-costando__opcion {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  inline-size: 100%;
+  min-block-size: 64px;
+  padding: 12px 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+.me-costando__texto { display: grid; gap: 2px; }
+.me-costando__titulo { font-weight: 600; color: var(--tinta); }
+.me-costando__detalle { font-size: var(--t-xs); line-height: 1.45; color: var(--tinta-suave); }
+@media (hover: hover) { .me-costando__opcion:hover .me-costando__titulo { text-decoration: underline; text-underline-offset: 3px; } }
+.me-costando__nota { font-size: var(--t-xs); line-height: 1.5; }
+.me-hoy__costando-accion { padding: 0 var(--e-4) var(--e-4); }
 
 /* Novedades: avisos info compactos con enlace. */
 .me-novedades { display: grid; gap: var(--e-2); }
@@ -97,16 +211,30 @@
   background: var(--superficie);
 }
 .me-foco__cuerpo { display: grid; gap: 6px; padding-block-start: 2px; }
+/* Etapa 2A: franja compacta (mosaico más chico, menos aire). */
+/* Referencia visual: la franja es el acceso al acompañamiento (salvia, avatar y flecha). */
+.me-foco--franja { grid-template-columns: 40px minmax(0, 1fr) 20px; gap: 12px; align-items: center; padding: 10px 12px; border: 0; background: var(--salvia-suave); color: var(--tinta); text-decoration: none; }
+.me-foco--franja .me-foco__cuerpo { gap: 0; padding: 0; }
+.me-foco--franja .me-rotulo { color: var(--bosque); }
+.me-foco--franja .etiqueta { vertical-align: 1px; }
+.me-foco__cuerpo > .me-rotulo, .me-foco__cuerpo > .voz { display: block; }
+.me-foco__flecha { color: var(--bosque); }
+@media (hover: hover) { a.me-foco--franja:hover .voz { text-decoration: underline; text-underline-offset: 3px; } }
+.me-foco--tarjeta { display: grid; grid-template-columns: minmax(0, 1fr); padding: 0; border: 0; background: none; }
+.me-foco--tarjeta .voz { font-size: var(--t-voz); }
 .me-foco .voz { color: var(--tinta); }
 
 /* Grupos de acciones: rótulo como la leyenda de un día del calendario. */
 .me-grupo { display: grid; gap: var(--e-2); min-inline-size: 0; }
 .me-grupo + .me-grupo { margin-block-start: var(--e-3); }
 .me-grupo__titulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font: 600 var(--t-micro)/1.3 var(--sans);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--tinta-suave);
+  color: var(--terracota-texto);
 }
 .me-filas { list-style: none; display: grid; gap: 8px; min-inline-size: 0; }
 .me-filas > li { min-inline-size: 0; }
@@ -363,7 +491,7 @@
 .me-marcaste__lista { list-style: none; display: grid; gap: 8px; }
 .me-marcaste__lista li {
   display: grid;
-  gap: 2px;
+  gap: 6px;
   padding: 10px 14px;
   border-radius: var(--r-s);
   background: var(--cat-fondo);
@@ -371,11 +499,19 @@
 }
 .me-marcaste__meta { font: 600 var(--t-s)/1.35 var(--sans); }
 .me-marcaste__dato { font-size: var(--t-xs); font-weight: 500; font-variant-numeric: tabular-nums; color: var(--tinta-suave); }
-.me-respuesta { gap: var(--e-4); }
-.me-respuesta__cabeza { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: center; }
-.me-respuesta__rotulo { font-family: var(--sans); }
-.me-respuesta__parte { display: grid; gap: 4px; }
-.me-respuesta__parte h3 { font: 600 var(--t-s)/1.4 var(--sans); letter-spacing: 0; }
+/* «Así fue tu semana» (textos exactos de Diego). */
+.me-semana__cabeza { display: grid; gap: 2px; }
+.me-semana__titulo { font: 600 var(--t-h3)/1.2 var(--serif); color: var(--bosque); }
+.me-semana__subtitulo { font: 600 var(--t-xs)/1.3 var(--sans); color: var(--terracota-texto); }
+.me-semana__h3 { margin: 0; font: 600 var(--t-base)/1.3 var(--sans); color: var(--tinta); }
+.me-semana__sin-revision { padding: var(--e-4) var(--e-5); border-radius: var(--r-m); background: var(--papel-hondo); color: var(--tinta-suave); }
+.me-vimos { gap: var(--e-4); }
+.me-vimos__cabeza { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: center; }
+.me-vimos__cuerpo { display: grid; gap: var(--e-4); }
+.me-vimos__parte { display: grid; gap: 4px; }
+.me-vimos__parte h4 { font: 600 var(--t-s)/1.4 var(--sans); color: var(--terracota-texto); }
+.me-vimos__parte p { font-size: var(--t-s); line-height: 1.55; }
+.me-vimos__cuerpo.es-resumen .me-vimos__parte p { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
 .me-semana__principal { display: grid; gap: var(--e-5); min-inline-size: 0; }
 
 /* ========================================================================
@@ -550,7 +686,6 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 .me-titulo-seccion__ojo { font: 600 var(--t-micro)/1.2 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--terracota-texto); }
 .me-titulo-seccion__bajada { max-inline-size: var(--medida); font-size: var(--t-base); line-height: 1.55; color: var(--tinta-suave); }
 .me-titulo-seccion__bajada > * + * { margin-block-start: var(--e-2); }
-.me-acomp__intro { color: var(--tinta); font-weight: 500; }
 
 /* Pestañas de Mi plan: subrayado (distinto del control segmentado Día · Semana · Mes). */
 .me-pestanas ul { display: flex; gap: var(--e-5); list-style: none; border-block-end: 1px solid var(--linea); }
@@ -614,18 +749,148 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 .me-comunidad__privacidad .icono { margin-block-start: 2px; }
 
 /* Mi acompañamiento ---------------------------------------------------------------------- */
-.me-acomp__resumen { display: grid; gap: var(--e-4); }
-@media (min-width: 720px) { .me-acomp__resumen { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.me-acomp__tarjeta { display: grid; gap: var(--e-3); align-content: start; padding: var(--e-5); border-radius: var(--r-m); }
-.me-acomp__tarjeta.es-destacada { border-color: var(--bosque); background: var(--niebla); }
-.me-acomp__tarjeta.es-destacada .icono-mosaico { background: var(--superficie); }
-.me-acomp__tarjeta-cabeza { display: flex; align-items: center; gap: 12px; }
-.me-acomp__tarjeta-titulo { font: 600 var(--t-base)/1.3 var(--sans); color: var(--tinta); }
-.me-acomp__dato { font: 600 var(--t-h3)/1.25 var(--serif); color: var(--bosque); }
-.me-acomp__plan { font: 600 var(--t-xs)/1.3 var(--sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--terracota-texto); }
-.me-acomp__acuerdo { display: grid; gap: var(--e-1); }
-.me-acomp__cita { color: var(--tinta); }
+/* Referencia de ChatGPT (21-oct-2026): portada con paisaje y título encima, tu coach con su nota
+   escrita a mano, cuatro acciones (la primera en bosque), esta semana con los siete días y la
+   próxima revisión al lado, y el historial. En móvil, lo mismo apilado y las acciones en 2 × 2. */
+.mano { font-family: "Caveat Variable", "Segoe Print", "Bradley Hand", cursive; font-weight: 500; }
+.me-acomp { gap: var(--e-5); }
+.me-acomp > .etiqueta { justify-self: start; }
+
+/* Portada */
+.me-acomp-portada {
+  position: relative;
+  display: grid;
+  align-content: end;
+  gap: var(--e-3);
+  min-block-size: 260px;
+  margin-inline: calc(-1 * var(--gutter));
+  margin-block-start: calc(-1 * var(--e-5));
+  padding: var(--e-7) var(--gutter) var(--e-5);
+  overflow: hidden;
+  isolation: isolate;
+  color: var(--sobre-oscuro);
+}
+.me-acomp-portada__fondo { position: absolute; inset: 0; z-index: -2; inline-size: 100%; block-size: 100%; }
+.me-acomp-portada::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgb(22 54 40 / 0) 30%, rgb(22 54 40 / 0.55) 100%); }
+.me-acomp-portada__texto { display: grid; gap: var(--e-2); }
+.me-acomp-portada__h1 { margin: 0; font: 600 var(--t-saludo)/1.05 var(--serif); letter-spacing: -0.015em; color: var(--superficie); text-shadow: 0 1px 12px rgb(22 54 40 / 0.35); }
+.me-acomp-portada__bajada { max-inline-size: 34ch; font-size: var(--t-base); line-height: 1.4; color: var(--superficie); text-shadow: 0 1px 8px rgb(22 54 40 / 0.45); }
+.me-acomp-portada__mano { display: none; }
+.me-acomp-portada__boton { justify-self: start; gap: 8px; background: var(--bosque); box-shadow: var(--sombra-2); }
+@media (min-width: 1024px) {
+  .me-acomp-portada {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: ". boton" "texto mano";
+    align-content: space-between;
+    align-items: end;
+    min-block-size: 300px;
+    margin: 0;
+    padding: var(--e-5) var(--e-6) var(--e-6);
+    border-radius: var(--r-l);
+  }
+  .me-acomp-portada__texto { grid-area: texto; }
+  .me-acomp-portada__boton { grid-area: boton; align-self: start; justify-self: end; }
+  .me-acomp-portada__mano { grid-area: mano; display: block; max-inline-size: 11ch; margin: 0 clamp(120px, 15vw, 200px) var(--e-4) 0; font-size: var(--t-saludo); line-height: 1.05; color: var(--superficie); transform: rotate(-6deg); text-shadow: 0 1px 8px rgb(22 54 40 / 0.4); }
+}
+
+/* Tu coach */
+.me-coach { display: grid; gap: var(--e-5); padding: var(--e-5); border-radius: var(--r-l); background: var(--crema); box-shadow: var(--sombra-1); }
+.me-coach__persona { display: grid; grid-template-columns: 80px minmax(0, 1fr); align-items: start; gap: var(--e-4); }
+.me-coach__avatar { display: grid; place-items: center; inline-size: 80px; block-size: 80px; border-radius: var(--r-full); background: var(--bosque); color: var(--sobre-oscuro); border: 4px solid var(--superficie); box-shadow: var(--sombra-1); }
+.me-coach__avatar--letras { background: var(--salvia-suave); color: var(--bosque); font: 600 var(--t-h3)/1 var(--serif); }
+.me-coach__quien { display: grid; gap: 2px; }
+.me-coach__rotulo-coach { font-size: var(--t-xs); color: var(--tinta-suave); }
+.me-coach__titulo { font: 600 var(--t-h3)/1.15 var(--serif); color: var(--bosque); }
+.me-coach__presentacion { margin-block-start: var(--e-1); max-inline-size: 44ch; font-size: var(--t-xs); line-height: 1.5; color: var(--tinta-suave); }
+.me-coach__mensaje { display: grid; gap: var(--e-2); margin: 0; padding: var(--e-4) var(--e-5); border-radius: var(--r-s); background: var(--superficie); box-shadow: var(--sombra-2); transform: rotate(-1deg); }
+.me-coach__rotulo { font: 600 var(--t-micro)/1.3 var(--sans); color: var(--terracota-texto); }
+.me-coach__cita { margin: 0; font-size: var(--t-h3); line-height: 1.25; color: var(--bosque); }
+.me-coach__pie { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 10px; font-size: var(--t-micro); color: var(--tinta-suave); }
+.me-coach__firma { margin-inline-end: auto; font-weight: 600; color: var(--tinta); }
+.me-coach__corazon { color: var(--terracota); fill: var(--terracota-suave); }
+@media (min-width: 1024px) {
+  .me-coach { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: var(--e-6); padding: var(--e-6); }
+  .me-coach__mensaje { padding: var(--e-5) var(--e-6); }
+}
+
+/* Cuatro acciones */
+.me-acomp-acciones ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--e-3); margin: 0; padding: 0; list-style: none; }
+@media (min-width: 1024px) { .me-acomp-acciones ul { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--e-4); } }
+.me-acomp-accion {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 4px;
+  inline-size: 100%;
+  block-size: 100%;
+  min-block-size: 132px;
+  padding: var(--e-4);
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  background: var(--superficie);
+  color: var(--tinta-suave);
+  font: inherit;
+  font-size: var(--t-xs);
+  line-height: 1.4;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s var(--curva), box-shadow 0.15s var(--curva);
+}
+.me-acomp-accion__icono { margin-block-end: var(--e-3); color: var(--bosque); }
+.me-acomp-accion__titulo { font: 600 var(--t-base)/1.25 var(--serif); color: var(--bosque); }
+.me-acomp-accion--destacada { border-color: var(--bosque); background: var(--bosque); color: var(--sobre-oscuro-suave); }
+.me-acomp-accion--destacada .me-acomp-accion__icono, .me-acomp-accion--destacada .me-acomp-accion__titulo { color: var(--sobre-oscuro); }
+@media (hover: hover) {
+  .me-acomp-accion:hover { border-color: var(--linea-fuerte); box-shadow: var(--sombra-1); }
+  .me-acomp-accion--destacada:hover { background: var(--bosque-hondo); }
+}
+
+/* Esta semana + próxima revisión */
+.me-acomp__fila { display: grid; gap: var(--e-4); }
+@media (min-width: 1024px) { .me-acomp__fila { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); align-items: stretch; gap: var(--e-4); } }
+.me-acomp-semana { display: grid; align-content: space-between; gap: var(--e-4); padding: var(--e-5); border-radius: var(--r-l); background: var(--superficie); box-shadow: var(--sombra-1); }
+.me-acomp-semana__cabeza { display: grid; gap: var(--e-3); }
+@media (min-width: 600px) { .me-acomp-semana__cabeza { grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: var(--e-6); } }
+.me-acomp-semana__titulo { font: 600 var(--t-h3)/1.2 var(--serif); color: var(--bosque); }
+.me-acomp-semana__rango { font-size: var(--t-xs); color: var(--tinta-suave); }
+.me-acomp-semana__avance { display: grid; gap: 8px; font-size: var(--t-xs); color: var(--tinta-suave); }
+.me-acomp-semana__barra { display: block; block-size: 8px; border-radius: var(--r-full); background: var(--niebla); overflow: hidden; }
+.me-acomp-semana__barra > span { display: block; block-size: 100%; border-radius: inherit; background: var(--proyecto); }
+.me-acomp-semana__dias { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin: 0; padding: 0; list-style: none; }
+.me-acomp-dia { display: grid; justify-items: center; gap: 4px; padding-block: 8px; border-radius: var(--r-s); font-size: var(--t-micro); color: var(--tinta-suave); }
+.me-acomp-dia[aria-current="date"] { background: var(--crema); outline: 1px solid var(--linea); outline-offset: -1px; }
+.me-acomp-dia__circulo { display: grid; place-items: center; inline-size: 32px; block-size: 32px; border-radius: var(--r-full); border: 2px solid var(--linea-fuerte); background: var(--superficie); color: var(--sobre-categoria); }
+.me-acomp-dia--completo .me-acomp-dia__circulo { border-color: var(--bosque); background: var(--bosque); }
+.me-acomp-dia--parcial .me-acomp-dia__circulo { border-color: var(--bosque); background: linear-gradient(90deg, var(--niebla) 50%, var(--superficie) 50%); }
+.me-acomp-dia--futuro .me-acomp-dia__circulo, .me-acomp-dia--sin .me-acomp-dia__circulo { border-style: dashed; border-color: var(--linea); background: var(--papel); }
+.me-acomp-dia__nombre { font-weight: 600; color: var(--tinta); }
+.me-acomp-semana__plan { justify-self: end; }
+
+.me-proxima { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: start; gap: var(--e-3); padding: var(--e-5); border-radius: var(--r-l); background: var(--papel-hondo); scroll-margin-block-start: calc(var(--cabecera-alto) + var(--e-4)); }
+.me-proxima__icono { display: grid; place-items: center; inline-size: 44px; block-size: 44px; border-radius: var(--r-full); background: var(--superficie); color: var(--bosque); }
+.me-proxima__texto { display: grid; gap: 2px; font-size: var(--t-xs); line-height: 1.45; color: var(--tinta-suave); }
+.me-proxima__titulo { font: 600 var(--t-s)/1.3 var(--sans); color: var(--tinta); }
+.me-proxima__fecha { font: 600 var(--t-h3)/1.25 var(--serif); color: var(--bosque); }
+.me-proxima__modalidad { margin-block-end: var(--e-2); font-weight: 600; color: var(--tinta); }
+.me-proxima__botones { display: flex; flex-wrap: wrap; gap: 8px; margin-block-start: var(--e-3); }
+.me-proxima__botones .boton { gap: 8px; }
+.me-proxima .microcopia { margin-block-start: var(--e-2); }
+
+/* Historial */
+.me-acomp-historial { display: grid; gap: var(--e-3); }
+.me-acomp-historial__titulo { font: 600 var(--t-h3)/1.2 var(--serif); color: var(--bosque); }
+.me-acomp-historial__lista { display: grid; gap: var(--e-3); margin: 0; padding: 0; list-style: none; }
+@media (min-width: 1024px) { .me-acomp-historial__lista { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.me-acomp-historial__item { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: start; gap: var(--e-3); padding: var(--e-4); border-radius: var(--r-m); background: var(--superficie); box-shadow: var(--sombra-1); }
+.me-acomp-historial__icono { display: grid; place-items: center; inline-size: 40px; block-size: 40px; border-radius: var(--r-full); background: var(--salvia-suave); color: var(--bosque); }
+.me-acomp-historial__texto { display: grid; gap: 2px; font-size: var(--t-s); line-height: 1.45; color: var(--tinta); }
+.me-acomp-historial__tipo { font-weight: 600; }
+.me-acomp-historial__estado { margin-block-end: var(--e-1); font-size: var(--t-xs); color: var(--tinta-suave); }
+
+.me-acomp__cierre { justify-self: center; max-inline-size: 32ch; text-align: center; color: var(--bosque); }
 .me-acomp__semanas { scroll-margin-block-start: calc(var(--cabecera-alto) + var(--e-4)); }
+#tu-registro { scroll-margin-block-start: calc(var(--cabecera-alto) + var(--e-4)); }
 
 /* Comunidad y «Lo que viene en Rumbo» ------------------------------------------------------ */
 .me-lqv { display: grid; gap: var(--e-4); list-style: none; }
@@ -633,3 +898,18 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 .me-lqv__item { display: grid; gap: var(--e-3); align-content: start; justify-items: start; padding: var(--e-5); border-radius: var(--r-m); color: var(--tinta-suave); }
 .me-lqv__cabeza { display: flex; align-items: center; gap: 10px; color: var(--tinta-suave); }
 .me-lqv__titulo { font: 600 var(--t-base)/1.3 var(--sans); color: var(--tinta); }
+.me-anteriores .me-bloque__cabeza > .boton { justify-self: start; }
+
+/* Teléfonos bajos (≤ 700 px de alto, p. ej. 375 × 667): todo un poco más junto para que la
+   primera acción asome sin desplazar. */
+@media (max-width: 1023.98px) and (max-height: 700px) {
+  .me-bienvenida { padding-block: var(--e-3) var(--e-5); }
+  .me-bienvenida__saludo { font-size: var(--t-h3); }
+  .me-meta-principal { grid-template-columns: 44px minmax(0, 1fr) 20px; padding: 10px 12px; }
+  .me-meta-principal__icono { inline-size: 44px; block-size: 44px; }
+  .me-foco--franja { padding-block: 8px; }
+  .me-hoy .anillo { inline-size: 48px; block-size: 48px; }
+}
+
+/* «Nuevo» en el foco: se distingue de lo ya visto (desaparece al abrir la revisión). */
+.etiqueta.me-nuevo { border-color: var(--terracota-texto); background: var(--terracota-texto); color: var(--superficie); }

@@ -94,7 +94,59 @@ export const T_ESTADOS = {
 
 export const T_HOY = {
   ojo: (n: number, total: number) => `Semana ${n} de ${total}`,
-  saludo: (nombre: string) => `Hola, ${nombre}.`,
+  saludo: (nombre: string) => `¡Hola, ${nombre}!`,
+  // Referencia visual (21-oct-2026): línea de la bienvenida, «Martes 13 · Semana 2 de 4».
+  fechaSemana: (dia: string, n: number, total: number) => `${dia} · Semana ${n} de ${total}`,
+  // Frase de la bienvenida: elegida por el estado real del día y nombrando la meta real a la que
+  // aporta (nunca una frase motivacional al azar ni números que no existen). Sin culpa.
+  bienvenida: {
+    // Varias frases por estado: se elige una por fecha (fraseDelDia), para no repetir la misma.
+    ninguna: [
+      (m: string) => `Hoy das un paso más hacia «${m}».`,
+      (m: string) => `Lo de hoy aporta a «${m}». Empieza por lo que te quede más a mano.`,
+      (m: string) => `Hoy sigues construyendo «${m}», a tu ritmo.`,
+    ],
+    ningunaSinMeta: "Hoy das un paso más en tu plan. Empieza por lo que te quede más a mano.",
+    algunas: [
+      (m: string) => `Ya avanzaste en «${m}». Lo que hiciste cuenta.`,
+      (m: string) => `Hoy ya sumaste a «${m}». Sigue a tu ritmo.`,
+    ],
+    algunasSinMeta: "Ya avanzaste hoy. Lo que hiciste cuenta.",
+    completo: [(m: string) => `Hoy hiciste todo lo que te propusiste para «${m}».`, () => "Día completo. Hiciste todo lo que te propusiste hoy."],
+    completoCoach: " Tu coach lo verá en tu revisión.",
+    ayerCosto: [
+      (m: string) => `Ayer costó un poco. Hoy basta con un paso pequeño hacia «${m}».`,
+      (m: string) => `Un día difícil no borra lo avanzado. Hoy basta con un paso hacia «${m}».`,
+    ],
+    sinActividad: [
+      (m: string) => `Qué bueno verte. Retomar también es avanzar: hoy basta con un paso hacia «${m}».`,
+      (m: string) => `Volver es lo importante. Hoy puedes empezar por lo más simple de «${m}».`,
+    ],
+    sinAcciones: ["Hoy no hay acciones. Descansar también es parte del plan, y tu racha no se corta.", "Hoy es un día libre en tu plan. Tu racha no se corta."],
+  },
+
+  // Tarjeta de la meta principal (lib/mi-rumbo.ts: hoy la primera meta del programa).
+  metaPrincipal: {
+    rotulo: "Tu meta principal",
+    hitos: (h: number, n: number) => `${h} de ${n} ${n === 1 ? "hito" : "hitos"}`,
+    otras: (n: number) => (n === 1 ? "Y 1 meta más en tu plan" : `Y ${n} metas más en tu plan`),
+    ver: "Ver mis metas",
+  },
+  acciones: {
+    titulo: "Tus acciones de hoy",
+    cuenta: (h: number, n: number) => (h >= n ? "Día completo" : `${h} de ${n} ${n === 1 ? "hecha" : "hechas"}`),
+  },
+  vacio: { texto: "Puedes mirar lo que viene en tu plan.", verPlan: "Ver mi plan" },
+  // Nuevo nivel: una celebración especial (no por cada acción). Reglas y umbrales sin cambios.
+  celebracion: {
+    ojo: "Nuevo nivel",
+    titulo: (nombre: string) => `Llegaste a ${nombre}`,
+    texto: (n: number, total: number) => `Nivel ${n} de ${total}. Cada paso cuenta, también los días cortos.`,
+    siguiente: (nombre: string, faltan: number) => `Siguiente parada: ${nombre}, a ${faltan} ${faltan === 1 ? "crédito" : "créditos"} más.`,
+    maximo: "Llegaste al último nivel del camino.",
+    seguir: "Seguir",
+    verCamino: "Ver mi camino",
+  },
   titulo: (dia: string) => `Hoy, ${dia}.`,
   bajada: {
     ninguna: (n: number) =>
@@ -105,13 +157,19 @@ export const T_HOY = {
     todas: "Completaste las acciones de hoy.",
     fotoEnRevision: "Hiciste todo lo de hoy. Tu día y tu racha se actualizan cuando revisemos tu foto.",
     sinAcciones: "Hoy no hay acciones programadas. Tu racha no se corta.",
+    // Etapa 2A: si ayer quedó a medias y hoy todavía no marca nada (sin culpa, sin números).
+    ayerCosto: "Ayer costó un poco. Hoy empieza por lo más simple: lo que hagas, cuenta.",
     revision: "Hoy es tu revisión semanal.",
     videollamada: (hora: string) => `Hoy es tu videollamada, a las ${hora}.`,
   },
   diaCompleto: (bono: number) => `Día completo · +${bono}`,
-  foco: { rotulo: "Tu foco esta semana · de tu coach" },
+  foco: { rotulo: "Foco de tu coach", nuevo: "Nuevo", ver: "Ver la revisión", ir: "Ir a mi acompañamiento" },
   grupos: {
     conHorario: "Con horario",
+    // Etapa 2A: momentos del día (lib/mi-rumbo.ts, cortes a las 12:00 y a las 19:00).
+    manana: "Mañana",
+    tarde: "Tarde",
+    noche: "Noche",
     flexibles: "Cuando puedas hoy",
     retomadas: "Retomadas",
     del: (dia: string) => `Del ${dia}`,
@@ -125,6 +183,13 @@ export const T_HOY = {
     bono: (b: number) => `Bono por día completo: +${b}`,
     racha: (r: number) => `${r} ${plural(r, "día completo seguido", "días completos seguidos")}`,
     enlace: "Ver mis logros",
+  },
+  // Etapa 2A: tarjeta «Tu acompañamiento» (próxima revisión, «Me está costando» y novedades).
+  acompanamiento: {
+    titulo: "Tu acompañamiento",
+    // Sin nombre ni foto hasta la etapa 4A (el participante todavía no puede leer quién lo acompaña).
+    quien: "Tu coach lee tu semana",
+    costando: "Me está costando",
   },
   revision: {
     titulo: "Tu próxima revisión",
@@ -156,6 +221,9 @@ export const T_HOY = {
 
 // 4.6 De días anteriores (sin culpa)
 export const T_ANTERIORES = {
+  // Etapa 2A: el bloque parte plegado en Mi Rumbo (salvo con el aviso de carga).
+  ver: "Ver las acciones",
+  ocultar: "Ocultar",
   titulo: "De días anteriores",
   bajada: (n: number) =>
     n === 1
@@ -333,6 +401,23 @@ export const T_SEMANA = {
   selector: "Semana",
   ojo: "Revisión semanal",
   titulo: (n: number, total: number) => `Semana ${n} de ${total}.`,
+  // Textos exactos de Diego (21-oct-2026): «Así fue tu semana».
+  asiFue: "Así fue tu semana",
+  subtitulo: (n: number, total: number) => `Semana ${n} de ${total}`,
+  vimos: "Lo que vimos juntos",
+  publicadaEl: (dia: string) => `Publicada el ${dia}`,
+  videollamadaDel: (dia: string) => `Resumen de tu videollamada del ${dia}`,
+  loQueFunciono: "Lo que funcionó",
+  podemosAjustar: "Lo que podemos ajustar",
+  focoProxima: "Tu foco para la próxima semana",
+  cambiosPrograma: "Cambios en tu programa:",
+  leerCompleta: "Leer revisión completa",
+  verMenos: "Ver menos",
+  sinRevision: "Tu revisión aparecerá aquí cuando esté lista.",
+  compartiste: "Lo que compartiste",
+  invitacion: "¿Cómo te has sentido esta semana? Puedes contarnos qué funcionó, qué te costó y qué te gustaría cambiar.",
+  escribir: "Escribir mi registro",
+  avances: "Tus avances de esta semana",
   bajadaCoach: { antes: "Tu revisión es por escrito, el ", despues: ". Si no alcanzas a escribir, revisamos lo que marcaste en el calendario." },
   bajadaCercano: {
     antes: "Conversamos por videollamada el ",
@@ -490,6 +575,19 @@ export const T_SECCIONES = {
 } as const;
 
 // Resumen del día en Mi Rumbo: solo las acciones programadas para hoy (nunca las futuras).
+// Etapa 2A · «Me está costando»: tres caminos que ya existen (pedir un ajuste, el registro
+// semanal y Ayuda inmediata). Sin promesas de respuesta inmediata.
+export const T_COSTANDO = {
+  titulo: "¿Qué está pasando?",
+  bajada: "Tu programa tiene que caber en tu semana, no al revés. Elige lo que más se parezca.",
+  ajuste: { titulo: "Necesito cambiar el plan", texto: "Otro día, otro horario o una acción más corta: pide un ajuste." },
+  contar: { titulo: "Quiero contárselo a mi coach", texto: "Escríbelo en tu registro semanal, en «¿Qué se hizo difícil?»." },
+  ayuda: { titulo: "Necesito ayuda ahora", texto: "Teléfonos y servicios de ayuda en crisis." },
+  nota: (dia: string) => `Tu coach lo verá a más tardar en tu revisión del ${dia}. Esto no es un chat y no tiene respuesta inmediata.`,
+  notaCercano: "Si tu semana se desarmó, en «Necesito cambiar el plan» puedes pedir que la reordenemos.",
+  desdeAccion: (titulo: string) => `Sobre «${titulo}»`,
+} as const;
+
 export const T_RESUMEN_DIA = {
   etiqueta: (h: number, n: number) => `Hoy: ${h} de ${acciones(n)} ${plural(n, "hecha", "hechas")}.`,
   corto: (h: number, n: number) => `${h} de ${n} hoy`,
@@ -507,52 +605,84 @@ export const T_PLAN = {
   ajusteTexto: "Pide un ajuste y lo revisamos contigo. Tu plan se adapta a tu vida, no al revés.",
 } as const;
 
+// Mi acompañamiento (referencia visual v2 y textos exactos de Diego, 21-oct-2026). Le habla a la
+// persona; sin prometer chat ni disponibilidad permanente. «Tu coach» con avatar genérico hasta
+// que exista la asignación de coaches (etapa 4A).
+// Mi acompañamiento con la referencia de ChatGPT (21-oct-2026, 21:35 UTC). Los textos de la
+// portada, de las cuatro acciones y de «Esta semana» son los de la imagen; donde la imagen
+// promete algo que no existe (perfil del coach, «En línea», agendar o reprogramar desde aquí),
+// se usa el texto de la función real (ver docs/inventario-funciones.md, fila 2).
 export const T_ACOMPANAMIENTO = {
-  ojo: "Lo que nos diferencia",
-  intro:
-    "No tienes que avanzar solo. En Rumbo cuentas con acompañamiento humano para revisar tus avances, superar dificultades y adaptar tu plan a lo que realmente necesitas.",
-  // Frecuencia y modalidad reales de cada plan (src/data/rumbo.ts). Sin atención permanente.
-  bajadaCoach:
-    "En tu plan, una persona del equipo de Rumbo lee tu semana y te responde por escrito una vez por semana, aquí en tu espacio. Entre revisiones puedes pedir un ajuste a tu plan.",
-  bajadaCercano:
-    "En tu plan, conversas una vez por semana con una persona del equipo de Rumbo en una videollamada de 20 minutos, y recibes un resumen escrito aquí. Entre revisiones puedes pedir un ajuste a tu plan.",
-  resumen: "Tu acompañamiento esta semana",
-  quien: {
-    titulo: "Quién te acompaña",
-    equipo: "El equipo de Rumbo",
-    escrita: (dia: string) => `Revisión semanal por escrito los ${dia}, aquí en tu espacio.`,
-    videollamada: (dia: string, hora: string) => `Videollamada semanal los ${dia} a las ${hora} (hora de Chile), con un resumen escrito aquí.`,
+  portada: {
+    bajada: "No tienes que hacerlo solo. Estamos contigo en este camino.",
+    mano: "Pequeños pasos también te llevan lejos.",
+    escribir: "Escribir a mi coach",
   },
-  acuerdos: {
-    titulo: "Acuerdos de la semana",
-    foco: "Tu foco",
-    ajustamos: "Lo que ajustamos",
-    inicial: "Tu foco para empezar",
+  coach: {
+    titulo: "Tu coach",
+    quien: "Te acompaña a avanzar a tu ritmo",
+    sinNombre: "Te acompaña en tu proceso, revisa lo que compartes y te ayuda a ajustar el plan cuando lo necesites.",
+  },
+  mensaje: {
+    rotulo: "Un mensaje para ti esta semana",
+    inicial: "Para empezar",
+    firma: (nombre: string) => `${nombre}, tu coach`,
+  },
+  acciones: {
+    titulo: "Lo que puedes hacer",
+    registrar: { titulo: "Registrar mi semana", texto: "Cuéntale a tu coach cómo te fue" },
+    costando: { titulo: "Me está costando", texto: "Pide apoyo o un ajuste" },
+    videollamada: { titulo: "Mi videollamada", texto: "Hablen en vivo", conEnlace: "Unirme a la videollamada", sinEnlace: "Tu coach te enviará el enlace" },
+    revision: { titulo: "Leer mi revisión", texto: "Lo que tu coach vio en tu semana", sinRevision: (dia: string) => `Tu primera revisión es el ${dia}` },
+    ajuste: { titulo: "Solicitar un ajuste", texto: "Propón un cambio en tu plan" },
+  },
+  semana: {
+    titulo: "Esta semana",
+    completadas: (hechas: number, total: number) => `${hechas} de ${total} ${total === 1 ? "acción completada" : "acciones completadas"}`,
+    sinAcciones: "Esta semana no tienes acciones programadas.",
+    dia: { completo: "todas hechas", parcial: "algunas hechas", pendiente: "sin registrar", futuro: "todavía no llega", sin: "sin acciones" },
+    verPlan: "Ver mi plan",
+  },
+  botones: {
+    costando: "Me está costando",
+    escribir: "Escribir mi registro",
   },
   proxima: {
     titulo: "Próxima revisión",
-    escrita: "Por escrito, aquí en tu espacio",
-    videollamada: (hora: string) => `Videollamada a las ${hora} (hora de Chile)`,
-    registroEnviado: "Tu registro ya está enviado.",
-    registroPendiente: "Si alcanzas, escribe antes tu registro. Es opcional.",
-    escribir: "Escribir mi registro",
+    escrita: "Revisión por escrito",
+    videollamada: (hora: string) => `Videollamada · 20 min · ${hora} (hora de Chile)`,
+    explicaEscrita: "Puedes contarnos cómo te fue en tu registro. Tu coach lo revisará en la fecha indicada.",
+    explicaVideollamada: "Nos encontraremos en tu sesión programada para revisar tus avances y ajustar lo que necesites.",
+    sinEnlace: "Tu coach agenda la videollamada y te avisa con el enlace.",
+    unirme: "Unirme a la videollamada",
+    nuevaVentana: " (se abre en otra ventana)",
+    detalles: "Ver detalles",
+    noEsChat: "Este espacio no es un chat de respuesta inmediata.",
   },
-  observaciones: {
-    titulo: "Observaciones de tu coach",
-    deSemana: (n: number) => `De tu revisión de la semana ${n}`,
-    leer: "Leer la revisión completa",
-    sinRevision: (dia: string) => `Tu coach publicará su primera revisión el ${dia}.`,
+  historial: {
+    titulo: "Historial reciente",
+    revision: (n: number) => `Revisión de la semana ${n}`,
+    ajuste: "Solicitud de ajuste",
+    videollamada: (n: number) => `Videollamada de la semana ${n}`,
+    estados: {
+      publicada: "Publicada",
+      enviada: "Enviada",
+      en_revision: "En revisión",
+      respondida: "Respondida",
+      sin_cambios: "Revisada sin cambios",
+      realizada: "Realizada",
+      no_asistio: "No se realizó",
+      cancelada: "Cancelada",
+    },
+    fecha: (estado: string, dia: string) => `${estado} el ${dia}`,
+    enRevision: (dia: string) => `En revisión · enviada el ${dia}`,
+    leerRevision: "Leer la revisión",
+    verRespuesta: "Ver respuesta",
+    verSolicitud: "Ver mi solicitud",
+    vacio: (dia: string) => `Aquí verás las respuestas de tu coach. Tu primera revisión es el ${dia}.`,
+    vacioSinFecha: "Aquí verás las respuestas de tu coach.",
   },
-  acordamos: "Lo que acordamos",
-  semanas: "Tus semanas",
-  semanasBajada: "Tu registro y la revisión de cada semana del ciclo.",
-  pronto: {
-    titulo: "Lo que viene en tu acompañamiento",
-    items: [
-      { titulo: "Ficha de tu coach", texto: "Quién te acompaña y su experiencia, cuando tengas un coach asignado." },
-      { titulo: "Asistente de Rumbo", texto: "Te ayudará a preparar tu registro y a entender tu revisión. Tu coach siempre revisa lo que propone." },
-    ],
-  },
+  cierre: "No tienes que resolverlo todo hoy. Seguimos avanzando contigo.",
 } as const;
 
 export const T_COMUNIDAD = {

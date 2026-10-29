@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Link } from "react-router-dom";
 import Etiqueta from "../../../components/Etiqueta";
-import { ChipMeta, Hoja, Icono } from "../../../components/app";
+import { AnilloDia, ChipMeta, Hoja, Icono } from "../../../components/app";
 import { CampoSelect, CampoTexto, GrupoOpciones, Opcion } from "../../../components/form";
 import { AJUSTE, REGISTRO_SEMANAL } from "../../../data/formularios";
 import {
@@ -30,6 +30,7 @@ import { textoError } from "./FichaSolicitud";
 import { ajustes, evidencias, participantes, semanaMartin, type FichaParticipante as Ficha } from "./ejemplo";
 import { EtiquetaCiclo, semanaTexto } from "./Participantes";
 import { AJUSTES, CONSTRUCTOR, FICHA_PARTICIPANTE as F, FOTOS, PANEL_REAL, REVISION } from "./textos";
+import { T_RESUMEN_DIA } from "../mi-espacio/textos";
 
 export type Pestana = (typeof F.pestanas)[number]["valor"];
 export const PESTANAS = F.pestanas.map((p) => p.valor) as Pestana[];
@@ -264,11 +265,16 @@ export function SemanaLista({
       {dias.map((fecha) => {
         const del = filas(fecha);
         const creditos = completo(fecha);
+        // Etapa 2A: el día de hoy con el mismo anillo que ve la persona en Mi Rumbo.
+        const hechasHoy = del.filter((o) => o.registro === "hecha" || o.registro === "corta" || o.registro === "aprobada").length;
         return (
           <fieldset key={fecha} className="dia pa-semana__dia">
             <legend>
               <span>{diaCorto(fecha)}</span>
               {creditos !== null && <Etiqueta variante="activo">{F.semana.diaCompleto(creditos)}</Etiqueta>}
+              {fecha === hoy && del.length > 0 && creditos === null && (
+                <AnilloDia chico hechas={hechasHoy} programadas={del.length} etiqueta={T_RESUMEN_DIA.etiqueta(hechasHoy, del.length)} />
+              )}
             </legend>
             {del.length ? (
               <ul className="pa-sem-filas">

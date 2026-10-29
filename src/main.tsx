@@ -9,6 +9,7 @@ import { ID_PLATAFORMA, esPlataforma } from "./plataforma";
 import "@fontsource-variable/fraunces/opsz.css";
 import "@fontsource-variable/fraunces/opsz-italic.css";
 import "@fontsource-variable/instrument-sans/wght.css";
+import "@fontsource-variable/caveat/wght.css";
 // Tokens, base y componentes compartidos; después, lo propio de cada tipo de página.
 import "./styles.css";
 import "./styles/portada.css";

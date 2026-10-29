@@ -11,6 +11,94 @@ import type { ReactElement } from "react";
 import { trazos as trazosWeb } from "../Icono";
 
 const trazosPlataforma = {
+  // Grupos de la comunidad (maqueta de ChatGPT, 22-oct-2026)
+  search: (
+    <>
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
+    </>
+  ),
+  "file-text": (
+    <>
+      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+      <path d="M10 9H8" />
+      <path d="M16 13H8" />
+      <path d="M16 17H8" />
+    </>
+  ),
+  // Comunidad (referencia de ChatGPT, 21-oct-2026)
+  bookmark: <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />,
+  ellipsis: (
+    <>
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="19" cy="12" r="1" />
+      <circle cx="5" cy="12" r="1" />
+    </>
+  ),
+  image: (
+    <>
+      <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+      <circle cx="9" cy="9" r="2" />
+      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+    </>
+  ),
+  "trending-up": (
+    <>
+      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+      <polyline points="16 7 22 7 22 13" />
+    </>
+  ),
+  "circle-help": (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <path d="M12 17h.01" />
+    </>
+  ),
+  hash: (
+    <>
+      <line x1="4" x2="20" y1="9" y2="9" />
+      <line x1="4" x2="20" y1="15" y2="15" />
+      <line x1="10" x2="8" y1="3" y2="21" />
+      <line x1="16" x2="14" y1="3" y2="21" />
+    </>
+  ),
+  send: (
+    <>
+      <path d="m22 2-7 20-4-9-9-4Z" />
+      <path d="M22 2 11 13" />
+    </>
+  ),
+  ban: (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <path d="m4.9 4.9 14.2 14.2" />
+    </>
+  ),
+  sprout: (
+    <>
+      <path d="M7 20h10" />
+      <path d="M10 20c5.5-2.5.8-6.4 3-10" />
+      <path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z" />
+      <path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z" />
+    </>
+  ),
+  check: <path d="M20 6 9 17l-5-5" />,
+  smile: (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+      <line x1="9" x2="9.01" y1="9" y2="9" />
+      <line x1="15" x2="15.01" y1="9" y2="9" />
+    </>
+  ),
+  video: (
+    <>
+      <path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5" />
+      <rect x="2" y="6" width="14" height="12" rx="2" />
+    </>
+  ),
   "circle-alert": (
     <>
       <circle cx="12" cy="12" r="10" />
@@ -153,6 +241,64 @@ const trazosPlataforma = {
       <path d="m15 5 4 4" />
     </>
   ),
+  // Etapa 2A (Mi Rumbo): momentos del día y «Me está costando».
+  sunset: (
+    <>
+      <path d="M12 10V2" />
+      <path d="m4.93 10.93 1.41 1.41" />
+      <path d="M2 18h2" />
+      <path d="M20 18h2" />
+      <path d="m19.07 10.93-1.41 1.41" />
+      <path d="M22 22H2" />
+      <path d="m16 6-4 4-4-4" />
+      <path d="M16 18a4 4 0 0 0-8 0" />
+    </>
+  ),
+  moon: <path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" />,
+  hand: (
+    <>
+      <path d="M18 11V6a2 2 0 0 0-4 0v1" />
+      <path d="M14 10V4a2 2 0 0 0-4 0v2" />
+      <path d="M10 10.5V6a2 2 0 0 0-4 0v8" />
+      <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+    </>
+  ),
+  // Referencia visual (21-oct-2026): hoja del avance en Mi Rumbo. Lucide, ISC.
+  leaf: (
+    <>
+      <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
+      <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
+    </>
+  ),
+  "pen-line": (
+    <>
+      <path d="M13 21h8" />
+      <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+    </>
+  ),
+  "chevron-down": <path d="m6 9 6 6 6-6" />,
+  "arrow-left": (
+    <>
+      <path d="m12 19-7-7 7-7" />
+      <path d="M19 12H5" />
+    </>
+  ),
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+      <path d="M2 12h20" />
+    </>
+  ),
+  "chart-column-increasing": (
+    <>
+      <path d="M13 17V9" />
+      <path d="M18 17V5" />
+      <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+      <path d="M8 17v-3" />
+    </>
+  ),
+  "message-square": <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
 } satisfies Record<string, ReactElement>;
 
 const trazos = { ...trazosWeb, ...trazosPlataforma };
