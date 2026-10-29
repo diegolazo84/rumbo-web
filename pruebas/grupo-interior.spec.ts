@@ -76,10 +76,29 @@ test("«Comparte tu experiencia…», el emoji, la foto y la columna lateral abr
   await page.getByRole("button", { name: T.foto }).click();
   await expect(page).toHaveURL(/grupo=g1&foto=1$/);
   await page.goBack();
-  await page.locator(".gi-animo").getByRole("button", { name: T.crear }).click();
-  await expect(page).toHaveURL(/comunidad\/crear\/\?grupo=g1$/);
+  await page.getByRole("button", { name: T.invitacion }).click();
   // El destino ya viene elegido en el editor que existe (no hay otro editor).
   await expect(page.locator(".co-destino__select")).toHaveValue("g1");
+});
+
+test("columna lateral: «Explorar publicaciones» lleva al listado de esta misma pantalla", async ({ page }) => {
+  await abrir(page, "g1", "&seccion=informacion");
+  const animo = page.locator(".gi-animo");
+  await expect(animo.getByRole("heading", { name: T.animoTitulo })).toBeVisible();
+  await expect(animo).toContainText(T.animoTexto);
+  await animo.getByRole("link", { name: T.explorar }).click();
+  await expect(page).toHaveURL(/grupo=g1#gi-publicaciones$/);
+  await expect(pestanas(page).getByRole("link", { name: T.pestanas.publicaciones })).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("#gi-publicaciones")).toBeFocused();
+  await expect(page.locator("#gi-publicaciones article.co-pub").first()).toBeVisible();
+});
+
+test("dentro del grupo no se usa ilustración de relleno: sin fotos, tarjeta solo de texto", async ({ page }) => {
+  await abrir(page, "g1");
+  await expect(page.locator("article.co-pub").first()).toBeVisible();
+  await expect(page.locator(".co-pub__foto--ilustracion")).toHaveCount(0);
+  // El contenido simulado sigue rotulado como ejemplo.
+  await expect(page.getByText(T_COMU.ejemplo)).toBeVisible();
 });
 
 test("miembros: solo alias e iniciales, «Tú» primero, sin fotos; «Ver todos» lleva a la pestaña", async ({ page }) => {

@@ -7,8 +7,8 @@
 //     iniciales, nunca fotos) y la invitación a crear una publicación.
 //   · Móvil: portada compacta, pestañas, invitación y publicaciones; la columna lateral va después.
 // La base decide qué se ve: publicaciones y lista de miembros solo para quienes son parte del grupo.
-import { useState, type ReactNode } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { Hoja, Icono } from "../../../../components/app";
 import { useEspacio } from "../comun";
 import { fechaLargaIso, fechaRelativa, useComunidad } from "./contexto";
@@ -87,7 +87,7 @@ function Interior({ g }: { g: Grupo }) {
             </div>
             <MiembrosResumen g={g} enlace={enlaceSeccion("miembros")} />
           </section>
-          {g.soyMiembro && <Animo g={g} />}
+          {g.soyMiembro && <Animo enlace={`${enlaceSeccion("publicaciones")}#gi-publicaciones`} />}
         </aside>
       </div>
     </div>
@@ -190,8 +190,24 @@ function SoloMiembros({ g, titulo, texto }: { g: Grupo; titulo?: string; texto: 
 }
 
 function Publicaciones({ g }: { g: Grupo }) {
+  // «Explorar publicaciones» (#gi-publicaciones): se desplaza y enfoca el listado después del
+  // foco general al h1 que hacen App.tsx y la vista previa al navegar.
+  const { hash, key } = useLocation();
+  useEffect(() => {
+    if (hash !== "#gi-publicaciones" || !g.soyMiembro) return;
+    const id = requestAnimationFrame(() => {
+      const lista = document.getElementById("gi-publicaciones");
+      lista?.scrollIntoView({ block: "start" });
+      lista?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [hash, key, g.soyMiembro]);
   if (!g.soyMiembro) return <SoloMiembros g={g} titulo={T.noMiembroTitulo} texto={T.noMiembroTexto} />;
-  return <Feed filtro={{ grupo: g.id }} vacio={T.vacio} antes={<Invitacion g={g} />} enGrupo />;
+  return (
+    <div id="gi-publicaciones" className="gi-feed" tabIndex={-1} aria-label={T.pestanas.publicaciones}>
+      <Feed filtro={{ grupo: g.id }} vacio={T.vacio} antes={<Invitacion g={g} />} enGrupo />
+    </div>
+  );
 }
 
 function useMiembros(g: Grupo) {
@@ -271,8 +287,7 @@ function MiembrosResumen({ g, enlace }: { g: Grupo; enlace: string }) {
   );
 }
 
-function Animo({ g }: { g: Grupo }) {
-  const { abrirCrear } = useComunidad();
+function Animo({ enlace }: { enlace: string }) {
   return (
     <section className="gi-animo" aria-labelledby="gi-animo-t">
       <Icono nombre="users" tamaño={24} />
@@ -280,10 +295,11 @@ function Animo({ g }: { g: Grupo }) {
         {T.animoTitulo}
       </h2>
       <p>{T.animoTexto}</p>
-      <button type="button" className="boton boton--primario gi-animo__boton" onClick={() => abrirCrear({ grupo: g.id })}>
-        <Icono nombre="send" tamaño={20} />
-        {T.crear}
-      </button>
+      {/* «Explorar publicaciones» lleva al listado de esta misma pantalla. */}
+      <Link to={enlace} replace className="boton boton--primario gi-animo__boton">
+        <Icono nombre="file-text" tamaño={20} />
+        {T.explorar}
+      </Link>
     </section>
   );
 }

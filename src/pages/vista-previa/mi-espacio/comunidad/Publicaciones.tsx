@@ -53,8 +53,9 @@ function UnaFoto({ ruta, alt }: { ruta: string; alt: string }) {
 }
 
 // Hasta 5 fotos (C11): una grande, o una cuadrícula con todas.
-function Foto({ p }: { p: Publicacion }) {
-  if (p.ilustracionEjemplo)
+// Dentro de un grupo solo se muestran fotos reales: sin fotos, la tarjeta queda solo con texto.
+function Foto({ p, soloFotos = false }: { p: Publicacion; soloFotos?: boolean }) {
+  if (p.ilustracionEjemplo && !soloFotos)
     return (
       <figure className="co-pub__foto co-pub__foto--ilustracion">
         {p.ilustracionEjemplo === "atardecer" ? <Ilustracion nombre="atardecer" /> : <PaisajeMini nombre={p.ilustracionEjemplo} />}
@@ -284,7 +285,7 @@ export function Tarjeta({ p, acciones, enGrupo = false }: { p: Publicacion; acci
           </button>
         )}
       </div>
-      <Foto p={p} />
+      <Foto p={p} soloFotos={enGrupo} />
       <footer className={`co-pub__pie${enGrupo ? " co-pub__pie--grupo" : ""}`}>
         <button type="button" className="co-pub__accion co-pub__accion--apoyo" aria-pressed={estado.mia} onClick={() => void reaccionar()}>
           <Icono nombre="heart" />

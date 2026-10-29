@@ -773,7 +773,7 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(180deg, rgb(226 236 228 / 0.94) 0%, rgb(226 236 228 / 0.86) 60%, rgb(226 236 228 / 0.55) 100%);
+  background: linear-gradient(180deg, rgb(226 236 228 / 0.9) 0%, rgb(226 236 228 / 0.8) 55%, rgb(226 236 228 / 0.28) 100%);
 }
 .gi-portada__volver {
   display: inline-flex;
@@ -930,6 +930,15 @@
 .gi-animo__titulo { max-inline-size: 18ch; margin: 0; font: 600 var(--t-h3)/1.2 var(--serif); color: var(--bosque); }
 .gi-animo p { margin: 0 0 var(--e-2); }
 .gi-animo__boton { gap: 8px; }
+.gi-feed { display: grid; gap: var(--e-4); scroll-margin-block-start: var(--e-4); }
+.gi-feed:focus { outline: none; }
+/* Publicación sin fotos: tarjeta de texto con aire, sin imagen de relleno. */
+.gi-feed .co-pub:not(:has(.co-pub__foto)) .co-pub__texto { padding-block: var(--e-2) var(--e-3); }
+.gi-feed .co-pub:not(:has(.co-pub__foto)) .co-pub__texto p { font-size: var(--t-lead); line-height: 1.6; }
+/* Paisaje algo más intenso en móvil; en escritorio el degradado lateral ya lo deja ver. */
+@media (max-width: 1023.98px) {
+  .gi-portada__fondo { filter: saturate(1.25) contrast(1.08); }
+}
 
 /* Información */
 .gi-datos { display: grid; gap: var(--e-4); margin: 0; }
