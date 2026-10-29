@@ -417,3 +417,26 @@ test("las rutas de Mi espacio y del panel son noindex y conectan solo con el pro
     expect(html, ruta).not.toContain('rel="canonical"');
   }
 });
+
+test("Mi espacio se instala como app: manifiesto propio, service worker solo en /mi-espacio/ y aviso sin conexión", async ({ page, context }) => {
+  await simular(page, baseInicial());
+  await page.goto("mi-espacio/entrar/");
+  await hidratar(page);
+  const manifiesto = await page.locator('link[rel="manifest"]').getAttribute("href");
+  expect(manifiesto).toMatch(/mi-espacio\.webmanifest$/);
+  const m = await (await page.request.get(new URL(manifiesto!, page.url()).href)).json();
+  expect(m.display).toBe("standalone");
+  expect(m.scope).toBe("mi-espacio/");
+  const alcance = await page.evaluate(async () => (await navigator.serviceWorker.ready).scope);
+  expect(new URL(alcance).pathname).toMatch(/\/mi-espacio\/$/);
+  // Sin conexión, la página de Mi espacio explica que necesita internet y deja los números de ayuda.
+  await page.reload();
+  await context.setOffline(true);
+  await page.goto("mi-espacio/plan/").catch(() => {});
+  await expect(page.locator("h1")).toHaveText("Sin conexión");
+  await expect(page.getByRole("link", { name: "131" })).toHaveAttribute("href", "tel:131");
+  await context.setOffline(false);
+  // La portada no queda bajo el service worker.
+  await page.goto("./");
+  expect(await page.evaluate(() => navigator.serviceWorker.controller)).toBeNull();
+});

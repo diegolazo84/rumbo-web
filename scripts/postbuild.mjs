@@ -366,7 +366,14 @@ if (MI_ESPACIO_PROPIO) {
     });
     const cuerpo = await renderPrevia(url);
     if (/<script\b/i.test(cuerpo)) throw new Error(`El prerender de ${url} trae un <script> en línea.`);
-    escribir(r.ruta.replace(/^\//, ""), conEnlaces(armar(url, ID_PLATAFORMA, head, cuerpo), hojas));
+    // Mi espacio (no el panel) enlaza su propio manifiesto: se instala como app con alcance /mi-espacio/.
+    let html = conEnlaces(armar(url, ID_PLATAFORMA, head, cuerpo), hojas);
+    if (r.marco !== "panel") {
+      const antes = `<link rel="manifest" href="${BASE}site.webmanifest" />`;
+      if (!html.includes(antes)) throw new Error(`postbuild: ${url} no enlaza ${BASE}site.webmanifest.`);
+      html = html.replace(antes, `<link rel="manifest" href="${BASE}mi-espacio.webmanifest" />`);
+    }
+    escribir(r.ruta.replace(/^\//, ""), html);
     totalPlataforma++;
   }
 }
