@@ -747,6 +747,28 @@ export const T_PLAN = {
   metasBajada: "Lo que quieres lograr en este ciclo y para qué. Tu avance está en Mis logros.",
   metasVacio: "Tus metas aparecerán aquí cuando tu programa esté publicado.",
   verAvance: "Ver mi avance",
+  // Encabezado y tarjetas de la mejora visual (textos exactos de Diego, 29-oct-2026).
+  camino: {
+    titulo: "Tu camino, paso a paso",
+    bajada: "Cada pequeña acción te acerca a lo que quieres construir.",
+    semana: (n: number, total: number) => `Semana ${n} de ${total}`,
+  },
+  hoy: {
+    titulo: "Tu día de hoy",
+    cifra: (h: number, n: number) => `${h} de ${n}`,
+    rotulo: (n: number) => `${plural(n, "acción completada de la programada", "acciones completadas de las programadas")} para hoy`,
+    barra: "Acciones de hoy",
+    valor: (h: number, n: number) => `${h} de ${n} ${plural(n, "acción", "acciones")}`,
+    ver: "Ver mis acciones de hoy",
+    vacio: "Hoy no tienes acciones programadas. Aprovecha para descansar o mirar lo que viene en tu semana.",
+    fuera: "Hoy no es parte de tu programa.",
+  },
+  construyendo: {
+    titulo: "Lo que estás construyendo",
+    ver: "Mis metas",
+    vacio: "Tus metas aparecerán aquí cuando tu programa esté publicado.",
+  },
+  diaHoy: "Hoy",
   ajusteTitulo: "¿Tu semana cambió?",
   ajusteTexto: "Pide un ajuste y lo revisamos contigo. Tu plan se adapta a tu vida, no al revés.",
 } as const;

@@ -876,3 +876,37 @@ test("Mis logros real (C17) con datos: 10 niveles, créditos, rachas, 4 semanas,
   await expect(page.getByRole("heading", { name: /Ranking/ })).toHaveCount(0);
   expect(llamadas.some((l) => l.nombre === "ranking_semanal")).toBe(false);
 });
+
+test("Mi plan real: semana del ciclo, día de hoy con sus registros y metas de la base", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial());
+  await page.goto("mi-espacio/plan/");
+  await hidratar(page);
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".me-camino__semana")).toHaveText("Semana 2 de 4");
+  // Hoy (13) tiene una acción programada y todavía no está hecha.
+  await expect(page.locator(".me-plan-hoy__fecha")).toHaveText("Martes 13 de octubre");
+  await expect(page.locator(".me-plan-hoy__n")).toHaveText("0 de 1");
+  await expect(page.locator(".me-plan-hoy").getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
+  // Solo las metas del programa publicado, con su «para qué»; nunca el borrador del coach.
+  await expect(page.locator(".me-construyendo__meta")).toHaveCount(1);
+  await expect(page.locator(".me-construyendo__meta")).toHaveAttribute("data-cat", "proyecto");
+  await expect(page.locator(".me-construyendo")).toContainText("Terminar mi tesis");
+  await expect(page.locator(".me-construyendo")).toContainText("Para titularme este año.");
+  await expect(page.locator(".me-construyendo")).not.toContainText("BORRADOR SECRETO");
+  // El 12 quedó completo; el 14 es futuro.
+  await expect(page.locator("#dia-2026-10-12")).toHaveClass(/me-dia--completo/);
+  await expect(page.locator("#dia-2026-10-14")).toHaveClass(/me-dia--futuro/);
+  await page.getByRole("button", { name: "Ver mis acciones de hoy" }).click();
+  await expect(page.locator(".me-calendario__titulo")).toHaveText("Martes 13 de octubre");
+});
+
+test("Mi plan real sin programa publicado: sin progreso inventado", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial({ conPrograma: false }));
+  await page.goto("mi-espacio/plan/");
+  await hidratar(page);
+  await expect(page.locator(".me-plan-hoy").getByRole("progressbar")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Ver mis acciones de hoy" })).toHaveCount(0);
+  await expect(page.locator(".me-construyendo__meta")).toHaveCount(0);
+});
