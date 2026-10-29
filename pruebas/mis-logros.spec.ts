@@ -136,6 +136,7 @@ test("accesible y sin desborde; en móvil la barra no tapa nada", async ({ page,
     // Textos secundarios de reconocimientos y gráficos: al menos 14 px.
     for (const sel of [".ml-insignia__texto", ".ml-barras__ejes", ".ml-semanas__n", ".ml-creditos__bono-t"])
       expect(await page.locator(sel).first().evaluate((e) => parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(14);
-    await revisarBarra(page);
+    // La rueda del mouse no existe en WebKit móvil: la barra se revisa en Chromium móvil.
+    if (test.info().project.name !== "iphone") await revisarBarra(page);
   }
 });
