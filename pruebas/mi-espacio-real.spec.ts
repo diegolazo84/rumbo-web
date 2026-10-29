@@ -1295,7 +1295,13 @@ test("Fotos en todo equipo (escritorio, móvil, iPhone y 320 px): sube o, si el 
   if (escribeWebp) {
     await expect(page.locator(".me-foto").getByText("En revisión", { exact: true })).toBeVisible();
     expect(subidas).toHaveLength(1);
-    expect(medidasWebp(subidas[0].cuerpo)).toEqual({ ancho: 1600, alto: 1200 });
+    expect(subidas[0].ruta).toMatch(/^p1\/o-foto\/[0-9a-f-]{36}\.webp$/);
+    // WebKit de Playwright no entrega el cuerpo de un envío con archivo: ahí basta con que se
+    // haya subido (la app solo sube si el navegador entregó image/webp). En Chromium se mide.
+    if (subidas[0].cuerpo.length > 30) {
+      expect(subidas[0].cuerpo.toString("latin1", 8, 12)).toBe("WEBP");
+      expect(medidasWebp(subidas[0].cuerpo)).toEqual({ ancho: 1600, alto: 1200 });
+    } else info.annotations.push({ type: "webp", description: `${info.project.name}: cuerpo de la subida no disponible en este navegador de prueba` });
     await expect(page.locator("img.me-foto__miniatura")).toBeVisible();
   } else {
     await expect(page.getByRole("alert")).toContainText("No pudimos preparar esta foto de forma segura");
