@@ -261,6 +261,9 @@ export type Ocurrencia = {
   metaTitulo?: string;
   explicacion?: string | null;
   notaRevision?: string | null;
+  // Foto privada guardada en el bucket «evidencias» (ruta) y si ya se borró por plazo.
+  fotoRuta?: string | null;
+  fotoDepurada?: boolean;
 };
 
 // Registros de la semana 1 y de la semana 2 hasta hoy («accion@fecha»).

@@ -10,6 +10,7 @@
 import { ciclo, type PlanParam } from "../../../data/ejemplo-app";
 import { planes } from "../../../data/rumbo";
 import { miles } from "../../../lib/fechas";
+import { FOTO } from "../../../data/formularios";
 
 const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : varios);
 export const acciones = (n: number) => `${n} ${plural(n, "acción", "acciones")}`;
@@ -358,6 +359,20 @@ export const T_DETALLE = {
     botonOtra: "Subir otra foto",
     depurada: (dias: number) => `La foto se borró a los ${dias} días de revisada, como dice nuestra política. El crédito se mantiene.`,
     miniatura: "Tu foto",
+    preparando: "Preparando foto…", // PROPUESTO (la foto se reduce y se limpia antes de subirla)
+    errores: {
+      tipo: FOTO.errores.tipo,
+      peso: FOTO.errores.peso,
+      // PROPUESTO: el navegador no pudo convertir la foto a WebP sin metadatos.
+      proceso: "No pudimos preparar esta foto de forma segura en este navegador. Prueba con otra foto o usa «No puedo subir una foto».",
+    },
+    // PROPUESTO: foto opcional en una acción que no la exige (decisión del 21-oct-2026).
+    opcional: {
+      titulo: "Foto de esta acción (opcional)",
+      texto: "Solo la ven tú y quien te acompaña. No cambia tus créditos.",
+      agregar: "Agregar una foto",
+      quitar: "Quitar foto",
+    },
     errorGuardar: "No pudimos guardarlo. Revisa tu conexión e inténtalo de nuevo; nada se perdió.", // PROPUESTO (como el de la foto, 4.9)
     dialogo: {
       titulo: "¿Eliminar esta foto?",

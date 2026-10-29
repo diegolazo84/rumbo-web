@@ -428,7 +428,7 @@
 .me-foto__texto > .me-foto__explicacion, .me-foto__texto > .me-detalle__botones { justify-self: stretch; }
 .me-foto__nota { display: grid; gap: var(--e-1); margin: 0; }
 .me-foto__nota blockquote { margin: 0; }
-.me-foto__miniatura { inline-size: 100%; aspect-ratio: 1; border-radius: var(--r-s); object-fit: cover; background: var(--papel-hondo); }
+.me-foto__miniatura { inline-size: 100%; block-size: auto; aspect-ratio: 1; border-radius: var(--r-s); object-fit: cover; background: var(--papel-hondo); }
 .me-foto__miniatura--ejemplo {
   display: grid;
   place-items: center;
@@ -437,6 +437,22 @@
   border: 1px dashed var(--terracota-texto);
   color: var(--tinta-suave);
 }
+
+.me-foto__miniatura--vacia { display: grid; place-items: center; align-content: center; gap: 8px; padding: 8px; text-align: center; color: var(--tinta-suave); }
+.me-foto__miniatura--cargando { background: var(--papel-hondo); }
+@media (prefers-reduced-motion: no-preference) {
+  .me-foto__miniatura--cargando { animation: me-foto-pulso 1.4s ease-in-out infinite; }
+  @keyframes me-foto-pulso { 50% { opacity: 0.55; } }
+}
+/* Subida sin porcentaje conocido: la barra muestra una franja que avanza. */
+.barra--indeterminada .barra-relleno { inline-size: 40%; }
+@media (prefers-reduced-motion: no-preference) {
+  .barra--indeterminada .barra-relleno { animation: barra-va 1.2s ease-in-out infinite; }
+  @keyframes barra-va { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+}
+.me-foto-opcional { display: grid; gap: var(--e-2); margin-block-start: var(--e-4); padding-block-start: var(--e-4); border-block-start: 1px solid var(--linea); }
+.me-foto-opcional__titulo { font-weight: 600; }
+.me-foto-opcional__fila { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: var(--e-4); align-items: center; justify-items: start; }
 
 .me-foto__explicacion { grid-column: 1 / -1; margin: 0; padding: 12px 16px; border-radius: var(--r-s); background: var(--papel-hondo); }
 .me-foto__explicar { gap: var(--e-4); }

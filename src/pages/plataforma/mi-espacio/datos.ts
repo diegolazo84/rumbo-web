@@ -76,6 +76,8 @@ export type FilaRegistro = {
   explicacion: string | null;
   nota_revision: string | null;
   revisado_en: string | null;
+  foto_ruta?: string | null;
+  foto_depurada_en?: string | null;
 };
 export type FilaProgreso = { creditos: number; nivel: number; racha: number; bono_siguiente: number };
 export type FilaDia = {
@@ -222,6 +224,8 @@ export function aOcurrencia(o: FilaOcurrencia, r: FilaRegistro | undefined, inic
     metaTitulo: o.meta_titulo,
     explicacion: r?.explicacion ?? null,
     notaRevision: r?.nota_revision ?? null,
+    fotoRuta: r?.foto_ruta ?? null,
+    fotoDepurada: !!r?.foto_depurada_en,
   };
 }
 

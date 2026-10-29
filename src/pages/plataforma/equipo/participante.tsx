@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Etiqueta from "../../../components/Etiqueta";
+import MiniaturaPrivada from "../../../components/MiniaturaPrivada";
 import { ChipMeta, Hoja, Icono } from "../../../components/app";
 import { CampoSelect, CampoTexto } from "../../../components/form";
 import { AJUSTE } from "../../../data/formularios";
@@ -425,13 +426,24 @@ function AjustesFicha({ c }: { c: FilaCicloPanel | null }) {
 }
 
 function FotosFicha({ det }: { det: Detalle }) {
+  const { sb } = useDatosPanel();
+  // Enlace firmado de 5 minutos, pedido al mostrar la foto (nunca se guarda).
+  const pedirUrl = useCallback(
+    async (ruta: string) => {
+      const { data, error } = await sb.storage.from("evidencias").createSignedUrl(ruta, 300);
+      if (error || !data?.signedUrl) throw error ?? new Error("sin enlace");
+      return data.signedUrl;
+    },
+    [sb],
+  );
   const lista = det.registros.filter((r) => r.foto_ruta || r.explicacion);
   if (!lista.length) return <p className="pa-vacio">{F.fotos.vacio}</p>;
   const titulo = (id: string) => det.ocurrencias.find((o) => o.id === id)?.titulo ?? "—";
   return (
     <ul className="pa-lista-simple">
       {lista.map((r) => (
-        <li key={r.id}>
+        <li key={r.id} className={r.foto_ruta ? "pa-ficha-foto" : undefined}>
+          {r.foto_ruta && <MiniaturaPrivada ruta={r.foto_ruta} pedirUrl={pedirUrl} alt={`${FOTOS.miniatura}: ${titulo(r.ocurrencia_id)}`} clase="pa-miniatura pa-miniatura--chica" />}
           <Etiqueta variante={r.estado === "aprobada" ? "activo" : "nota"}>
             {r.estado === "aprobada" ? FOTOS.aprobada : r.estado === "rechazada" ? FOTOS.noAprobada : AJUSTES.estados.en_revision.texto}
           </Etiqueta>{" "}

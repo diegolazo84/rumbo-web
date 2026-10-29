@@ -123,13 +123,15 @@ const conAnalitica = Boolean(UMAMI_ID);
 // funciona en meta (limitación del estándar). 'unsafe-inline' en style-src solo
 // cubre los anchos de las barras de progreso y el estilo de los reenvíos.
 // blob: en img-src solo en la vista previa (la foto antes de subir, plataforma 2.3).
-// supabase: connect-src permite el proyecto (postular, estado y contacto, plataforma 2.3).
+// supabase: connect-src permite el proyecto (postular, estado y contacto, plataforma 2.3) e img-src,
+// solo los enlaces firmados de su almacenamiento.
 function csp({ scripts = [], analitica = false, imgBlob = false, supabase = false } = {}) {
   return [
     "default-src 'self'",
     ["script-src 'self'", ...scripts, ...(analitica ? UMAMI.scriptSrc : [])].join(" "),
     "style-src 'self' 'unsafe-inline'",
-    imgBlob ? "img-src 'self' data: blob:" : "img-src 'self' data:",
+    // Fotos privadas (acciones, Comunidad, desafíos): solo por enlace firmado del propio proyecto.
+    ["img-src 'self' data:", ...(imgBlob ? ["blob:"] : []), ...(supabase ? [`${SUPABASE_URL}/storage/v1/object/sign/`] : [])].join(" "),
     "font-src 'self'",
     ["connect-src 'self'", ...(supabase ? [SUPABASE_URL] : []), ...(analitica ? UMAMI.connectSrc : [])].join(" "),
     "manifest-src 'self'",

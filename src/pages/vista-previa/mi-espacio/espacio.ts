@@ -156,6 +156,11 @@ export type Servidor = {
   // «No puedo subir una foto» (4.9): la explicación queda «En revisión».
   registrarEvidencia: (id: string, explicacion: string) => Promise<Progreso>;
   eliminarEvidencia: (id: string) => Promise<Progreso>;
+  // Fotos privadas (módulo «fotos»): sube una foto ya preparada (WebP, sin EXIF). «evidencia» en
+  // acciones que la exigen (queda en revisión); «opcional» en las demás (complemento de «hecha»).
+  subirFoto: (id: string, foto: Blob, modo: "evidencia" | "opcional") => Promise<Progreso>;
+  quitarFoto: (id: string) => Promise<Progreso>; // foto opcional; la acción sigue hecha
+  urlFoto: (ruta: string) => Promise<string>; // enlace firmado de 5 minutos
   guardarRegistroSemanal: (semana: number, datos: DatosRegistroSemanal, enviar: boolean) => Promise<void>;
   pedirAjuste: (datos: DatosAjuste) => Promise<SolicitudAjuste>;
   guardarNombre: (nombre: string) => Promise<void>;
@@ -183,6 +188,7 @@ export type Espacio = {
   coach: CoachEspacio | null;
   videollamadas: VideollamadaEspacio[];
   servidor: Servidor | null;
+  fotos: boolean; // módulo «fotos» visible para las personas (solo Mi espacio real)
 };
 
 // ---------------------------------------------------------------------------
@@ -206,6 +212,7 @@ export const ESPACIO_PREVIA: Espacio = {
   coach: null,
   videollamadas: [],
   servidor: null,
+  fotos: false,
 };
 
 export const EspacioContexto = createContext<Espacio>(ESPACIO_PREVIA);
