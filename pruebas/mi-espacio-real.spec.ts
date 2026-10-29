@@ -4,6 +4,7 @@
 // probar). Supabase nunca se toca: page.route responde Auth y PostgREST con una base en memoria
 // que aplica las mismas reglas de visibilidad (RLS) que importan aquí: solo lo de la persona y
 // nunca un borrador. La base local de CI prueba las políticas de verdad (pruebas/base/).
+import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { operacion } from "../src/data/rumbo";
@@ -624,6 +625,57 @@ test("Desafíos real (C15): cerrada sin pedir datos; desafíos, actividad y prop
   await hoja.getByRole("button", { name: "Enviar propuesta" }).click();
   await expect(page.locator(".tostada__texto")).toHaveText("Enviamos tu propuesta al equipo de Rumbo.");
   expect(llamadas.filter((l) => l.nombre === "proponer_desafio").at(-1)!.cuerpo).toEqual({ p_titulo: "Leer cada noche", p_descripcion: null });
+});
+
+test("Desafíos real (C16): la foto que subió el equipo se ve en portada, tarjeta, participación y detalle; sin foto o si falla, la ilustración", async ({ page }) => {
+  await conSesion(page);
+  const hoy = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Santiago" });
+  const dia = (n: number) => {
+    const d = new Date(`${hoy}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+  const fila = (id: string, titulo: string, inicio: number, foto: string | null, participo = false) => ({
+    id, titulo, descripcion: null, reglas: "Haz todas tus acciones programadas cada día.", dias: 7, inicio: dia(inicio), fin: dia(inicio + 6),
+    ilustracion: "sendero", activo: true, participantes: 2, participo, dias_cumplidos: participo ? 1 : 0, dias_transcurridos: inicio <= 0 ? 1 - inicio : 0, completado: false, foto_ruta: foto,
+  });
+  const F1 = "de1/00000000-0000-0000-0000-00000000f010.webp";
+  const ROTA = "de3/00000000-0000-0000-0000-00000000f030.webp";
+  await simular(page, baseInicial(), {
+    mi_impacto_comunidad: () => [{ publicaciones: 0, comentarios: 0, reacciones_recibidas: 0 }],
+    comunidad_desafios: () => [fila("de1", "Semana de constancia", -1, F1, true), fila("de2", "Pausa activa", 3, null), fila("de3", "Leer cada noche", 5, ROTA)],
+    mi_actividad_desafios: () => [],
+  });
+  const firmadas: string[] = [];
+  const png = readFileSync("public/favicon-32.png");
+  await page.route(`${SUPABASE_URL}/storage/v1/object/**`, async (rt) => {
+    const ruta = new URL(rt.request().url()).pathname.replace(/^.*\/storage\/v1\/object\//, "");
+    if (ruta.startsWith("sign/") && rt.request().method() === "POST") {
+      firmadas.push(ruta.replace(/^sign\//, ""));
+      return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ signedURL: `/object/${ruta}?token=t` }) });
+    }
+    // La de «Leer cada noche» no carga: debe volver a la ilustración.
+    if (ruta.includes("f030")) return rt.fulfill({ status: 404, body: "" });
+    return rt.fulfill({ status: 200, contentType: "image/png", body: png });
+  });
+  await page.goto("mi-espacio/comunidad/desafios/");
+  await hidratar(page);
+  await expect(page.locator(".de-portada img.de-portada__fondo.de-foto")).toHaveAttribute("src", /desafios\/de1\/.*token=t/);
+  const tarjeta = (t: string) => page.locator("li.de-tarjeta", { hasText: t }).locator(".de-tarjeta__img");
+  await expect(tarjeta("Semana de constancia").locator("img.de-foto")).toBeVisible();
+  await expect(tarjeta("Pausa activa").locator("img")).toHaveCount(0);
+  await expect(tarjeta("Pausa activa").locator("svg")).toHaveCount(1);
+  await expect(tarjeta("Leer cada noche").locator("svg")).toHaveCount(1);
+  await expect(tarjeta("Leer cada noche").locator("img")).toHaveCount(0);
+  await expect(page.locator(".de-mia", { hasText: "Semana de constancia" }).locator("img.de-mia__img.de-foto")).toBeVisible();
+  // La foto de verdad se cargó (no quedó un recuadro roto).
+  await expect.poll(() => page.locator(".de-portada img.de-foto").evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth)).toBeGreaterThan(0);
+  expect(firmadas.every((r) => r.startsWith("desafios/"))).toBe(true);
+  expect(firmadas).not.toContain(expect.stringContaining("de2/"));
+  await page.locator("li.de-tarjeta", { hasText: "Semana de constancia" }).getByRole("button", { name: /Ver detalles/ }).first().click();
+  await expect(page.getByRole("dialog").locator(".de-detalle__img img.de-foto")).toBeVisible();
+  // La foto es decorativa: no agrega texto alternativo que repita el título.
+  await expect(page.locator("img.de-foto").first()).toHaveAttribute("alt", "");
 });
 
 test("Interior de un grupo real (C14): datos, publicaciones y miembros de la base; quien no es miembro no los pide", async ({ page }) => {

@@ -1082,6 +1082,10 @@
 .co-tarjeta.de-tarjeta { display: grid; grid-template-rows: auto 1fr auto; gap: var(--e-4); padding: 0 0 var(--e-5); overflow: hidden; }
 .de-tarjeta__img { position: relative; overflow: hidden; aspect-ratio: 16 / 10; }
 .de-tarjeta__img > svg { display: block; inline-size: 100%; block-size: 100%; }
+/* C16: foto del desafío en el mismo recorte que la ilustración. */
+.de-foto { display: block; object-fit: cover; }
+.de-tarjeta__img > .de-foto,
+.de-detalle__img > .de-foto { inline-size: 100%; block-size: 100%; }
 .de-sello {
   position: absolute;
   inset-block-start: var(--e-3);

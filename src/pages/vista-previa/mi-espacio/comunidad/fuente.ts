@@ -69,6 +69,7 @@ export type Desafio = {
   diasCumplidos: number;
   diasTranscurridos: number;
   completado: boolean;
+  foto: string | null; // C16: ruta en el bucket privado «desafios»; sin foto se usa la ilustración
 };
 export type DiaDesafio = { fecha: string; cumplido: boolean };
 export type PropuestaDesafio = { id: string; titulo: string; estado: "pendiente" | "creado" | "descartada"; creadaEn: string };
@@ -126,6 +127,7 @@ export interface FuenteComunidad {
   misPropuestasDesafio(): Promise<PropuestaDesafio[]>;
   actividadDesafios(): Promise<ActividadDesafio[]>;
   urlFoto(ruta: string): Promise<string | null>;
+  urlFotoDesafio(ruta: string): Promise<string | null>;
   guardarAlias(alias: string): Promise<void>;
   aceptarReglas(): Promise<void>;
 }
@@ -313,6 +315,7 @@ export function fuenteReal(): FuenteComunidad {
           dias_cumplidos: number;
           dias_transcurridos: number;
           completado: boolean;
+          foto_ruta: string | null;
         }[]
       >("comunidad_desafios");
       return (filas ?? []).map((d) => ({
@@ -329,6 +332,7 @@ export function fuenteReal(): FuenteComunidad {
         diasCumplidos: d.dias_cumplidos,
         diasTranscurridos: d.dias_transcurridos,
         completado: d.completado,
+        foto: d.foto_ruta ?? null,
       }));
     },
     async avance(desafio) {
@@ -409,6 +413,18 @@ export function fuenteReal(): FuenteComunidad {
           .then((r) => r.data?.signedUrl ?? null)
           .catch(() => null);
         fotos.set(ruta, p);
+      }
+      return p;
+    },
+    urlFotoDesafio(ruta) {
+      const clave = `desafios:${ruta}`;
+      let p = fotos.get(clave);
+      if (!p) {
+        p = supabase()
+          .then((sb) => sb.storage.from("desafios").createSignedUrl(ruta, 3600))
+          .then((r) => r.data?.signedUrl ?? null)
+          .catch(() => null);
+        fotos.set(clave, p);
       }
       return p;
     },
@@ -500,6 +516,7 @@ export function fuenteEjemplo(acceso: Acceso = "abierta"): FuenteComunidad {
       reglas: "Un día cuenta cuando completas todas las acciones que tenías programadas ese día. Rumbo lo calcula solo con tus registros: nadie marca días a mano. Puedes unirte o salir cuando quieras.",
       inicio: diaMas(inicio), fin: diaMas(inicio + dias - 1),
       participo: !!mio, diasCumplidos: mio?.cumplidos ?? 0, diasTranscurridos: transcurridos, completado: !!mio && mio.cumplidos >= dias,
+      foto: null,
     };
   };
   const desafios: Desafio[] = [
@@ -691,6 +708,9 @@ export function fuenteEjemplo(acceso: Acceso = "abierta"): FuenteComunidad {
     },
     async urlFoto(ruta) {
       return ruta.startsWith("blob:") ? ruta : null;
+    },
+    async urlFotoDesafio() {
+      return null; // la vista previa no inventa fotos: los desafíos de ejemplo usan su ilustración
     },
     async guardarAlias() {
       await espera();

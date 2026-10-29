@@ -31,6 +31,8 @@ test("portada del desafío destacado con datos reales, filtros y tarjetas; rotul
   await abrir(page);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(T.titulo);
   await expect(page.getByText(T_COMU.ejemplo)).toBeVisible();
+  // C16: la vista previa no inventa fotos; sin foto del equipo, cada desafío muestra su ilustración.
+  await expect(page.locator("img.de-foto")).toHaveCount(0);
   const portada = page.locator(".de-portada");
   await expect(portada).toContainText(T.destacado);
   await expect(portada.getByRole("heading", { name: "30 días de bienestar" })).toBeVisible();
