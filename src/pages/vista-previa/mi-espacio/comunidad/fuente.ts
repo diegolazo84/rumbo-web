@@ -71,6 +71,9 @@ export type Desafio = {
   completado: boolean;
 };
 export type DiaDesafio = { fecha: string; cumplido: boolean };
+export type PropuestaDesafio = { id: string; titulo: string; estado: "pendiente" | "creado" | "descartada"; creadaEn: string };
+// Mi actividad en desafíos (C15): solo la propia; «dia» es el número de día del desafío cumplido.
+export type ActividadDesafio = { tipo: "unido" | "dia" | "completado"; desafioId: string; titulo: string; fecha: string; dia: number | null };
 
 // Quién puede participar: módulo habilitado por el dueño, ficha activa, alias y reglas aceptadas.
 export type Acceso = "abierta" | "cerrada" | "sin_alias" | "sin_reglas" | "no_activo";
@@ -119,6 +122,9 @@ export interface FuenteComunidad {
   misPropuestas(): Promise<PropuestaGrupo[]>;
   unirmeDesafio(id: string): Promise<void>;
   salirDesafio(id: string): Promise<void>;
+  proponerDesafio(titulo: string, descripcion: string | null): Promise<void>;
+  misPropuestasDesafio(): Promise<PropuestaDesafio[]>;
+  actividadDesafios(): Promise<ActividadDesafio[]>;
   urlFoto(ruta: string): Promise<string | null>;
   guardarAlias(alias: string): Promise<void>;
   aceptarReglas(): Promise<void>;
@@ -382,6 +388,19 @@ export function fuenteReal(): FuenteComunidad {
     },
     unirmeDesafio: (id) => rpc("unirme_a_desafio", { p_desafio: id }),
     salirDesafio: (id) => rpc("salir_de_desafio", { p_desafio: id }),
+    async proponerDesafio(titulo, descripcion) {
+      await rpc("proponer_desafio", { p_titulo: titulo, p_descripcion: descripcion });
+    },
+    async misPropuestasDesafio() {
+      const filas = await rpc<{ id: string; titulo: string; estado: PropuestaDesafio["estado"]; creada_en: string }[]>("mis_propuestas_desafio");
+      return (filas ?? []).map((f) => ({ id: f.id, titulo: f.titulo, estado: f.estado, creadaEn: f.creada_en }));
+    },
+    async actividadDesafios() {
+      const filas = await rpc<{ tipo: ActividadDesafio["tipo"]; desafio_id: string; titulo: string; fecha: string; dia: number | null }[]>(
+        "mi_actividad_desafios",
+      );
+      return (filas ?? []).map((f) => ({ tipo: f.tipo, desafioId: f.desafio_id, titulo: f.titulo, fecha: f.fecha, dia: f.dia }));
+    },
     urlFoto(ruta) {
       let p = fotos.get(ruta);
       if (!p) {
@@ -408,6 +427,19 @@ const diaMas = (n: number) => {
   d.setDate(d.getDate() + n);
   return isoDia(d);
 };
+
+// Días de un desafío de ejemplo hasta hoy, con exactamente diasCumplidos cumplidos: los que faltan
+// caen primero cada tres días y, si no alcanza, al final.
+function diasEjemplo(d: Desafio): DiaDesafio[] {
+  const faltan = new Set<number>();
+  for (let i = 2; i < d.diasTranscurridos && faltan.size < d.diasTranscurridos - d.diasCumplidos; i += 3) faltan.add(i);
+  for (let i = d.diasTranscurridos - 1; i >= 0 && faltan.size < d.diasTranscurridos - d.diasCumplidos; i--) faltan.add(i);
+  return Array.from({ length: d.diasTranscurridos }, (_, i) => {
+    const f = new Date(`${d.inicio}T12:00:00`);
+    f.setDate(f.getDate() + i);
+    return { fecha: isoDia(f), cumplido: !faltan.has(i) };
+  });
+}
 
 // Vista previa: Comunidad y Crear publicación comparten la misma memoria mientras la página siga
 // abierta (lo publicado aparece en la lista al volver). Al recargar, todo vuelve al ejemplo.
@@ -457,13 +489,30 @@ export function fuenteEjemplo(acceso: Acceso = "abierta"): FuenteComunidad {
   ];
   const bloqueados: Bloqueo[] = [];
   const propuestas: PropuestaGrupo[] = [];
-  const desafios: Desafio[] = [
-    {
-      id: "d1", titulo: "28 días de constancia", descripcion: "Pequeños pasos, grandes cambios. Completa tus acciones diarias y comparte tu experiencia.",
+  // Desafíos de ejemplo (maqueta de ChatGPT, 29-oct-2026): en curso, próximos y uno terminado.
+  const des = (
+    id: string, titulo: string, descripcion: string, ilustracion: Ilustracion, inicio: number, dias: number, participantes: number,
+    mio?: { cumplidos: number },
+  ): Desafio => {
+    const transcurridos = Math.max(0, Math.min(dias, 1 - inicio));
+    return {
+      id, titulo, descripcion, ilustracion, dias, participantes,
       reglas: "Un día cuenta cuando completas todas las acciones que tenías programadas ese día. Rumbo lo calcula solo con tus registros: nadie marca días a mano. Puedes unirte o salir cuando quieras.",
-      dias: 28, inicio: diaMas(-9), fin: diaMas(18), ilustracion: "sendero", participantes: 8, participo: false, diasCumplidos: 0, diasTranscurridos: 10, completado: false,
-    },
+      inicio: diaMas(inicio), fin: diaMas(inicio + dias - 1),
+      participo: !!mio, diasCumplidos: mio?.cumplidos ?? 0, diasTranscurridos: transcurridos, completado: !!mio && mio.cumplidos >= dias,
+    };
+  };
+  const desafios: Desafio[] = [
+    des("d1", "30 días de bienestar", "Pequeños hábitos, grandes cambios. Un reto para cuidar de ti, paso a paso.", "montana", -11, 30, 342, { cumplidos: 10 }),
+    des("d2", "Alimentación consciente", "Descubre cómo una alimentación simple y real puede darte más energía.", "colinas", 5, 21, 187),
+    des("d3", "Mente en calma", "Herramientas prácticas para reducir el estrés y disfrutar más el presente.", "lago", 12, 14, 203),
+    des("d4", "Paseos conscientes", "Conecta con la naturaleza y mejora tu bienestar.", "sendero", 7, 14, 96),
+    des("d5", "Hidratación diaria", "Un pequeño gesto con grandes beneficios.", "brote", 10, 21, 128),
+    des("d6", "Gratitud en acción", "Reconoce lo positivo de cada día.", "colinas", 14, 21, 74),
+    des("d7", "Conexión y apoyo", "Un reto para acompañarnos y motivarnos.", "atardecer", 20, 28, 211),
+    des("d8", "Movimiento diario", "Muévete un poco cada día, a tu ritmo.", "sendero", -40, 21, 158, { cumplidos: 21 }),
   ];
+  const propuestasDesafio: PropuestaDesafio[] = [];
   let id = 100;
   const intentos = new Map<string, string>();
   const visible = (p: Publicacion) => !bloqueados.some((b) => b.alias === p.alias);
@@ -521,11 +570,7 @@ export function fuenteEjemplo(acceso: Acceso = "abierta"): FuenteComunidad {
     async avance(did) {
       const d = desafios.find((x) => x.id === did);
       if (!d) return [];
-      return Array.from({ length: d.diasTranscurridos }, (_, i) => {
-        const f = new Date(`${d.inicio}T12:00:00`);
-        f.setDate(f.getDate() + i);
-        return { fecha: isoDia(f), cumplido: [0, 1, 2, 4, 5, 7, 8].includes(i) };
-      });
+      return diasEjemplo(d);
     },
     async bloqueos() {
       return bloqueados.map((b) => ({ ...b }));
@@ -613,12 +658,36 @@ export function fuenteEjemplo(acceso: Acceso = "abierta"): FuenteComunidad {
       return propuestas.map((x) => ({ ...x }));
     },
     async unirmeDesafio(did) {
+      await espera();
       const d = desafios.find((x) => x.id === did);
-      if (d && !d.participo) Object.assign(d, { participo: true, participantes: d.participantes + 1, diasCumplidos: 7 });
+      if (!d || d.fin < diaMas(0)) throw new ErrorBase(404, "desafio", "no_disponible");
+      // Recién unida, el avance parte en cero: se calcula con los días que vengan.
+      if (!d.participo) Object.assign(d, { participo: true, participantes: d.participantes + 1, diasCumplidos: 0 });
     },
     async salirDesafio(did) {
       const d = desafios.find((x) => x.id === did);
       if (d?.participo) Object.assign(d, { participo: false, participantes: d.participantes - 1, diasCumplidos: 0 });
+    },
+    async proponerDesafio(titulo) {
+      await espera();
+      const t = titulo.trim();
+      if (t.length < 3 || t.length > 80) throw new ErrorBase(400, "titulo", "largo");
+      if (propuestasDesafio.filter((x) => x.estado === "pendiente").length >= 3) throw new ErrorBase(429, "propuestas", "demasiadas");
+      propuestasDesafio.unshift({ id: `pd${++id}`, titulo: t, estado: "pendiente", creadaEn: new Date().toISOString() });
+    },
+    async misPropuestasDesafio() {
+      return propuestasDesafio.map((x) => ({ ...x }));
+    },
+    // Como en la base: solo lo propio, a partir de los desafíos en que participo.
+    async actividadDesafios() {
+      const filas: ActividadDesafio[] = [];
+      for (const d of desafios.filter((x) => x.participo)) {
+        filas.push({ tipo: "unido", desafioId: d.id, titulo: d.titulo, fecha: d.inicio <= diaMas(0) ? d.inicio : diaMas(0), dia: null });
+        diasEjemplo(d).forEach((x, i) => {
+          if (x.cumplido) filas.push({ tipo: d.completado && i + 1 === d.dias ? "completado" : "dia", desafioId: d.id, titulo: d.titulo, fecha: x.fecha, dia: i + 1 });
+        });
+      }
+      return filas.sort((a, b) => b.fecha.localeCompare(a.fecha) || (b.dia ?? 0) - (a.dia ?? 0)).slice(0, 20);
     },
     async urlFoto(ruta) {
       return ruta.startsWith("blob:") ? ruta : null;

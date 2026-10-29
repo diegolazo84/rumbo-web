@@ -577,6 +577,55 @@ test("Grupos real: cerrada sin pedir grupos; abierta con destacado, sugeridos, u
   expect(llamadas.filter((l) => l.nombre === "proponer_grupo").at(-1)!.cuerpo).toEqual({ p_nombre: "Lectura", p_descripcion: null });
 });
 
+test("Desafíos real (C15): cerrada sin pedir datos; desafíos, actividad y propuestas de la base, sin ejemplo", async ({ page }) => {
+  await conSesion(page);
+  let llamadas = await simular(page, baseInicial(), { mi_impacto_comunidad: () => ({ __error: "comunidad:no_disponible", __estado: 409 }) });
+  await page.goto("mi-espacio/comunidad/desafios/");
+  await hidratar(page);
+  await expect(page.getByText("Para ver los desafíos, primero entra a Comunidad.")).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "comunidad_desafios")).toBe(false);
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+  await conSesion(page);
+  const hoy = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Santiago" });
+  const dia = (n: number) => {
+    const d = new Date(`${hoy}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+  const desafios = [
+    { id: "de1", titulo: "Semana de constancia", descripcion: "Todas tus acciones", reglas: "Haz todas tus acciones programadas cada día.", dias: 7, inicio: dia(-2), fin: dia(4), ilustracion: "sendero", activo: true, participantes: 3, participo: true, dias_cumplidos: 2, dias_transcurridos: 3, completado: false },
+    { id: "de2", titulo: "Pausa activa", descripcion: null, reglas: "Haz todas tus acciones programadas cada día.", dias: 14, inicio: dia(3), fin: dia(16), ilustracion: null, activo: true, participantes: 0, participo: false, dias_cumplidos: 0, dias_transcurridos: 0, completado: false },
+  ];
+  llamadas = await simular(page, baseInicial(), {
+    mi_impacto_comunidad: () => [{ publicaciones: 0, comentarios: 0, reacciones_recibidas: 0 }],
+    comunidad_desafios: () => desafios,
+    mi_actividad_desafios: () => [{ tipo: "dia", desafio_id: "de1", titulo: "Semana de constancia", fecha: dia(-1), dia: 2 }],
+    unirme_a_desafio: (c) => {
+      const d = desafios.find((x) => x.id === c.p_desafio)!;
+      Object.assign(d, { participo: true, participantes: d.participantes + 1 });
+      return null;
+    },
+    mis_propuestas_desafio: () => [],
+    proponer_desafio: () => "pd1",
+  });
+  await page.goto("mi-espacio/comunidad/desafios/");
+  await hidratar(page);
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".de-portada")).toContainText("Semana de constancia");
+  await expect(page.locator(".de-portada")).toContainText("3 participantes");
+  await expect(page.locator(".de-actividad")).toContainText("Cumpliste el día 2 de «Semana de constancia»");
+  await expect(page.locator(".de-actividad")).toContainText("Ayer");
+  await page.getByRole("button", { name: "Inscribirme: Pausa activa" }).click();
+  await expect.poll(() => llamadas.find((l) => l.nombre === "unirme_a_desafio")?.cuerpo).toEqual({ p_desafio: "de2" });
+  await expect(page.locator("li.de-tarjeta", { hasText: "Pausa activa" })).toContainText("1 participante");
+  await page.locator(".de-idea").getByRole("button", { name: "Proponer un desafío" }).click();
+  const hoja = page.getByRole("dialog", { name: "Proponer un desafío" });
+  await hoja.getByLabel("Nombre del desafío").fill("Leer cada noche");
+  await hoja.getByRole("button", { name: "Enviar propuesta" }).click();
+  await expect(page.locator(".tostada__texto")).toHaveText("Enviamos tu propuesta al equipo de Rumbo.");
+  expect(llamadas.filter((l) => l.nombre === "proponer_desafio").at(-1)!.cuerpo).toEqual({ p_titulo: "Leer cada noche", p_descripcion: null });
+});
+
 test("Interior de un grupo real (C14): datos, publicaciones y miembros de la base; quien no es miembro no los pide", async ({ page }) => {
   await conSesion(page);
   const base = baseInicial();

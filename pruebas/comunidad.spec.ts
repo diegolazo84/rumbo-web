@@ -154,21 +154,6 @@ test("grupos: descubrir, unirse, entrar y ver sus publicaciones", async ({ page 
   await sinViolaciones(page);
 });
 
-test("desafíos: objetivo, reglas, participar, avance día a día y salir", async ({ page }) => {
-  await abrir(page, "?vista=desafios");
-  const d = page.locator(".co-desafio").first();
-  await expect(d.getByRole("heading", { name: "28 días de constancia" })).toBeVisible();
-  await expect(d).toContainText(T.desafios.reglas);
-  await expect(d).toContainText(T.desafios.noSuma);
-  await d.getByRole("button", { name: T.desafios.unirme }).click();
-  await expect(page.locator(".tostada__texto")).toHaveText(T.desafios.unido);
-  await expect(d.locator(".co-dia")).toHaveCount(10);
-  await expect(d.locator(".co-barra__texto")).toHaveText(T.desafios.avance(7, 28));
-  await d.getByRole("button", { name: T.desafios.salir }).click();
-  await expect(d.locator(".co-dia")).toHaveCount(0);
-  await sinViolaciones(page);
-});
-
 test("historias de logro: solo publicaciones de logro, y se crea con ese tipo", async ({ page }) => {
   await abrir(page, "?vista=logros");
   await expect(page.locator("article.co-pub")).toHaveCount(1);
@@ -199,7 +184,8 @@ test("accesibilidad de la pantalla completa", async ({ page }) => {
   await sinViolaciones(page);
 });
 
-for (const vista of ["", "?vista=grupos", "?vista=desafios", "?vista=logros", "?vista=actividad"]) {
+// Desafíos es su propia pantalla (desafios-comunidad.spec.ts).
+for (const vista of ["", "?vista=grupos", "?vista=logros", "?vista=actividad"]) {
   test(`móvil: la barra inferior no tapa contenido ni controles al desplazarse ${vista || "(todas)"}`, async ({ page, isMobile }) => {
     test.skip(!isMobile, "solo móvil");
     await abrir(page, vista);

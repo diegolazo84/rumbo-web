@@ -163,6 +163,7 @@ function baseInicial(): Base {
     ],
     grupos_comunidad: [{ id: "gr1", nombre: "Estudio", descripcion: "Para quienes estudian.", ilustracion: "brote", activo: true, categoria: null, destacado: false }],
     propuestas_grupo: [{ id: "pg1", nombre: "Lectura", descripcion: "Para leer un poco cada día.", alias: "Brote Sereno", estado: "pendiente", creada_en: "2026-10-21T12:00:00Z" }],
+    propuestas_desafio: [{ id: "pd1", titulo: "Semana sin pantallas", descripcion: "Desconectarse una hora antes de dormir.", alias: "Río Claro", estado: "pendiente", creada_en: "2026-10-28T12:00:00Z" }],
     miembros_grupo: [{ grupo_id: "gr1" }, { grupo_id: "gr1" }],
     desafios: [{ id: "de1", titulo: "Semana de constancia", descripcion: null, reglas: "Haz todas tus acciones programadas cada día.", dias: 7, inicio: "2026-10-19", ilustracion: null, activo: true }],
     participaciones_desafio: [{ desafio_id: "de1" }],
@@ -224,7 +225,7 @@ function sesion(aal: "aal1" | "aal2", factores: Factor[]) {
 
 type Llamada = { tipo: "rpc" | "tabla" | "auth"; metodo: string; nombre: string; url: string; cuerpo: unknown; aal: string };
 
-const ADMIN = new Set(["cambiar_modulo", "propuestas_grupo_equipo", "responder_propuesta_grupo", "moderar_publicacion", "guardar_grupo_comunidad", "guardar_desafio", "crear_espacio", "nuevo_enlace_solicitud", "nuevo_borrador", "solapamientos", "carga_prevista", "publicar_programa", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "eliminar_participante"]);
+const ADMIN = new Set(["cambiar_modulo", "propuestas_grupo_equipo", "responder_propuesta_grupo", "propuestas_desafio_equipo", "responder_propuesta_desafio", "moderar_publicacion", "guardar_grupo_comunidad", "guardar_desafio", "crear_espacio", "nuevo_enlace_solicitud", "nuevo_borrador", "solapamientos", "carga_prevista", "publicar_programa", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "eliminar_participante"]);
 
 async function simular(page: Page, base: Base, { equipo = true, factores = [] as Factor[] } = {}) {
   const llamadas: Llamada[] = [];
@@ -266,6 +267,13 @@ async function simular(page: Page, base: Base, { equipo = true, factores = [] as
     propuestas_grupo_equipo: () => base.propuestas_grupo,
     responder_propuesta_grupo: (c) => {
       const x = base.propuestas_grupo.find((y) => y.id === c.p_id && y.estado === "pendiente");
+      if (!x) return { __error: "propuesta:no_encontrada", __estado: 404 };
+      x.estado = c.p_estado;
+      return null;
+    },
+    propuestas_desafio_equipo: () => base.propuestas_desafio,
+    responder_propuesta_desafio: (c) => {
+      const x = base.propuestas_desafio.find((y) => y.id === c.p_id && y.estado === "pendiente");
       if (!x) return { __error: "propuesta:no_encontrada", __estado: 404 };
       x.estado = c.p_estado;
       return null;
@@ -888,6 +896,12 @@ test("Comunidad: ocultar un reporte con motivo, volver a mostrar, crear grupo y 
   await propuesta.getByRole("button", { name: "Marcar como creada" }).click();
   await expect.poll(() => base.propuestas_grupo[0].estado).toBe("creada");
   expect(llamadas.find((l) => l.nombre === "responder_propuesta_grupo")!.cuerpo).toEqual({ p_id: "pg1", p_estado: "creada" });
+  // Propuestas de desafíos (C15): también con alias; descartar.
+  const propDesafio = page.locator("li", { has: page.getByRole("heading", { name: "Semana sin pantallas" }) });
+  await expect(propDesafio.getByText("Río Claro", { exact: false })).toBeVisible();
+  await propDesafio.getByRole("button", { name: "Descartar" }).click();
+  await expect.poll(() => base.propuestas_desafio[0].estado).toBe("descartada");
+  await propDesafio.getByRole("button", { name: "Descartar" }).waitFor({ state: "detached" });
   // Desafío con participantes: duración e inicio bloqueados al editar.
   await expect(page.getByText("1 participante", { exact: true })).toBeVisible();
   await page.locator("li", { hasText: "Semana de constancia" }).getByRole("button", { name: "Editar" }).click();

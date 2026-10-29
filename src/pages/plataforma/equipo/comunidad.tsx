@@ -48,6 +48,7 @@ type Datos = {
   participantes: Record<string, number>;
   modulo: Modulo;
   propuestas: Propuesta[];
+  propuestasDesafio: Propuesta[];
 };
 
 const COLUMNAS_PUB = "id,texto,tipo,estado,respuesta_a,foto_ruta,fotos,creada_en,moderacion_motivo,moderada_en";
@@ -68,7 +69,7 @@ export function ComunidadReal() {
       return;
     }
     setPermiso(true);
-    const [reportes, ocultas, grupos, miembros, desafios, participaciones, modulo, propuestas] = await Promise.all([
+    const [reportes, ocultas, grupos, miembros, desafios, participaciones, modulo, propuestas, propuestasDesafio] = await Promise.all([
       sb.from("reportes_comunidad").select("id,publicacion_id,motivo,detalle,creado_en").is("resuelto_en", null).order("creado_en", { ascending: true }),
       sb.from("publicaciones").select(COLUMNAS_PUB).eq("estado", "oculta").order("moderada_en", { ascending: false }).limit(30),
       sb.from("grupos_comunidad").select("id,nombre,descripcion,ilustracion,activo,categoria,destacado").order("nombre", { ascending: true }),
@@ -77,6 +78,7 @@ export function ComunidadReal() {
       sb.from("participaciones_desafio").select("desafio_id"),
       sb.from("modulos").select("estado").eq("clave", "comunidad").maybeSingle(),
       sb.rpc("propuestas_grupo_equipo"),
+      sb.rpc("propuestas_desafio_equipo"),
     ]);
     const rep = datos(reportes) as Reporte[];
     const ids = [...new Set(rep.map((r) => r.publicacion_id))];
@@ -91,6 +93,7 @@ export function ComunidadReal() {
       participantes: contar(datos(participaciones) as { desafio_id: string }[], "desafio_id"),
       modulo: datos(modulo) as Modulo,
       propuestas: (datos(propuestas) as Propuesta[] | null) ?? [],
+      propuestasDesafio: ((datos(propuestasDesafio) as (Omit<Propuesta, "nombre"> & { titulo: string })[] | null) ?? []).map((x) => ({ ...x, nombre: x.titulo })),
     });
   }, [sb]);
 
@@ -130,6 +133,7 @@ export function ComunidadReal() {
       <Ocultas d={d} alCambiar={cargar} />
       <Grupos d={d} alCambiar={cargar} />
       <Propuestas d={d} alCambiar={cargar} />
+      <Propuestas d={d} alCambiar={cargar} tipo="desafio" />
       <Desafios d={d} alCambiar={cargar} />
     </div>
   );
@@ -464,32 +468,37 @@ function FormGrupo({ id, g, alGuardar, alCancelar }: { id: string; g?: Grupo; al
 }
 
 // ---------------------------------------------------------------------------
-// Propuestas de grupos (C13): con el alias de quien propone; se marcan creadas o descartadas.
+// Propuestas de grupos (C13) y de desafíos (C15).
 
-function Propuestas({ d, alCambiar }: { d: Datos; alCambiar: () => void }) {
+function Propuestas({ d, alCambiar, tipo = "grupo" }: { d: Datos; alCambiar: () => void; tipo?: "grupo" | "desafio" }) {
+  const P = tipo === "grupo" ? T.propuestas : T.propuestasDesafio;
+  const lista = tipo === "grupo" ? d.propuestas : d.propuestasDesafio;
   return (
-    <Seccion titulo={T.propuestas.titulo} id="co-propuestas">
-      <p className="microcopia">{T.propuestas.ayuda}</p>
-      {d.propuestas.length ? (
+    <Seccion titulo={P.titulo} id={tipo === "grupo" ? "co-propuestas" : "co-propuestas-desafio"}>
+      <p className="microcopia">{P.ayuda}</p>
+      {lista.length ? (
         <ul className="pa-filas">
-          {d.propuestas.map((x) => (
-            <ItemPropuesta key={x.id} x={x} alCambiar={alCambiar} />
+          {lista.map((x) => (
+            <ItemPropuesta key={x.id} x={x} alCambiar={alCambiar} tipo={tipo} />
           ))}
         </ul>
       ) : (
-        <p className="pa-vacio">{T.propuestas.vacio}</p>
+        <p className="pa-vacio">{P.vacio}</p>
       )}
     </Seccion>
   );
 }
 
-function ItemPropuesta({ x, alCambiar }: { x: Propuesta; alCambiar: () => void }) {
+// Grupos (C13) y desafíos (C15): con el alias de quien propone; se marcan creados o descartados.
+function ItemPropuesta({ x, alCambiar, tipo }: { x: Propuesta; alCambiar: () => void; tipo: "grupo" | "desafio" }) {
   const { sb } = useDatosPanel();
   const [correr, error, ocupado] = useEscritura();
-  const id = `propuesta-${x.id}`;
+  const P = tipo === "grupo" ? T.propuestas : T.propuestasDesafio;
+  const id = `propuesta-${tipo}-${x.id}`;
   const responder = (estado: "creada" | "descartada") =>
     void correr(async () => {
-      datos(await sb.rpc("responder_propuesta_grupo", { p_id: x.id, p_estado: estado }));
+      if (tipo === "grupo") datos(await sb.rpc("responder_propuesta_grupo", { p_id: x.id, p_estado: estado }));
+      else datos(await sb.rpc("responder_propuesta_desafio", { p_id: x.id, p_estado: estado === "creada" ? "creado" : estado }));
       alCambiar();
     });
   return (
@@ -498,19 +507,19 @@ function ItemPropuesta({ x, alCambiar }: { x: Propuesta; alCambiar: () => void }
         <h3 id={`${id}-titulo`} className="pa-h3">
           {x.nombre}
         </h3>
-        <Etiqueta variante={x.estado === "pendiente" ? "pronto" : "nota"}>{T.propuestas.estados[x.estado] ?? x.estado}</Etiqueta>
+        <Etiqueta variante={x.estado === "pendiente" ? "pronto" : "nota"}>{P.estados[x.estado] ?? x.estado}</Etiqueta>
       </div>
       {x.descripcion && <p>{x.descripcion}</p>}
-      <p className="microcopia">{T.propuestas.propuso(x.alias ?? T.propuestas.sinAlias, fechaDe(x.creada_en))}</p>
+      <p className="microcopia">{P.propuso(x.alias ?? P.sinAlias, fechaDe(x.creada_en))}</p>
       {x.estado === "pendiente" && (
         <>
           <Alerta texto={error} />
           <div className="acciones">
             <button type="button" className="boton boton--secundario" disabled={ocupado} aria-describedby={`${id}-titulo`} onClick={() => responder("creada")}>
-              {T.propuestas.creada}
+              {P.creada}
             </button>
             <button type="button" className="boton boton--terciario" disabled={ocupado} aria-describedby={`${id}-titulo`} onClick={() => responder("descartada")}>
-              {T.propuestas.descartar}
+              {P.descartar}
             </button>
           </div>
         </>

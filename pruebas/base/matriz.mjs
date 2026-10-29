@@ -70,6 +70,7 @@ const TABLAS = {
   reportes_comunidad: { leer: "equipo", escribir: "funciones", dueno: "reportante", coach: { leer: "nada", escribir: "nada" } },
   grupos_comunidad: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   propuestas_grupo: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  propuestas_desafio: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   miembros_grupo: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   reacciones_comunidad: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   guardadas_comunidad: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
@@ -115,7 +116,7 @@ const FUNCIONES = {
     "aceptar_reglas_comunidad", "publicar_en_comunidad", "borrar_mi_publicacion", "reportar_publicacion", "comunidad_publicaciones",
     "reaccionar_publicacion", "unirme_a_grupo", "salir_de_grupo", "comunidad_grupos", "comunidad_miembros_grupo", "proponer_grupo", "mis_propuestas_grupo",
     "guardar_publicacion", "bloquear_autor", "desbloquear_alias", "mis_bloqueos", "comunidad_temas", "mi_impacto_comunidad",
-    "unirme_a_desafio", "salir_de_desafio", "comunidad_desafios", "mi_avance_desafio",
+    "unirme_a_desafio", "salir_de_desafio", "comunidad_desafios", "mi_avance_desafio", "proponer_desafio", "mis_propuestas_desafio", "mi_actividad_desafios",
     "mis_reconocimientos", "mis_beneficios",
     "ia_guardar_consentimiento", "ia_retirar_consentimiento", "ia_preguntar", "mis_consultas_ia",
     "autorizar_especialista", "retirar_especialista", "pedir_reserva", "cancelar_reserva", "enviar_mensaje_especialista",
@@ -125,7 +126,7 @@ const FUNCIONES = {
     "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion", "cambiar_modulo", "indicadores",
     "registrar_pago", "devolucion_sugerida", "registrar_devolucion",
     "invitar_coach", "revocar_invitacion", "cambiar_coach", "programar_videollamada", "anotar_videollamada",
-    "moderar_publicacion", "guardar_grupo_comunidad", "propuestas_grupo_equipo", "responder_propuesta_grupo", "guardar_desafio", "guardar_reconocimiento", "guardar_beneficio", "otorgar_beneficio", "aplicar_beneficio",
+    "moderar_publicacion", "guardar_grupo_comunidad", "propuestas_grupo_equipo", "responder_propuesta_grupo", "propuestas_desafio_equipo", "responder_propuesta_desafio", "guardar_desafio", "guardar_reconocimiento", "guardar_beneficio", "otorgar_beneficio", "aplicar_beneficio",
     "ia_pedir_borrador", "ia_revisar", "guardar_ia_config", "ia_gasto",
     "invitar_especialista", "revisar_credencial", "decidir_especialista", "guardar_config_especialistas", "guardar_especialidad",
     "guardar_perfil_especialista", "agregar_credencial", "guardar_servicio_especialista", "enviar_perfil_a_revision",
@@ -256,6 +257,8 @@ insert into public.bloqueos_comunidad (bloqueador, bloqueado) values ('${ROLES.A
 insert into public.desafios (id, titulo, reglas, dias, inicio) values ('00000000-0000-0000-0000-0000000000d1', 'Desafío de CI',
   'Semilla de CI: completar las acciones del día.', 7, current_date - 3) on conflict do nothing;
 insert into public.participaciones_desafio (desafio_id, participante_id) values ('00000000-0000-0000-0000-0000000000d1', '${ROLES.A.ficha}')
+  on conflict do nothing;
+insert into public.propuestas_desafio (id, participante_id, titulo) values ('00000000-0000-0000-0000-0000000000da', '${ROLES.B.ficha}', 'Semilla de CI')
   on conflict do nothing;
 insert into public.plantillas_accion (titulo, instrucciones, duracion_min, autor)
   values ('Caminar', 'Plantilla de prueba de CI.', 20, '${ROLES.aal2.uid}');
@@ -1727,6 +1730,59 @@ paso("especialistas: invita el dueño; perfil con credenciales verificadas y pub
   exigir(exp.ok && Number(ultima(exp)) >= 1, `la copia de mis datos no incluye las reservas con especialistas: ${exp.error ?? ultima(exp)}`);
 }
 paso("especialistas, trabajo: solo con vínculo y lo autorizado; reservas con comisión solo si vienen de Rumbo; mensajes privados; al retirar se corta el acceso");
+
+// C15 · Pantalla Desafíos: propuestas para revisión del equipo y actividad solo propia.
+{
+  const abrir = `reset role; update public.modulos set estado = 'habilitado' where clave = 'comunidad';
+    update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    update public.alias set reglas_comunidad_en = now(); set local role authenticated;`;
+  const d1 = "'00000000-0000-0000-0000-0000000000d1'";
+  const reclamosDe = (r) => `select set_config('request.jwt.claims', '${JSON.stringify({ sub: r.uid, role: "authenticated", aal: r.aal ?? "aal1" })}', true) \\g /dev/null\n`;
+  const proponer = (n) => `select public.proponer_desafio('Desafío propuesto ${n}', 'Para probar') \\g /dev/null\n`;
+  const props = como(ROLES.A, `${abrir} ${proponer(1)} ${proponer(2)} ${proponer(3)} select count(*) from public.mis_propuestas_desafio()`);
+  exigir(props.ok && ultima(props) === "3", `A no pudo proponer desafíos: ${props.error ?? ultima(props)}`);
+  const cuarta = como(ROLES.A, `${abrir} ${proponer(1)} ${proponer(2)} ${proponer(3)} ${proponer(4)}`);
+  exigir(!cuarta.ok && /propuestas:demasiadas/.test(cuarta.error), "A dejó más de 3 propuestas de desafío pendientes");
+  const corta = como(ROLES.A, `${abrir} select public.proponer_desafio('ab')`);
+  exigir(!corta.ok && /titulo:largo/.test(corta.error), "se aceptó un desafío propuesto sin título");
+  const cerrada = como(ROLES.A, `select public.proponer_desafio('Con la comunidad cerrada')`);
+  exigir(!cerrada.ok, "se propuso un desafío con la comunidad sin habilitar");
+  const tabla = como(ROLES.A, `${abrir} ${proponer(1)} select count(*) from public.propuestas_desafio`);
+  exigir(tabla.ok && ultima(tabla) === "0", `una persona lee la tabla de propuestas de desafío: ${tabla.error ?? ultima(tabla)}`);
+  const deB = como(ROLES.B, `${abrir} reset role; ${reclamosDe(ROLES.A)} set local role authenticated; ${proponer(1)}
+    reset role; ${reclamosDe(ROLES.B)} set local role authenticated; select count(*) from public.mis_propuestas_desafio() where titulo like 'Desafío propuesto %'`);
+  exigir(deB.ok && ultima(deB) === "0", `B ve las propuestas de desafío de A: ${deB.error ?? ultima(deB)}`);
+  const persona = como(ROLES.A, `${abrir} select count(*) from public.propuestas_desafio_equipo()`);
+  exigir(!persona.ok && /no_autorizado/.test(persona.error), "una persona vio las propuestas de desafío del equipo");
+  const equipo = como(ROLES.aal2, `reset role; ${reclamosDe(ROLES.A)} ${abrir} ${proponer(9)}
+    reset role; ${reclamosDe(ROLES.aal2)} set local role authenticated;
+    select public.responder_propuesta_desafio((select id from public.propuestas_desafio_equipo() where titulo = 'Desafío propuesto 9'), 'creado') \\g /dev/null
+    select estado || ' ' || (alias is not null)::int || ' ' || (to_jsonb(x) ? 'participante_id')::int from public.propuestas_desafio_equipo() x where titulo = 'Desafío propuesto 9'`);
+  exigir(equipo.ok && ultima(equipo) === "creado 1 0", `el equipo no ve o no responde la propuesta de desafío (o ve la ficha): ${equipo.error ?? ultima(equipo)}`);
+
+  // Actividad: solo la mía; unirme, cada día cumplido y completar, con el cálculo de C9.
+  const fila = (n) => `insert into public.progreso_diario (participante_id, fecha, programadas, hechas, en_revision,
+      creditos_acciones, bono, racha, en_suspenso) values ('${ROLES.A.ficha}', privado.hoy_chile() - ${n}, 1, 1, 0, 0, 0, 0, false);`;
+  const preparar = `reset role; update public.desafios set inicio = privado.hoy_chile() - 6, dias = 7 where id = ${d1};
+    delete from public.progreso_diario where participante_id = '${ROLES.A.ficha}' and fecha >= privado.hoy_chile() - 10;
+    insert into public.participaciones_desafio (desafio_id, participante_id) values (${d1}, '${ROLES.A.ficha}') on conflict do nothing;`;
+  const tipos = `select string_agg(tipo || coalesce(':' || dia, ''), ',' order by fecha desc, dia desc nulls last) from public.mi_actividad_desafios() where desafio_id = ${d1}`;
+  const parcial = como(ROLES.A, `${abrir} ${preparar} ${fila(6)} ${fila(4)} set local role authenticated; ${tipos}`);
+  exigir(parcial.ok && /^(unido,)?dia:3,dia:1(,unido)?$/.test(ultima(parcial)), `la actividad no refleja los días cumplidos: ${parcial.error ?? ultima(parcial)}`);
+  const completa = como(ROLES.A, `${abrir} ${preparar} ${[0, 1, 2, 3, 4, 5, 6].map(fila).join(" ")} set local role authenticated; ${tipos}`);
+  exigir(completa.ok && /completado:7/.test(ultima(completa)) && !/dia:7/.test(ultima(completa)), `completar el desafío no aparece en la actividad: ${completa.error ?? ultima(completa)}`);
+  const ajena = como(ROLES.B, `${abrir} ${preparar} ${fila(0)} set local role authenticated; select count(*) from public.mi_actividad_desafios()`);
+  exigir(ajena.ok && ultima(ajena) === "0", `B ve la actividad de A: ${ajena.error ?? ultima(ajena)}`);
+  // Inscripción solo propia: nadie escribe la tabla directo ni saca a otra persona.
+  const directo = como(ROLES.B, `${abrir} insert into public.participaciones_desafio (desafio_id, participante_id) values (${d1}, '${ROLES.B.ficha}')`);
+  exigir(!directo.ok, "una persona escribió su inscripción directo en la tabla");
+  const sacar = como(ROLES.B, `${abrir} ${preparar} set local role authenticated; select public.salir_de_desafio(${d1}) \\g /dev/null
+    reset role; select count(*) from public.participaciones_desafio where desafio_id = ${d1} and participante_id = '${ROLES.A.ficha}'`);
+  exigir(sacar.ok && ultima(sacar) === "1", `salir de B afectó la inscripción de A: ${sacar.error ?? ultima(sacar)}`);
+  const exp = como(ROLES.A, `${abrir} ${proponer(1)} select jsonb_array_length(public.exportar_mis_datos()->'propuestas_desafio')`);
+  exigir(exp.ok && Number(ultima(exp)) >= 1, `la copia de mis datos no incluye mis propuestas de desafío: ${exp.error ?? ultima(exp)}`);
+}
+paso("desafíos C15: propuestas solo propias y con alias para el equipo; actividad solo propia con días cumplidos y completado; inscripción solo propia");
 
 paso("ranking: voluntario, solo con alias, por % de la semana; con menos de 3 no se muestra; quien sale deja de verlo");
 

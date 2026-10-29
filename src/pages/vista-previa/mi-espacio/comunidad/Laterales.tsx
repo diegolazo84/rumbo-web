@@ -61,7 +61,7 @@ export function TarjetaGrupos() {
 
 // El desafío destacado es el primero vigente (la base los ordena: vigentes primero, por inicio).
 export function DesafioDestacado() {
-  const { enlace } = useComunidad();
+  const { R } = useEspacio();
   const { dato } = useDato((f) => f.desafios());
   const d = dato?.find((x) => x.diasTranscurridos < x.dias || x.participo) ?? dato?.[0];
   if (!d) return null;
@@ -75,7 +75,7 @@ export function DesafioDestacado() {
       {d.descripcion && <p className="co-destacado__texto">{d.descripcion}</p>}
       <BarraDesafio d={d} />
       <p className="co-destacado__dato">{T.desafios.participantes(d.participantes)}</p>
-      <Link to={enlace({ vista: "desafios", desafio: d.id })} className="boton boton--secundario co-lateral__boton">
+      <Link to={`${R.comunidadDesafios}?desafio=${encodeURIComponent(d.id)}`} className="boton boton--secundario co-lateral__boton">
         {T.desafios.ver}
       </Link>
     </section>
