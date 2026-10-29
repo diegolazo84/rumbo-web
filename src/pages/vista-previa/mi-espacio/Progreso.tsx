@@ -374,7 +374,8 @@ function MiEvolucion({ progreso, lista }: { progreso: Progreso; lista: Ocurrenci
                 </svg>
                 <span className="sr-only">{T.evolucion.etiqueta(s.n, s.pct, s.futura)}</span>
                 <span className="ml-semanas__n" aria-hidden="true">
-                  {T.evolucion.semana(s.n)}
+                  <span className="ml-semanas__largo">{T.evolucion.semana(s.n)}</span>
+                  <span className="ml-semanas__corto">{T.evolucion.semanaCorta(s.n)}</span>
                 </span>
                 <span className="ml-semanas__pct" aria-hidden="true">
                   {s.futura ? "—" : s.pct === null ? T.evolucion.sinAcciones : T.evolucion.pct(s.pct)}
@@ -392,7 +393,12 @@ function MiEvolucion({ progreso, lista }: { progreso: Progreso; lista: Ocurrenci
             <div className="ml-esta-semana__fila">
               <AnilloDia hechas={hechasSemana.length} programadas={deSemana.length} etiqueta={T.estaSemana.texto(hechasSemana.length, deSemana.length)} />
               <div className="ml-esta-semana__texto">
-                <p aria-hidden="true">{T.estaSemana.texto(hechasSemana.length, deSemana.length)}</p>
+                <p className="ml-esta-semana__cifra" aria-hidden="true">
+                  <span className="ml-esta-semana__n">{hechasSemana.length}</span> <span className="ml-esta-semana__de">{T.estaSemana.de(deSemana.length)}</span>
+                </p>
+                <p className="ml-esta-semana__rotulo" aria-hidden="true">
+                  {T.estaSemana.rotulo(hechasSemana.length)}
+                </p>
                 <Link to={R.calendario} className="ml-enlace">
                   {T.estaSemana.verPlan}
                 </Link>
@@ -448,28 +454,65 @@ const ICONO_REC: Record<ClaveReconocimiento, NombreIconoApp> = {
   meta_alcanzada: "sun",
 };
 
-// Avance hacia lo que falta, solo cuando se puede calcular con los mismos datos de la base.
-function avanceDe(r: Reconocimiento, progreso: Progreso, metas: Meta[], diasCiclo: number, hoyEnCiclo: number): [number, number] | null {
+// Tres estados: conseguido (con su fecha), en progreso (avance real calculado con los mismos datos
+// que usa la base para otorgarlo) y por desbloquear (con cómo conseguirlo). No cambia las reglas.
+type EstadoRec = "conseguido" | "progreso" | "bloqueado";
+type Avance = { valor: number; maximo: number; texto: string };
+
+function avanceDe(r: Reconocimiento, progreso: Progreso, metas: Meta[], ciclo: { inicio: Iso; semanas: number }, hoy: Iso): Avance | null {
   if (r.obtenido) return null;
-  if (r.clave === "constancia" && r.umbral) return [Math.min(Math.max(...progreso.dias.map((d) => d.racha), 0), r.umbral), r.umbral];
-  if (r.clave === "ciclo_completado") return [Math.min(Math.max(hoyEnCiclo, 0), diasCiclo), diasCiclo];
-  if (r.clave === "meta_alcanzada") {
-    const mejor = metas.filter((m) => m.hitos.length).sort((a, b) => b.hitos.filter((h) => h.logrado).length / b.hitos.length - a.hitos.filter((h) => h.logrado).length / a.hitos.length)[0];
-    return mejor ? [mejor.hitos.filter((h) => h.logrado).length, mejor.hitos.length] : null;
+  const diasCiclo = ciclo.semanas * 7;
+  const dia = Math.round((Date.parse(hoy) - Date.parse(ciclo.inicio)) / 86_400_000) + 1;
+  const hechas = progreso.dias.some((d) => d.hechas > 0);
+  const A = T.reconocimientos.avance;
+  switch (r.clave) {
+    case "primera_semana": {
+      // Solo mientras corre la primera semana y ya hay acciones hechas en ella.
+      const enSemana1 = progreso.dias.some((d) => d.fecha <= sumarDias(ciclo.inicio, 6) && d.hechas > 0);
+      return dia >= 1 && dia <= 7 && enSemana1 ? { valor: dia, maximo: 7, texto: A.primera_semana(dia) } : null;
+    }
+    case "constancia": {
+      const u = r.umbral ?? 7;
+      const mejor = Math.min(Math.max(0, ...progreso.dias.map((d) => d.racha)), u);
+      return mejor > 0 ? { valor: mejor, maximo: u, texto: A.constancia(mejor, u) } : null;
+    }
+    case "mitad_del_camino": {
+      // Hasta la mitad del ciclo: % de lo programado hecho hasta hoy. Pasada la mitad ya no se puede.
+      const u = r.umbral ?? 50;
+      const mitad = sumarDias(ciclo.inicio, Math.floor(diasCiclo / 2));
+      if (hoy >= mitad) return null;
+      const hasta = progreso.dias.filter((d) => d.fecha <= hoy);
+      const prog = hasta.reduce((s, d) => s + d.programadas, 0);
+      const pct = prog ? Math.round((100 * hasta.reduce((s, d) => s + Math.min(d.hechas, d.programadas), 0)) / prog) : 0;
+      return pct > 0 ? { valor: Math.min(pct, u), maximo: u, texto: A.mitad_del_camino(pct, u) } : null;
+    }
+    case "ciclo_completado":
+      return hechas && dia >= 1 ? { valor: Math.min(dia, diasCiclo), maximo: diasCiclo, texto: A.ciclo_completado(Math.min(dia, diasCiclo), diasCiclo) } : null;
+    case "meta_alcanzada": {
+      const logro = (m: Meta) => m.hitos.filter((h) => h.logrado).length;
+      const mejor = metas.filter((m) => m.hitos.length).sort((x, y) => logro(y) / y.hitos.length - logro(x) / x.hitos.length)[0];
+      return mejor && logro(mejor) > 0 ? { valor: logro(mejor), maximo: mejor.hitos.length, texto: A.meta_alcanzada(logro(mejor), mejor.hitos.length) } : null;
+    }
+    default:
+      return null;
   }
-  return null;
 }
+
+const ICONO_ESTADO: Record<EstadoRec, NombreIconoApp> = { conseguido: "check", progreso: "sprout", bloqueado: "lock" };
 
 function MisReconocimientos({ datos, progreso, metas, amplio }: { datos: Carga<Reconocimiento[]>; progreso: Progreso; metas: Meta[]; amplio: boolean }) {
   const [hoja, setHoja] = useState(false);
   const { hoy, ciclo } = useEspacio();
-  const diasCiclo = ciclo.semanas * 7;
-  const hoyEnCiclo = Math.round((Date.parse(hoy) - Date.parse(ciclo.inicio)) / 86_400_000) + 1;
   const lista = Array.isArray(datos) ? datos : null;
   const obtenidos = lista?.filter((r) => r.obtenido).length ?? 0;
+  const umbral = (r: Reconocimiento) => r.umbral ?? CATALOGO.find((x) => x.clave === r.clave)!.umbral ?? 0;
   const corto = (r: Reconocimiento) => {
     const c = T.reconocimientos.corto[r.clave];
-    return typeof c === "function" ? c(r.umbral ?? CATALOGO.find((x) => x.clave === r.clave)!.umbral ?? 0) : c;
+    return typeof c === "function" ? c(umbral(r)) : c;
+  };
+  const como = (r: Reconocimiento) => {
+    const c = T.reconocimientos.como[r.clave];
+    return typeof c === "function" ? c(umbral(r)) : c;
   };
   return (
     <Tarjeta
@@ -484,36 +527,45 @@ function MisReconocimientos({ datos, progreso, metas, amplio }: { datos: Carga<R
       {datos === "error" && <p className="ml-nota">{T.error}</p>}
       {lista && (
         <>
-          <p className="sr-only">{T.reconocimientos.resumen(obtenidos, lista.length)}</p>
+          <p className="ml-insignias__resumen">{T.reconocimientos.resumen(obtenidos, lista.length)}</p>
           <ul className="ml-insignias">
             {lista.map((r) => {
-              const avance = avanceDe(r, progreso, metas, diasCiclo, hoyEnCiclo);
+              const avance = avanceDe(r, progreso, metas, ciclo, hoy);
+              const estado: EstadoRec = r.obtenido ? "conseguido" : avance ? "progreso" : "bloqueado";
               return (
-                <li key={r.clave} className={r.obtenido ? "ml-insignia es-obtenida" : "ml-insignia"} data-clave={r.clave}>
+                <li key={r.clave} className={`ml-insignia es-${estado}${r.obtenido ? " es-obtenida" : ""}`} data-clave={r.clave} data-estado={estado}>
                   <span className="ml-insignia__circulo" aria-hidden="true">
                     <Icono nombre={ICONO_REC[r.clave]} tamaño={24} />
+                    {estado !== "progreso" && (
+                      <span className="ml-insignia__sello">
+                        <Icono nombre={ICONO_ESTADO[estado]} tamaño={16} />
+                      </span>
+                    )}
                   </span>
+                  <span className="ml-insignia__estado">{T.reconocimientos.estado[estado]}</span>
                   <h3 className="ml-insignia__nombre">{r.nombre}</h3>
-                  <p className="ml-insignia__texto">{r.obtenido ? (r.clave === "meta_alcanzada" && r.veces > 1 ? T.reconocimientos.veces(r.veces) : corto(r)) : corto(r)}</p>
-                  {r.obtenido ? (
-                    <p className="ml-insignia__fecha">
-                      <span className="sr-only">{T.reconocimientos.obtenido(diaMes(r.obtenido))}</span>
-                      <time dateTime={r.obtenido} aria-hidden="true">
-                        {diaMes(r.obtenido)}
-                      </time>
-                    </p>
-                  ) : avance ? (
-                    <BarraProgreso
-                      className="ml-insignia__barra"
-                      valor={avance[0]}
-                      maximo={avance[1]}
-                      etiqueta={`${r.nombre}: ${T.reconocimientos.porLograr}`}
-                      textoValor={T.reconocimientos.progreso(avance[0], avance[1])}
-                      texto={T.reconocimientos.progreso(avance[0], avance[1])}
-                    />
-                  ) : (
-                    <p className="ml-insignia__fecha">{T.reconocimientos.porLograr}</p>
+                  {estado === "conseguido" && (
+                    <>
+                      <p className="ml-insignia__texto">{r.clave === "meta_alcanzada" && r.veces > 1 ? T.reconocimientos.veces(r.veces) : corto(r)}</p>
+                      <p className="ml-insignia__fecha">
+                        <time dateTime={r.obtenido!}>{T.reconocimientos.obtenido(diaMes(r.obtenido!))}</time>
+                      </p>
+                    </>
                   )}
+                  {estado === "progreso" && avance && (
+                    <>
+                      <p className="ml-insignia__texto">{como(r)}</p>
+                      <BarraProgreso
+                        className="ml-insignia__barra"
+                        valor={avance.valor}
+                        maximo={avance.maximo}
+                        etiqueta={`${r.nombre}: ${T.reconocimientos.estado.progreso}`}
+                        textoValor={avance.texto}
+                        texto={avance.texto}
+                      />
+                    </>
+                  )}
+                  {estado === "bloqueado" && <p className="ml-insignia__texto">{como(r)}</p>}
                 </li>
               );
             })}

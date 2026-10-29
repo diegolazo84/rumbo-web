@@ -1047,12 +1047,17 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 .ml-semanas__barra rect { fill: var(--salvia); }
 .ml-semanas__lista li.es-actual .ml-semanas__barra rect { fill: var(--ambar); }
 .ml-semanas__n { font-size: var(--t-micro); color: var(--tinta-suave); white-space: nowrap; }
+.ml-semanas__corto { display: none; }
 .ml-semanas__pct { font: 600 var(--t-base)/1.2 var(--sans); color: var(--tinta); }
 .ml-esta-semana { display: grid; gap: var(--e-3); padding: var(--e-4); border-radius: var(--r-m); background: var(--salvia-suave); }
 .ml-esta-semana__h3 { margin: 0; font: 600 var(--t-lead)/1.2 var(--serif); color: var(--bosque); }
 .ml-esta-semana__fila { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--e-4); }
 .ml-esta-semana .anillo { inline-size: 88px; block-size: 88px; }
 .ml-esta-semana__texto { display: grid; gap: var(--e-1); font-size: var(--t-xs); line-height: 1.45; color: var(--tinta); }
+.ml-esta-semana__cifra { display: flex; align-items: baseline; gap: var(--e-2); margin: 0; }
+.ml-esta-semana__n { font: 600 var(--t-precio)/1 var(--serif); color: var(--bosque); }
+.ml-esta-semana__de { font: 600 var(--t-lead)/1.2 var(--serif); color: var(--tinta); }
+.ml-esta-semana__rotulo { margin: 0; font-size: var(--t-xs); font-weight: 600; line-height: 1.35; color: var(--tinta); }
 .ml-esta-semana__hechas summary { min-block-size: 44px; display: flex; align-items: center; font-size: var(--t-xs); font-weight: 600; color: var(--bosque); cursor: pointer; }
 
 /* Frase */
@@ -1061,25 +1066,61 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 .ml-frase__texto { position: relative; display: flex; align-items: center; justify-content: center; gap: var(--e-3); margin: 0; padding: var(--e-4); font: 500 var(--t-lead)/1.3 var(--serif); color: var(--bosque); text-align: center; }
 .ml-frase__icono { flex: none; color: var(--terracota-texto); }
 
-/* Mis reconocimientos */
-.ml-insignias { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: var(--e-4) var(--e-3); list-style: none; margin: 0; padding: 0; }
+/* Mis reconocimientos: conseguido (color, sello y fecha), en progreso (suave, con barra) y por
+   desbloquear (tenue, candado y cómo conseguirlo). */
+.ml-insignias__resumen { margin: 0 0 var(--e-3); font-size: var(--t-xs); font-weight: 600; color: var(--tinta-suave); }
+.ml-insignias { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: var(--e-3); list-style: none; margin: 0; padding: 0; }
 @media (max-width: 479.98px) { .ml-insignias { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.ml-insignia { display: grid; justify-items: center; align-content: start; gap: 4px; text-align: center; }
-.ml-insignia__circulo { display: grid; place-items: center; inline-size: 72px; block-size: 72px; margin-block-end: var(--e-2); border-radius: 50%; background: var(--papel-hondo); color: var(--linea-fuerte); }
-.ml-reconocimientos.es-amplio .ml-insignia__circulo { inline-size: 88px; block-size: 88px; }
+.ml-insignia { display: grid; justify-items: center; align-content: start; gap: 6px; padding: var(--e-4) var(--e-3); border: 1px solid var(--linea); border-radius: var(--r-m); background: var(--superficie); text-align: center; }
+.ml-insignia.es-conseguido { border-color: var(--salvia); background: var(--crema); box-shadow: var(--sombra-1); }
+.ml-insignia.es-bloqueado { border-style: dashed; background: var(--papel); }
+.ml-insignia__circulo { position: relative; display: grid; place-items: center; inline-size: 72px; block-size: 72px; margin-block-end: var(--e-1); border-radius: 50%; background: var(--papel-hondo); color: var(--linea-fuerte); }
+.ml-reconocimientos.es-amplio .ml-insignia__circulo { inline-size: 80px; block-size: 80px; }
 .ml-insignia__circulo .icono { inline-size: 32px; block-size: 32px; }
-.ml-insignia.es-obtenida[data-clave="primer_paso"] .ml-insignia__circulo { background: var(--salvia-suave); color: var(--salvia-honda); }
-.ml-insignia.es-obtenida[data-clave="primera_semana"] .ml-insignia__circulo { background: var(--ambar); color: var(--terracota-texto); }
-.ml-insignia.es-obtenida[data-clave="constancia"] .ml-insignia__circulo { background: var(--niebla); color: var(--bosque); }
-.ml-insignia.es-obtenida[data-clave="mitad_del_camino"] .ml-insignia__circulo { background: var(--terracota-suave); color: var(--terracota); }
-.ml-insignia.es-obtenida[data-clave="ciclo_completado"] .ml-insignia__circulo { background: var(--sol); color: var(--bosque); }
-.ml-insignia.es-obtenida[data-clave="meta_alcanzada"] .ml-insignia__circulo { background: var(--arena); color: var(--terracota-texto); }
-.ml-insignia.es-obtenida .ml-insignia__circulo .icono { fill: currentColor; fill-opacity: 0.25; }
-.ml-insignia__nombre { margin: 0; font: 600 var(--t-xs)/1.25 var(--sans); color: var(--tinta); }
-.ml-insignia__texto { font-size: var(--t-micro); line-height: 1.35; color: var(--tinta-suave); }
-.ml-insignia__fecha { margin-block-start: var(--e-1); font-size: var(--t-micro); color: var(--tinta-suave); }
-.ml-insignia__barra { inline-size: 100%; max-inline-size: 96px; }
-.ml-insignia__barra .barra-texto { font-size: var(--t-micro); text-align: center; }
+.ml-insignia.es-bloqueado .ml-insignia__circulo { border: 2px dashed var(--linea-fuerte); }
+.ml-insignia.es-progreso .ml-insignia__circulo { border: 2px solid var(--salvia); background: var(--salvia-suave); color: var(--salvia-honda); }
+.ml-insignia.es-conseguido .ml-insignia__circulo { border: 3px solid var(--superficie); box-shadow: var(--sombra-1); }
+.ml-insignia.es-conseguido[data-clave="primer_paso"] .ml-insignia__circulo { background: var(--salvia-suave); color: var(--salvia-honda); }
+.ml-insignia.es-conseguido[data-clave="primera_semana"] .ml-insignia__circulo { background: var(--ambar); color: var(--terracota-texto); }
+.ml-insignia.es-conseguido[data-clave="constancia"] .ml-insignia__circulo { background: var(--niebla); color: var(--bosque); }
+.ml-insignia.es-conseguido[data-clave="mitad_del_camino"] .ml-insignia__circulo { background: var(--terracota-suave); color: var(--terracota); }
+.ml-insignia.es-conseguido[data-clave="ciclo_completado"] .ml-insignia__circulo { background: var(--sol); color: var(--bosque); }
+.ml-insignia.es-conseguido[data-clave="meta_alcanzada"] .ml-insignia__circulo { background: var(--arena); color: var(--terracota-texto); }
+.ml-insignia.es-conseguido .ml-insignia__circulo .icono { fill: currentColor; fill-opacity: 0.25; }
+.ml-insignia__sello { position: absolute; inset-block-end: -2px; inset-inline-end: -2px; display: grid; place-items: center; inline-size: 26px; block-size: 26px; border: 2px solid var(--superficie); border-radius: 50%; background: var(--papel-hondo); color: var(--tinta-suave); }
+.ml-insignia__sello .icono { inline-size: 14px; block-size: 14px; }
+.ml-insignia.es-conseguido .ml-insignia__sello { background: var(--bosque); color: var(--crema); }
+.ml-insignia__estado { padding: 2px var(--e-2); border-radius: var(--r-full); font: 600 var(--t-micro)/1.3 var(--sans); background: var(--papel-hondo); color: var(--tinta-suave); }
+.ml-insignia.es-conseguido .ml-insignia__estado { background: var(--bosque); color: var(--crema); }
+.ml-insignia.es-progreso .ml-insignia__estado { background: var(--salvia-suave); color: var(--bosque); }
+.ml-insignia__nombre { margin: 0; font: 600 var(--t-s)/1.25 var(--sans); color: var(--tinta); }
+.ml-insignia.es-bloqueado .ml-insignia__nombre { color: var(--tinta-suave); }
+.ml-insignia__texto { font-size: var(--t-xs); line-height: 1.4; color: var(--tinta-suave); }
+.ml-insignia__fecha { font-size: var(--t-xs); font-weight: 600; color: var(--bosque); }
+.ml-insignia__barra { inline-size: 100%; max-inline-size: 140px; }
+.ml-insignia__barra .barra-texto { font-size: var(--t-xs); font-weight: 600; color: var(--tinta); text-align: center; }
+
+/* Mis logros en móvil: textos secundarios más legibles y etiquetas que no se cortan. */
+@media (max-width: 639.98px) {
+  .ml-barras__ejes, .ml-creditos__bono-t, .ml-semanas__n { font-size: var(--t-xs); }
+  .ml-barras svg { block-size: 72px; }
+  .ml-semanas__lista { gap: var(--e-1); padding: var(--e-3) var(--e-2); }
+  .ml-semanas__pct { font-size: var(--t-s); }
+  .ml-insignias { gap: var(--e-3) var(--e-2); }
+  .ml-insignia { padding: var(--e-3) var(--e-2); }
+  .ml-insignia__circulo, .ml-reconocimientos.es-amplio .ml-insignia__circulo { inline-size: 64px; block-size: 64px; }
+  .ml-insignia__nombre { font-size: var(--t-xs); }
+  .ml-esta-semana__fila { gap: var(--e-3); }
+  .ml-esta-semana .anillo { inline-size: 76px; block-size: 76px; }
+  .ml-metas .me-meta__semanas { display: flex; flex-wrap: wrap; gap: var(--e-1) var(--e-2); }
+  .ml-metas .me-meta__semana { white-space: nowrap; }
+  .ml-metas .me-meta__semana [aria-hidden="true"] { display: none; }
+  .ml-metas .me-meta .barra-texto { font-size: var(--t-xs); }
+}
+@media (max-width: 419.98px) {
+  .ml-semanas__largo { display: none; }
+  .ml-semanas__corto { display: inline; }
+}
 
 /* Mis recompensas */
 .ml-premio { display: grid; gap: var(--e-3); padding: var(--e-4); border-radius: var(--r-m); background: var(--crema); }

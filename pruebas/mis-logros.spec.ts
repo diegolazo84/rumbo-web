@@ -54,20 +54,43 @@ test("constancia, evolución por semana y esta semana con datos del escenario", 
   await expect(c.locator(".ml-llamas .es-encendida")).toHaveCount(Math.min(racha, 7));
   const evo = tarjeta(page, T.evolucion.titulo);
   await expect(evo.locator(".ml-semanas__lista li")).toHaveCount(4);
-  await expect(evo.locator(".ml-semanas__lista li").first()).toContainText(/Semana 1\s*\d+ %/);
+  await expect(evo.locator(".ml-semanas__lista li").first()).toContainText(/Semana 1(Sem\. 1)?\s*\d+ %/);
   await expect(evo.locator(".ml-semanas__lista li").last()).toContainText("—");
   await expect(evo.getByRole("img", { name: /Has completado \d+ de \d+ acciones/ })).toBeVisible();
+  // Esta semana: «X de N» grande, separado del gráfico de 4 semanas.
+  await expect(evo.locator(".ml-esta-semana__cifra")).toHaveText(/^\d+ de \d+$/);
+  await expect(evo.locator(".ml-esta-semana__rotulo")).toContainText("de las programadas");
+  await expect(evo.locator(".ml-semanas .ml-esta-semana")).toHaveCount(0);
   await evo.getByText(T.estaSemana.hechas).click();
   await expect(evo.locator(".me-hechas li").first()).toBeVisible();
 });
 
-test("reconocimientos: los 6, con fecha si se obtuvieron y avance si se puede calcular", async ({ page }) => {
+test("reconocimientos: los 6 en tres estados, con fecha real, avance real o cómo conseguirlo", async ({ page }) => {
   await abrir(page);
   const r = tarjeta(page, T.reconocimientos.titulo);
   await expect(r.locator(".ml-insignia")).toHaveCount(6);
-  await expect(r.locator(".ml-insignia.es-obtenida").first()).toContainText(/de \w+/);
-  await expect(r.locator('.ml-insignia[data-clave="constancia"]')).toContainText(T.reconocimientos.corto.constancia(7));
-  await expect(r.locator('.ml-insignia[data-clave="mitad_del_camino"]')).toContainText(T.reconocimientos.corto.mitad_del_camino(50));
+  const E = T.reconocimientos.estado;
+  // Conseguido: etiqueta, nombre y fecha real.
+  const conseguidos = r.locator('.ml-insignia[data-estado="conseguido"]');
+  expect(await conseguidos.count()).toBeGreaterThan(0);
+  for (const li of await conseguidos.all()) {
+    await expect(li.locator(".ml-insignia__estado")).toHaveText(E.conseguido);
+    await expect(li.locator("time")).toHaveText(/^Conseguido el \d+ de \w+/);
+  }
+  // En progreso: barra con el avance; por desbloquear: sin barra y con cómo conseguirlo.
+  for (const li of await r.locator('.ml-insignia[data-estado="progreso"]').all()) {
+    await expect(li.locator(".ml-insignia__estado")).toHaveText(E.progreso);
+    await expect(li.getByRole("progressbar")).toBeVisible();
+  }
+  for (const li of await r.locator('.ml-insignia[data-estado="bloqueado"]').all()) {
+    await expect(li.locator(".ml-insignia__estado")).toHaveText(E.bloqueado);
+    await expect(li.getByRole("progressbar")).toHaveCount(0);
+  }
+  // Constancia: la mejor racha del ciclo sobre el umbral de la base.
+  const c = r.locator('.ml-insignia[data-clave="constancia"]');
+  await expect(c).toContainText(T.reconocimientos.como.constancia(7));
+  if ((await c.getAttribute("data-estado")) === "progreso") await expect(c.getByRole("progressbar")).toHaveAttribute("aria-valuemax", "7");
+  await expect(r.locator('.ml-insignia[data-clave="mitad_del_camino"]')).toContainText(/50 %/);
   await r.getByRole("button", { name: T.reconocimientos.ver }).click();
   const hoja = page.getByRole("dialog", { name: T.reconocimientos.hoja });
   await expect(hoja.locator("li")).toHaveCount(6);
@@ -105,7 +128,14 @@ test("accesible y sin desborde; en móvil la barra no tapa nada", async ({ page,
   if (isMobile) {
     await page.setViewportSize({ width: 320, height: 640 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+    // Etiquetas de semana cortas y sin cortes en pantallas angostas.
+    await expect(page.locator(".ml-semanas__corto").first()).toBeVisible();
+    for (const n of await page.locator(".ml-semanas__n, .ml-insignia__estado").all())
+      expect(await n.evaluate((e) => e.scrollWidth - e.clientWidth)).toBeLessThanOrEqual(0);
     await page.setViewportSize({ width: 390, height: 844 });
+    // Textos secundarios de reconocimientos y gráficos: al menos 14 px.
+    for (const sel of [".ml-insignia__texto", ".ml-barras__ejes", ".ml-semanas__n", ".ml-creditos__bono-t"])
+      expect(await page.locator(sel).first().evaluate((e) => parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(14);
     await revisarBarra(page);
   }
 });

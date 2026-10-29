@@ -733,6 +733,7 @@ test("Mis logros real (C17): todo de la base; recompensas y ranking solo con su 
   base.reconocimientos = [
     { clave: "primer_paso", nombre: "Primer paso", descripcion: "Marcaste tu primera acción.", umbral: null, activo: true },
     { clave: "constancia", nombre: "Constancia", descripcion: "Sostuviste una racha de días seguidos en tu ciclo.", umbral: 5, activo: true },
+    { clave: "meta_alcanzada", nombre: "Meta alcanzada", descripcion: "Lograste todos los hitos de una meta.", umbral: null, activo: true },
   ];
   base.alias = [{ participante_id: "p1", alias: "Ana C", en_ranking: false }];
   const apagado = { modulo_visible: () => false, mis_beneficios: () => [], mi_beneficio_renovacion: () => [] };
@@ -773,9 +774,20 @@ test("Mis logros real (C17): todo de la base; recompensas y ranking solo con su 
   await page.goto("mi-espacio/logros/");
   await hidratar(page);
   const rec = page.locator(".ml-reconocimientos");
-  await expect(rec.locator(".ml-insignia")).toHaveCount(2);
-  await expect(rec.locator(".ml-insignia.es-obtenida")).toContainText("5 de octubre");
-  await expect(rec.locator('[data-clave="constancia"]')).toContainText("5 días seguidos completos");
+  await expect(rec.locator(".ml-insignia")).toHaveCount(3);
+  await expect(rec.locator('[data-clave="primer_paso"]')).toHaveAttribute("data-estado", "conseguido");
+  await expect(rec.locator('[data-clave="primer_paso"] time')).toHaveText("Conseguido el 5 de octubre");
+  // Umbral de la base (5), no el del ejemplo.
+  await expect(rec.locator('[data-clave="constancia"]')).toContainText("Completa todas tus acciones 5 días seguidos.");
+  // Racha en curso: en progreso, con barra sobre el umbral de la base.
+  await expect(rec.locator('[data-clave="constancia"]')).toHaveAttribute("data-estado", "progreso");
+  await expect(rec.locator('[data-clave="constancia"]').getByRole("progressbar")).toHaveAttribute("aria-valuemax", "5");
+  // Ningún hito logrado: por desbloquear, sin barra y con cómo conseguirlo.
+  const meta = rec.locator('[data-clave="meta_alcanzada"]');
+  await expect(meta).toHaveAttribute("data-estado", "bloqueado");
+  await expect(meta.locator(".ml-insignia__estado")).toHaveText("Por desbloquear");
+  await expect(meta).toContainText("Logra todos los hitos de una de tus metas.");
+  await expect(meta.getByRole("progressbar")).toHaveCount(0);
   await expect(page.locator(".ml-recompensas")).toContainText("10 % de descuento");
   await expect(page.locator(".ml-recompensas")).toContainText("1/16 acciones");
   await expect(page.locator(".ml-recompensas")).toContainText("En este ciclo quedó alguna acción sin hacer.");
