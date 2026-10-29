@@ -38,33 +38,34 @@ comentario. En producción ya está así: **no se pega**, solo se registra.
 | 20261008000009 | `20261008000009_etapa3.sql` | `07-etapa3.sql` |
 | 20261012000000 | `20261012000000_avisos_ntfy.sql` | `08-avisos-ntfy.sql` |
 | 20261020000000 | `20261020000000_alinear_produccion.sql` | (nuevo, ver abajo) |
-| 20261021000000 | `20261021000000_arreglo_aviso_contacto.sql` | (nuevo: arregla el formulario de contacto; **aplicado a mano por Diego el 2026-10-21; falta registrarlo en el Paso C**) |
-| 20261022000000 | `20261022000000_roles_coach.sql` | (nuevo, A1: roles dueño y coach; **pendiente de aplicar, solo con autorización de Diego**; se deshace con `supabase/deshacer/20261022000000_roles_coach.sql`) |
-| 20261023000000 | `20261023000000_auditoria_ver_con_motivo.sql` | (nuevo, A2: auditoría de cambios y «Ver con motivo»; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261024000000 | `20261024000000_perfil_coach.sql` | (nuevo, A3: perfil del coach y «Tu coach»; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261025000000 | `20261025000000_modulos.sql` | (nuevo, A4: configuración de módulos; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261026000000 | `20261026000000_avisos_sincronizados.sql` | (nuevo, A5: avisos dentro de la app y leídos sincronizados; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261027000000 | `20261027000000_indicadores.sql` | (nuevo, B3: indicadores de negocio para el dueño; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261028000000 | `20261028000000_bandeja_coach.sql` | (nuevo, B2: bandeja de seguimiento del coach; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261029000000 | `20261029000000_pagos.sql` | (nuevo, B4: registro manual de pagos y devoluciones; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261030000000 | `20261030000000_invitar_coaches.sql` | (nuevo, B5: invitar y gestionar coaches; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261031000000 | `20261031000000_fotos_en_cualquier_accion.sql` | (nuevo, C1: foto opcional en cualquier acción; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261101000000 | `20261101000000_videollamadas.sql` | (nuevo, C2: videollamada semanal del plan cercano; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261102000000 | `20261102000000_recordatorios.sql` | (nuevo, D1: recordatorios automáticos dentro de Rumbo; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261103000000 | `20261103000000_evolucion.sql` | (nuevo, C3: evolución semanal e informe de ciclo; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261104000000 | `20261104000000_medibles_y_plantillas.sql` | (nuevo, C4: acciones medibles y plantillas; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261105000000 | `20261105000000_alias_y_ranking.sql` | (nuevo, C5: alias y ranking semanal voluntario; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261106000000 | `20261106000000_comunidad.sql` | (nuevo, C6: comunidad con reglas, reportes y moderación; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261107000000 | `20261107000000_recordatorios_por_correo.sql` | (nuevo, D3: recordatorios por correo con Brevo, apagados sin claves; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261108000000 | `20261108000000_recompensas.sql` | (nuevo, E1: reconocimientos y beneficios; descuento apagado; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261109000000 | `20261109000000_asistente_ia.sql` | (nuevo, E2: asistente de IA con OpenAI, apagado; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261110000000 | `20261110000000_especialistas.sql` | (nuevo, E3: especialistas, perfiles y verificación; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261111000000 | `20261111000000_especialistas_trabajo.sql` | (nuevo, E4: vínculos, reservas, seguimiento, recomendaciones, mensajes y comisiones; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261112000000 | `20261112000000_comunidad_reacciones_fotos_grupos.sql` | (nuevo, C7: grupos, reacciones y foto opcional en Comunidad; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261113000000 | `20261113000000_comunidad_tipos_guardar_bloquear.sql` | (nuevo, C8: tipos, guardadas, bloqueos, temas e impacto en Comunidad; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261114000000 | `20261114000000_desafios.sql` | (nuevo, C9: desafíos de la comunidad con avance verificable; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261115000000 | `20261115000000_crear_publicacion.sql` | (nuevo, C11: crear publicación con hasta 5 fotos, «Permitir comentarios» y sin duplicados; **pendiente de aplicar, solo con autorización de Diego**) |
-| 20261116000000 | `20261116000000_grupos_explorador.sql` | (nuevo, C13: grupos con categoría y un destacado único; `comunidad_grupos()` con publicaciones visibles, destacado y sugerido por categoría de las metas; propuestas de grupo para el equipo, con alias y sin datos personales; **pendiente de aplicar, solo con autorización de Diego**) |
+| 20261021000000 | `20261021000000_arreglo_aviso_contacto.sql` | (nuevo: arregla el formulario de contacto; **aplicado a mano por Diego el 2026-10-21; registrado el 2026-10-29**) |
+| 20261022000000 | `20261022000000_roles_coach.sql` | (nuevo, A1: roles dueño y coach; **aplicada en producción el 2026-10-29**; se deshace con `supabase/deshacer/20261022000000_roles_coach.sql`) |
+| 20261023000000 | `20261023000000_auditoria_ver_con_motivo.sql` | (nuevo, A2: auditoría de cambios y «Ver con motivo»; **aplicada en producción el 2026-10-29**) |
+| 20261024000000 | `20261024000000_perfil_coach.sql` | (nuevo, A3: perfil del coach y «Tu coach»; **aplicada en producción el 2026-10-29**) |
+| 20261025000000 | `20261025000000_modulos.sql` | (nuevo, A4: configuración de módulos; **aplicada en producción el 2026-10-29**) |
+| 20261026000000 | `20261026000000_avisos_sincronizados.sql` | (nuevo, A5: avisos dentro de la app y leídos sincronizados; **aplicada en producción el 2026-10-29**) |
+| 20261027000000 | `20261027000000_indicadores.sql` | (nuevo, B3: indicadores de negocio para el dueño; **aplicada en producción el 2026-10-29**) |
+| 20261028000000 | `20261028000000_bandeja_coach.sql` | (nuevo, B2: bandeja de seguimiento del coach; **aplicada en producción el 2026-10-29**) |
+| 20261029000000 | `20261029000000_pagos.sql` | (nuevo, B4: registro manual de pagos y devoluciones; **aplicada en producción el 2026-10-29**) |
+| 20261030000000 | `20261030000000_invitar_coaches.sql` | (nuevo, B5: invitar y gestionar coaches; **aplicada en producción el 2026-10-29**) |
+| 20261031000000 | `20261031000000_fotos_en_cualquier_accion.sql` | (nuevo, C1: foto opcional en cualquier acción; **aplicada en producción el 2026-10-29**) |
+| 20261101000000 | `20261101000000_videollamadas.sql` | (nuevo, C2: videollamada semanal del plan cercano; **aplicada en producción el 2026-10-29**) |
+| 20261102000000 | `20261102000000_recordatorios.sql` | (nuevo, D1: recordatorios automáticos dentro de Rumbo; **aplicada en producción el 2026-10-29**) |
+| 20261103000000 | `20261103000000_evolucion.sql` | (nuevo, C3: evolución semanal e informe de ciclo; **aplicada en producción el 2026-10-29**) |
+| 20261104000000 | `20261104000000_medibles_y_plantillas.sql` | (nuevo, C4: acciones medibles y plantillas; **aplicada en producción el 2026-10-29**) |
+| 20261105000000 | `20261105000000_alias_y_ranking.sql` | (nuevo, C5: alias y ranking semanal voluntario; **aplicada en producción el 2026-10-29**) |
+| 20261106000000 | `20261106000000_comunidad.sql` | (nuevo, C6: comunidad con reglas, reportes y moderación; **aplicada en producción el 2026-10-29**) |
+| 20261107000000 | `20261107000000_recordatorios_por_correo.sql` | (nuevo, D3: recordatorios por correo con Brevo, apagados sin claves; **aplicada en producción el 2026-10-29**) |
+| 20261108000000 | `20261108000000_recompensas.sql` | (nuevo, E1: reconocimientos y beneficios; descuento apagado; **aplicada en producción el 2026-10-29**) |
+| 20261109000000 | `20261109000000_asistente_ia.sql` | (nuevo, E2: asistente de IA con OpenAI, apagado; **aplicada en producción el 2026-10-29**) |
+| 20261110000000 | `20261110000000_especialistas.sql` | (nuevo, E3: especialistas, perfiles y verificación; **aplicada en producción el 2026-10-29**) |
+| 20261111000000 | `20261111000000_especialistas_trabajo.sql` | (nuevo, E4: vínculos, reservas, seguimiento, recomendaciones, mensajes y comisiones; **aplicada en producción el 2026-10-29**) |
+| 20261112000000 | `20261112000000_comunidad_reacciones_fotos_grupos.sql` | (nuevo, C7: grupos, reacciones y foto opcional en Comunidad; **aplicada en producción el 2026-10-29**) |
+| 20261113000000 | `20261113000000_comunidad_tipos_guardar_bloquear.sql` | (nuevo, C8: tipos, guardadas, bloqueos, temas e impacto en Comunidad; **aplicada en producción el 2026-10-29**) |
+| 20261114000000 | `20261114000000_desafios.sql` | (nuevo, C9: desafíos de la comunidad con avance verificable; **aplicada en producción el 2026-10-29**) |
+| 20261115000000 | `20261115000000_crear_publicacion.sql` | (nuevo, C11: crear publicación con hasta 5 fotos, «Permitir comentarios» y sin duplicados; **aplicada en producción el 2026-10-29**) |
+| 20261116000000 | `20261116000000_grupos_explorador.sql` | (nuevo, C13: grupos con categoría y un destacado único; `comunidad_grupos()` con publicaciones visibles, destacado y sugerido por categoría de las metas; propuestas de grupo para el equipo, con alias y sin datos personales; **aplicada en producción el 2026-10-29**) |
+| 20261117000000 | `20261117000000_grupo_miembros.sql` | (nuevo, C14: lista de miembros del grupo con alias, solo para sus miembros; **pendiente de aplicar, solo con autorización de Diego**; se deshace con `supabase/deshacer/20261117000000_grupo_miembros.sql`) |
 
 Fuera de `migrations/` quedan las herramientas que no cambian la estructura:
 `verificacion.sql`, `historial-migraciones.sql`, `restaurar-antes.sql` y `restaurar-despues.sql`.
