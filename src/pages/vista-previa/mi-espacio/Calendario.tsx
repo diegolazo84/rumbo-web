@@ -4,9 +4,10 @@
 // Sin rojo, cruces ni gris de castigo: un día pasado incompleto no lleva ninguna marca.
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { FranjaSemana, Hoja, Icono, LeyendaMetas, Segmentado, Tostada, type DiaFranja } from "../../../components/app";
+import { Link } from "react-router-dom";
+import { BarraProgreso, FranjaSemana, Hoja, Icono, LeyendaMetas, Segmentado, Tostada, type DiaFranja } from "../../../components/app";
 import Etiqueta from "../../../components/Etiqueta";
-import { cuentaComoHecha, ocurrenciasDel, type Ocurrencia } from "../../../data/ejemplo-app";
+import { cuentaComoHecha, ocurrenciasDel, type Meta, type Ocurrencia } from "../../../data/ejemplo-app";
 import type { CategoriaId } from "../../../data/rumbo";
 import {
   anioDe,
@@ -35,7 +36,7 @@ import {
 } from "./comun";
 import Detalle from "./Detalle";
 import { AjustePlan, PestanasPlan, TituloSeccion } from "./Seccion";
-import { T_CALENDARIO, T_COMUN, T_HOY, T_SECCIONES } from "./textos";
+import { T_CALENDARIO, T_COMUN, T_HOY, T_PLAN, T_SECCIONES } from "./textos";
 
 type Vista = "dia" | "semana" | "mes";
 
@@ -139,10 +140,34 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
 
   return (
     <div className="me-pantalla me-calendario">
-      <TituloSeccion titulo={T_SECCIONES.plan} icono="calendar-days" ejemplo>
+      <TituloSeccion
+        titulo={T_SECCIONES.plan}
+        icono="calendar-days"
+        ejemplo
+        bajada={
+          <div className="me-camino">
+            {enPrograma(hoy) && <p className="me-camino__semana">{T_PLAN.camino.semana(Math.min(semanaDelCiclo(hoy), ciclo.semanas), ciclo.semanas)}</p>}
+            <p className="me-camino__titulo">{T_PLAN.camino.titulo}</p>
+            <p className="me-camino__bajada">{T_PLAN.camino.bajada}</p>
+          </div>
+        }
+      >
         <PestanasPlan activa="calendario" />
       </TituloSeccion>
-      <div className="me-calendario__barra">
+      <div className="me-plan-tarjetas">
+        <TuDiaDeHoy
+          hoy={hoy}
+          lista={lista}
+          enPrograma={enPrograma(hoy)}
+          onVer={() => {
+            moverFoco.current = true;
+            setFecha(hoy);
+            setVista("dia");
+          }}
+        />
+        <LoQueConstruyes metas={metas} />
+      </div>
+      <div className="me-calendario__barra" id="me-calendario">
         <Segmentado
           leyenda={T_CALENDARIO.leyendaVistas}
           leyendaOculta
@@ -220,6 +245,71 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
       <Tostada mensaje={tostada?.mensaje ?? null} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
       <RegionViva texto={vivo} />
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tu día de hoy: las acciones vigentes de hoy y cuántas cuentan como hechas (mismos registros
+// que Hoy y el calendario). Sin acciones, un estado amable sin progreso inventado.
+
+function TuDiaDeHoy({ hoy, lista, enPrograma, onVer }: { hoy: Iso; lista: Ocurrencia[]; enPrograma: boolean; onVer: () => void }) {
+  const del = ocurrenciasDel(hoy, lista);
+  const hechas = del.filter((o) => cuentaComoHecha(o.registro)).length;
+  const T = T_PLAN.hoy;
+  return (
+    <section className="me-plan-hoy" aria-labelledby="plan-hoy-titulo">
+      <div className="me-plan-hoy__cabeza">
+        <h2 id="plan-hoy-titulo" className="me-plan-hoy__titulo">
+          {T.titulo}
+        </h2>
+        <p className="me-plan-hoy__fecha">{mayuscula(fechaLarga(hoy))}</p>
+      </div>
+      {del.length ? (
+        <>
+          <p className="me-plan-hoy__cifra">
+            <span className="me-plan-hoy__n">{T.cifra(hechas, del.length)}</span> <span className="me-plan-hoy__rotulo">{T.rotulo(del.length)}</span>
+          </p>
+          <BarraProgreso valor={hechas} maximo={del.length} etiqueta={T.barra} textoValor={T.valor(hechas, del.length)} />
+          <button type="button" className="boton boton--primario me-plan-hoy__boton" onClick={onVer}>
+            {T.ver}
+            <Icono nombre="arrow-right" tamaño={16} />
+          </button>
+        </>
+      ) : (
+        <p className="me-plan-hoy__vacio">{enPrograma ? T.vacio : T.fuera}</p>
+      )}
+    </section>
+  );
+}
+
+// Lo que estás construyendo: las metas del programa publicado con su color y su «para qué».
+function LoQueConstruyes({ metas }: { metas: Meta[] }) {
+  const { R } = useEspacio();
+  const T = T_PLAN.construyendo;
+  return (
+    <section className="me-construyendo" aria-labelledby="construyendo-titulo">
+      <div className="me-construyendo__cabeza">
+        <h2 id="construyendo-titulo" className="me-construyendo__titulo">
+          {T.titulo}
+        </h2>
+        <Link to={R.metas} className="enlace-flecha me-construyendo__ver">
+          {T.ver}
+          <Icono nombre="arrow-right" tamaño={16} />
+        </Link>
+      </div>
+      {metas.length ? (
+        <ul className="me-construyendo__lista">
+          {metas.map((m) => (
+            <li key={m.id} data-cat={m.categoria} className="me-construyendo__meta">
+              <span className="me-construyendo__nombre">{m.titulo}</span>
+              {m.paraQue && <span className="me-construyendo__para">{m.paraQue}</span>}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="me-bloque__bajada">{T.vacio}</p>
+      )}
+    </section>
   );
 }
 
@@ -310,9 +400,14 @@ function VistaSemana({ fecha, hoy, lista, progreso, fila }: { fecha: Iso; hoy: I
           const del = ocurrenciasDel(d, lista);
           const p = progreso.dias.find((x) => x.fecha === d);
           return (
-            <fieldset key={d} id={`dia-${d}`} className={d === hoy ? "dia me-dia me-dia--hoy" : "dia me-dia"}>
+            <fieldset
+              key={d}
+              id={`dia-${d}`}
+              className={["dia me-dia", d === hoy && "me-dia--hoy", d > hoy && "me-dia--futuro", p?.estado === "completo" && "me-dia--completo"].filter(Boolean).join(" ")}
+            >
               <legend tabIndex={-1}>
                 <span className="me-dia__nombre">
+                  {d === hoy && <span className="me-dia__hoy">{T_PLAN.diaHoy}</span>}
                   {mayuscula(diaCorto(d))}
                   {esRevision(d) && (
                     <>
@@ -321,7 +416,12 @@ function VistaSemana({ fecha, hoy, lista, progreso, fila }: { fecha: Iso; hoy: I
                     </>
                   )}
                 </span>
-                {p?.estado === "completo" && <Etiqueta variante="activo">{T_HOY.diaCompleto(p.bono)}</Etiqueta>}
+                {p?.estado === "completo" && (
+                  <Etiqueta variante="activo">
+                    <Icono nombre="check" tamaño={12} />
+                    {T_HOY.diaCompleto(p.bono)}
+                  </Etiqueta>
+                )}
               </legend>
               {!enPrograma(d) ? (
                 <p className="me-dia__vacio">{T_CALENDARIO.fuera}</p>

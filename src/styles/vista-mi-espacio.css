@@ -355,13 +355,63 @@
 .me-cal-semana { display: grid; gap: var(--e-4); min-inline-size: 0; }
 .me-cal-semana .franja-semana { margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); border-block-end: 1px solid var(--linea); }
 @media (min-width: 1024px) { .me-cal-semana .franja-semana { margin-inline: 0; padding-inline: 0; } }
-.me-cal-semana__dias { display: grid; gap: var(--e-5); }
-.me-dia { scroll-margin-block-start: calc(var(--cabecera-alto) + 96px); }
-.me-dia legend { margin-block-end: 4px; }
-.me-dia__nombre { display: inline-flex; align-items: center; gap: 6px; }
+.me-cal-semana__dias { display: grid; gap: var(--e-4); }
+/* Cada jornada es un bloque propio. Hoy: borde bosque y rótulo «Hoy». Día completo: borde salvia
+   y etiqueta con check. Futuro: fondo neutro, sin color de estado. Un día pasado incompleto no
+   lleva ninguna marca. */
+.me-dia { padding: var(--e-3) var(--e-3) var(--e-4); border: 1px solid var(--linea); border-radius: var(--r-m); background: var(--superficie); scroll-margin-block-start: calc(var(--cabecera-alto) + 96px); }
+@media (max-width: 639.98px) { .me-dia { padding: var(--e-3) var(--e-2); } }
+@media (min-width: 640px) { .me-dia { padding: var(--e-4) var(--e-4) var(--e-5); } }
+/* La leyenda flota para quedar dentro del borde. Su ancho sale del propio día (100cqi): en WebKit
+   el 100 % de una leyenda flotante se medía contra el contenedor del día y se salía 48 px a 320 px. */
+.me-dia { container-type: inline-size; }
+.me-dia legend { float: left; inline-size: 100cqi; margin-block-end: var(--e-3); font-size: var(--t-xs); letter-spacing: 0.08em; color: var(--tinta); }
+.me-dia legend + * { clear: both; }
+.me-dia__nombre { display: inline-flex; align-items: center; gap: 8px; }
+.me-dia__hoy { padding: 4px 10px; border-radius: var(--r-full); background: var(--bosque); color: var(--papel); font: 600 var(--t-micro)/1 var(--sans); letter-spacing: 0.04em; }
+.me-dia--hoy { border: 2px solid var(--bosque); box-shadow: var(--sombra-1); }
 .me-dia--hoy legend { color: var(--bosque); }
+.me-dia--completo { border-color: var(--salvia); }
+.me-dia--completo.me-dia--hoy { border-color: var(--bosque); }
+.me-dia legend .etiqueta::before { content: none; }
+.me-dia--futuro { background: var(--papel); }
+.me-dia--futuro legend { color: var(--tinta-suave); }
+.me-cal-semana .accion-hora, .me-cal-dia .accion-hora { font-weight: 600; color: var(--tinta); }
+.me-cal-semana .accion-detalle, .me-cal-dia .accion-detalle { font-size: var(--t-xs); }
 .me-dia__vacio { padding: 10px 14px; border: 1px solid var(--linea); border-radius: var(--r-s); font-size: var(--t-xs); font-weight: 500; color: var(--tinta-suave); }
 .me-cal-semana__pie { padding-block-start: var(--e-3); border-block-start: 1px solid var(--linea); }
+
+/* Mi plan: encabezado «Tu camino, paso a paso», «Tu día de hoy» y «Lo que estás construyendo». */
+.me-camino { display: grid; justify-items: start; gap: var(--e-1); }
+.me-camino__semana { margin: 0 0 var(--e-1); padding: 4px 12px; border-radius: var(--r-full); background: var(--niebla); font: 600 var(--t-xs)/1.3 var(--sans); color: var(--bosque); }
+.me-camino__titulo { margin: 0; font: 600 var(--t-h2)/1.15 var(--serif); letter-spacing: -0.01em; color: var(--bosque); text-wrap: balance; }
+.me-camino__bajada { margin: 0; font-size: var(--t-s); line-height: 1.45; color: var(--tinta-suave); }
+.me-plan-tarjetas { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--e-4); }
+.me-plan-hoy, .me-construyendo, .me-construyendo__meta, .me-construyendo__nombre, .me-construyendo__para { min-inline-size: 0; }
+@media (min-width: 900px) { .me-plan-tarjetas { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); align-items: stretch; } }
+.me-plan-hoy { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: var(--e-3); padding: var(--e-5); border-radius: var(--r-l); background: var(--salvia-suave); box-shadow: var(--sombra-1); }
+.me-plan-hoy__cabeza { display: grid; gap: 2px; }
+.me-plan-hoy__titulo { margin: 0; font: 600 var(--t-lead)/1.2 var(--serif); color: var(--bosque); }
+.me-plan-hoy__fecha { margin: 0; font-size: var(--t-xs); font-weight: 600; color: var(--tinta); }
+.me-plan-hoy__cifra { display: grid; gap: 2px; margin: 0; }
+.me-plan-hoy__n { font: 600 var(--t-saludo)/1.1 var(--serif); color: var(--bosque); }
+.me-plan-hoy__rotulo { font-size: var(--t-xs); font-weight: 600; line-height: 1.4; color: var(--tinta); }
+.me-plan-hoy .barra { background: var(--superficie); }
+.me-plan-hoy__boton { justify-self: start; gap: 8px; }
+.me-plan-hoy__vacio { margin: 0; font-size: var(--t-s); line-height: 1.45; color: var(--tinta); }
+.me-construyendo { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: var(--e-3); padding: var(--e-5); border: 1px solid var(--linea); border-radius: var(--r-l); background: var(--superficie); }
+.me-construyendo__cabeza { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--e-2) var(--e-4); }
+.me-construyendo__titulo { margin: 0; font: 600 var(--t-lead)/1.2 var(--serif); color: var(--tinta); }
+.me-construyendo__lista { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--e-2); list-style: none; margin: 0; padding: 0; }
+.me-construyendo__meta { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; padding: var(--e-2) var(--e-3); border-radius: var(--r-s); background: var(--cat-fondo); box-shadow: inset 3px 0 0 var(--cat); }
+.me-construyendo__nombre { font-size: var(--t-s); font-weight: 600; line-height: 1.3; color: var(--tinta); }
+.me-construyendo__para { font-size: var(--t-xs); line-height: 1.4; color: var(--tinta-suave); }
+/* En móvil, bloque compacto: nombre de cada meta en una línea y el «para qué» abreviado a una. */
+@media (max-width: 639.98px) {
+  .me-plan-hoy, .me-construyendo { padding: var(--e-4); }
+  .me-construyendo__lista { gap: 6px; }
+  .me-construyendo__para { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+}
 
 /* Mes: grilla de 7 columnas, celdas de 44 px o más, sin desborde a 320 px. */
 .me-cal-mes { display: grid; gap: var(--e-4); }
