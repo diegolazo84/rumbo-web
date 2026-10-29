@@ -65,6 +65,7 @@ comentario. En producción ya está así: **no se pega**, solo se registra.
 | 20261114000000 | `20261114000000_desafios.sql` | (nuevo, C9: desafíos de la comunidad con avance verificable; **pendiente de aplicar, solo con autorización de Diego**) |
 | 20261115000000 | `20261115000000_crear_publicacion.sql` | (nuevo, C11: crear publicación con hasta 5 fotos, «Permitir comentarios» y sin duplicados; **pendiente de aplicar, solo con autorización de Diego**) |
 | 20261116000000 | `20261116000000_grupos_explorador.sql` | (nuevo, C13: grupos con categoría y un destacado único; `comunidad_grupos()` con publicaciones visibles, destacado y sugerido por categoría de las metas; propuestas de grupo para el equipo, con alias y sin datos personales; **pendiente de aplicar, solo con autorización de Diego**) |
+| 20261120000000 | `20261120000000_mis_logros.sql` | (nuevo, C17: `mi_beneficio_renovacion()` para que Mis logros muestre el 10 % solo cuando el dueño lo activa; solo lectura; **pendiente de aplicar, solo con autorización de Diego**; se deshace con `supabase/deshacer/20261120000000_mis_logros.sql`) |
 
 Fuera de `migrations/` quedan las herramientas que no cambian la estructura:
 `verificacion.sql`, `historial-migraciones.sql`, `restaurar-antes.sql` y `restaurar-despues.sql`.

@@ -295,7 +295,7 @@ test.describe("Mi espacio: interacción y texto", () => {
     await expect(page.locator(".me-resumen")).toHaveCount(0);
     await expect(page.locator("main")).not.toContainText("créditos para llegar a");
     await abrir(page, "mi-espacio/logros/");
-    await expect(page.locator(".me-creditos .me-resumen__creditos")).toHaveText(/^\d+ créditos?$/);
+    await expect(page.locator(".ml-creditos .ml-cifra")).toHaveText(/^\d+ créditos? acumulados?$/);
   });
 
   // M4: cada celda del mes tiene un nombre completo y nunca dice «0 hechas».
