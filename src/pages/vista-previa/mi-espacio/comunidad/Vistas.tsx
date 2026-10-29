@@ -1,13 +1,13 @@
 // Las pestañas de Comunidad que no son «Todas las publicaciones»: Mis grupos (descubrir, entrar
-// a un grupo y sus publicaciones), Desafíos (objetivo, reglas, participar, avance verificable y
-// celebración), Historias de logro y Mi actividad (impacto, guardadas y personas bloqueadas).
-import { useEffect, useRef, useState } from "react";
+// a un grupo y sus publicaciones), Historias de logro y Mi actividad (impacto, guardadas y personas
+// bloqueadas). Desafíos es su propia pantalla (DesafiosPagina.tsx, C15).
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Icono } from "../../../../components/app";
 import { useEspacio } from "../comun";
-import { fechaLargaIso, fechaRelativa, useComunidad } from "./contexto";
-import type { Desafio, Grupo } from "./fuente";
-import { BarraDesafio, TarjetaImpacto, useDato } from "./Laterales";
+import { fechaRelativa, useComunidad } from "./contexto";
+import type { Grupo } from "./fuente";
+import { TarjetaImpacto, useDato } from "./Laterales";
 import { Compositor } from "./Crear";
 import { Feed } from "./Publicaciones";
 import { PaisajeMini } from "./Paisaje";
@@ -84,110 +84,6 @@ export function VistaGrupos() {
         </h2>
         <Feed filtro={{ soloMisGrupos: true }} vacio={T.grupos.sinMios} />
       </section>
-    </div>
-  );
-}
-
-function Desafio1({ d, destacado }: { d: Desafio; destacado: boolean }) {
-  const { fuente, aviso, cambio, abrirCrear } = useComunidad();
-  const [enviando, setEnviando] = useState(false);
-  const caja = useRef<HTMLElement>(null);
-  const { dato: dias } = useDato((f) => (d.participo ? f.avance(d.id) : Promise.resolve([])), [d.id, d.participo]);
-  useEffect(() => {
-    if (destacado) caja.current?.scrollIntoView({ block: "start" });
-  }, [destacado]);
-  const terminado = d.diasTranscurridos >= d.dias && !d.participo;
-  const cambiar = async () => {
-    setEnviando(true);
-    try {
-      if (d.participo) await fuente.salirDesafio(d.id);
-      else await fuente.unirmeDesafio(d.id);
-      aviso(d.participo ? T.desafios.salido : T.desafios.unido);
-      cambio();
-    } catch {
-      aviso(T.errorGeneral);
-    } finally {
-      setEnviando(false);
-    }
-  };
-  return (
-    <article ref={caja} className={`co-tarjeta co-desafio${destacado ? " co-desafio--destacado" : ""}`} aria-labelledby={`co-d-${d.id}`}>
-      <PaisajeMini nombre={d.ilustracion ?? "sendero"} className="co-desafio__img" />
-      <div className="co-desafio__cuerpo">
-        <p className="co-desafio__fechas">
-          {T.desafios.fechas(fechaLargaIso(d.inicio), fechaLargaIso(d.fin))} · {T.desafios.dias(d.dias)}
-        </p>
-        <h2 id={`co-d-${d.id}`} className="co-h2">
-          {d.titulo}
-        </h2>
-        {d.descripcion && (
-          <div className="co-desafio__parte">
-            <h3 className="co-h3">{T.desafios.objetivo}</h3>
-            <p>{d.descripcion}</p>
-          </div>
-        )}
-        <div className="co-desafio__parte">
-          <h3 className="co-h3">{T.desafios.reglas}</h3>
-          <p>{d.reglas}</p>
-          <p className="co-form__nota">{T.desafios.noSuma}</p>
-        </div>
-        <BarraDesafio d={d} />
-        <p className="co-desafio__dato">{T.desafios.participantes(d.participantes)}</p>
-        {d.participo && dias && dias.length > 0 && (
-          <div className="co-desafio__parte">
-            <h3 className="co-h3">{T.desafios.miAvance}</h3>
-            <ol className="co-dias">
-              {dias.map((x, i) => (
-                <li key={x.fecha} className={x.cumplido ? "co-dia co-dia--hecho" : "co-dia"}>
-                  {x.cumplido ? <Icono nombre="check" tamaño={12} /> : <span aria-hidden="true">{i + 1}</span>}
-                  <span className="sr-only">
-                    {fechaLargaIso(x.fecha)}: {x.cumplido ? T.desafios.cumplido : T.desafios.noCumplido}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
-        {d.completado && (
-          <div className="co-celebra" role="status">
-            <Icono nombre="award" />
-            <div>
-              <p className="co-celebra__titulo">{T.desafios.celebracion}</p>
-              <p>{T.desafios.celebracionTexto}</p>
-            </div>
-            <button type="button" className="boton boton--primario" onClick={() => abrirCrear({ tipo: "logro", texto: `Completé el desafío «${d.titulo}». ` })}>
-              {T.desafios.compartir}
-            </button>
-          </div>
-        )}
-        {!terminado && (
-          <button
-            type="button"
-            className={`boton ${d.participo ? "boton--secundario" : "boton--primario"} co-desafio__boton`}
-            disabled={enviando}
-            onClick={() => void cambiar()}
-          >
-            {d.participo ? T.desafios.salir : T.desafios.unirme}
-          </button>
-        )}
-      </div>
-    </article>
-  );
-}
-
-export function VistaDesafios({ desafio }: { desafio: string | null }) {
-  const { dato, error } = useDato((f) => f.desafios());
-  return (
-    <div className="co-vista">
-      <header className="co-bloque">
-        <h2 className="co-h2">{T.desafios.titulo}</h2>
-        <p className="co-bajada">{T.desafios.bajada}</p>
-      </header>
-      {error && <p className="co-tarjeta co-estado">{T.errorGeneral}</p>}
-      {dato && dato.length === 0 && <p className="co-tarjeta co-estado co-estado--vacio">{T.desafios.vacio}</p>}
-      {(dato ?? []).map((d) => (
-        <Desafio1 key={d.id} d={d} destacado={d.id === desafio} />
-      ))}
     </div>
   );
 }

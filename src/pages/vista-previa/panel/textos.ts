@@ -816,6 +816,16 @@ export const COMUNIDAD_PANEL = {
     creada: "Marcar como creada",
     descartar: "Descartar",
   },
+  propuestasDesafio: {
+    titulo: "Propuestas de desafíos",
+    ayuda: "Lo que proponen las personas, con su alias. Si preparas el desafío (abajo, en Desafíos), márcala como creada.",
+    vacio: "No hay propuestas.",
+    propuso: (alias: string, fecha: string) => `Propuesto por ${alias} el ${fecha}`,
+    sinAlias: "una persona",
+    estados: { pendiente: "Pendiente", creado: "Creado", descartada: "Descartada" } as Record<string, string>,
+    creada: "Marcar como creada",
+    descartar: "Descartar",
+  },
   desafios: {
     titulo: "Desafíos",
     vacio: "Todavía no hay desafíos.",
