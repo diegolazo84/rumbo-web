@@ -147,9 +147,10 @@ test("grupos: descubrir, unirse, entrar y ver sus publicaciones", async ({ page 
   await expect(page.locator(".tostada__texto")).toHaveText(T.grupos.unido("Alimentación consciente"));
   await expect(grupo).toContainText(T.grupos.miembros(8));
   await grupo.getByRole("link", { name: "Alimentación consciente" }).click();
-  await expect(page.getByRole("heading", { level: 2, name: "Alimentación consciente" })).toBeVisible();
-  await expect(page.locator(".co-estado--vacio")).toHaveText(T.feed.vacioGrupo);
-  await expect(page.locator(".co-compositor")).toBeVisible();
+  // El interior del grupo es su propia pantalla (C14, grupo-interior.spec.ts).
+  await expect(page.getByRole("heading", { level: 1, name: "Alimentación consciente" })).toBeVisible();
+  await expect(page.locator(".co-estado--vacio")).toHaveText(T.interior.vacio);
+  await expect(page.locator(".gi-invitacion")).toBeVisible();
   await sinViolaciones(page);
 });
 

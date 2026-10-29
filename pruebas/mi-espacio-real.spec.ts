@@ -577,6 +577,46 @@ test("Grupos real: cerrada sin pedir grupos; abierta con destacado, sugeridos, u
   expect(llamadas.filter((l) => l.nombre === "proponer_grupo").at(-1)!.cuerpo).toEqual({ p_nombre: "Lectura", p_descripcion: null });
 });
 
+test("Interior de un grupo real (C14): datos, publicaciones y miembros de la base; quien no es miembro no los pide", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.alias = [{ participante_id: "p1", alias: "Ana C" }];
+  const grupos = [
+    { id: "gr1", nombre: "Actividad física", descripcion: "Moverse", miembros: 2, soy_miembro: true, ilustracion: "montana", publicaciones: 1, destacado: false, categoria: "bienestar", creado_en: "2026-10-01T00:00:00Z", sugerido: false },
+    { id: "gr2", nombre: "Orden", descripcion: "Semana ordenada", miembros: 3, soy_miembro: false, ilustracion: null, publicaciones: 4, destacado: false, categoria: "orden", creado_en: "2026-10-02T00:00:00Z", sugerido: false },
+  ];
+  const llamadas = await simular(page, base, {
+    mi_impacto_comunidad: () => [{ publicaciones: 0, comentarios: 0, reacciones_recibidas: 0 }],
+    comunidad_grupos: () => grupos,
+    comunidad_publicaciones: (c) => (c.p_grupo === "gr1" ? [PUB("x1")] : []),
+    comunidad_miembros_grupo: (c) =>
+      c.p_grupo === "gr1"
+        ? [
+            { alias: "Ana C", unido_en: "2026-10-03T00:00:00Z", soy_yo: true },
+            { alias: "Caminante", unido_en: "2026-10-02T00:00:00Z", soy_yo: false },
+          ]
+        : { __error: "grupo:no_miembro", __estado: 403 },
+  });
+  await page.goto("mi-espacio/comunidad/?vista=grupos&grupo=gr1");
+  await hidratar(page);
+  await expect(page.locator(".gi-portada h1")).toHaveText("Actividad física");
+  await expect(page.locator(".gi-portada")).toContainText("1 publicación");
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  await expect(page.locator("article.co-pub .co-pub__alias")).toHaveText("Caminante");
+  expect(llamadas.find((l) => l.nombre === "comunidad_publicaciones")?.cuerpo).toMatchObject({ p_grupo: "gr1" });
+  await expect.poll(() => llamadas.find((l) => l.nombre === "comunidad_miembros_grupo")?.cuerpo).toEqual({ p_grupo: "gr1" });
+  await page.goto("mi-espacio/comunidad/?vista=grupos&grupo=gr1&seccion=miembros");
+  await hidratar(page);
+  await expect(page.locator(".gi-lista .gi-miembro")).toHaveCount(2);
+  await expect(page.locator(".gi-lista")).toContainText("Tú");
+  const antes = llamadas.length;
+  await page.goto("mi-espacio/comunidad/?vista=grupos&grupo=gr2&seccion=miembros");
+  await hidratar(page);
+  await expect(page.locator(".gi-portada").getByRole("button", { name: "Unirse" })).toBeVisible();
+  await expect(page.locator(".gi-lista")).toHaveCount(0);
+  expect(llamadas.slice(antes).some((l) => l.nombre === "comunidad_miembros_grupo")).toBe(false);
+});
+
 test("Comunidad real: alias y reglas antes de participar", async ({ page }) => {
   await conSesion(page);
   let estado: "sin_alias" | "sin_reglas" | "abierta" = "sin_alias";

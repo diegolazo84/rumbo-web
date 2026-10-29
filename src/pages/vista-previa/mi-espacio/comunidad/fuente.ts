@@ -46,6 +46,8 @@ export type Grupo = {
   creadoEn: string | null;
   sugerido: boolean;
 };
+// C14: la lista de miembros de un grupo (solo para sus miembros, solo con alias).
+export type MiembroGrupo = { alias: string; unidoEn: string; soyYo: boolean };
 export type CategoriaGrupo = "proyecto" | "orden" | "bienestar";
 export type PropuestaGrupo = { id: string; nombre: string; estado: "pendiente" | "creada" | "descartada"; creadaEn: string };
 
@@ -112,6 +114,7 @@ export interface FuenteComunidad {
   borrar(id: string): Promise<void>;
   unirmeGrupo(id: string): Promise<void>;
   salirGrupo(id: string): Promise<void>;
+  miembrosGrupo(id: string): Promise<MiembroGrupo[]>;
   proponerGrupo(nombre: string, descripcion: string | null): Promise<void>;
   misPropuestas(): Promise<PropuestaGrupo[]>;
   unirmeDesafio(id: string): Promise<void>;
@@ -364,6 +367,12 @@ export function fuenteReal(): FuenteComunidad {
     borrar: (id) => rpc("borrar_mi_publicacion", { p_id: id }),
     unirmeGrupo: (id) => rpc("unirme_a_grupo", { p_grupo: id }),
     salirGrupo: (id) => rpc("salir_de_grupo", { p_grupo: id }),
+    miembrosGrupo: async (id) =>
+      ((await rpc<{ alias: string; unido_en: string; soy_yo: boolean }[]>("comunidad_miembros_grupo", { p_grupo: id })) ?? []).map((m) => ({
+        alias: m.alias,
+        unidoEn: m.unido_en,
+        soyYo: m.soy_yo,
+      })),
     async proponerGrupo(nombre, descripcion) {
       await rpc("proponer_grupo", { p_nombre: nombre, p_descripcion: descripcion });
     },
@@ -579,6 +588,18 @@ export function fuenteEjemplo(acceso: Acceso = "abierta"): FuenteComunidad {
     async salirGrupo(gid) {
       const g = grupos.find((x) => x.id === gid);
       if (g?.soyMiembro) Object.assign(g, { soyMiembro: false, miembros: g.miembros - 1 });
+    },
+    // Vista previa: alias de ejemplo (la base real solo entrega alias, y solo a quien es miembro).
+    async miembrosGrupo(gid) {
+      await espera();
+      const g = grupos.find((x) => x.id === gid);
+      if (!g) throw new ErrorBase(404, "grupo", "no_encontrado");
+      if (!g.soyMiembro) throw new ErrorBase(403, "grupo", "no_miembro");
+      const otros = ["Sofía", "Camila", "Matías", "Valentina", "Andrés", "Javiera", "Tomás", "Isidora", "Benjamín", "Antonia", "Martín", "Florencia", "Vicente", "Catalina"];
+      return [
+        { alias: yo, unidoEn: hace(24 * 6), soyYo: true },
+        ...otros.slice(0, Math.max(g.miembros - 1, 0)).map((a, i) => ({ alias: a, unidoEn: hace(24 * (8 + i * 2)), soyYo: false })),
+      ];
     },
     async proponerGrupo(nombre) {
       await espera();

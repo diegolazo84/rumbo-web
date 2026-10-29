@@ -748,3 +748,201 @@
 .gr-vacio__titulo { margin: 0; font: 600 var(--t-h3)/1.2 var(--serif); color: var(--bosque); }
 .gr-vacio p { margin: 0; max-inline-size: 42ch; font-size: var(--t-s); line-height: 1.5; color: var(--tinta); }
 .gr-vacio .boton { gap: 8px; margin-block-start: var(--e-2); }
+
+/* ======================================================================
+   C14 · Interior de un grupo (maqueta de ChatGPT, 29-oct-2026)
+   ====================================================================== */
+.co-comunidad--grupo { gap: 0; }
+.gi { display: grid; gap: var(--e-4); }
+
+/* Portada: paisaje a la derecha, cielo claro (salvia) a la izquierda bajo el nombre. */
+.gi-portada {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--e-3);
+  margin-inline: calc(-1 * var(--gutter));
+  margin-block-start: calc(-1 * var(--e-5));
+  padding: var(--e-4) var(--gutter) var(--e-5);
+  overflow: hidden;
+  isolation: isolate;
+}
+.gi-portada__fondo { position: absolute; inset: 0; z-index: -2; inline-size: 100%; block-size: 100%; object-fit: cover; object-position: 70% 50%; }
+.gi-portada::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgb(226 236 228 / 0.94) 0%, rgb(226 236 228 / 0.86) 60%, rgb(226 236 228 / 0.55) 100%);
+}
+.gi-portada__volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: start;
+  min-block-size: 44px;
+  font-size: var(--t-s);
+  font-weight: 600;
+  color: var(--bosque);
+  text-decoration: none;
+}
+.gi-portada__volver:hover { text-decoration: underline; }
+.gi-portada__texto { display: grid; gap: var(--e-2); }
+.gi-portada__h1 { margin: 0; font: 600 var(--t-saludo)/1.05 var(--serif); letter-spacing: -0.015em; color: var(--bosque); }
+.gi-portada__desc { max-inline-size: 36ch; margin: 0; font-size: var(--t-base); line-height: 1.4; color: var(--tinta); }
+.gi-portada__datos { display: flex; flex-wrap: wrap; gap: var(--e-2) var(--e-5); margin: 4px 0 0; font-size: var(--t-s); color: var(--tinta); }
+.gi-portada__datos > span { display: inline-flex; align-items: center; gap: 8px; }
+.gi-portada__accion { display: flex; }
+.gi-unirse { min-inline-size: 140px; }
+.gi-pertenece {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 6px 14px;
+  border-radius: var(--r-full);
+  background: var(--superficie);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--bosque);
+}
+@media (min-width: 1024px) {
+  .gi-portada {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "volver volver" "texto accion";
+    align-items: end;
+    min-block-size: 268px;
+    margin: 0;
+    padding: var(--e-5) var(--e-6) var(--e-6) var(--e-7);
+    border-radius: var(--r-l);
+    box-shadow: var(--sombra-1);
+  }
+  .gi-portada::after {
+    background: linear-gradient(90deg, rgb(218 233 224 / 0.97) 0%, rgb(218 233 224 / 0.9) 26%, rgb(218 233 224 / 0.45) 44%, rgb(218 233 224 / 0) 58%);
+  }
+  .gi-portada__volver { grid-area: volver; align-self: start; }
+  .gi-portada__texto { grid-area: texto; }
+  .gi-portada__h1 { font-size: var(--t-titulo); }
+  .gi-portada__desc { font-size: var(--t-lead); }
+  .gi-portada__datos { font-size: var(--t-base); }
+  .gi-portada__accion { grid-area: accion; }
+  .gi-unirse { min-inline-size: 152px; min-block-size: 56px; border-color: var(--superficie); background: var(--superficie); color: var(--bosque); font-size: var(--t-base); box-shadow: var(--sombra-1); }
+  .gi-unirse:hover { background: var(--papel); color: var(--bosque); }
+}
+
+/* Pestañas subrayadas */
+.gi-pestanas { margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); border-block-end: 1px solid var(--linea); overflow-x: auto; scrollbar-width: none; }
+.gi-pestanas ul { display: flex; gap: var(--e-2); margin: 0; padding: 0; list-style: none; }
+.gi-pestana {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 48px;
+  padding: 0 var(--e-4);
+  font-size: var(--t-base);
+  font-weight: 500;
+  color: var(--tinta);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.gi-pestana:hover { color: var(--bosque); }
+.gi-pestana[aria-current="page"] { font-weight: 700; color: var(--bosque); }
+.gi-pestana[aria-current="page"]::after { content: ""; position: absolute; inset-inline: 0; inset-block-end: -1px; block-size: 3px; border-radius: var(--r-full); background: var(--bosque); }
+@media (min-width: 1024px) { .gi-pestanas { margin-inline: 0; padding-inline: var(--e-2); } .gi-pestana { padding: 0 var(--e-5); } }
+
+/* Columnas: publicaciones | lateral (en móvil, el lateral va después) */
+.gi-columnas { display: grid; gap: var(--e-4); align-items: start; }
+@media (min-width: 1024px) { .gi-columnas { grid-template-columns: minmax(0, 1fr) minmax(280px, 350px); } }
+.gi-principal, .gi-lateral { display: grid; gap: var(--e-4); min-inline-size: 0; }
+.gi-h2 { margin: 0; font: 600 var(--t-h3)/1.2 var(--serif); color: var(--bosque); }
+.gi-h3 { margin: 0; font-size: var(--t-base); font-weight: 600; color: var(--tinta); }
+.gi-ayuda { margin: 0; font-size: var(--t-s); color: var(--tinta-suave); }
+.gi-cuenta { font: 500 var(--t-base)/1 var(--sans); color: var(--tinta-suave); }
+.gi-caja { display: grid; gap: var(--e-4); }
+
+/* «Comparte tu experiencia…» */
+.gi-invitacion { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--e-3) var(--e-4); align-items: start; }
+.gi-invitacion .co-avatar { inline-size: 56px; block-size: 56px; font-size: var(--t-lead); }
+.gi-invitacion__campo {
+  min-block-size: 56px;
+  padding: 0 var(--e-2);
+  border: 0;
+  border-radius: var(--r-s);
+  background: transparent;
+  font: inherit;
+  font-size: var(--t-base);
+  color: var(--tinta-suave);
+  text-align: start;
+  cursor: text;
+}
+.gi-invitacion__campo:hover { background: var(--papel); }
+.gi-invitacion__fila { grid-column: 2; display: flex; align-items: center; gap: var(--e-2); }
+.gi-invitacion__icono { display: inline-grid; place-items: center; inline-size: 44px; block-size: 44px; border: 0; border-radius: var(--r-s); background: transparent; color: var(--tinta); cursor: pointer; }
+.gi-invitacion__icono:hover { background: var(--papel); color: var(--bosque); }
+.gi-invitacion__publicar { margin-inline-start: auto; gap: 8px; }
+@media (max-width: 479.98px) {
+  .gi-invitacion { grid-template-columns: auto minmax(0, 1fr); }
+  .gi-invitacion .co-avatar { inline-size: 44px; block-size: 44px; font-size: var(--t-s); }
+  .gi-invitacion__fila { grid-column: 1 / -1; }
+}
+
+/* Tarjeta de publicación dentro del grupo: «Me gusta» y «Comentar» escritos */
+.co-pub__pie--grupo { gap: var(--e-3); }
+.co-pub__pie--grupo .co-pub__accion { padding: 0 8px; color: var(--tinta); }
+.co-pub__pie--grupo .co-pub__accion--guardar { margin-inline-start: auto; }
+.co-pub__cuenta { color: var(--tinta-suave); }
+
+/* Solo miembros */
+.gi-solo-miembros { display: grid; justify-items: center; gap: var(--e-3); text-align: center; color: var(--tinta); }
+.gi-solo-miembros > .icono { color: var(--bosque); }
+.gi-solo-miembros p { max-inline-size: 40ch; margin: 0; color: var(--tinta-suave); }
+
+/* Miembros */
+.gi-lista { display: grid; margin: 0; padding: 0; list-style: none; }
+.gi-miembro { display: flex; align-items: center; gap: var(--e-3); padding-block: var(--e-3); }
+.gi-miembro + .gi-miembro { border-block-start: 1px solid var(--linea); }
+.gi-miembro__quien { display: grid; gap: 2px; min-inline-size: 0; }
+.gi-miembro__alias { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--tinta); }
+.gi-miembro__desde { font-size: var(--t-xs); color: var(--tinta-suave); }
+.gi-tu { padding: 1px 8px; border-radius: var(--r-full); background: var(--salvia-suave); font-size: var(--t-micro); font-weight: 600; color: var(--bosque); }
+
+/* Lateral */
+.gi-sobre { display: grid; gap: var(--e-2); padding: var(--e-4); border-radius: var(--r-m); background: var(--papel); }
+.gi-sobre p { margin: 0; font-size: var(--t-base); line-height: 1.5; color: var(--tinta); }
+.gi-resumen { display: grid; gap: var(--e-3); padding-inline: var(--e-2); }
+.gi-resumen__cabeza { display: flex; align-items: center; justify-content: space-between; gap: var(--e-3); }
+.gi-ver-todos { display: inline-flex; align-items: center; min-block-size: 44px; font-size: var(--t-s); color: var(--bosque); }
+.gi-avatares { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.gi-avatares .co-avatar { inline-size: 52px; block-size: 52px; }
+.gi-avatares__mas { display: inline-grid; place-items: center; inline-size: 52px; block-size: 52px; border: 1px solid var(--linea); border-radius: var(--r-full); background: var(--papel); font-size: var(--t-base); color: var(--tinta); }
+.gi-animo {
+  display: grid;
+  justify-items: center;
+  gap: var(--e-2);
+  padding: var(--e-5);
+  border-radius: var(--r-m);
+  background: var(--arena);
+  box-shadow: var(--sombra-1);
+  text-align: center;
+  color: var(--tinta);
+}
+.gi-animo > .icono { inline-size: 44px; block-size: 44px; color: var(--bosque); }
+.gi-animo__titulo { max-inline-size: 18ch; margin: 0; font: 600 var(--t-h3)/1.2 var(--serif); color: var(--bosque); }
+.gi-animo p { margin: 0 0 var(--e-2); }
+.gi-animo__boton { gap: 8px; }
+
+/* Información */
+.gi-datos { display: grid; gap: var(--e-4); margin: 0; }
+.gi-datos dt { font-size: var(--t-xs); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--tinta-suave); }
+.gi-datos dd { margin: 4px 0 0; color: var(--tinta); line-height: 1.5; }
+.gi-salir { justify-self: start; gap: 8px; color: var(--tinta-suave); }
+.gi-hoja-acciones { display: flex; flex-wrap: wrap; gap: var(--e-3); margin-block-start: var(--e-4); }
+.gi-no-encontrado { display: grid; justify-items: start; gap: var(--e-3); }
+/* Ajustes: tres pestañas caben en 360 px; avatares en una fila; títulos chicos en sans. */
+@media (max-width: 1023.98px) {
+  .gi-pestanas ul { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 0; }
+  .gi-pestana { justify-content: center; padding: 0 var(--e-3); font-size: var(--t-s); }
+}
+.gi-h3 { font-family: var(--sans); }
+.gi-avatares { flex-wrap: nowrap; gap: 6px; }
+.gi-avatares .co-avatar, .gi-avatares__mas { inline-size: 48px; block-size: 48px; }
