@@ -362,7 +362,10 @@
 .me-dia { padding: var(--e-3) var(--e-3) var(--e-4); border: 1px solid var(--linea); border-radius: var(--r-m); background: var(--superficie); scroll-margin-block-start: calc(var(--cabecera-alto) + 96px); }
 @media (max-width: 639.98px) { .me-dia { padding: var(--e-3) var(--e-2); } }
 @media (min-width: 640px) { .me-dia { padding: var(--e-4) var(--e-4) var(--e-5); } }
-.me-dia legend { float: left; margin-block-end: var(--e-3); font-size: var(--t-xs); letter-spacing: 0.08em; color: var(--tinta); }
+/* La leyenda flota para quedar dentro del borde. Su ancho sale del propio día (100cqi): en WebKit
+   el 100 % de una leyenda flotante se medía contra el contenedor del día y se salía 48 px a 320 px. */
+.me-dia { container-type: inline-size; }
+.me-dia legend { float: left; inline-size: 100cqi; margin-block-end: var(--e-3); font-size: var(--t-xs); letter-spacing: 0.08em; color: var(--tinta); }
 .me-dia legend + * { clear: both; }
 .me-dia__nombre { display: inline-flex; align-items: center; gap: 8px; }
 .me-dia__hoy { padding: 4px 10px; border-radius: var(--r-full); background: var(--bosque); color: var(--papel); font: 600 var(--t-micro)/1 var(--sans); letter-spacing: 0.04em; }
