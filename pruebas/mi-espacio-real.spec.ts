@@ -384,6 +384,29 @@ test("Mi espacio real nunca muestra «Ejemplo» ni el aviso de la vista previa",
   }
 });
 
+test("Lo que viene real: lo que el dueño ya habilitó deja de aparecer; sin la tabla, la lista completa", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.modulos = [
+    { clave: "comunidad", estado: "habilitado" },
+    { clave: "ranking", estado: "probado" },
+    { clave: "app_movil", estado: "operativo" },
+  ];
+  await simular(page, base);
+  await page.goto("mi-espacio/lo-que-viene/");
+  await hidratar(page);
+  const titulos = page.locator(".me-lqv__titulo");
+  await expect(titulos).toHaveCount(6);
+  await expect(titulos).not.toContainText(["Comunidad con foro moderado"]);
+  await expect(page.getByText("Ranking semanal voluntario")).toBeVisible(); // probado no basta
+  await expect(page.getByText("Aplicación móvil")).toHaveCount(0);
+  // Sin la tabla (migración sin aplicar): las 8 funciones, como hasta ahora.
+  await page.route("**/rest/v1/modulos**", (rt) => rt.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ code: "42P01", message: "no existe" }) }));
+  await page.reload();
+  await hidratar(page);
+  await expect(titulos).toHaveCount(8);
+});
+
 // Rumbo 2.0, etapa 2: Mi acompañamiento muestra solo lo que existe en la base.
 test("Mi acompañamiento real: foco inicial y fecha de la primera revisión, sin inventar observaciones", async ({ page }) => {
   await conSesion(page);
