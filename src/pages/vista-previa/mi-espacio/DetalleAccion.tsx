@@ -55,7 +55,7 @@ function DetallePrevia({ estado = "por-hacer" }: PropsPantalla) {
   const inicial = (POR_ESTADO[estado] ?? POR_ESTADO["por-hacer"])();
   const [registro, setRegistro] = useState<EstadoRegistro | null>(inicial.registro);
   return (
-    <div className="me-pantalla me-pantalla--angosta">
+    <div className="me-pantalla me-pantalla--detalle">
       <Detalle o={{ ...inicial, registro }} hoy={HOY} onRegistrar={setRegistro} fotoInicial={FOTO[estado]} />
     </div>
   );
@@ -73,7 +73,7 @@ function DetalleReal() {
 
   if (id === null) {
     return (
-      <div className="me-pantalla me-pantalla--angosta">
+      <div className="me-pantalla me-pantalla--detalle">
         <div className="cargando" role="status">
           <h1 className="me-cargando__titulo">{TEXTOS_CARGA.cargando}</h1>
         </div>
@@ -82,7 +82,7 @@ function DetalleReal() {
   }
   if (!o) {
     return (
-      <div className="me-pantalla me-pantalla--angosta">
+      <div className="me-pantalla me-pantalla--detalle">
         <Cabeza titulo={T_DETALLE.noEncontrada} bajada={<p><Link to={R.calendario}>{T_DETALLE.irAlCalendario}</Link></p>} />
       </div>
     );
@@ -93,7 +93,7 @@ function DetalleReal() {
       setTostada({ mensaje: T_HOY.marcar.error(o.titulo), accion: { texto: T_HOY.marcar.reintentar, onClick: () => guardar(estado) } }),
     );
   return (
-    <div className="me-pantalla me-pantalla--angosta">
+    <div className="me-pantalla me-pantalla--detalle">
       <Detalle o={o} hoy={hoy} onRegistrar={guardar} />
       <Tostada mensaje={tostada?.mensaje ?? null} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
       <RegionViva texto={vivo} />

@@ -321,12 +321,30 @@ export const T_DETALLE = {
   paraQue: "Para qué",
   atribucion: "Lo que nos contaste",
   pieAjuste: "¿Esta acción no calza con tu semana? ",
+  // Rediseño con la referencia de ChatGPT (29-oct-2026)
+  migas: {
+    etiqueta: "Dónde estás",
+    volver: "Volver a Mi plan",
+    plan: "Mi plan",
+    semana: (n: number, total: number) => `Semana ${n} de ${total}`,
+    accion: (dia: string) => `Acción del ${dia}`,
+  },
+  marcarSub: (n: number) => `Completa la acción y suma +${n} ${plural(n, "crédito", "créditos")}.`,
+  cortaSub: "Registra solo lo esencial de hoy.",
+  comoSub: (duracion: string, pasos: boolean) => (pasos ? `Sigue estos pasos y dedica ${duracion}.` : `Dedica ${duracion}.`),
+  ajusteCard: {
+    titulo: "¿Esta acción no calza con tu semana?",
+    texto: "Pide un ajuste y lo revisamos contigo. Tu plan se adapta a tu vida, no al revés.",
+    boton: "Pedir un ajuste",
+  },
   noEncontrada: "No encontramos esta acción.", // PROPUESTO (accion/?id= de otra persona o borrada)
   irAlCalendario: "Ir a tu calendario", // PROPUESTO
   ajuste: "Pedir un ajuste",
   foto: {
     aviso:
       "Sube una foto de lo que hiciste, por ejemplo tu escritorio ordenado o la página que escribiste. Solo la ven tú y quien te acompaña. No subas fotos de tu cuerpo, fotos íntimas, documentos ni fotos de otras personas.",
+    porAhora:
+      "Por ahora no puedes subir fotos desde aquí. Usa «No puedo subir una foto» y cuéntanos qué hiciste: queda en revisión igual que una foto.", // PROPUESTO (la subida real aún no funciona)
     subir: "Subir foto",
     noPuedo: "No puedo subir una foto",
     subiendo: "Subiendo foto…",
