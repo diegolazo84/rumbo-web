@@ -84,7 +84,15 @@ test("accesible, sin desborde y en móvil el orden pone primero lo de hoy", asyn
   // «Tu día de hoy» se ve sin desplazarse.
   await expect(page.locator(".me-plan-hoy__boton")).toBeInViewport();
   await page.setViewportSize({ width: 320, height: 640 });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+  // Si algo se sale, el mensaje dice qué elementos sobrepasan el ancho.
+  const d = await page.evaluate(() => {
+    const w = window.innerWidth;
+    const fuera = [...document.querySelectorAll("body *")]
+      .filter((e) => e.getBoundingClientRect().right > w + 0.5)
+      .map((e) => `${e.tagName.toLowerCase()}.${[...e.classList].join(".")} → ${Math.round(e.getBoundingClientRect().right)}`);
+    return { exceso: document.documentElement.scrollWidth - w, fuera: fuera.slice(0, 20) };
+  });
+  expect(d.exceso, d.fuera.join("\n")).toBeLessThanOrEqual(0);
   await page.setViewportSize({ width: 390, height: 844 });
   // La rueda del mouse no existe en WebKit móvil: la barra se revisa en Chromium móvil.
   if (test.info().project.name !== "iphone") await revisarBarra(page);
