@@ -797,3 +797,82 @@ test("Mis logros real (C17): todo de la base; recompensas y ranking solo con su 
   await expect(page.locator(".ml-ranking")).toContainText("La semana pasada quedaste en el puesto 2 de 3, con 80 % de tus acciones.");
   await expect(page.locator(".ml-ranking")).toContainText("Participas como «Ana C».");
 });
+
+test("Mis logros real (C17) con datos: 10 niveles, créditos, rachas, 4 semanas, metas y los 6 reconocimientos", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  // Ocho días seguidos con todo hecho (5 al 12 de octubre); hoy es el 13.
+  const dias = Array.from({ length: 8 }, (_, i) => sumar("2026-10-05", i));
+  base.registros = dias.map((f) => ({ ocurrencia_id: `o-${f}`, participante_id: "p1", estado: "hecha", version: "completa", explicacion: null, nota_revision: null, revisado_en: null }));
+  base.progreso_diario = dias.map((f, i) => ({ participante_id: "p1", fecha: f, programadas: 1, hechas: 1, en_revision: 0, creditos_acciones: 1, bono: 2, racha: i + 1, en_suspenso: false }));
+  base.progreso = [{ participante_id: "p1", creditos: 30, nivel: 3, racha: 8, bono_siguiente: 3 }];
+  base.metas[0].hitos = [
+    { texto: "Índice aprobado", logrado: true },
+    { texto: "Primer capítulo", logrado: false },
+  ];
+  base.reconocimientos = [
+    ["primer_paso", "Primer paso", null],
+    ["primera_semana", "Primera semana", null],
+    ["constancia", "Constancia", 7],
+    ["mitad_del_camino", "Mitad del camino", 50],
+    ["ciclo_completado", "Ciclo completado", null],
+    ["meta_alcanzada", "Meta alcanzada", null],
+  ].map(([clave, nombre, umbral]) => ({ clave, nombre, descripcion: "x", umbral, activo: true }));
+  const otorgado = (clave: string, fecha: string) => ({ clave, nombre: clave, descripcion: "x", referencia: "unico", otorgado_en: `${fecha}T15:00:00Z` });
+  // Solo «reconocimientos» habilitado; el 10 % y el ranking siguen apagados.
+  const llamadas = await simular(page, base, {
+    modulo_visible: (c) => c.p_clave === "reconocimientos",
+    mis_reconocimientos: () => [otorgado("primer_paso", "2026-10-05"), otorgado("constancia", "2026-10-11"), otorgado("primera_semana", "2026-10-12")],
+    mis_beneficios: () => [],
+    mi_beneficio_renovacion: () => [],
+  });
+  await page.goto("mi-espacio/logros/");
+  await hidratar(page);
+
+  // Nivel y créditos de la base.
+  await expect(page.locator(".ml-cifra")).toHaveText("30 créditos acumulados");
+  await expect(page.locator(".ml-nivel__nombre")).toHaveText("Ritmo");
+  await expect(page.locator(".ml-nivel__actual")).toContainText("Nivel 3");
+  await page.getByRole("button", { name: "Ver los 10 niveles" }).click();
+  const hoja = page.getByRole("dialog");
+  await expect(hoja.locator("ol li")).toHaveCount(10);
+  await expect(hoja.locator("li[aria-current]")).toContainText("Ritmo");
+  await hoja.getByRole("button", { name: "Cerrar" }).click();
+
+  // Rachas: actual y mejor del ciclo.
+  const cajas = page.locator(".ml-constancia .ml-caja__n, section.ml-tarjeta .ml-caja__n");
+  await expect(cajas.first()).toHaveText("8 días");
+  await expect(cajas.nth(1)).toHaveText("8 días");
+
+  // Evolución: semana 1 completa, semana 2 en curso (cuenta hasta hoy), 3 y 4 por venir; esta semana 1 de 7.
+  const semanas = page.locator(".ml-semanas__lista li");
+  await expect(semanas).toHaveCount(4);
+  await expect(semanas.nth(0)).toContainText("100 %");
+  await expect(semanas.nth(1)).toContainText("50 %"); // 12 hecha; 13 (hoy) todavía no
+  await expect(semanas.nth(2)).toContainText("—");
+  await expect(page.locator(".ml-esta-semana__cifra")).toHaveText("1 de 7");
+
+  // Metas: avance e hitos reales.
+  const meta = page.locator(".ml-metas .me-meta");
+  await expect(meta).toHaveCount(1);
+  await expect(meta).toContainText("Terminar mi tesis");
+  await expect(meta.locator(".me-hitos li")).toHaveCount(2);
+
+  // Los 6 reconocimientos con su estado.
+  const rec = page.locator(".ml-reconocimientos .ml-insignia");
+  await expect(rec).toHaveCount(6);
+  const estado = (c: string) => page.locator(`.ml-insignia[data-clave="${c}"]`);
+  await expect(estado("primer_paso")).toHaveAttribute("data-estado", "conseguido");
+  await expect(estado("primer_paso").locator("time")).toHaveText("Conseguido el 5 de octubre");
+  await expect(estado("constancia").locator("time")).toHaveText("Conseguido el 11 de octubre");
+  await expect(estado("primera_semana").locator("time")).toHaveText("Conseguido el 12 de octubre");
+  await expect(estado("mitad_del_camino")).toHaveAttribute("data-estado", "progreso");
+  await expect(estado("mitad_del_camino")).toContainText("Llevas 89 % · se pide 50 %");
+  await expect(estado("ciclo_completado")).toContainText("Día 9 de 28");
+  await expect(estado("meta_alcanzada")).toContainText("1 de 2 hitos");
+
+  // Recompensas y ranking siguen ocultos.
+  await expect(page.getByRole("heading", { name: "Mis recompensas" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /Ranking/ })).toHaveCount(0);
+  expect(llamadas.some((l) => l.nombre === "ranking_semanal")).toBe(false);
+});
