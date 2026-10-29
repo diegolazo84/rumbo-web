@@ -31,8 +31,8 @@ console.log("Borrado automático de fotos (Supabase local)");
 // Datos: acciones de A sin registro, una por caso.
 const [A] = sql("select participante_id from public.progreso limit 1").split("\n");
 const libres = sql(`select o.id from public.ocurrencias o where o.participante_id = '${A}'
-  and not exists (select 1 from public.registros r where r.ocurrencia_id = o.id) order by o.fecha limit 14`).split("\n");
-assert.ok(libres.length >= 12, "faltan acciones libres de A");
+  and not exists (select 1 from public.registros r where r.ocurrencia_id = o.id) order by o.fecha limit 16`).split("\n");
+assert.ok(libres.length >= 15, "faltan acciones libres de A");
 const WEBP = Buffer.from("RIFF\x1a\x00\x00\x00WEBPVP8L\x0d\x00\x00\x00\x2f\x00\x00\x00\x10\x07\x10\x11\x11\x88\x88\xfe\x07\x00", "latin1");
 
 async function subir(oc) {
@@ -85,16 +85,50 @@ paso("datos: 10 fotos con plazos distintos, una ruta compartida y 2 archivos sin
 
 // ---------------------------------------------------------------------------
 // La llave interna y los permisos.
-const token = sql("select decrypted_secret from vault.decrypted_secrets where name = 'depurar_fotos_token'");
-assert.equal(token.length, 64, "la migración crea una llave de 32 bytes");
-assert.equal((await sb.rpc("depuracion_token_valido", { p_token: token })).data, true);
-assert.equal((await sb.rpc("depuracion_token_valido", { p_token: "x".repeat(64) })).data, false);
-assert.equal((await sb.rpc("depuracion_token_valido", { p_token: null })).data, false);
-for (const rol of ["anon", "authenticated"])
-  for (const f of ["depuracion_token_valido(text)", "depuracion_iniciar(text)", "depuracion_confirmar(bigint, uuid[])", "depuracion_terminar(bigint, int, text)"])
+const llave = sql("select decrypted_secret from vault.decrypted_secrets where name = 'depurar_fotos_llave'");
+assert.equal(llave.length, 64, "la migración crea una llave de 32 bytes");
+const ahora = () => Math.floor(Date.now() / 1000);
+const firmar = (ts, origen) => sql(`select privado.depuracion_firma(${ts}, '${origen}')`);
+const valida = async (ts, origen, firma) => (await sb.rpc("depuracion_firma_valida", { p_ts: ts, p_origen: origen, p_firma: firma })).data;
+let ts = ahora();
+const firma = firmar(ts, "manual");
+assert.match(firma, /^[0-9a-f]{64}$/);
+assert.notEqual(firma, llave, "la firma no es la llave");
+assert.equal(await valida(ts, "programada", firma), false, "la firma no sirve para otro origen");
+assert.equal(await valida(ts, "manual", "f".repeat(64)), false, "firma falsa");
+assert.equal(await valida(ts, "manual", llave), false, "la llave misma no sirve como firma");
+assert.equal(await valida(ts, "manual", firma), true);
+assert.equal(await valida(ts, "manual", firma), false, "una firma sirve una sola vez");
+ts = ahora() - 400;
+assert.equal(await valida(ts, "programada", firmar(ts, "programada")), false, "una firma de hace más de 5 minutos venció");
+ts = ahora() + 400;
+assert.equal(await valida(ts, "programada", firmar(ts, "programada")), false, "una firma del futuro no sirve");
+for (const rol of ["anon", "authenticated"]) {
+  for (const f of ["depuracion_firma_valida(bigint, text, text)", "depuracion_iniciar(text)", "depuracion_lote(bigint, int)",
+    "depuracion_confirmar(bigint, uuid[])", "depuracion_fallo(bigint, uuid[], text)", "depuracion_huerfanos()", "depuracion_terminar(bigint, int, text)"])
     assert.equal(sql(`select has_function_privilege('${rol}', 'public.${f}', 'execute')`), "f", `${rol} no ejecuta ${f}`);
+  for (const f of ["depuracion_firma(bigint, text)", "lanzar_depuracion_fotos(text)", "vigilar_depuracion_fotos(timestamptz)", "estado_borrado_fotos(timestamptz)"])
+    assert.equal(sql(`select has_function_privilege('${rol}', 'privado.${f}', 'execute')`), "f", `${rol} no ejecuta privado.${f}`);
+  assert.equal(sql(`select has_table_privilege('${rol}', 'vault.decrypted_secrets', 'select')`), "f", `${rol} no lee Vault`);
+  for (const t of ["depuracion_fotos", "depuracion_fotos_fallos", "depuracion_reservas", "depuracion_firmas"])
+    assert.equal(sql(`select has_table_privilege('${rol}', 'privado.${t}', 'select')`), "f", `${rol} no lee privado.${t}`);
+}
+// Por la API: anónimo y con la clave pública no llegan a las funciones.
+assert.ok(process.env.ANON_KEY, "falta ANON_KEY");
+const anon = createClient(API, process.env.ANON_KEY, { auth: { persistSession: false } });
+{
+  for (const [fn, args] of [["depuracion_firma_valida", { p_ts: ahora(), p_origen: "manual", p_firma: "f".repeat(64) }],
+    ["depuracion_iniciar", { p_origen: "manual" }], ["depuracion_huerfanos", {}], ["estado_depuracion_fotos", {}], ["pedir_depuracion_fotos", {}]]) {
+    const r = await anon.rpc(fn, args);
+    assert.ok(r.error, `anon no ejecuta ${fn}`);
+  }
+}
+// La llave no aparece en las tareas programadas ni en lo que pg_net guarda.
+assert.equal(sql(`select count(*) from cron.job where command like '%${llave}%'`), "0");
+assert.equal(sql(`select count(*) from net._http_response where coalesce(content, '') like '%${llave}%'`), "0");
 assert.equal(sql("select privado.lanzar_depuracion_fotos('programada') is null"), "t", "sin depurar_fotos_url no hace nada");
-paso("llave interna al azar en Vault; solo la clave de servicio usa las funciones; sin dirección, la tarea no hace nada");
+assert.equal(sql("select privado.estado_borrado_fotos()"), "sin_activar");
+paso("llave en Vault que nunca viaja; firma de un solo uso, ligada al origen y que vence en 5 minutos; solo la clave de servicio usa las funciones; sin dirección, la tarea no hace nada");
 
 // ---------------------------------------------------------------------------
 // 1. Fallo de Storage (en una sola foto) y fallo de la base después de borrar (en otra).
@@ -222,10 +256,73 @@ assert.equal(sql(`select (now() - foto_subida_en) < interval '1 minute' from pub
 sql(`update public.registros set foto_ruta = '${opcionalNueva.ruta}' where id = '${opcionalNueva.id}'`);
 paso("al adjuntar o cambiar una foto, la base anota la fecha (base del plazo de las opcionales)");
 
+// 9. Huérfano y registro al mismo tiempo: la ruta reservada no se puede registrar, y un registro
+// hecho justo antes de reservar saca al archivo de la lista.
+const carrera = await subir(libres[13]);
+sql(`update storage.objects set created_at = now() - interval '3 days' where bucket_id = 'evidencias' and name = '${carrera}'`);
+assert.deepEqual(((await sb.rpc("depuracion_huerfanos")).data ?? []).map((f) => f.ruta), [carrera]);
+assert.throws(() => sql(`insert into public.registros (ocurrencia_id, participante_id, estado, version, foto_ruta)
+  values ('${libres[13]}', '${A}', 'hecha', 'completa', '${carrera}')`), /evidencia:ruta_invalida/, "ruta reservada: no se registra");
+sql("delete from privado.depuracion_reservas");
+// Ahora el registro llega primero: al volver a buscar huérfanos, ese archivo ya no está en la lista.
+sql(`insert into public.registros (ocurrencia_id, participante_id, estado, version, foto_ruta)
+  values ('${libres[13]}', '${A}', 'hecha', 'completa', '${carrera}')`);
+assert.deepEqual((await sb.rpc("depuracion_huerfanos")).data, []);
+// Simultáneo de verdad: una transacción registra y espera; la búsqueda de huérfanos espera el
+// candado y, al seguir, ve el registro.
+sql(`delete from public.registros where ocurrencia_id = '${libres[13]}'`);
+const { spawn } = await import("node:child_process");
+const lenta = spawn("psql", [PGURL, "-X", "-v", "ON_ERROR_STOP=1", "-c", `begin; insert into public.registros (ocurrencia_id, participante_id, estado, version, foto_ruta)
+  values ('${libres[13]}', '${A}', 'hecha', 'completa', '${carrera}'); select pg_sleep(2); commit;`]);
+const termina = new Promise((ok) => lenta.on("exit", ok));
+await new Promise((ok) => setTimeout(ok, 700));
+assert.deepEqual((await sb.rpc("depuracion_huerfanos")).data, [], "esperó el candado y vio el registro");
+assert.equal(await termina, 0);
+assert.equal(existe(carrera), true);
+paso("huérfano y registro simultáneos: candado por ruta, nueva comprobación y reserva; nunca se borra un archivo en uso");
+
+// 10. Una foto vencida que la persona cambia mientras se borra: no queda como fallo falso.
+const cambia = await registro(libres[14], { estado: "rechazada", dias: 40, nota: "No se ve la acción." });
+const otro = { ...real, borrar: async (rutas) => {
+  const n = await real.borrar(rutas);
+  sql(`update public.registros set estado = 'en_revision', revisado_en = null, foto_ruta = '${cambia.ruta}-nueva' where id = '${cambia.id}'`);
+  return n;
+} };
+const cuarta = await depurar(otro);
+assert.equal(cuarta.fallidas, 0, JSON.stringify(cuarta));
+assert.equal(sql("select count(*) from privado.depuracion_fotos_fallos"), "0");
+assert.equal(fila(cambia.id).estado, "en_revision");
+sql(`delete from public.registros where id = '${cambia.id}'`);
+paso("foto cambiada o reenviada a revisión durante el borrado: no se toca ni queda como error");
+
+// 11. Estado real y vigilancia.
+sql("select vault.create_secret('http://127.0.0.1:9/no-existe', 'depurar_fotos_url')");
+sql("delete from privado.depuracion_fotos");
+assert.equal(sql("select privado.estado_borrado_fotos()"), "esperando", "recién activado");
+// Tres días después, sin ninguna ejecución:
+assert.equal(sql("select privado.estado_borrado_fotos(now() + interval '3 days')"), "detenida", "activado hace 3 días y sin ejecuciones");
+assert.equal(sql("select privado.vigilar_depuracion_fotos(now() + interval '3 days')"), "detenida");
+await depurar(real, { origen: "programada" });
+assert.equal(sql("select privado.estado_borrado_fotos()"), "activa");
+assert.equal(sql("select privado.estado_borrado_fotos(now() + interval '27 hours')"), "detenida", "más de 26 horas sin correr");
+sql("update privado.depuracion_fotos set estado = 'con_errores'");
+assert.equal(sql("select privado.estado_borrado_fotos()"), "con_problemas");
+sql("select cron.alter_job((select jobid from cron.job where jobname = 'fotos-depurar'), active := false)");
+assert.equal(sql("select privado.vigilar_depuracion_fotos()"), "desactivada");
+sql("select cron.alter_job((select jobid from cron.job where jobname = 'fotos-depurar'), active := true)");
+// Con dirección, la tarea envía solo hora, origen y firma.
+const pedido = sql("select privado.lanzar_depuracion_fotos('programada')");
+assert.match(pedido, /^\d+$/);
+const cabeceras = sql(`select coalesce((select headers::text from net.http_request_queue where id = ${pedido}), '')`);
+assert.doesNotMatch(cabeceras, new RegExp(llave), "la llave no viaja");
+sql("delete from vault.secrets where name = 'depurar_fotos_url'");
+assert.equal(sql("select privado.estado_borrado_fotos()"), "sin_activar");
+paso("estado real (sin activar, esperando, activa, detenida, con problemas, desactivada) y vigilancia que avisa si se detiene");
+
 // Limpieza de lo que esta prueba agregó (la matriz vuelve a correr después en CI).
-sql(`delete from public.registros where ocurrencia_id in (${libres.slice(0, 13).map((x) => `'${x}'`).join(",")})`);
+sql(`delete from public.registros where ocurrencia_id in (${libres.slice(0, 15).map((x) => `'${x}'`).join(",")})`);
 const sobrantes = sql(`select string_agg(name, ',') from storage.objects where bucket_id = 'evidencias' and name like '${A}/%'`);
 if (sobrantes) await sb.storage.from("evidencias").remove(sobrantes.split(","));
-sql("delete from privado.depuracion_fotos; delete from privado.depuracion_fotos_fallos");
+sql("delete from privado.depuracion_fotos; delete from privado.depuracion_fotos_fallos; delete from privado.depuracion_reservas; delete from privado.depuracion_firmas");
 sql("select privado.recalcular_progreso(participante_id) from public.progreso");
 console.log(`Borrado automático de fotos: ${pasos} pasos ok`);

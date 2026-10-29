@@ -416,3 +416,91 @@ img.pa-miniatura { padding: 0; border-style: solid; border-width: 1px; border-co
 a.pa-coach__texto { text-decoration: none; }
 a.pa-coach__texto:hover { text-decoration: underline; }
 .pa-alerta-num { color: var(--terracota-texto); }
+
+/* Más → Mantención (C21): borrado automático de fotos. Identidad de Rumbo: bosque, crema, salvia
+   y terracota suave para lo que pide atención (sin rojos). Escritorio en dos columnas; móvil en
+   tarjetas verticales sin desplazamiento horizontal. */
+.pa-mant { display: grid; gap: var(--e-4); min-inline-size: 0; }
+.pa-mant .tarjeta { min-inline-size: 0; }
+.pa-mant__estado {
+  display: grid; gap: var(--e-4) var(--e-6); background: var(--crema);
+  border-inline-start: 6px solid var(--bosque); grid-template-columns: minmax(0, 1fr);
+}
+.pa-mant__estado--atencion { border-inline-start-color: var(--terracota); background: color-mix(in srgb, var(--terracota-suave) 45%, var(--crema)); }
+.pa-mant__estado--neutro { border-inline-start-color: var(--linea-fuerte); }
+.pa-mant__estado-principal { display: grid; gap: var(--e-2); align-content: start; }
+.pa-mant__ojo { margin: 0; font: 600 var(--t-micro)/1.2 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--terracota-texto); }
+.pa-mant__estado-titulo {
+  display: flex; align-items: center; gap: var(--e-3); margin: 0;
+  font: 500 clamp(1.5rem, 1.3rem + 0.8vw, 2rem)/1.15 var(--serif); color: var(--bosque);
+}
+.pa-mant__punto { flex: none; inline-size: 14px; block-size: 14px; border-radius: var(--r-full); background: var(--salvia-honda); box-shadow: 0 0 0 4px var(--salvia-suave); }
+.pa-mant__estado--atencion .pa-mant__punto { background: var(--terracota); box-shadow: 0 0 0 4px var(--terracota-suave); }
+.pa-mant__estado--neutro .pa-mant__punto { background: var(--linea-fuerte); box-shadow: 0 0 0 4px var(--papel-hondo); }
+.pa-mant__estado-texto { margin: 0; color: var(--tinta); }
+.pa-mant__estado-datos { display: grid; gap: var(--e-3); margin: 0; align-content: start; }
+.pa-mant__estado-datos > div { display: grid; gap: 2px; }
+.pa-mant__estado-datos dt { font: 600 var(--t-xs)/1.3 var(--sans); color: var(--tinta-suave); }
+.pa-mant__estado-datos dd { margin: 0; display: grid; gap: 2px; justify-items: start; color: var(--tinta); }
+.pa-mant__acciones { display: flex; flex-wrap: wrap; gap: var(--e-2) var(--e-3); align-items: center; }
+.pa-mant__acciones > [role="status"]:empty, .pa-mant__acciones > .alerta:empty { display: none; }
+.pa-mant__acciones > [role="status"], .pa-mant__acciones > .alerta { flex-basis: 100%; margin: 0; }
+
+.pa-mant__resultado {
+  display: inline-flex; align-items: center; min-block-size: 24px; padding: 2px 10px; border-radius: var(--r-full);
+  font: 600 var(--t-xs)/1.3 var(--sans); background: var(--niebla); color: var(--bosque);
+}
+.pa-mant__resultado--con_errores, .pa-mant__resultado--fallida { background: var(--terracota-suave); color: var(--terracota-texto); }
+.pa-mant__resultado--en_curso { background: var(--papel-hondo); color: var(--tinta); }
+
+.pa-mant__cifras { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--e-3); margin: 0; padding: 0; list-style: none; }
+.pa-mant__cifra { gap: 4px; padding: var(--e-4); }
+.pa-mant__cifra-titulo { font: 600 var(--t-xs)/1.3 var(--sans); color: var(--tinta-suave); }
+.pa-mant__cifra-n { font: 500 clamp(1.75rem, 1.5rem + 1vw, 2.25rem)/1.1 var(--serif); color: var(--bosque); font-variant-numeric: tabular-nums; }
+.pa-mant__cifra--atencion { background: color-mix(in srgb, var(--terracota-suave) 40%, var(--superficie)); }
+.pa-mant__cifra--atencion .pa-mant__cifra-n { color: var(--terracota-texto); }
+
+.pa-mant__dos { display: grid; gap: var(--e-4); grid-template-columns: minmax(0, 1fr); }
+.pa-mant__bloque { gap: var(--e-3); }
+.pa-mant__subtitulo { margin: 0; font: 500 var(--t-h3)/1.25 var(--serif); color: var(--bosque); }
+.pa-mant__problemas { display: grid; gap: var(--e-2); margin: 0; padding: 0; list-style: none; }
+.pa-mant__problema {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--e-3); align-items: start;
+  padding: var(--e-3); border-radius: var(--r-s); background: var(--papel);
+}
+.pa-mant__problema .pa-h3 { margin: 0; }
+.pa-mant__problema-texto { display: grid; gap: 2px; }
+.pa-mant__problema-texto .microcopia { margin: 0; }
+.pa-mant__problema-icono { display: grid; place-items: center; inline-size: 32px; block-size: 32px; border-radius: var(--r-full); background: var(--niebla); color: var(--bosque); }
+.pa-mant__problema-n { font: 500 1.375rem/1.2 var(--serif); color: var(--tinta-suave); font-variant-numeric: tabular-nums; }
+.pa-mant__problema--hay { background: color-mix(in srgb, var(--terracota-suave) 55%, var(--superficie)); }
+.pa-mant__problema--hay .pa-mant__problema-icono { background: var(--superficie); color: var(--terracota-texto); }
+.pa-mant__problema--hay .pa-mant__problema-n { color: var(--terracota-texto); }
+
+.pa-mant__tabla { inline-size: 100%; border-collapse: collapse; font-size: var(--t-xs); }
+.pa-mant__tabla th, .pa-mant__tabla td { padding: var(--e-2) var(--e-2); text-align: start; vertical-align: top; border-block-end: 1px solid var(--linea); }
+.pa-mant__tabla thead th { font-weight: 600; color: var(--tinta-suave); }
+.pa-mant__tabla tbody th { font-weight: 500; }
+.pa-mant__tabla .microcopia { display: block; margin: 0; }
+.pa-mant__tabla tbody tr:last-child > * { border-block-end: 0; }
+
+@media (min-width: 720px) {
+  .pa-mant__cifras { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .pa-mant__estado { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+  .pa-mant__acciones { grid-column: 1 / -1; }
+}
+@media (min-width: 1024px) {
+  .pa-mant__estado { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto; align-items: start; }
+  .pa-mant__acciones { grid-column: auto; flex-direction: column; align-items: stretch; }
+  .pa-mant__dos { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+}
+/* Móvil: cada fila del historial es una tarjeta con sus etiquetas. */
+@media (max-width: 539.98px) {
+  .pa-mant__tabla thead { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .pa-mant__tabla, .pa-mant__tabla tbody, .pa-mant__tabla tr { display: grid; }
+  .pa-mant__tabla tbody { gap: var(--e-2); }
+  .pa-mant__tabla tr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--e-2); padding: var(--e-3); border-radius: var(--r-s); background: var(--papel); }
+  .pa-mant__tabla th, .pa-mant__tabla td { display: grid; gap: 2px; padding: 0; border: 0; }
+  .pa-mant__tabla tbody th, .pa-mant__tabla td { justify-items: start; }
+  .pa-mant__tabla tbody th::before, .pa-mant__tabla td::before { content: attr(data-etiqueta); font-weight: 600; color: var(--tinta-suave); }
+}

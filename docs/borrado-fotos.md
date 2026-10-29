@@ -16,14 +16,15 @@ Las fotos de las acciones (bucket privado `evidencias`) se borran solas cuando v
 
 ## Cómo funciona
 
-1. **Tarea diaria.** La tarea programada `fotos-depurar` (pg_cron, 07:30 UTC) llama a la Edge Function `depurar-fotos` con pg_net y le envía la llave interna `depurar_fotos_token`.
-2. **La llave interna** vive en Vault. La crea la migración al azar y nadie la escribe ni la copia.
-3. **La función** usa la clave de servicio que Supabase le entrega por dentro. Esa clave **no** se guarda en GitHub ni en ningún otro lugar.
+1. **Tarea diaria.** La tarea programada `fotos-depurar` (pg_cron, 07:30 UTC) llama a la Edge Function `depurar-fotos` con pg_net. pg_cron trabaja en UTC, que no cambia con el horario de verano: en Chile corre a las 04:30 en horario de verano y a las 03:30 en invierno, siempre de madrugada, sin saltarse ni repetir ejecuciones. Los plazos se cuentan en horas exactas.
+2. **Autenticación interna.** La llave `depurar_fotos_llave` vive solo en Vault. La crea la migración al azar, nadie la escribe y **nunca viaja**: cada llamada lleva la hora (`x-rumbo-hora`) y una firma HMAC-SHA256 de «hora:origen» (`x-rumbo-firma`). La firma vence a los 5 minutos y sirve una sola vez (`privado.depuracion_firmas`). Además, cambiar el origen la invalida. La función se despliega con `--no-verify-jwt`, pero antes de tocar nada le pide a la base que compruebe la firma; sin una firma válida responde 401 sin contenido.
+3. **La función** usa la clave de servicio que Supabase le entrega por dentro. Esa clave **no** se guarda en GitHub ni en ningún otro lugar. La función no escribe registros y solo responde conteos y códigos cortos.
 4. **Borrado de archivos:** la función borra con la API de Storage, nunca con SQL. Después, la base anota solo las fotos cuyo archivo ya no existe.
-5. **Si algo falla,** nada se marca por error: lo que falló se reintenta al día siguiente.
-6. **Archivos sin ningún registro:** se borran pasadas 48 horas. Ese margen protege las subidas que todavía están en curso.
-7. **Cierre y avisos.** Cada ejecución queda registrada en `privado.depuracion_fotos`. Si algo quedó mal, llega un aviso por ntfy sin datos personales ni rutas. También avisa si la tarea lleva más de 2 días sin correr.
-8. **Supervisión:** el dueño la revisa en el panel, en **Más → Mantención**.
+5. **Si algo falla,** nada se marca por error: lo que falló se reintenta al día siguiente. Si la persona cambió la foto mientras tanto, no queda como error.
+6. **Archivos sin ningún registro:** se borran pasadas 48 horas. Antes de entregar cada archivo para borrar, la base toma un candado por ruta, vuelve a comprobar que ningún registro lo usa y lo reserva (`privado.depuracion_reservas`). Mientras la ruta está reservada, ningún registro puede empezar a usarla. Así, una subida o un registro simultáneo nunca termina apuntando a un archivo borrado. Las fotos vencidas siguen el mismo camino.
+7. **Cierre y avisos.** Cada ejecución queda registrada en `privado.depuracion_fotos`. Si algo quedó mal, llega un aviso por ntfy sin datos personales ni rutas.
+8. **Vigilancia independiente.** Otra tarea, `fotos-vigilar` (13:00 UTC, media mañana en Chile), avisa por ntfy si el borrado está activado pero la tarea diaria se apagó o pasaron más de 26 horas sin ejecución.
+9. **Supervisión:** el dueño la revisa en el panel, en **Más → Mantención**. El estado lo calcula la base (`privado.estado_borrado_fotos`). Solo dice «Activo» si el borrado está configurado, la tarea está encendida y la última ejecución programada (de menos de 26 horas) terminó bien.
 
 Mientras no exista el secreto `depurar_fotos_url`, la tarea no hace nada.
 
@@ -45,14 +46,14 @@ Pruebas:
    npx supabase functions deploy depurar-fotos --project-ref jhukwxeeytedkjtwqowq --no-verify-jwt
    ```
 
-   No hay que crear ningún secreto: Supabase entrega `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` a la función.
+   No hay que crear ningún secreto de la función: Supabase entrega `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`. La llave interna ya la creó la migración en Vault.
 4. **Activar.** En Supabase → SQL Editor, crear la dirección (una sola vez):
 
    ```sql
    select vault.create_secret('https://jhukwxeeytedkjtwqowq.supabase.co/functions/v1/depurar-fotos',
      'depurar_fotos_url', 'Dirección de la Edge Function depurar-fotos');
    ```
-5. **Comprobar.** En el panel, abrir Más → Mantención y comprobar que diga «Activo». Pulsar «Revisar ahora» y, pasado un minuto, «Actualizar». La última ejecución debe decir «Sin problemas».
+5. **Comprobar.** En el panel, abrir Más → Mantención: debe decir «Esperando la primera ejecución». Pulsar «Revisar ahora» y, pasado un minuto, «Actualizar». La última ejecución debe decir «Sin problemas». Después de la primera ejecución programada (a las 04:30 o 03:30, hora de Chile), debe decir «Activo».
 
 ## Desactivar
 

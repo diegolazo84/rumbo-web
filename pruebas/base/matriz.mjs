@@ -99,7 +99,7 @@ const TABLAS = {
   revisiones: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // solo publicadas
   asignaciones_coach: { leer: "equipo", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
 };
-const PRIVADAS = ["correos_equipo", "limites", "sales", "depuracion_fotos", "depuracion_fotos_fallos"];
+const PRIVADAS = ["correos_equipo", "limites", "sales", "depuracion_fotos", "depuracion_fotos_fallos", "depuracion_reservas", "depuracion_firmas"];
 
 // Funciones de public que la API deja ejecutar. «anon»: también sin sesión. «persona»: actúan
 // solo sobre la ficha de quien llama. «equipo-error»: fallan sin equipo con aal2.

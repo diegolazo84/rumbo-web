@@ -1,12 +1,11 @@
 // Más → Mantención (C21): el dueño comprueba que el borrado automático de fotos funciona. Todo
-// sale de la base (estado_depuracion_fotos): pendientes, última ejecución, borradas, errores y
-// archivos sin registro. Nunca muestra rutas ni nombres. «Revisar ahora» pide una ejecución
-// (pedir_depuracion_fotos); solo funciona si el borrado ya está activo.
+// sale de la base (estado_depuracion_fotos): estado real, pendientes, última ejecución, borradas,
+// errores y archivos sin registro. Nunca muestra rutas ni nombres. «Revisar ahora» pide una
+// ejecución (pedir_depuracion_fotos); solo funciona si el borrado ya está activo.
 import { useCallback, useEffect, useState } from "react";
-import Etiqueta from "../../../components/Etiqueta";
 import { Icono } from "../../../components/app";
 import { datos } from "../../../lib/supabase";
-import { Datos, Seccion } from "../../vista-previa/panel/comun";
+import { Seccion } from "../../vista-previa/panel/comun";
 import { MANTENCION_FOTOS as T } from "../../vista-previa/panel/textos";
 import { Alerta, useDatosPanel, useEscritura } from "./comun";
 
@@ -22,7 +21,8 @@ type Ejecucion = {
   error: string | null;
 };
 export type EstadoDepuracion = {
-  activa: boolean;
+  estado: "activa" | "con_problemas" | "esperando" | "detenida" | "desactivada" | "sin_activar";
+  horario: string | null;
   dias: number;
   horas_seguridad: number;
   conteo: {
@@ -34,15 +34,48 @@ export type EstadoDepuracion = {
     registros_sin_archivo: number;
   };
   fallos: { fotos: number; repetidos: number; ultimo_error: string | null };
+  interrumpidas_30_dias: number;
   borradas_30_dias: number;
   ejecuciones: Ejecucion[];
 };
 
+const ZONA = "America/Santiago";
 const fechaHora = (iso: string) =>
-  new Date(iso).toLocaleString("es-CL", { timeZone: "America/Santiago", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+  new Date(iso).toLocaleString("es-CL", { timeZone: ZONA, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
-function EtiquetaEstado({ estado }: { estado: string }) {
-  return <Etiqueta variante={estado === "ok" ? "activo" : "nota"}>{T.estados[estado] ?? estado}</Etiqueta>;
+// «30 7 * * *» (UTC, como trabaja pg_cron) → «04:30» u «03:30» según el horario de Chile de hoy.
+export function horaChile(horario: string | null, hoy = new Date()): string | null {
+  const m = horario?.match(/^(\d{1,2}) (\d{1,2}) \* \* \*$/);
+  if (!m) return null;
+  const d = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), hoy.getUTCDate(), Number(m[2]), Number(m[1])));
+  return d.toLocaleTimeString("es-CL", { timeZone: ZONA, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+}
+
+// Tono de cada estado: bien (salvia), atención (terracota suave) o neutro (en espera, sin activar).
+const TONO: Record<EstadoDepuracion["estado"], "bien" | "atencion" | "neutro"> = {
+  activa: "bien",
+  con_problemas: "atencion",
+  detenida: "atencion",
+  desactivada: "atencion",
+  esperando: "neutro",
+  sin_activar: "neutro",
+};
+
+function Problema({ titulo, n, texto, extra }: { titulo: string; n: number; texto: string; extra?: string }) {
+  const hay = n > 0;
+  return (
+    <li className={`pa-mant__problema${hay ? " pa-mant__problema--hay" : ""}`}>
+      <span className="pa-mant__problema-icono" aria-hidden="true">
+        <Icono nombre={hay ? "circle-alert" : "check"} tamaño={20} />
+      </span>
+      <div className="pa-mant__problema-texto">
+        <h4 className="pa-h3">{titulo}</h4>
+        <p className="microcopia">{hay ? texto : T.alertas.sinProblemas}</p>
+        {extra && <p className="microcopia">{extra}</p>}
+      </div>
+      <strong className="pa-mant__problema-n">{n}</strong>
+    </li>
+  );
 }
 
 export function MantencionFotos() {
@@ -62,79 +95,151 @@ export function MantencionFotos() {
   }, [leer]);
   if (estado === "sin-acceso" || estado === null) return null;
   const c = estado.conteo;
-  const ultima = estado.ejecuciones[0];
-  const alerta = (n: number) => (n > 0 ? <strong className="pa-alerta-num">{n}</strong> : n);
+  const ultima = estado.ejecuciones.find((e) => e.estado !== "en_curso") ?? estado.ejecuciones[0];
+  const e = T.estado[estado.estado] ?? T.estado.sin_activar;
+  const hora = horaChile(estado.horario);
+  const cifras = [
+    [T.cifras.vencidas, c.vencidas_guardadas, c.vencidas_guardadas > 0],
+    [T.cifras.proximas, c.proximas_7_dias, false],
+    [T.cifras.enRevision, c.en_revision, false],
+    [T.cifras.borradas, estado.borradas_30_dias, false],
+  ] as const;
+  const extrasErrores = [
+    estado.fallos.repetidos ? T.alertas.errores.repetidos(estado.fallos.repetidos) : "",
+    estado.fallos.fotos && estado.fallos.ultimo_error ? T.alertas.errores.codigo(estado.fallos.ultimo_error) : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
-    <Seccion titulo={T.titulo} id="mantencion" className="tarjeta pa-tarjeta">
-      <div className="pa-pila pa-pila--chica">
-        <h3 className="pa-h3">{T.subtitulo}</h3>
-        <p>
-          <Etiqueta variante={estado.activa ? "activo" : "nota"}>{estado.activa ? T.activo : T.inactivo}</Etiqueta>
-        </p>
-        <p className="microcopia">{T.plazo(estado.dias)}</p>
-        <Datos
-          filas={[
-            [T.filas.pendientes, alerta(c.vencidas_guardadas)],
-            [T.filas.proximas, c.proximas_7_dias],
-            [T.filas.enRevision, c.en_revision],
-            [T.filas.borradas, estado.borradas_30_dias],
-            [T.filas.errores, <>{alerta(estado.fallos.fotos)}{T.filas.repetidos(estado.fallos.repetidos)}</>],
-            [T.filas.huerfanos(estado.horas_seguridad), alerta(c.archivos_sin_registro)],
-            [T.filas.recientes, c.archivos_recientes_sin_registro],
-            [T.filas.sinArchivo, alerta(c.registros_sin_archivo)],
-          ]}
-        />
+    <Seccion titulo={T.titulo} id="mantencion" className="pa-mant">
+      {/* A. Estado general y acciones */}
+      <div className={`tarjeta pa-mant__estado pa-mant__estado--${TONO[estado.estado] ?? "neutro"}`}>
+        <div className="pa-mant__estado-principal">
+          <p className="pa-mant__ojo">{T.ojo}</p>
+          <p className="pa-mant__estado-titulo">
+            <span className="pa-mant__punto" aria-hidden="true" />
+            {e.titulo}
+          </p>
+          <p className="pa-mant__estado-texto">{e.texto}</p>
+          <p className="microcopia">{T.plazo(estado.dias)}</p>
+        </div>
+        <dl className="pa-mant__estado-datos">
+          <div>
+            <dt>{T.frecuencia}</dt>
+            <dd>
+              {hora ? T.diario(hora) : T.sinHorario}
+              {hora && <span className="microcopia">{T.cambioHora}</span>}
+            </dd>
+          </div>
+          <div>
+            <dt>{T.ultima}</dt>
+            <dd>
+              {ultima ? (
+                <>
+                  {fechaHora(ultima.iniciada_en)} · {T.origen[ultima.origen] ?? ultima.origen}
+                  <span className={`pa-mant__resultado pa-mant__resultado--${ultima.estado}`}>{T.resultados[ultima.estado] ?? ultima.estado}</span>
+                </>
+              ) : (
+                T.nunca
+              )}
+            </dd>
+          </div>
+        </dl>
+        <div className="pa-mant__acciones">
+          <button
+            type="button"
+            className="boton boton--secundario"
+            onClick={async () => {
+              setAviso("");
+              let lanzada = false;
+              if (await correr(async () => (lanzada = datos(await sb.rpc("pedir_depuracion_fotos")) === true))) setAviso(lanzada ? T.pedida : T.noActiva);
+            }}
+          >
+            <Icono nombre="refresh-cw" tamaño={20} />
+            {T.revisar}
+          </button>
+          <button type="button" className="boton boton--terciario" onClick={() => void leer()}>
+            {T.actualizar}
+          </button>
+          <Alerta texto={error} />
+          <p role="status" className="microcopia">
+            {aviso}
+          </p>
+        </div>
       </div>
-      <div className="pa-pila pa-pila--chica">
-        <h3 className="pa-h3">{T.ultima}</h3>
-        {ultima ? (
-          <>
-            <p>
-              <EtiquetaEstado estado={ultima.estado} /> {fechaHora(ultima.iniciada_en)} · {T.origen[ultima.origen] ?? ultima.origen}
-            </p>
-            <p className="microcopia">
-              {T.resumen(ultima.borradas, ultima.fallidas, ultima.huerfanos_borrados)}
-              {ultima.error ? ` · ${T.error(ultima.error)}` : ""}
-            </p>
-          </>
-        ) : (
-          <p className="microcopia">{T.nunca}</p>
-        )}
-        {estado.ejecuciones.length > 1 && (
-          <>
-            <h4 className="pa-h3">{T.historial}</h4>
-            <ul className="pa-lista-simple">
-              {estado.ejecuciones.slice(1).map((e) => (
-                <li key={e.iniciada_en}>
-                  <EtiquetaEstado estado={e.estado} /> {fechaHora(e.iniciada_en)} · {T.resumen(e.borradas, e.fallidas, e.huerfanos_borrados)}
-                  {e.error ? ` · ${T.error(e.error)}` : ""}
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
+
+      {/* B. Indicadores */}
+      <ul className="pa-mant__cifras" aria-label={T.cifras.titulo}>
+        {cifras.map(([t, n, atencion]) => (
+          <li key={t.titulo} className={`tarjeta pa-mant__cifra${atencion ? " pa-mant__cifra--atencion" : ""}`}>
+            <span className="pa-mant__cifra-titulo">{t.titulo}</span>
+            <strong className="pa-mant__cifra-n">{n}</strong>
+            <span className="microcopia">{t.nota}</span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="pa-mant__dos">
+        {/* C. Alertas y problemas */}
+        <section className="tarjeta pa-mant__bloque" aria-labelledby="mantencion-alertas">
+          <h3 id="mantencion-alertas" className="pa-mant__subtitulo">
+            {T.alertas.titulo}
+          </h3>
+          <ul className="pa-mant__problemas">
+            <Problema titulo={T.alertas.errores.titulo} n={estado.fallos.fotos} texto={T.alertas.errores.texto} extra={extrasErrores || undefined} />
+            <Problema
+              titulo={T.alertas.huerfanos.titulo}
+              n={c.archivos_sin_registro}
+              texto={T.alertas.huerfanos.texto(estado.horas_seguridad)}
+              extra={c.archivos_recientes_sin_registro ? T.alertas.huerfanos.recientes(c.archivos_recientes_sin_registro) : undefined}
+            />
+            <Problema titulo={T.alertas.sinArchivo.titulo} n={c.registros_sin_archivo} texto={T.alertas.sinArchivo.texto} />
+            <Problema titulo={T.alertas.interrumpidas.titulo} n={estado.interrumpidas_30_dias} texto={T.alertas.interrumpidas.texto} />
+          </ul>
+        </section>
+
+        {/* D. Historial */}
+        <section className="tarjeta pa-mant__bloque" aria-labelledby="mantencion-historial">
+          <h3 id="mantencion-historial" className="pa-mant__subtitulo">
+            {T.historial.titulo}
+          </h3>
+          {estado.ejecuciones.length ? (
+            <table className="pa-mant__tabla">
+              <thead>
+                <tr>
+                  <th scope="col">{T.historial.fecha}</th>
+                  <th scope="col">{T.historial.resultado}</th>
+                  <th scope="col">{T.historial.eliminadas}</th>
+                  <th scope="col">{T.historial.errores}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {estado.ejecuciones.map((x) => (
+                  <tr key={x.iniciada_en}>
+                    <th scope="row" data-etiqueta={T.historial.fecha}>
+                      {fechaHora(x.iniciada_en)}
+                      <span className="microcopia">{T.origen[x.origen] ?? x.origen}</span>
+                    </th>
+                    <td data-etiqueta={T.historial.resultado}>
+                      <span className={`pa-mant__resultado pa-mant__resultado--${x.estado}`}>{T.resultados[x.estado] ?? x.estado}</span>
+                    </td>
+                    <td data-etiqueta={T.historial.eliminadas}>
+                      {x.borradas}
+                      {x.huerfanos_borrados > 0 && <span className="microcopia">{T.historial.huerfanos(x.huerfanos_borrados)}</span>}
+                    </td>
+                    <td data-etiqueta={T.historial.errores}>
+                      {x.fallidas}
+                      {x.error && <span className="microcopia">{T.historial.codigo(x.error)}</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="microcopia">{T.historial.vacio}</p>
+          )}
+        </section>
       </div>
-      <div className="acciones">
-        <button
-          type="button"
-          className="boton boton--secundario"
-          onClick={async () => {
-            setAviso("");
-            let lanzada = false;
-            if (await correr(async () => (lanzada = datos(await sb.rpc("pedir_depuracion_fotos")) === true))) setAviso(lanzada ? T.pedida : T.noActiva);
-          }}
-        >
-          <Icono nombre="refresh-cw" tamaño={20} />
-          {T.revisar}
-        </button>
-        <button type="button" className="boton boton--terciario" onClick={() => void leer()}>
-          {T.actualizar}
-        </button>
-      </div>
-      <Alerta texto={error} />
-      <p role="status" className="microcopia">
-        {aviso}
-      </p>
     </Seccion>
   );
 }
