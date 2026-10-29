@@ -41,36 +41,11 @@ function BotonGrupo({ g }: { g: Grupo }) {
   );
 }
 
-export function VistaGrupos({ grupo }: { grupo: string | null }) {
+// El interior de un grupo es su propia pantalla (GrupoInterior.tsx, C14).
+export function VistaGrupos() {
   const { enlace } = useComunidad();
   const { R } = useEspacio();
   const { dato, error } = useDato((f) => f.grupos());
-  const actual = grupo ? dato?.find((g) => g.id === grupo) : null;
-
-  if (grupo && actual)
-    return (
-      <div className="co-vista">
-        <Link to={enlace({ vista: "grupos" })} className="enlace-flecha enlace-flecha--atras co-volver">
-          <Icono nombre="chevron-left" tamaño={16} />
-          {T.grupos.volver}
-        </Link>
-        <section className="co-tarjeta co-grupo-cabeza" aria-labelledby="co-grupo-h">
-          <PaisajeMini nombre={actual.ilustracion} className="co-grupo-cabeza__img" />
-          <div className="co-grupo-cabeza__texto">
-            <h2 id="co-grupo-h" className="co-h2">
-              {actual.nombre}
-            </h2>
-            {actual.descripcion && <p>{actual.descripcion}</p>}
-            <p className="co-grupo-cabeza__dato">
-              {T.grupos.miembros(actual.miembros)} · {T.grupos.publicaciones(actual.publicaciones)}
-            </p>
-          </div>
-          <BotonGrupo g={actual} />
-        </section>
-        {actual.soyMiembro && <Compositor preset={{ grupo: actual.id }} />}
-        <Feed filtro={{ grupo: actual.id }} vacio={T.feed.vacioGrupo} />
-      </div>
-    );
 
   return (
     <div className="co-vista">

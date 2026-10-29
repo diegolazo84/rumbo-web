@@ -113,7 +113,7 @@ const FUNCIONES = {
     "evolucion_semanal", "informe_ciclo", "mis_medibles", "anotar_cantidad",
     "guardar_alias", "participar_en_ranking", "ranking_semanal",
     "aceptar_reglas_comunidad", "publicar_en_comunidad", "borrar_mi_publicacion", "reportar_publicacion", "comunidad_publicaciones",
-    "reaccionar_publicacion", "unirme_a_grupo", "salir_de_grupo", "comunidad_grupos", "proponer_grupo", "mis_propuestas_grupo",
+    "reaccionar_publicacion", "unirme_a_grupo", "salir_de_grupo", "comunidad_grupos", "comunidad_miembros_grupo", "proponer_grupo", "mis_propuestas_grupo",
     "guardar_publicacion", "bloquear_autor", "desbloquear_alias", "mis_bloqueos", "comunidad_temas", "mi_impacto_comunidad",
     "unirme_a_desafio", "salir_de_desafio", "comunidad_desafios", "mi_avance_desafio",
     "mis_reconocimientos", "mis_beneficios",
@@ -1301,6 +1301,23 @@ paso("crear publicación C11: hasta 5 fotos propias y subidas, comentarios apaga
       || ' ' || (select count(*) from public.comunidad_publicaciones(p_hilo => '00000000-0000-4000-8000-0000000013b1'))
       || ' ' || (select count(*) from public.publicaciones where grupo_id = ${id("Afín")})`);
   exigir(ajeno.ok && ultima(ajeno) === "0 0 0", `quien no es miembro llega a lo del grupo: ${ajeno.error ?? ultima(ajeno)}`);
+  // Interior del grupo: quien no es miembro tampoco interactúa con lo del grupo (la base responde
+  // «no encontrada», sin revelar que existe), y quien sale pierde esas acciones.
+  const p13 = "'00000000-0000-4000-8000-0000000013b1'";
+  const acciones = {
+    reaccionar: `select public.reaccionar_publicacion(${p13})`,
+    guardar: `select public.guardar_publicacion(${p13})`,
+    reportar: `select public.reportar_publicacion(${p13}, 'spam', null)`,
+    bloquear: `select public.bloquear_autor(${p13})`,
+    responder: `select public.publicar_en_comunidad('C13 intruso', ${p13})`,
+  };
+  for (const [que, sql] of Object.entries(acciones)) {
+    const r = como(ROLES.A, `${conPosts} ${sql}`);
+    exigir(!r.ok && /no_encontrada/.test(r.error), `quien no es miembro pudo ${que} en el grupo: ${r.error ?? ultima(r)}`);
+    const t = como(ROLES.B, `${conPosts} select public.salir_de_grupo(${id("Afín")}) \\g /dev/null
+    ${sql}`);
+    exigir(!t.ok && /no_encontrada/.test(t.error), `al salir del grupo aún pudo ${que}: ${t.error ?? ultima(t)}`);
+  }
   const contador = como(ROLES.A, `${conPosts} select publicaciones || ' ' || miembros from public.comunidad_grupos() where id = ${id("Afín")}`);
   exigir(contador.ok && ultima(contador) === "1 1", `el contador cuenta lo oculto o las respuestas: ${contador.error ?? ultima(contador)}`);
   const sale = como(ROLES.B, `${conPosts}
@@ -1317,6 +1334,22 @@ paso("crear publicación C11: hasta 5 fotos propias y subidas, comentarios apaga
     select public.unirme_a_grupo(${id("Afín")}) \\g /dev/null
     select count(*) from public.comunidad_publicaciones(p_grupo => ${id("Afín")})`);
   exigir(vuelve.ok && ultima(vuelve) === "1", `al volver no recupera lo visible del grupo: ${vuelve.error ?? ultima(vuelve)}`);
+
+  // Pestaña «Miembros» (C14): solo miembros, solo alias, sin bloqueados entre sí; al salir se pierde.
+  const lista = `select string_agg(soy_yo::int::text, ',' order by soy_yo desc) from public.comunidad_miembros_grupo(${id("Afín")})`;
+  const miembrosB = como(ROLES.B, `${conPosts} ${lista}`);
+  exigir(miembrosB.ok && ultima(miembrosB) === "1", `B no ve la lista de su grupo: ${miembrosB.error ?? ultima(miembrosB)}`);
+  const miembrosA = como(ROLES.A, `${conPosts} ${lista}`);
+  exigir(!miembrosA.ok && /no_miembro/.test(miembrosA.error), `quien no es miembro ve la lista: ${miembrosA.error ?? ultima(miembrosA)}`);
+  const miembrosSale = como(ROLES.B, `${conPosts} select public.salir_de_grupo(${id("Afín")}) \\g /dev/null
+    ${lista}`);
+  exigir(!miembrosSale.ok && /no_miembro/.test(miembrosSale.error), `al salir sigue viendo la lista: ${miembrosSale.error ?? ultima(miembrosSale)}`);
+  const conA = `reset role; insert into public.miembros_grupo values (${id("Afín")}, '${ROLES.A.ficha}'); set local role authenticated;`;
+  const ambos = como(ROLES.B, `${conPosts} ${conA} ${lista}`);
+  exigir(ambos.ok && ultima(ambos) === "1,0", `B no ve a A en el grupo: ${ambos.error ?? ultima(ambos)}`);
+  const bloq = como(ROLES.B, `${conPosts} ${conA} reset role; insert into public.bloqueos_comunidad (bloqueador, bloqueado) values ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    set local role authenticated; ${lista}`);
+  exigir(bloq.ok && ultima(bloq) === "1", `la lista muestra a quien bloqueó: ${bloq.error ?? ultima(bloq)}`);
 
   const reclamosDe = (r) => `select set_config('request.jwt.claims', '${JSON.stringify({ sub: r.uid, role: "authenticated", aal: r.aal ?? "aal1" })}', true) \\g /dev/null\n`;
   const proponer = (n) => `select public.proponer_grupo('Propuesta ${n}', 'Para probar') \\g /dev/null\n`;
@@ -1342,7 +1375,7 @@ paso("crear publicación C11: hasta 5 fotos propias y subidas, comentarios apaga
     select public.responder_propuesta_grupo((select id from public.propuestas_grupo_equipo() where nombre = 'Propuesta 9'), 'creada')`);
   exigir(!otraVez.ok && /no_encontrada/.test(otraVez.error), "una propuesta respondida se respondió de nuevo");
 }
-paso("grupos C13: destacado único y elegido por moderación, sugeridos por las áreas de las metas, propuestas con alias y sin ficha, membresías solo propias; sin acceso al grupo por dirección ni por la base, al salir se pierde y lo publicado queda, contadores solo de lo visible");
+paso("grupos C13: destacado único y elegido por moderación, sugeridos por las áreas de las metas, propuestas con alias y sin ficha, membresías solo propias; sin acceso al grupo por dirección ni por la base, al salir se pierde y lo publicado queda, contadores solo de lo visible; sin reaccionar, guardar, reportar, bloquear ni responder sin ser miembro; lista de miembros solo con alias, solo para miembros y sin bloqueados");
 
 
 // E1 · Reconocimientos y beneficios. Fechas relativas al ciclo de A que deja rls.mjs.

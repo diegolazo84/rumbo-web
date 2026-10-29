@@ -170,7 +170,7 @@ test("sin grupos: mensaje claro, sin destacado y con «Proponer un grupo»", asy
 test("dirección directa a un grupo ajeno: no se ven sus publicaciones hasta unirse", async ({ page }) => {
   await page.goto("vista-previa/mi-espacio/comunidad/?vista=grupos&grupo=g4");
   await page.waitForFunction(() => document.documentElement.classList.contains("hidratado"));
-  await expect(page.getByText(T_COMU.feed.vacioGrupo)).toBeVisible();
+  await expect(page.getByText(T_COMU.interior.noMiembroTitulo)).toBeVisible();
   await expect(page.locator("article.co-pub")).toHaveCount(0);
 });
 
