@@ -14,7 +14,7 @@ legal de Diego).
 
 | # | Función | Estado | Falta | Depende de | PR |
 |---|---|---|---|---|---|
-| 1 | Postular, acuerdo, crear espacio, ingreso, Mi plan, ajustes, registro y revisión semanal, constructor | operativa · Mi plan (C18): encabezado con la semana del ciclo, «Tu día de hoy» con los registros de hoy, «Lo que estás construyendo» con las metas publicadas y calendario semanal con hoy, días completos y futuros diferenciados | Recorrido completo con correo de prueba | — | — |
+| 1 | Postular, acuerdo, crear espacio, ingreso, Mi plan, ajustes, registro y revisión semanal, constructor | operativa · Mi plan (C18): encabezado con la semana del ciclo, «Tu día de hoy» con los registros de hoy, «Lo que estás construyendo» con las metas publicadas y calendario semanal con hoy, días completos y futuros diferenciados · Detalle de una acción (C19): referencia de ChatGPT en página, panel lateral y hoja; subida de fotos oculta (aún no funciona), solo «No puedo subir una foto» | Recorrido completo con correo de prueba | — | — |
 | 1b | Formulario de contacto | **con error** (no guarda mensajes) | Aplicar el arreglo | migración | #22 |
 | 2 | Mi Rumbo rediseñado | parcial | Integrar; meta principal elegida por el coach | autorización | #19 |
 | 3 | Mi acompañamiento | parcial | Diseño nuevo; coach real (#8); «nuevo» entre dispositivos (base lista en A5) | diseño, #8, #11 | #20 |

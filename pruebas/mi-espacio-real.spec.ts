@@ -951,3 +951,52 @@ for (const semanas of [8, 12]) {
     await expect(page.locator(".me-plan-hoy__n")).toHaveText("0 de 1");
   });
 }
+
+test("Detalle de acción real (referencia de ChatGPT): ruta, datos de la base, marcar, versión corta, ajuste y foto sin subida", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.ocurrencias.push({ ...base.ocurrencias[8], id: "o-foto", titulo: "Ordenar el escritorio", instrucciones: "Ordena tu escritorio.", version_corta: null, requiere_foto: true, hora: null });
+  const llamadas = await simular(page, base, {
+    registrar_evidencia: (c) => {
+      base.registros.push({ ocurrencia_id: c.p_ocurrencia, participante_id: "p1", estado: "revision", version: "completa", explicacion: c.p_explicacion, nota_revision: null, revisado_en: null });
+      return null;
+    },
+  });
+  await page.goto(`mi-espacio/plan/accion/?id=o-${HOY}`);
+  await hidratar(page);
+  await expect(page.locator("h1")).toHaveText("Escribir 30 minutos");
+  const migas = page.getByRole("navigation", { name: "Dónde estás" });
+  await expect(migas).toContainText("Semana 2 de 4");
+  await expect(migas.locator("[aria-current=page]")).toHaveText("Acción del martes 13");
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".me-pasos > li")).toHaveText(["Abre el documento.", "Escribe sin corregir."]);
+  await expect(page.locator(".me-para-que__cita")).toHaveText("Para titularme este año.");
+  await expect(page.locator(".me-si-no")).toContainText("Versión corta: Escribir 10 minutos. También cuenta como hecha.");
+  await sinViolaciones(page);
+
+  await page.getByRole("button", { name: "Hice la versión corta", exact: true }).click();
+  await expect(page.locator(".me-hecha__texto")).toHaveText("Hecha (versión corta) · +1 crédito");
+  expect(llamadas.filter((l) => l.nombre === "marcar_accion").at(-1)!.cuerpo).toEqual({ p_ocurrencia: `o-${HOY}`, p_version: "corta" });
+  await expect(page.locator(".me-ajuste-tarjeta").getByRole("link", { name: "Pedir un ajuste" })).toHaveAttribute("href", new RegExp(`ajuste/\\?accion=o-${HOY}$`));
+
+  // Fuera del plazo de 7 días: sin botones, con el texto de cerrada. Futura: bloqueada.
+  await page.goto("mi-espacio/plan/accion/?id=o-2026-10-05");
+  await hidratar(page);
+  await expect(page.getByText("Esta acción ya quedó cerrada en tu registro.", { exact: false })).toBeVisible();
+  await expect(page.locator(".me-marcar")).toHaveCount(0);
+  await page.goto("mi-espacio/plan/accion/?id=o-2026-10-14");
+  await hidratar(page);
+  await expect(page.getByRole("button", { name: "Marcar como hecha", exact: true })).toHaveAttribute("aria-disabled", "true");
+
+  // Foto: la subida real aún no existe; solo «No puedo subir una foto», que va a registrar_evidencia.
+  await page.goto("mi-espacio/plan/accion/?id=o-foto");
+  await hidratar(page);
+  await expect(page.getByRole("button", { name: "Subir foto" })).toHaveCount(0);
+  await expect(page.locator("input[type=file]")).toHaveCount(0);
+  await page.getByRole("button", { name: "No puedo subir una foto" }).click();
+  await page.getByRole("textbox").fill("Lo ordené, pero mi teléfono no tiene cámara.");
+  await page.locator(".me-foto__explicar button[type=submit]").click();
+  await expect(page.locator(".me-foto").getByText("En revisión", { exact: true })).toBeVisible();
+  const ev = llamadas.find((l) => l.nombre === "registrar_evidencia")!;
+  expect(ev.cuerpo).toEqual({ p_ocurrencia: "o-foto", p_foto_ruta: null, p_explicacion: "Lo ordené, pero mi teléfono no tiene cámara." });
+});
