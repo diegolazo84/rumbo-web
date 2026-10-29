@@ -415,3 +415,4 @@ img.pa-miniatura { padding: 0; border-style: solid; border-width: 1px; border-co
 .pa-coach__texto { color: var(--tinta); }
 a.pa-coach__texto { text-decoration: none; }
 a.pa-coach__texto:hover { text-decoration: underline; }
+.pa-alerta-num { color: var(--terracota-texto); }

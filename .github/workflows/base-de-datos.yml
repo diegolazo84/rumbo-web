@@ -41,7 +41,11 @@ jobs:
           open(p, "w").write(s)
           PY
           grep -A2 '^\[auth.mfa.totp\]' supabase/config.toml
-          supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,postgres-meta,supavisor,mailpit
+          # C21: la Edge Function del borrado de fotos, como se despliega (sin verificación de JWT).
+          mkdir -p supabase/functions
+          cp -r "$GITHUB_WORKSPACE/supabase/functions/depurar-fotos" supabase/functions/
+          printf '\n[functions.depurar-fotos]\nverify_jwt = false\n' >> supabase/config.toml
+          supabase start -x studio,imgproxy,logflare,vector,realtime,postgres-meta,supavisor,mailpit
       - name: Aplicar el SQL en orden
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
@@ -169,6 +173,34 @@ jobs:
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
         run: node pruebas/base/matriz.mjs
+
+      # C21: borrado automático de fotos privadas con la base, Storage y la lógica reales de la
+      # Edge Function (la clave de servicio es la de esta base local y efímera). Después, la Edge
+      # Function misma: sin la llave interna responde 401; con ella, corre y deja la ejecución.
+      - name: Borrado automático de fotos
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          set -euo pipefail
+          eval "$(cd "$RUNNER_TEMP/sb" && supabase status -o env)"
+          export API_URL="${API_URL:-http://127.0.0.1:54321}"
+          export SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:-${SECRET_KEY:-}}"
+          node pruebas/base/depuracion.mjs
+
+          FN="$API_URL/functions/v1/depurar-fotos"
+          codigo() { curl -sS -o respuesta.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' "$@" -d '{"origen":"manual"}' "$FN"; }
+          # La función tarda en arrancar la primera vez: se espera a que responda algo distinto de 5xx.
+          for i in $(seq 1 30); do c=$(codigo || true); case "$c" in 5*|000) sleep 3 ;; *) break ;; esac; done
+          [ "$(codigo)" = 401 ] || { cat respuesta.json; echo "::error::sin llave la función no respondió 401"; exit 1; }
+          [ "$(codigo -H "x-rumbo-token: $(printf 'f%.0s' $(seq 1 64))")" = 401 ] || { echo "::error::con una llave falsa no respondió 401"; exit 1; }
+          [ "$(codigo -X GET)" = 405 ] || { echo "::error::GET no respondió 405"; exit 1; }
+          TOKEN=$(psql "$PGURL" -At -c "select decrypted_secret from vault.decrypted_secrets where name = 'depurar_fotos_token'")
+          [ "$(codigo -H "x-rumbo-token: $TOKEN")" = 200 ] || { cat respuesta.json; echo "::error::con la llave interna la función no corrió"; exit 1; }
+          jq -e '.estado == "ok" and .origen == "manual"' respuesta.json || { cat respuesta.json; echo "::error::la función no cerró bien la ejecución"; exit 1; }
+          [ "$(psql "$PGURL" -At -c "select count(*) from privado.depuracion_fotos where origen = 'manual' and estado = 'ok'")" = 1 ] \
+            || { echo "::error::la ejecución de la función no quedó registrada"; exit 1; }
+          psql "$PGURL" -q -c "delete from privado.depuracion_fotos"
+          echo "Edge Function: 401 sin llave o con llave falsa, 405 con GET y ejecución completa con la llave interna"
 
       # La matriz debe fallar ante 6 errores típicos de permisos hechos a mano, y volver a pasar
       # al deshacerlos. Solo en la base local de prueba.

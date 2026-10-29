@@ -819,6 +819,56 @@ test("Más: postulaciones y cuenta con sus factores", async ({ page }) => {
   await expect(seccion.getByText("Guardado.")).toBeVisible();
 });
 
+test("Más → Mantención: el borrado automático de fotos con datos reales de la base y «Revisar ahora»", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  await simular(page, baseInicial(), { factores: VERIFICADO });
+  const estado = {
+    activa: true,
+    dias: 30,
+    horas_seguridad: 48,
+    conteo: { vencidas: 1, vencidas_guardadas: 1, proximas_7_dias: 3, en_revision: 2, archivos_sin_registro: 0, archivos_recientes_sin_registro: 1, registros_sin_archivo: 0 },
+    fallos: { fotos: 1, repetidos: 0, ultimo_error: "storage:503" },
+    borradas_30_dias: 7,
+    ejecuciones: [
+      { origen: "programada", iniciada_en: "2026-10-29T07:30:02Z", terminada_en: "2026-10-29T07:30:05Z", estado: "con_errores", vencidas: 3, borradas: 2, fallidas: 1, huerfanos_borrados: 0, error: null },
+      { origen: "programada", iniciada_en: "2026-10-28T07:30:01Z", terminada_en: "2026-10-28T07:30:04Z", estado: "ok", vencidas: 5, borradas: 5, fallidas: 0, huerfanos_borrados: 0, error: null },
+    ],
+  };
+  let pedidas = 0;
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/estado_depuracion_fotos`, (rt) => rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(estado) }));
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/pedir_depuracion_fotos`, (rt) => {
+    pedidas++;
+    return rt.fulfill({ status: 200, contentType: "application/json", body: "true" });
+  });
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  const m = page.locator("section", { has: page.locator("#mantencion-titulo") });
+  await expect(m.getByText("Activo · todos los días")).toBeVisible();
+  await expect(m.locator(".pa-datos__fila", { hasText: "Vencidas que siguen guardadas" }).locator("dd")).toHaveText("1");
+  await expect(m.locator(".pa-datos__fila", { hasText: "Borradas en los últimos 30 días" }).locator("dd")).toHaveText("7");
+  await expect(m.locator(".pa-datos__fila", { hasText: "Fotos con error de borrado" }).locator("dd")).toHaveText("1");
+  await expect(m.getByText("2 borradas · 1 con error · 0 archivos sin registro borrados")).toBeVisible();
+  await expect(m.getByText("Con problemas")).toBeVisible();
+  // Nunca rutas privadas.
+  await expect(m).not.toContainText("/");
+  await sinViolaciones(page);
+  if (process.env.CAPTURAS)
+    await m.screenshot({ path: `/mnt/project-files/rumbo-web/fotos-privadas/mantencion-${test.info().project.name}.png`, animations: "disabled" });
+  await m.getByRole("button", { name: "Revisar ahora" }).click();
+  await expect(m.getByText("Listo: la revisión empezó.")).toBeVisible();
+  expect(pedidas).toBe(1);
+});
+
+test("Más → Mantención: un coach (o sin la migración) no ve la sección", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  await simular(page, baseInicial(), { factores: VERIFICADO });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/estado_depuracion_fotos`, (rt) => rt.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ code: "PT403", message: "sesion:no_autorizado" }) }));
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  await expect(page.locator("h1")).toHaveText("Más.");
+  await expect(page.locator("#mantencion-titulo")).toHaveCount(0);
+});
+
 test("contacto: lo resuelto o respondido se puede volver a abrir", async ({ page }) => {
   await preparar(page, "aal2", VERIFICADO);
   const base = baseInicial();

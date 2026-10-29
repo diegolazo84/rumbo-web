@@ -615,6 +615,39 @@ export const MAS = {
 // Panel real (etapa 3). PROPUESTO: la especificación no fija estos textos (errores, avisos de
 // guardado y el segundo factor); Diego los revisa.
 
+// C21: Más → Mantención en el panel real (borrado automático de fotos). PROPUESTO: textos nuevos.
+export const MANTENCION_FOTOS = {
+  titulo: "Mantención",
+  subtitulo: "Borrado automático de fotos",
+  activo: "Activo · todos los días alrededor de las 04:30 (hora de Chile)",
+  inactivo: "Inactivo: falta desplegar la función y activarla (instrucciones en docs/borrado-fotos.md).",
+  plazo: (dias: number) =>
+    `Las fotos revisadas se borran ${dias} días después de su revisión; las opcionales, ${dias} días después de adjuntarse. Las que están en revisión no se borran. El registro, la revisión y los créditos se mantienen.`,
+  filas: {
+    pendientes: "Vencidas que siguen guardadas",
+    proximas: "Vencen en los próximos 7 días",
+    enRevision: "En revisión (no se borran)",
+    borradas: "Borradas en los últimos 30 días",
+    errores: "Fotos con error de borrado",
+    repetidos: (n: number) => (n ? ` · ${n} fallan hace 3 días o más` : ""),
+    huerfanos: (horas: number) => `Archivos sin registro (más de ${horas} h)`,
+    recientes: "Archivos recientes sin registro (subidas en curso, se esperan)",
+    sinArchivo: "Registros que apuntan a un archivo que no existe",
+  },
+  ultima: "Última ejecución",
+  nunca: "Todavía no se ha ejecutado.",
+  historial: "Últimas ejecuciones",
+  estados: { ok: "Sin problemas", con_errores: "Con problemas", fallida: "Detenida", en_curso: "En curso" } as Record<string, string>,
+  origen: { programada: "programada", manual: "manual" } as Record<string, string>,
+  resumen: (b: number, f: number, h: number) => `${b} borradas · ${f} con error · ${h} archivos sin registro borrados`,
+  error: (c: string) => `Código: ${c}`,
+  revisar: "Revisar ahora",
+  pedida: "Listo: la revisión empezó. Actualiza en un minuto para ver el resultado.",
+  noActiva: "No se pudo empezar: el borrado automático aún no está activo.",
+  actualizar: "Actualizar",
+  sinAcceso: "Solo el dueño ve esta sección.",
+} as const;
+
 export const PANEL_REAL = {
   error: "No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.",
   guardado: "Guardado.",
