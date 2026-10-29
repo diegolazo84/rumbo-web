@@ -67,6 +67,14 @@ select 'etapa 1: tareas programadas exactas (nombre, horario y comando)',
              and (select bool_and(active) from cron.job where jobname like 'rumbo-%')
             then 'ok' else 'FALLA: las tareas programadas no coinciden con supabase/migrations/20261008000006_cron.sql' end
 union all
+-- C21: borrado automático de fotos. La tarea existe (inactiva hasta que exista depurar_fotos_url).
+select 'C21: tarea programada del borrado de fotos',
+       case when not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                              where n.nspname = 'privado' and p.proname = 'lanzar_depuracion_fotos')
+              or (select string_agg(jobname || ' ' || schedule || ' ' || command, '; ') from cron.job where jobname = 'fotos-depurar')
+                 = 'fotos-depurar 30 7 * * * select privado.lanzar_depuracion_fotos(''programada'')'
+            then 'ok' else 'FALLA: la tarea fotos-depurar no coincide con supabase/migrations/20261121000000_depurar_fotos.sql' end
+union all
 select 'etapa 1: políticas de archivos exactas (evidencias y, desde C7, comunidad)',
        case when (select count(*) from pg_policies where schemaname = 'storage') = 6
              and (select string_agg(policyname || ' ' || cmd || ' ' || array_to_string(roles, ',') || ' '

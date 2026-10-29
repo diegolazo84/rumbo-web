@@ -436,3 +436,4 @@ a.pa-coach__texto:hover { text-decoration: underline; }
 .pa-plantilla { display: grid; gap: 8px; justify-items: start; margin-block: 0 16px; }
 .pa-plantilla .campo { inline-size: 100%; }
 .pa-plantilla .microcopia:empty { display: none; }
+.pa-alerta-num { color: var(--terracota-texto); }
