@@ -146,3 +146,20 @@ test("accesible y sin desborde en todos los estados; en móvil la barra no tapa"
   await page.setViewportSize({ width: 390, height: 844 });
   if (test.info().project.name !== "iphone") await revisarBarra(page);
 });
+
+test("sin desborde a 320, 375, 390 y 430 px en todos los estados", async ({ page }) => {
+  for (const e of ["", "hecha/", "futura/", "dejada-pasar/", "anulada-ajuste/", "con-foto/", "foto-en-revision/", "foto-aprobada/", "foto-no-aprobada/"]) {
+    await abrir(page, e);
+    for (const ancho of [320, 375, 390, 430]) {
+      await page.setViewportSize({ width: ancho, height: 800 });
+      const d = await page.evaluate(() => {
+        const w = window.innerWidth;
+        const fuera = [...document.querySelectorAll("body *")]
+          .filter((el) => el.getBoundingClientRect().right > w + 0.5)
+          .map((el) => `${el.tagName.toLowerCase()}.${[...el.classList].join(".")} → ${Math.round(el.getBoundingClientRect().right)}`);
+        return { exceso: document.documentElement.scrollWidth - w, fuera: fuera.slice(0, 20) };
+      });
+      expect(d.exceso, `${e || "por-hacer"} · ${ancho} px\n${d.fuera.join("\n")}`).toBeLessThanOrEqual(0);
+    }
+  }
+});

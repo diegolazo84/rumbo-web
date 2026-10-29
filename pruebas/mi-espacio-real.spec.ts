@@ -979,6 +979,15 @@ test("Detalle de acción real (referencia de ChatGPT): ruta, datos de la base, m
   expect(llamadas.filter((l) => l.nombre === "marcar_accion").at(-1)!.cuerpo).toEqual({ p_ocurrencia: `o-${HOY}`, p_version: "corta" });
   await expect(page.locator(".me-ajuste-tarjeta").getByRole("link", { name: "Pedir un ajuste" })).toHaveAttribute("href", new RegExp(`ajuste/\\?accion=o-${HOY}$`));
 
+  // Fuera del plazo de 7 días: sin botones, con el texto de cerrada. Futura: bloqueada.
+  await page.goto("mi-espacio/plan/accion/?id=o-2026-10-05");
+  await hidratar(page);
+  await expect(page.getByText("Esta acción ya quedó cerrada en tu registro.", { exact: false })).toBeVisible();
+  await expect(page.locator(".me-marcar")).toHaveCount(0);
+  await page.goto("mi-espacio/plan/accion/?id=o-2026-10-14");
+  await hidratar(page);
+  await expect(page.getByRole("button", { name: "Marcar como hecha", exact: true })).toHaveAttribute("aria-disabled", "true");
+
   // Foto: la subida real aún no existe; solo «No puedo subir una foto», que va a registrar_evidencia.
   await page.goto("mi-espacio/plan/accion/?id=o-foto");
   await hidratar(page);
