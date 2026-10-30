@@ -328,6 +328,7 @@ export function armarCiclo(c: FilaCiclo, publicado: boolean, hoy: Iso, ajustes: 
   const estado: CicloEspacio["estado"] =
     c.estado === "cerrado" || hoy > c.fin ? "cerrado" : c.estado === "pausado" ? "pausa" : publicado ? "en_curso" : "preparacion";
   return {
+    id: c.id,
     numero: c.numero,
     plan: c.plan_id,
     semanas: c.semanas,

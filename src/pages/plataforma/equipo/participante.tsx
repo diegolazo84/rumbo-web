@@ -27,6 +27,7 @@ import {
 } from "../../vista-previa/panel/FichaParticipante";
 import { EtiquetaCiclo, semanaTexto } from "../../vista-previa/panel/Participantes";
 import { FormularioRevision } from "../../vista-previa/panel/Revision";
+import { MensajeCierreFicha } from "./cierre";
 import { Alerta, NoEncontrada, useDatosPanel, useEscritura, useParticipante } from "./comun";
 import { VerPostulacion } from "./postulacion";
 import { VideollamadasFicha, type FilaVideollamada } from "./videollamadas";
@@ -373,6 +374,7 @@ function RevisionesReal({ p, c, det }: { p: FilaParticipantePanel; c: FilaCicloP
   const semanas = Array.from({ length: hasta }, (_, i) => hasta - i);
   return (
     <div className="pa-pila">
+      <MensajeCierreFicha c={c} />
       {semanas.map((n) => {
         const r = det.semanales.find((x) => x.semana === n);
         const rev = d.revisiones.find((x) => x.ciclo_id === c.id && x.semana === n);

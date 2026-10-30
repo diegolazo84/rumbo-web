@@ -1312,3 +1312,81 @@ test("Fotos en todo equipo (escritorio, móvil, iPhone y 320 px): sube o, si el 
   expect(desborde).toBeLessThanOrEqual(0);
   await sinViolaciones(page);
 });
+
+// Informe de cierre de ciclo (maqueta de ChatGPT, 30-oct-2026): todo de informe_ciclo; el mensaje
+// lo escribe el coach (si no, su último foco y, sin focos, ninguna tarjeta); sin reconocimientos
+// mientras el módulo esté apagado.
+const INFORME = {
+  ciclo: { numero: 1, plan: "coach", inicio: "2026-10-05", fin: "2026-11-01", semanas: 4, estado: "cerrado" },
+  cerrado: true,
+  acciones: { programadas: 20, hechas: 15, cumplimiento: 75 },
+  constancia: { dias_con_acciones: 16, dias_con_alguna_hecha: 12, dias_completos: 9, mejor_racha: 6 },
+  creditos: 41,
+  semanas: [1, 2, 3, 4].map((n) => ({ semana: n, desde: "", hasta: "", programadas: 5, hechas: [5, 4, 3, 3][n - 1], en_revision: 0, cumplimiento: null, dias_completos: 0, creditos: 0, carga: null, revision_publicada: n < 3 })),
+  focos: [{ semana: 1, foco: "Escribir antes de revisar el teléfono." }, { semana: 2, foco: "Una página por día es suficiente." }],
+};
+const cerrada = () => {
+  const base = baseInicial();
+  base.ciclos[0].estado = "cerrado";
+  return base;
+};
+
+test("Informe de cierre real: datos de informe_ciclo y el mensaje escrito por el coach", async ({ page }) => {
+  await conSesion(page);
+  const llamadas = await simular(page, cerrada(), {
+    modulo_visible: () => false,
+    informe_ciclo: () => ({ ...INFORME, mensaje_cierre: { texto: "Cerraste este ciclo con mucha constancia.\nSigamos conversando.", autor: "Carla Soto", en: "2026-11-02T12:00:00Z" } }),
+  });
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mira todo lo que has avanzado");
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  await expect.poll(() => llamadas.find((l) => l.nombre === "informe_ciclo")?.cuerpo).toEqual({ p_ciclo: "c1" });
+  await expect(page.locator(".ic-progreso__pct")).toHaveText("75%");
+  await expect(page.locator(".ic-progreso")).toContainText("15 de 20 acciones hechas");
+  await expect(page.locator(".ic-dato--racha")).toContainText("6días de racha máxima");
+  // Reconocimientos apagados: sin tarjeta de logros y, en su lugar, días con todo hecho.
+  await expect(page.locator(".ic-dato--logros")).toContainText("9días con todo hecho");
+  await expect(page.getByRole("heading", { name: "Logros más destacados" })).toHaveCount(0);
+  expect(llamadas.some((l) => l.nombre === "mis_reconocimientos")).toBe(false);
+  await expect(page.locator(".ic-grafico__semanas li")).toHaveCount(4);
+  await expect(page.locator(".ic-evolucion [role=img]")).toHaveAttribute("aria-label", /semana 1, 5 de 5; semana 2, 4 de 5; semana 3, 3 de 5; semana 4, 3 de 5\.$/);
+  const coach = page.locator(".ic-coach");
+  await expect(coach.getByRole("heading")).toHaveText("Mensaje de tu coach");
+  await expect(coach.locator(".ic-coach__texto")).toHaveText("Cerraste este ciclo con mucha constancia.\nSigamos conversando.");
+  await expect(coach.locator(".ic-coach__autor")).toHaveText("Carla Soto");
+  await expect(coach.locator(".me-coach__avatar")).toHaveText("CS");
+  await expect(page.getByRole("link", { name: "Quiero seguir con un nuevo ciclo" })).toHaveAttribute("href", /\/contacto\/\?motivo=solicitud$/);
+  await sinViolaciones(page);
+});
+
+test("Informe de cierre real: sin mensaje, el último foco; sin focos, ninguna tarjeta; error con reintento", async ({ page }) => {
+  await conSesion(page);
+  let falla = true;
+  await simular(page, cerrada(), {
+    modulo_visible: () => true,
+    mis_reconocimientos: () => [],
+    informe_ciclo: () => (falla ? { __error: "sin conexión", __estado: 500 } : { ...INFORME, focos: [] }),
+  });
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  await expect(page.getByText("No pudimos cargar esta parte.")).toBeVisible();
+  falla = false;
+  await page.getByRole("button", { name: "Reintentar" }).click();
+  await expect(page.locator(".ic-progreso__pct")).toHaveText("75%");
+  await expect(page.locator(".ic-coach")).toHaveCount(0);
+  // Módulo habilitado sin reconocimientos conseguidos: tarjeta con su texto, sin inventar logros.
+  await expect(page.locator(".ic-dato--logros")).toContainText("0reconocimientos ganados");
+  await expect(page.locator(".ic-logros")).toContainText("Los reconocimientos que consigas aparecerán aquí.");
+});
+
+test("Informe de cierre real: con mensaje ausente y focos, muestra el último foco de su coach", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, cerrada(), { modulo_visible: () => false, informe_ciclo: () => INFORME, mi_coach: () => [{ nombre: "Carla Soto", presentacion: null }] });
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  const coach = page.locator(".ic-coach");
+  await expect(coach.getByRole("heading")).toHaveText("El último foco de tu coach");
+  await expect(coach.locator(".ic-coach__texto")).toHaveText("Una página por día es suficiente.");
+  await expect(coach).toContainText("Revisión de la semana 2");
+});

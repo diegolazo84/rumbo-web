@@ -130,11 +130,16 @@ for (const p of todas) {
     await expect(page.locator("main h1")).toHaveCount(1);
     // Las porciones perezosas terminan de hidratar: ya no hay estado de carga.
     await expect(page.locator(":is(main, .app__contenido) > .cargando")).toHaveCount(0);
-    const { sw, cw } = await page.evaluate(() => ({
-      sw: document.documentElement.scrollWidth,
-      cw: document.documentElement.clientWidth,
-    }));
-    expect(sw, "desborde horizontal").toBe(cw);
+    const { sw, cw, fuera } = await page.evaluate(() => {
+      const cw = document.documentElement.clientWidth;
+      // Si algo se sale, el mensaje dice qué (WebKit redondea distinto que Chromium).
+      const fuera = [...document.querySelectorAll("body *")]
+        .filter((e) => e.getBoundingClientRect().right > cw + 0.5)
+        .slice(0, 8)
+        .map((e) => `${e.tagName.toLowerCase()}.${String((e as HTMLElement).className?.toString() ?? "").trim().split(/\s+/).join(".")} → ${e.getBoundingClientRect().right.toFixed(1)}`);
+      return { sw: document.documentElement.scrollWidth, cw, fuera };
+    });
+    expect(sw, `desborde horizontal: ${fuera.join(" | ")}`).toBe(cw);
     const r = await new AxeBuilder({ page }).withTags(ETIQUETAS_AXE).analyze();
     expect(r.violations.map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
     if (isMobile) expect(await objetivosChicos(page)).toEqual([]);
