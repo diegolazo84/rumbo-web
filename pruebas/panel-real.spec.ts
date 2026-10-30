@@ -765,6 +765,31 @@ test("fotos y explicaciones: aprobar corre revisar_evidencia", async ({ page }) 
   expect(llamadas.find((l) => l.nombre === "revisar_evidencia")!.cuerpo).toEqual({ p_registro: "r9", p_aprobar: true, p_nota: null });
 });
 
+test("fotos y explicaciones: la foto se ve con enlace firmado de 5 minutos y sin el borrado simulado", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  base.registros.push({ id: "r10", ocurrencia_id: "o-2026-10-09", participante_id: "p1", estado: "en_revision", version: "completa", foto_ruta: "p1/o-2026-10-09/3f0c0f8e-1111-4a4a-9b9b-222233334444.webp", explicacion: null, nota_revision: null, creado_en: "2026-10-09T20:00:00Z" });
+  await simular(page, base, { factores: VERIFICADO });
+  const firmadas: { ruta: string; segundos: number }[] = [];
+  await page.route(`${SUPABASE_URL}/storage/v1/object/sign/evidencias/**`, async (rt) => {
+    const req = rt.request();
+    const ruta = new URL(req.url()).pathname.replace(/^.*\/sign\/evidencias\//, "");
+    if (req.method() === "POST") {
+      firmadas.push({ ruta, segundos: (req.postDataJSON() as { expiresIn: number }).expiresIn });
+      return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ signedURL: `/object/sign/evidencias/${ruta}?token=corto` }) });
+    }
+    // PNG válido de 1×1.
+    return rt.fulfill({ status: 200, contentType: "image/png", body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64") });
+  });
+  await page.goto("equipo/revisar/");
+  await hidratar(page);
+  const img = page.locator("img.pa-miniatura");
+  await expect(img).toHaveAttribute("src", /\/storage\/v1\/object\/sign\/evidencias\/p1\/o-2026-10-09\/.+token=corto/);
+  expect(firmadas).toEqual([{ ruta: "p1/o-2026-10-09/3f0c0f8e-1111-4a4a-9b9b-222233334444.webp", segundos: 300 }]);
+  await expect(page.getByText("Las fotos llegan en la etapa 4", { exact: false })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Eliminar archivo ahora" })).toHaveCount(0);
+});
+
 test("ficha de participante: programa publicado y semana en solo lectura", async ({ page }) => {
   await preparar(page, "aal2", VERIFICADO);
   await simular(page, baseInicial(), { factores: VERIFICADO });

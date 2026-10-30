@@ -2,7 +2,7 @@
 // de la vista previa recibe y le pasa las escrituras; la presentación es la misma.
 // Escrituras (6.4 y 6.7): las tablas de gestión con las políticas admin_todo (aal2) y las RPC
 // de admin (crear_espacio, nuevo_enlace_solicitud, revisar_evidencia, publicar_programa…).
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Etiqueta from "../../../components/Etiqueta";
 import { Icono } from "../../../components/app";
@@ -197,7 +197,7 @@ function AjustesReal() {
 }
 
 // ---------------------------------------------------------------------------
-// Revisar: fotos y explicaciones (5.8). En la etapa 3 no hay fotos (llegan en la 4).
+// Revisar: fotos y explicaciones (5.8). Las fotos se ven con enlace firmado de 5 minutos.
 
 type OcurrenciaEvidencia = { id: string; titulo: string; instrucciones: string; fecha: Iso };
 
@@ -208,6 +208,12 @@ function RevisarReal() {
   const [ocurrencias, setOcurrencias] = useState<OcurrenciaEvidencia[] | null>(null);
   const ids = useMemo(() => [...new Set(filas.map((e) => e.ocurrencia_id))], [filas]);
   const clave = ids.join(",");
+  // Enlace firmado de 5 minutos (la política del bucket deja verla solo a quien acompaña o al dueño).
+  const pedirUrl = useCallback(async (ruta: string) => {
+    const { data, error } = await sb.storage.from("evidencias").createSignedUrl(ruta, 300);
+    if (error || !data?.signedUrl) throw error ?? new Error("sin enlace");
+    return data.signedUrl;
+  }, [sb]);
   useEffect(() => {
     let vivo = true;
     if (!ids.length) {
@@ -237,14 +243,15 @@ function RevisarReal() {
       accion: o?.titulo ?? "—",
       instrucciones: (o?.instrucciones ?? "").split("\n").filter((t) => t.trim()),
       fecha: o?.fecha ?? d.hoy,
-      foto: false,
+      foto: !!e.foto_ruta,
+      fotoRuta: e.foto_ruta,
       explicacion: e.explicacion,
     };
   });
   return (
     <ListaEvidencias
       lista={lista}
-      nota={PANEL_REAL.revisar.sinMiniatura}
+      pedirUrl={pedirUrl}
       onRevisar={async (id, aprobar, nota) => {
         datos(await sb.rpc("revisar_evidencia", { p_registro: id, p_aprobar: aprobar, p_nota: nota || null }));
         await recargar();

@@ -4,6 +4,7 @@
 // probar). Supabase nunca se toca: page.route responde Auth y PostgREST con una base en memoria
 // que aplica las mismas reglas de visibilidad (RLS) que importan aquí: solo lo de la persona y
 // nunca un borrador. La base local de CI prueba las políticas de verdad (pruebas/base/).
+import { deflateSync } from "node:zlib";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { operacion } from "../src/data/rumbo";
@@ -219,7 +220,8 @@ const conSesion = (page: Page) =>
 
 test.beforeEach(({}, info) => {
   test.skip(!operacion.miEspacioPropio, "solo con Mi espacio propio (MI_ESPACIO_PROPIO=1)");
-  test.skip(info.project.name === "iphone", "interacción: basta con Chromium y WebKit en humo");
+  // Las fotos también se prueban en iPhone (WebKit): ahí se ve si el navegador sabe escribir WebP.
+  test.skip(info.project.name === "iphone" && !info.title.startsWith("Fotos en todo equipo"), "interacción: basta con Chromium y WebKit en humo");
 });
 
 // ---------------------------------------------------------------------------
@@ -512,6 +514,8 @@ test("las rutas de Mi espacio y del panel son noindex y conectan solo con el pro
     const html = await (await request.get(ruta)).text();
     expect(html, ruta).toContain('<meta name="robots" content="noindex, nofollow" />');
     expect(html, ruta).toContain(`connect-src 'self' ${SUPABASE_URL}`);
+    // Imágenes del proyecto: solo enlaces firmados de su almacenamiento (fotos privadas).
+    expect(html, ruta).toMatch(new RegExp(`img-src 'self' data: blob: ${SUPABASE_URL.replace(/\./g, "\\.")}/storage/v1/object/sign/[;"]`));
     expect(html, ruta).not.toContain('rel="canonical"');
   }
 });
@@ -746,7 +750,7 @@ test("Mis logros real (C17): todo de la base; recompensas y ranking solo con su 
   await expect(page.locator(".ml-nivel__nombre")).toHaveText("Inicio");
   // Módulos sin habilitar y beneficio apagado: ni reconocimientos, ni recompensas, ni ranking.
   await expect(page.locator(".ml-cifra")).toBeVisible();
-  await expect.poll(() => llamadas.filter((l) => l.nombre === "modulo_visible").length).toBe(2);
+  await expect.poll(() => llamadas.filter((l) => l.nombre === "modulo_visible" && l.cuerpo.p_clave !== "fotos").length).toBe(2);
   await expect(page.getByRole("heading", { name: "Mis reconocimientos" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Mis recompensas" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /Ranking/ })).toHaveCount(0);
@@ -999,4 +1003,312 @@ test("Detalle de acción real (referencia de ChatGPT): ruta, datos de la base, m
   await expect(page.locator(".me-foto").getByText("En revisión", { exact: true })).toBeVisible();
   const ev = llamadas.find((l) => l.nombre === "registrar_evidencia")!;
   expect(ev.cuerpo).toEqual({ p_ocurrencia: "o-foto", p_foto_ruta: null, p_explicacion: "Lo ordené, pero mi teléfono no tiene cámara." });
+});
+
+// ---------------------------------------------------------------------------
+// Fotos privadas de las acciones (opción A, bucket «evidencias»)
+
+// PNG real de ancho×alto, con un bloque eXIf que simula metadatos (ubicación GPS): después de
+// preparar la foto, ese texto no puede viajar.
+function pngConExif(ancho: number, alto: number): Buffer {
+  const crcTabla = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc = (b: Buffer) => {
+    let c = 0xffffffff;
+    for (const x of b) c = crcTabla[(c ^ x) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const bloque = (tipo: string, datos: Buffer) => {
+    const t = Buffer.concat([Buffer.from(tipo, "latin1"), datos]);
+    const largo = Buffer.alloc(4);
+    largo.writeUInt32BE(datos.length);
+    const c = Buffer.alloc(4);
+    c.writeUInt32BE(crc(t));
+    return Buffer.concat([largo, t, c]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(ancho, 0);
+  ihdr.writeUInt32BE(alto, 4);
+  ihdr[8] = 8; // 8 bits
+  ihdr[9] = 2; // RGB
+  const fila = Buffer.alloc(1 + ancho * 3);
+  for (let x = 0; x < ancho; x++) fila.set([40 + (x % 120), 90, 60], 1 + x * 3);
+  const crudo = Buffer.concat(Array.from({ length: alto }, () => fila));
+  return Buffer.concat([
+    Buffer.from("89504e470d0a1a0a", "hex"),
+    bloque("IHDR", ihdr),
+    bloque("eXIf", Buffer.from("MM\0*GPS-SECRETO-33.4489,-70.6693", "latin1")),
+    bloque("IDAT", deflateSync(crudo)),
+    bloque("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+// Medidas de un WebP (VP8, VP8L o VP8X).
+function medidasWebp(b: Buffer): { ancho: number; alto: number } {
+  const tipo = b.toString("latin1", 12, 16);
+  if (tipo === "VP8X") return { ancho: 1 + b.readUIntLE(24, 3), alto: 1 + b.readUIntLE(27, 3) };
+  if (tipo === "VP8L") {
+    const v = b.readUInt32LE(21);
+    return { ancho: 1 + (v & 0x3fff), alto: 1 + ((v >> 14) & 0x3fff) };
+  }
+  return { ancho: b.readUInt16LE(26) & 0x3fff, alto: b.readUInt16LE(28) & 0x3fff };
+}
+
+const PNG_MINI = pngConExif(2, 2);
+
+// supabase-js sube un Blob como multipart/form-data: se saca la parte del archivo y su tipo.
+function archivoSubido(tipoCabecera: string, cuerpo: Buffer): { tipo: string; cuerpo: Buffer } {
+  const limite = /boundary=(.+)$/.exec(tipoCabecera)?.[1];
+  if (!limite) return { tipo: tipoCabecera, cuerpo };
+  for (const parte of cuerpo.toString("latin1").split(`--${limite}`)) {
+    const fin = parte.indexOf("\r\n\r\n");
+    if (fin < 0) continue;
+    const cabeza = parte.slice(0, fin);
+    const tipo = /content-type:\s*([^\r\n]+)/i.exec(cabeza)?.[1];
+    if (!tipo || !/filename=/i.test(cabeza)) continue;
+    return { tipo: tipo.trim(), cuerpo: Buffer.from(parte.slice(fin + 4, parte.length - 2), "latin1") };
+  }
+  return { tipo: "", cuerpo: Buffer.alloc(0) };
+}
+
+// Bucket «evidencias» en memoria: subir, listar, borrar y enlaces firmados (como la API de Storage).
+async function simularEvidencias(page: Page, orden: string[], { fallaSubida = false } = {}) {
+  const archivos = new Map<string, Buffer>();
+  const subidas: { ruta: string; tipo: string; cuerpo: Buffer }[] = [];
+  await page.route(`${SUPABASE_URL}/storage/v1/object/**`, async (rt) => {
+    const req = rt.request();
+    const ruta = new URL(req.url()).pathname.replace(/^.*\/storage\/v1\/object\//, "");
+    if (ruta.startsWith("list/evidencias")) {
+      const { prefix } = req.postDataJSON() as { prefix: string };
+      const lista = [...archivos.keys()].filter((k) => k.startsWith(`${prefix}/`)).map((k) => ({ name: k.slice(prefix.length + 1), id: k }));
+      return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(lista) });
+    }
+    if (ruta.startsWith("sign/evidencias/") && req.method() === "POST") {
+      const archivo = ruta.slice("sign/evidencias/".length);
+      orden.push(`firmar:${archivo}`);
+      const { expiresIn } = req.postDataJSON() as { expiresIn: number };
+      expect(expiresIn).toBeLessThanOrEqual(300); // enlaces de corta duración
+      return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ signedURL: `/object/sign/evidencias/${archivo}?token=firma-corta` }) });
+    }
+    if (ruta.startsWith("sign/evidencias/")) return rt.fulfill({ status: 200, contentType: "image/png", body: PNG_MINI });
+    if (req.method() === "DELETE") {
+      const { prefixes } = req.postDataJSON() as { prefixes: string[] };
+      for (const p of prefixes) {
+        orden.push(`borrar:${p}`);
+        archivos.delete(p);
+      }
+      return rt.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+    }
+    if (ruta.startsWith("evidencias/") && req.method() === "POST") {
+      const archivo = ruta.slice("evidencias/".length);
+      if (fallaSubida) return rt.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ statusCode: "403", error: "Unauthorized", message: "new row violates row-level security policy" }) });
+      const { tipo, cuerpo } = archivoSubido(req.headers()["content-type"] ?? "", req.postDataBuffer() ?? Buffer.alloc(0));
+      subidas.push({ ruta: archivo, tipo, cuerpo });
+      archivos.set(archivo, cuerpo);
+      orden.push(`subir:${archivo}`);
+      return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ Key: `evidencias/${archivo}`, Id: "x" }) });
+    }
+    return rt.fulfill({ status: 404, contentType: "application/json", body: "{}" });
+  });
+  return { archivos, subidas };
+}
+
+// Acción que exige foto (hoy) y RPC de evidencias que guardan la ruta como la base.
+function baseConFoto() {
+  const base = baseInicial();
+  base.ocurrencias.push({ ...base.ocurrencias[8], id: "o-foto", titulo: "Ordenar el escritorio", instrucciones: "Ordena tu escritorio.", version_corta: null, requiere_foto: true, hora: null });
+  return base;
+}
+function rpcFotos(base: Base, orden: string[], { fotos = true, rechazar = false } = {}) {
+  const fila = (id: unknown) => base.registros.find((r) => r.ocurrencia_id === id);
+  return {
+    modulo_visible: (c: Record<string, unknown>) => fotos && c.p_clave === "fotos",
+    registrar_evidencia: (c: Record<string, unknown>) => {
+      orden.push(`registrar:${c.p_foto_ruta ?? "explicacion"}`);
+      if (rechazar) return { __error: "evidencia:ruta_invalida", __estado: 400 };
+      base.registros = base.registros.filter((r) => r.ocurrencia_id !== c.p_ocurrencia);
+      base.registros.push({ ocurrencia_id: c.p_ocurrencia, participante_id: "p1", estado: "en_revision", version: "completa", foto_ruta: c.p_foto_ruta, explicacion: c.p_explicacion, nota_revision: null, revisado_en: null });
+      return null;
+    },
+    eliminar_evidencia: (c: Record<string, unknown>) => {
+      orden.push("eliminar_evidencia");
+      base.registros = base.registros.filter((r) => r.ocurrencia_id !== c.p_ocurrencia);
+      return null;
+    },
+    adjuntar_foto: (c: Record<string, unknown>) => {
+      orden.push(`adjuntar:${c.p_foto_ruta}`);
+      const r = fila(c.p_ocurrencia)!;
+      r.foto_ruta = c.p_foto_ruta;
+      return null;
+    },
+    quitar_foto: (c: Record<string, unknown>) => {
+      orden.push("quitar_foto");
+      const r = fila(c.p_ocurrencia)!;
+      r.foto_ruta = null;
+      return null;
+    },
+  };
+}
+
+test("Fotos (opción A): con el módulo «fotos» apagado no hay subida; se conserva «No puedo subir una foto»", async ({ page }) => {
+  await conSesion(page);
+  const base = baseConFoto();
+  const orden: string[] = [];
+  const llamadas = await simular(page, base, rpcFotos(base, orden, { fotos: false }));
+  await page.goto("mi-espacio/plan/accion/?id=o-foto");
+  await hidratar(page);
+  await expect.poll(() => llamadas.some((l) => l.nombre === "modulo_visible" && l.cuerpo.p_clave === "fotos")).toBe(true);
+  await expect(page.getByRole("button", { name: "No puedo subir una foto" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Subir foto" })).toHaveCount(0);
+  await expect(page.locator("input[type=file]")).toHaveCount(0);
+  // Acción sin foto obligatoria, ya hecha: tampoco ofrece foto opcional.
+  await page.goto("mi-espacio/plan/accion/?id=o-2026-10-12");
+  await hidratar(page);
+  await expect(page.locator(".me-hecha")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Agregar una foto" })).toHaveCount(0);
+});
+
+test("Fotos (opción A): sube en WebP de 1600 px sin metadatos, a su carpeta, y la miniatura usa enlace firmado", async ({ page }) => {
+  await conSesion(page);
+  const base = baseConFoto();
+  const orden: string[] = [];
+  await simular(page, base, rpcFotos(base, orden));
+  const { subidas } = await simularEvidencias(page, orden);
+  await page.goto("mi-espacio/plan/accion/?id=o-foto");
+  await hidratar(page);
+  await expect(page.getByText("Solo la ven tú y quien te acompaña.", { exact: false }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "No puedo subir una foto" })).toBeVisible();
+  await sinViolaciones(page);
+
+  // Un archivo que no es imagen permitida: se rechaza sin subir nada.
+  await page.locator("input[type=file]").setInputFiles({ name: "a.gif", mimeType: "image/gif", buffer: Buffer.from("GIF89a") });
+  await expect(page.getByRole("alert")).toContainText("Ese archivo no es una imagen JPG, PNG o WebP.");
+  expect(subidas).toHaveLength(0);
+
+  await page.locator("input[type=file]").setInputFiles({ name: "foto.png", mimeType: "image/png", buffer: pngConExif(3000, 2000) });
+  await expect(page.locator(".me-foto").getByText("En revisión", { exact: true })).toBeVisible();
+  expect(subidas).toHaveLength(1);
+  const s = subidas[0];
+  expect(s.ruta).toMatch(/^p1\/o-foto\/[0-9a-f-]{36}\.webp$/);
+  expect(s.tipo).toBe("image/webp");
+  expect(s.cuerpo.toString("latin1", 0, 4)).toBe("RIFF");
+  expect(s.cuerpo.toString("latin1", 8, 12)).toBe("WEBP");
+  expect(medidasWebp(s.cuerpo)).toEqual({ ancho: 1600, alto: 1067 });
+  expect(s.cuerpo.includes(Buffer.from("GPS-SECRETO"))).toBe(false);
+  expect(s.cuerpo.includes(Buffer.from("EXIF"))).toBe(false);
+  // Primero el archivo, después el registro con esa ruta.
+  expect(orden.slice(0, 2)).toEqual([`subir:${s.ruta}`, `registrar:${s.ruta}`]);
+  await expect(page.locator("img.me-foto__miniatura")).toHaveAttribute("src", /\/storage\/v1\/object\/sign\/evidencias\/p1\/o-foto\/.+token=firma-corta/);
+  await expect(page.locator("img.me-foto__miniatura")).toHaveAttribute("alt", "Tu foto");
+  await sinViolaciones(page);
+
+  // Eliminar: primero la base, luego el archivo; queda sin foto y sin archivos sueltos.
+  orden.length = 0;
+  await page.getByRole("button", { name: "Eliminar foto" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Eliminar", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Subir foto" })).toBeVisible();
+  expect(orden.indexOf("eliminar_evidencia")).toBe(0);
+  expect(orden).toContain(`borrar:${s.ruta}`);
+});
+
+test("Fotos (opción A): si la base no acepta la foto, el archivo subido se borra y se avisa", async ({ page }) => {
+  await conSesion(page);
+  const base = baseConFoto();
+  const orden: string[] = [];
+  await simular(page, base, rpcFotos(base, orden, { rechazar: true }));
+  const { archivos } = await simularEvidencias(page, orden);
+  await page.goto("mi-espacio/plan/accion/?id=o-foto");
+  await hidratar(page);
+  await page.locator("input[type=file]").setInputFiles({ name: "foto.png", mimeType: "image/png", buffer: pngConExif(800, 600) });
+  await expect(page.getByRole("alert")).toContainText("No pudimos subir la foto.");
+  await expect(page.getByRole("button", { name: "Subir foto" })).toBeVisible();
+  expect(orden[0]).toMatch(/^subir:/);
+  expect(orden[1]).toMatch(/^registrar:/);
+  expect(orden).toContain(`borrar:${orden[0].slice("subir:".length)}`);
+  expect(archivos.size).toBe(0);
+  expect(base.registros.some((r) => r.ocurrencia_id === "o-foto")).toBe(false);
+});
+
+test("Fotos (opción A): si el almacenamiento rechaza la subida, no se registra nada", async ({ page }) => {
+  await conSesion(page);
+  const base = baseConFoto();
+  const orden: string[] = [];
+  await simular(page, base, rpcFotos(base, orden));
+  await simularEvidencias(page, orden, { fallaSubida: true });
+  await page.goto("mi-espacio/plan/accion/?id=o-foto");
+  await hidratar(page);
+  await page.locator("input[type=file]").setInputFiles({ name: "foto.png", mimeType: "image/png", buffer: pngConExif(800, 600) });
+  await expect(page.getByRole("alert")).toContainText("No pudimos subir la foto.");
+  expect(orden.filter((x) => x.startsWith("registrar"))).toHaveLength(0);
+});
+
+test("Fotos (opción A): foto opcional en una acción hecha; agregar y quitar no cambian los créditos", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.registros.push({ ocurrencia_id: `o-${HOY}`, participante_id: "p1", estado: "hecha", version: "completa", explicacion: null, nota_revision: null, revisado_en: null, foto_ruta: null });
+  const orden: string[] = [];
+  const llamadas = await simular(page, base, rpcFotos(base, orden));
+  const { archivos } = await simularEvidencias(page, orden);
+  await page.goto(`mi-espacio/plan/accion/?id=o-${HOY}`);
+  await hidratar(page);
+  await expect(page.locator(".me-hecha")).toBeVisible();
+  await expect(page.getByText("No cambia tus créditos.")).toBeVisible();
+  await page.locator("input[type=file]").setInputFiles({ name: "foto.png", mimeType: "image/png", buffer: pngConExif(1200, 1600) });
+  await expect(page.locator(".me-foto-opcional img.me-foto__miniatura")).toBeVisible();
+  const ruta = orden.find((x) => x.startsWith("adjuntar:"))!.slice("adjuntar:".length);
+  expect(ruta).toMatch(/^p1\/o-2026-10-13\/[0-9a-f-]{36}\.webp$/);
+  expect(llamadas.some((l) => l.nombre === "marcar_accion" || l.nombre === "desmarcar_accion")).toBe(false);
+  await sinViolaciones(page);
+
+  orden.length = 0;
+  await page.getByRole("button", { name: "Quitar foto" }).click();
+  await expect(page.getByRole("button", { name: "Agregar una foto" })).toBeVisible();
+  expect(orden[0]).toBe("quitar_foto");
+  expect(orden).toContain(`borrar:${ruta}`);
+  expect(archivos.size).toBe(0);
+});
+
+test("Fotos en todo equipo (escritorio, móvil, iPhone y 320 px): sube o, si el navegador no puede limpiarla, la rechaza sin subir", async ({ page }, info) => {
+  await conSesion(page);
+  const base = baseConFoto();
+  const orden: string[] = [];
+  await simular(page, base, rpcFotos(base, orden));
+  const { subidas } = await simularEvidencias(page, orden);
+  for (const ancho of [320, 390]) {
+    if (info.project.name !== "escritorio") await page.setViewportSize({ width: ancho, height: 760 });
+    await page.goto("mi-espacio/plan/accion/?id=o-foto");
+    await hidratar(page);
+    await expect(page.getByRole("button", { name: "Subir foto" })).toBeVisible();
+    const desborde = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(desborde, `sin desborde a ${ancho} px`).toBeLessThanOrEqual(0);
+    if (info.project.name === "escritorio") break;
+  }
+  // ¿Este navegador escribe WebP? Safari antiguo devuelve PNG: entonces la foto se rechaza.
+  const escribeWebp = await page.evaluate(
+    () => new Promise<boolean>((ok) => { const c = document.createElement("canvas"); c.width = c.height = 2; c.toBlob((b) => ok(b?.type === "image/webp"), "image/webp"); }),
+  );
+  info.annotations.push({ type: "webp", description: `${info.project.name}: ${escribeWebp ? "escribe WebP" : "NO escribe WebP (la foto se rechaza)"}` });
+  await page.locator("input[type=file]").setInputFiles({ name: "foto.png", mimeType: "image/png", buffer: pngConExif(2400, 1800) });
+  if (escribeWebp) {
+    await expect(page.locator(".me-foto").getByText("En revisión", { exact: true })).toBeVisible();
+    expect(subidas).toHaveLength(1);
+    expect(subidas[0].ruta).toMatch(/^p1\/o-foto\/[0-9a-f-]{36}\.webp$/);
+    // WebKit de Playwright no entrega el cuerpo de un envío con archivo: ahí basta con que se
+    // haya subido (la app solo sube si el navegador entregó image/webp). En Chromium se mide.
+    if (subidas[0].cuerpo.length > 30) {
+      expect(subidas[0].cuerpo.toString("latin1", 8, 12)).toBe("WEBP");
+      expect(medidasWebp(subidas[0].cuerpo)).toEqual({ ancho: 1600, alto: 1200 });
+    } else info.annotations.push({ type: "webp", description: `${info.project.name}: cuerpo de la subida no disponible en este navegador de prueba` });
+    await expect(page.locator("img.me-foto__miniatura")).toBeVisible();
+  } else {
+    await expect(page.getByRole("alert")).toContainText("No pudimos preparar esta foto de forma segura");
+    expect(subidas).toHaveLength(0);
+    await expect(page.getByRole("button", { name: "No puedo subir una foto" })).toBeVisible();
+  }
+  const desborde = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(desborde).toBeLessThanOrEqual(0);
+  await sinViolaciones(page);
 });

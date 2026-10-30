@@ -362,6 +362,7 @@ export type Evidencia = {
   instrucciones: string[];
   fecha: Iso;
   foto: boolean;
+  fotoRuta?: string | null; // panel real: la foto privada, mostrada con enlace firmado
   explicacion: string | null;
 };
 

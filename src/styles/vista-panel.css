@@ -298,6 +298,10 @@
 @media (min-width: 600px) { .pa-evidencia__cuerpo:has(.pa-miniatura) { grid-template-columns: 120px minmax(0, 1fr); } }
 .pa-evidencia__texto { display: grid; gap: 8px; min-inline-size: 0; }
 .pa-miniatura { display: grid; place-items: center; inline-size: 120px; block-size: 120px; padding: 8px; border: 1.5px dashed var(--linea-fuerte); border-radius: var(--r-s); background: var(--papel); color: var(--tinta-suave); text-align: center; }
+img.pa-miniatura { padding: 0; border-style: solid; border-width: 1px; border-color: var(--linea); object-fit: cover; }
+.pa-miniatura--cargando { border-style: solid; border-color: var(--linea); background: var(--papel-hondo); }
+.pa-miniatura--chica { inline-size: 64px; block-size: 64px; margin-block-end: 4px; }
+.pa-ficha-foto { list-style-position: outside; }
 
 /* ========================================================================
    Más

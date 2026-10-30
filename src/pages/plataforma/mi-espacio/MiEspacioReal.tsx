@@ -4,6 +4,7 @@
 // - Sin sesión: lleva a mi-espacio/entrar/ y recuerda la ruta de destino.
 // - La sesión vence: tostada «Tu sesión terminó…» en entrar/ (4.2.5).
 // - Cuenta del equipo sin ficha de participante: lleva al panel.
+import { rutaFoto } from "../../../lib/foto-privada";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Banda, BandaSinConexion, EstructuraApp, Icono } from "../../../components/app";
@@ -44,7 +45,7 @@ const COLUMNAS = {
   meta: "programa_id,clave,titulo,para_que,categoria,hitos,orden",
   ocurrencia:
     "id,programa_id,accion_id,meta_clave,meta_titulo,categoria,fecha,hora,duracion_min,titulo,instrucciones,version_corta,requiere_foto,vigente,anulada_motivo,anulada_en",
-  registro: "ocurrencia_id,estado,version,explicacion,nota_revision,revisado_en",
+  registro: "ocurrencia_id,estado,version,explicacion,nota_revision,revisado_en,foto_ruta,foto_depurada_en",
   progreso: "creditos,nivel,racha,bono_siguiente",
   dia: "fecha,programadas,hechas,en_revision,creditos_acciones,bono,racha,en_suspenso",
   registroSemanal: "semana,carga,funciono,costo,cambiar,enviado_en",
@@ -52,7 +53,7 @@ const COLUMNAS = {
   ajuste: "id,creada_en,tipo,ocurrencias,desde,texto,estado,respuesta,cuenta_como_reorden,respondida_en",
 } as const;
 
-type Leido = { filas: Filas; ctx: Contexto; ausencia: Ausencia | null; coach: CoachEspacio | null; videollamadas: VideollamadaEspacio[] };
+type Leido = { filas: Filas; ctx: Contexto; ausencia: Ausencia | null; coach: CoachEspacio | null; videollamadas: VideollamadaEspacio[]; fotos: boolean };
 
 async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> {
   const participante = datos(
@@ -63,7 +64,7 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
     await sb.from("ciclos").select(COLUMNAS.ciclo).eq("participante_id", participante.id).order("numero", { ascending: false }).limit(1).maybeSingle(),
   ) as Filas["ciclo"] | null;
   if (!ciclo) return "sin-ficha";
-  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas] =
+  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas, moduloFotos] =
     await Promise.all([
       sb.from("programas").select(COLUMNAS.programa).eq("ciclo_id", ciclo.id).neq("estado", "borrador").order("version"),
       sb.from("ocurrencias").select(COLUMNAS.ocurrencia).eq("ciclo_id", ciclo.id).order("fecha").limit(5000),
@@ -79,6 +80,8 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
       // A3 y C2: si la migración todavía no está en la base, «Tu coach» queda genérico y sin videollamadas.
       sb.rpc("mi_coach"),
       sb.from("videollamadas").select("semana,programada_para,enlace,estado").eq("ciclo_id", ciclo.id).order("semana"),
+      // Módulo «fotos» (A4): mientras el dueño no lo habilite, la subida no se muestra.
+      sb.rpc("modulo_visible", { p_clave: "fotos" }),
     ]);
   const progs = datos(programas) as Filas["programas"];
   const ids = progs.map((p) => p.id);
@@ -110,6 +113,7 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
     ausencia: armarAusencia(aus),
     coach: armarCoach(coach.error ? null : coach.data),
     videollamadas: llamadas.error ? [] : armarVideollamadas(llamadas.data),
+    fotos: !moduloFotos.error && moduloFotos.data === true,
   };
 }
 
@@ -247,16 +251,101 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
       return armarDatos(nuevas, l.ctx).progreso;
     };
     const recargar = () => void cargar(true);
+
+    // Fotos privadas (bucket «evidencias»). Orden pensado para no dejar archivos sueltos ni
+    // registros que apunten a un archivo que no existe:
+    //   subir → registrar en la base (si la base rechaza, se borra lo subido) → borrar la anterior;
+    //   quitar → la base primero → borrar el archivo.
+    // Al final se revisa la carpeta de la acción y se borra lo que no sea la foto vigente.
+    const BUCKET = "evidencias";
+    const registroDe = (id: string) => filas.current?.filas.registros.find((r) => r.ocurrencia_id === id);
+    const carpeta = (id: string) => `${filas.current!.filas.participante.id}/${id}`;
+    const borrarArchivos = async (rutas: string[]) => {
+      if (!rutas.length) return;
+      const { error } = await sb().storage.from(BUCKET).remove(rutas);
+      if (error) throw error;
+    };
+    const ordenarCarpeta = async (id: string) => {
+      try {
+        const vigente = registroDe(id)?.foto_ruta ?? null;
+        const { data, error } = await sb().storage.from(BUCKET).list(carpeta(id));
+        if (error) return;
+        const sobran = (data ?? []).map((f) => `${carpeta(id)}/${f.name}`).filter((r) => r !== vigente);
+        await borrarArchivos(sobran);
+      } catch {
+        /* se reintenta la próxima vez que se suba o quite una foto de esta acción */
+      }
+    };
+    const releer = async (): Promise<Progreso> => {
+      const actual = filas.current!;
+      const nuevas = await leerRegistros(sb(), actual.filas);
+      const l = { ...actual, filas: nuevas };
+      poner(l);
+      return armarDatos(nuevas, l.ctx).progreso;
+    };
+
     return {
       registrar: (id: string, e: EstadoRegistro | null) => {
-        if (e === null) return conProgreso("desmarcar_accion", { p_ocurrencia: id });
+        if (e === null) {
+          // Desmarcar borra el registro: si tenía una foto opcional, su archivo también se borra.
+          const conFoto = !!registroDe(id)?.foto_ruta;
+          return conProgreso("desmarcar_accion", { p_ocurrencia: id }).then(async (p) => {
+            if (conFoto) await ordenarCarpeta(id);
+            return p;
+          });
+        }
         if (e === "hecha" || e === "corta") return conProgreso("marcar_accion", { p_ocurrencia: id, p_version: e === "corta" ? "corta" : "completa" });
         if (e === "dejada") return conProgreso("dejar_pasar", { p_ocurrencia: id });
         return Promise.reject(new Error("estado no registrable"));
       },
       registrarEvidencia: (id, explicacion) =>
         conProgreso("registrar_evidencia", { p_ocurrencia: id, p_foto_ruta: null, p_explicacion: explicacion }),
-      eliminarEvidencia: (id) => conProgreso("eliminar_evidencia", { p_ocurrencia: id }),
+      eliminarEvidencia: async (id) => {
+        const ruta = registroDe(id)?.foto_ruta ?? null;
+        datos(await sb().rpc("eliminar_evidencia", { p_ocurrencia: id }));
+        const p = await releer();
+        if (ruta) await borrarArchivos([ruta]).catch(() => undefined);
+        await ordenarCarpeta(id);
+        return p;
+      },
+      subirFoto: async (id, foto, modo) => {
+        const anterior = registroDe(id)?.foto_ruta ?? null;
+        const ruta = rutaFoto(filas.current!.filas.participante.id, id, crypto.randomUUID());
+        const subida = await sb().storage.from(BUCKET).upload(ruta, foto, { contentType: "image/webp", upsert: false, cacheControl: "60" });
+        if (subida.error) throw subida.error;
+        try {
+          datos(
+            modo === "evidencia"
+              ? await sb().rpc("registrar_evidencia", { p_ocurrencia: id, p_foto_ruta: ruta, p_explicacion: null })
+              : await sb().rpc("adjuntar_foto", { p_ocurrencia: id, p_foto_ruta: ruta }),
+          );
+        } catch (e) {
+          // La base no la aceptó (plazo, tope de 3 archivos, acción anulada…): no queda suelta.
+          // Si fue un corte de red, puede que sí la haya guardado: se comprueba antes de borrar.
+          const guardada = await releer()
+            .then(() => registroDe(id)?.foto_ruta === ruta)
+            .catch(() => true); // sin poder comprobar, no se borra: la limpieza de la carpeta lo ordena después
+          if (!guardada) await borrarArchivos([ruta]).catch(() => undefined);
+          throw e;
+        }
+        const p = await releer();
+        if (anterior && anterior !== ruta) await borrarArchivos([anterior]).catch(() => undefined);
+        await ordenarCarpeta(id);
+        return p;
+      },
+      quitarFoto: async (id) => {
+        const ruta = registroDe(id)?.foto_ruta ?? null;
+        datos(await sb().rpc("quitar_foto", { p_ocurrencia: id }));
+        const p = await releer();
+        if (ruta) await borrarArchivos([ruta]).catch(() => undefined);
+        await ordenarCarpeta(id);
+        return p;
+      },
+      urlFoto: async (ruta) => {
+        const { data, error } = await sb().storage.from(BUCKET).createSignedUrl(ruta, 300);
+        if (error || !data?.signedUrl) throw error ?? new Error("sin enlace");
+        return data.signedUrl;
+      },
       guardarRegistroSemanal: async (semana, d, enviar) => {
         datos(
           await sb().rpc("guardar_registro_semanal", {
@@ -327,6 +416,7 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
       coach: estado.coach,
       videollamadas: estado.videollamadas,
       servidor,
+      fotos: estado.fotos,
     };
   }, [estado, vistas, servidor]);
 

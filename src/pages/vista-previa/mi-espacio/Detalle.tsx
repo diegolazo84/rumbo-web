@@ -6,6 +6,7 @@ import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
 import { Link } from "react-router-dom";
 import { Aviso } from "../../../components/Bloques";
 import Etiqueta from "../../../components/Etiqueta";
+import MiniaturaPrivada from "../../../components/MiniaturaPrivada";
 import { ChipMeta, Hoja, Icono, Ilustracion, TEXTOS_CARGA } from "../../../components/app";
 import { AvisoAyuda, CampoArea, Formulario, NoEsChat } from "../../../components/form";
 import {
@@ -17,6 +18,7 @@ import {
   type Ocurrencia,
 } from "../../../data/ejemplo-app";
 import { FOTO } from "../../../data/formularios";
+import { FotoRechazada, prepararFotoPrivada } from "../../../lib/foto-privada";
 import { reglasCreditos } from "../../../data/rumbo";
 import { diaCorto, diaMes, duracionTexto, fechaLarga, mayuscula, sumarMinutos, type Iso } from "../../../lib/fechas";
 import { EtiquetaEjemplo, useEspacio } from "./comun";
@@ -70,7 +72,7 @@ function BotonMarcar({ variante, texto, bajada, idBajada, deshabilitado, onClick
 }
 
 export default function Detalle({ o, hoy, enHoja, onRegistrar, fotoInicial, sinConexion }: Props) {
-  const { metaPorId, fechaRevision, semanaDelCiclo, dentroDeVentana, rutaAjuste, enPrograma, ciclo, R } = useEspacio();
+  const { metaPorId, fechaRevision, semanaDelCiclo, dentroDeVentana, rutaAjuste, enPrograma, ciclo, R, servidor, fotos } = useEspacio();
   const meta = metaPorId(o.metaId);
   const Sub = enHoja ? "h3" : "h2";
   const idNota = useId();
@@ -106,7 +108,7 @@ export default function Detalle({ o, hoy, enHoja, onRegistrar, fotoInicial, sinC
       </Etiqueta>
     );
   } else if (o.conFoto) {
-    control = <BloqueFoto o={o} inicial={fotoInicial ?? fotoDelRegistro(o.registro)} sinConexion={sinConexion} />;
+    control = <BloqueFoto o={o} inicial={fotoInicial ?? fotoInicialDe(o, o.registro)} sinConexion={sinConexion} />;
   } else if (futura || (ventana && sinConexion && !o.registro)) {
     control = (
       <>
@@ -130,6 +132,14 @@ export default function Detalle({ o, hoy, enHoja, onRegistrar, fotoInicial, sinC
         )}
       </div>
     );
+    // Foto opcional (módulo «fotos» habilitado, dentro del plazo): no cambia los créditos.
+    if (servidor && fotos && ventana)
+      control = (
+        <>
+          {control}
+          <FotoOpcional o={o} sinConexion={sinConexion} />
+        </>
+      );
   } else if (o.registro === "dejada") {
     control = (
       <div className="me-detalle__fila-estado">
@@ -292,86 +302,116 @@ export default function Detalle({ o, hoy, enHoja, onRegistrar, fotoInicial, sinC
 }
 
 // ---------------------------------------------------------------------------
-// Foto privada (4.9). En la vista previa la foto no sale del navegador: se muestra con una URL
-// blob: local (la CSP de la vista previa la permite) y se borra al eliminarla.
-// En Mi espacio real (etapa 3) las fotos todavía no se suben (etapa 4: bucket, recompresión y
-// revisión): solo existe «No puedo subir una foto», que guarda la explicación con
-// registrar_evidencia y queda «En revisión», igual que una foto.
+// Foto privada (4.9).
+// · Vista previa: la subida no se muestra (como en Mi espacio real con el módulo «fotos» apagado);
+//   los estados de revisión usan una miniatura de ejemplo.
+// · Mi espacio real con el módulo «fotos» habilitado: la foto se prepara en el navegador (WebP,
+//   1600 px, sin EXIF; si no se puede, se rechaza), se sube al bucket privado «evidencias» y se
+//   registra con registrar_evidencia. Las miniaturas usan enlaces firmados de 5 minutos.
+// · Siempre: «No puedo subir una foto» guarda la explicación y queda «En revisión».
 
 type EstadoFoto = FotoInicial | "subiendo" | "explicar";
-// La subida de fotos todavía no funciona en Mi espacio real (29-oct-2026). Mientras tanto, la
-// vista previa tampoco la simula: solo queda «No puedo subir una foto». La subida simulada se
-// conserva detrás de esta constante para cuando exista la real (propuesta técnica aparte).
-const SUBIDA_FOTOS = false;
-const TIPOS = FOTO.accept.split(",");
+
+const fotoInicialDe = (o: Ocurrencia, r: EstadoRegistro | null): FotoInicial =>
+  r === "aprobada" && o.fotoDepurada ? "depurada" : fotoDelRegistro(r);
+
+// Mensaje para la persona según el motivo del rechazo o el fallo.
+function mensajeFoto(e: unknown): string {
+  if (e instanceof FotoRechazada) return T_DETALLE.foto.errores[e.motivo];
+  return FOTO.errores.red;
+}
+
+// Botón que abre la cámara o la galería y entrega la foto ya preparada (o el error).
+function BotonFoto({
+  texto,
+  variante,
+  deshabilitado,
+  onFoto,
+  onError,
+}: {
+  texto: string;
+  variante: "primario" | "secundario";
+  deshabilitado?: boolean;
+  onFoto: (foto: Blob) => void;
+  onError: (mensaje: string) => void;
+}) {
+  const archivo = useRef<HTMLInputElement>(null);
+  const [preparando, setPreparando] = useState(false);
+  const elegir = async (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    setPreparando(true);
+    try {
+      onFoto(await prepararFotoPrivada(f));
+    } catch (x) {
+      onError(mensajeFoto(x));
+    } finally {
+      setPreparando(false);
+    }
+  };
+  const bloqueado = deshabilitado || preparando;
+  return (
+    <>
+      <button
+        type="button"
+        className={`boton boton--${variante} boton--ancho`}
+        aria-disabled={bloqueado || undefined}
+        onClick={bloqueado ? undefined : () => archivo.current?.click()}
+      >
+        <Icono nombre="camera" tamaño={20} />
+        {preparando ? T_DETALLE.foto.preparando : texto}
+      </button>
+      <input ref={archivo} type="file" accept={FOTO.accept} hidden onChange={(e) => void elegir(e)} tabIndex={-1} />
+    </>
+  );
+}
 
 function BloqueFoto({ o, inicial, sinConexion }: { o: Ocurrencia; inicial: FotoInicial; sinConexion?: boolean }) {
-  const { servidor, R } = useEspacio();
+  const { servidor, R, fotos } = useEspacio();
   const real = !!servidor;
-  const subida = SUBIDA_FOTOS && !real;
+  const subida = real && fotos; // la subida existe solo con el módulo «fotos» habilitado
   const [estado, setEstado] = useState<EstadoFoto>(inicial);
-  const [url, setUrl] = useState<string | null>(null);
   const [explicacion, setExplicacion] = useState<string | null>(o.explicacion ?? null);
   const [texto, setTexto] = useState("");
   const [errorTexto, setErrorTexto] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [avance, setAvance] = useState(0);
   const [confirmar, setConfirmar] = useState(false);
-  const archivo = useRef<HTMLInputElement>(null);
   const zona = useRef<HTMLDivElement>(null);
   const idBloque = useId();
-
-  // Libera la URL local al salir.
-  useEffect(() => () => {
-    if (url) URL.revokeObjectURL(url);
-  }, [url]);
 
   // El foco sigue al estado nuevo (subiendo → en revisión, eliminar → sin foto).
   const moverFoco = () => requestAnimationFrame(() => zona.current?.querySelector<HTMLElement>("button, textarea, [tabindex]")?.focus());
 
-  const elegir = (e: ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    e.target.value = "";
-    if (!f) return;
-    if (!TIPOS.includes(f.type)) {
-      setError(FOTO.errores.tipo);
-      return;
-    }
+  const subir = (foto: Blob) => {
+    if (!servidor) return;
+    const antes = estado;
     setError(null);
     setEstado("subiendo");
-    setAvance(0);
-    const nueva = URL.createObjectURL(f);
-    let p = 0;
-    const t = window.setInterval(() => {
-      p += 20;
-      setAvance(p);
-      if (p >= 100) {
-        window.clearInterval(t);
-        setUrl(nueva);
+    servidor
+      .subirFoto(o.id, foto, "evidencia")
+      .then(() => {
         setExplicacion(null);
         setEstado("revision");
         moverFoco();
-      }
-    }, 180);
+      })
+      .catch((x) => {
+        setEstado(antes);
+        setError(mensajeFoto(x));
+      });
   };
 
   const eliminar = () => {
     setConfirmar(false);
-    if (real) {
-      servidor
-        .eliminarEvidencia(o.id)
-        .then(() => {
-          setExplicacion(null);
-          setEstado("sin");
-          moverFoco();
-        })
-        .catch(() => setError(T_DETALLE.foto.errorGuardar));
-      return;
-    }
-    if (url) URL.revokeObjectURL(url);
-    setUrl(null);
-    setEstado("sin");
-    moverFoco();
+    if (!servidor) return;
+    servidor
+      .eliminarEvidencia(o.id)
+      .then(() => {
+        setExplicacion(null);
+        setEstado("sin");
+        moverFoco();
+      })
+      .catch(() => setError(T_DETALLE.foto.errorGuardar));
   };
 
   const enviarExplicacion = () => {
@@ -396,21 +436,46 @@ function BloqueFoto({ o, inicial, sinConexion }: { o: Ocurrencia; inicial: FotoI
     moverFoco();
   };
 
+  // Lo que la persona ve de su evidencia: su explicación, su foto (real) o la miniatura de ejemplo.
+  const fotoReal = real && !explicacion && o.fotoRuta ? o.fotoRuta : null;
+  const evidencia = explicacion ? (
+    <blockquote className="me-foto__explicacion">
+      <p>{explicacion}</p>
+    </blockquote>
+  ) : fotoReal && servidor ? (
+    <MiniaturaPrivada ruta={fotoReal} pedirUrl={servidor.urlFoto} alt={T_DETALLE.foto.miniatura} clase="me-foto__miniatura" />
+  ) : real ? null : (
+    <MiniaturaEjemplo />
+  );
+
+  const alerta = (
+    <div role="alert">
+      {error && (
+        <p className="campo__error">
+          <Icono nombre="circle-alert" tamaño={16} />
+          {error}
+        </p>
+      )}
+    </div>
+  );
+
   return (
     <div className="me-foto">
       <Aviso icono="lock">{subida ? T_DETALLE.foto.aviso : T_DETALLE.foto.porAhora}</Aviso>
       <div ref={zona} className="me-foto__zona">
         {estado === "aprobada" && (
-          <div className="me-foto__revision" tabIndex={-1}>
-            <MiniaturaEjemplo />
+          <div className={evidencia ? "me-foto__revision" : "me-foto__texto"} tabIndex={-1}>
+            {evidencia}
             <div className="me-foto__texto">
               <Etiqueta variante="activo">{T_DETALLE.foto.aprobada}</Etiqueta>
-              <figure className="me-foto__nota">
-                <figcaption className="me-rotulo">{T_DETALLE.foto.notaCoach}</figcaption>
-                <blockquote>
-                  <p>{real ? o.notaRevision : NOTA_FOTO_APROBADA}</p>
-                </blockquote>
-              </figure>
+              {(!real || o.notaRevision) && (
+                <figure className="me-foto__nota">
+                  <figcaption className="me-rotulo">{T_DETALLE.foto.notaCoach}</figcaption>
+                  <blockquote>
+                    <p>{real ? o.notaRevision : NOTA_FOTO_APROBADA}</p>
+                  </blockquote>
+                </figure>
+              )}
             </div>
           </div>
         )}
@@ -430,61 +495,35 @@ function BloqueFoto({ o, inicial, sinConexion }: { o: Ocurrencia; inicial: FotoI
             </blockquote>
             {subida && <p>{T_DETALLE.foto.subirOtra}</p>}
             <div className="me-detalle__botones">
-              {!subida ? (
-                <button type="button" className="boton boton--terciario" onClick={() => setEstado("explicar")}>
-                  {T_DETALLE.foto.noPuedo}
-                </button>
-              ) : (
-              <button
-                type="button"
-                className="boton boton--primario boton--ancho"
-                aria-disabled={sinConexion || undefined}
-                onClick={sinConexion ? undefined : () => archivo.current?.click()}
-              >
-                <Icono nombre="camera" tamaño={20} />
-                {T_DETALLE.foto.botonOtra}
-              </button>
+              {subida && (
+                <BotonFoto texto={T_DETALLE.foto.botonOtra} variante="primario" deshabilitado={sinConexion} onFoto={subir} onError={setError} />
               )}
+              <button type="button" className={subida ? "boton boton--terciario" : "boton boton--secundario boton--ancho"} onClick={() => setEstado("explicar")}>
+                {T_DETALLE.foto.noPuedo}
+              </button>
             </div>
-            {subida && <input ref={archivo} type="file" accept={FOTO.accept} hidden onChange={elegir} tabIndex={-1} />}
+            {alerta}
           </div>
         )}
 
         {estado === "sin" && (
           <>
             <div className="me-detalle__botones">
-              {subida && (
-              <button
-                type="button"
-                className="boton boton--primario boton--ancho"
-                aria-disabled={sinConexion || undefined}
-                onClick={sinConexion ? undefined : () => archivo.current?.click()}
-              >
-                <Icono nombre="camera" tamaño={20} />
-                {T_DETALLE.foto.subir}
-              </button>
-              )}
+              {subida && <BotonFoto texto={T_DETALLE.foto.subir} variante="primario" deshabilitado={sinConexion} onFoto={subir} onError={setError} />}
               <button type="button" className={subida ? "boton boton--terciario" : "boton boton--secundario boton--ancho"} onClick={() => setEstado("explicar")}>
                 {T_DETALLE.foto.noPuedo}
               </button>
             </div>
-            {subida && <input ref={archivo} type="file" accept={FOTO.accept} hidden onChange={elegir} tabIndex={-1} />}
-            <div role="alert">
-              {error && (
-                <p className="campo__error">
-                  <Icono nombre="circle-alert" tamaño={16} />
-                  {error}
-                </p>
-              )}
-            </div>
+            {sinConexion && subida && <p className="microcopia">{TEXTOS_CARGA.necesitasConexion}</p>}
+            {alerta}
           </>
         )}
 
         {estado === "subiendo" && (
           <div className="me-foto__subiendo">
             <p id={`${idBloque}-subiendo`}>{T_DETALLE.foto.subiendo}</p>
-            <div className="barra" role="progressbar" aria-labelledby={`${idBloque}-subiendo`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={avance}>
-              <span className="barra-relleno" style={{ inlineSize: `${avance}%` }} />
+            <div className="barra barra--indeterminada" role="progressbar" aria-labelledby={`${idBloque}-subiendo`}>
+              <span className="barra-relleno" />
             </div>
           </div>
         )}
@@ -513,24 +552,17 @@ function BloqueFoto({ o, inicial, sinConexion }: { o: Ocurrencia; inicial: FotoI
         )}
 
         {estado === "revision" && (
-          <div className="me-foto__revision" tabIndex={-1}>
-            {explicacion ? (
-              <blockquote className="me-foto__explicacion">
-                <p>{explicacion}</p>
-              </blockquote>
-            ) : url ? (
-              <img className="me-foto__miniatura" src={url} alt={T_DETALLE.foto.miniatura} width={120} height={120} />
-            ) : (
-              <MiniaturaEjemplo />
-            )}
+          <div className={evidencia ? "me-foto__revision" : "me-foto__texto"} tabIndex={-1}>
+            {evidencia}
             <div className="me-foto__texto">
               <Etiqueta variante="nota">{T_DETALLE.foto.enRevision}</Etiqueta>
               <p>{T_DETALLE.foto.suma}</p>
-              {!explicacion && subida && (
+              {fotoReal && (
                 <button type="button" className="boton boton--terciario me-boton-izq" onClick={() => setConfirmar(true)}>
                   {T_DETALLE.foto.eliminar}
                 </button>
               )}
+              {alerta}
             </div>
           </div>
         )}
@@ -548,6 +580,63 @@ function BloqueFoto({ o, inicial, sinConexion }: { o: Ocurrencia; inicial: FotoI
         </div>
       </Hoja>
     </div>
+  );
+}
+
+// Foto opcional en una acción que no la exige (C1, decisión de Diego del 21-oct-2026): un
+// complemento privado de «hecha», sin cambiar los créditos. Solo con el módulo «fotos» y dentro
+// del plazo de registro.
+function FotoOpcional({ o, sinConexion }: { o: Ocurrencia; sinConexion?: boolean }) {
+  const { servidor } = useEspacio();
+  const [ocupado, setOcupado] = useState<"subiendo" | "quitando" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const idTitulo = useId();
+  if (!servidor) return null;
+  const subir = (foto: Blob) => {
+    setError(null);
+    setOcupado("subiendo");
+    servidor
+      .subirFoto(o.id, foto, "opcional")
+      .catch((x) => setError(mensajeFoto(x)))
+      .finally(() => setOcupado(null));
+  };
+  const quitar = () => {
+    setError(null);
+    setOcupado("quitando");
+    servidor
+      .quitarFoto(o.id)
+      .catch(() => setError(T_DETALLE.foto.errorGuardar))
+      .finally(() => setOcupado(null));
+  };
+  return (
+    <section className="me-foto-opcional" aria-labelledby={idTitulo}>
+      <p id={idTitulo} className="me-foto-opcional__titulo">
+        {T_DETALLE.foto.opcional.titulo}
+      </p>
+      <p className="microcopia">{T_DETALLE.foto.opcional.texto}</p>
+      {ocupado === "subiendo" ? (
+        <p role="status">{T_DETALLE.foto.subiendo}</p>
+      ) : o.fotoRuta ? (
+        <div className="me-foto-opcional__fila">
+          <MiniaturaPrivada ruta={o.fotoRuta} pedirUrl={servidor.urlFoto} alt={T_DETALLE.foto.miniatura} clase="me-foto__miniatura" />
+          <button type="button" className="boton boton--terciario" aria-disabled={ocupado === "quitando" || sinConexion || undefined} onClick={ocupado || sinConexion ? undefined : quitar}>
+            {T_DETALLE.foto.opcional.quitar}
+          </button>
+        </div>
+      ) : (
+        <div className="me-detalle__botones">
+          <BotonFoto texto={T_DETALLE.foto.opcional.agregar} variante="secundario" deshabilitado={sinConexion} onFoto={subir} onError={setError} />
+        </div>
+      )}
+      <div role="alert">
+        {error && (
+          <p className="campo__error">
+            <Icono nombre="circle-alert" tamaño={16} />
+            {error}
+          </p>
+        )}
+      </div>
+    </section>
   );
 }
 
