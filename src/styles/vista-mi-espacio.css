@@ -1347,13 +1347,13 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 .ic-progreso__pct { margin: 0; font: 600 var(--t-h2)/1 var(--serif); color: var(--bosque); }
 .ic-progreso__barra .barra { block-size: 12px; }
 .ic-datos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--e-2); margin: 0; padding: 0; list-style: none; }
-.ic-dato { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 8px; padding: 10px; border-radius: var(--r-m); background: var(--papel); }
+.ic-dato { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 8px; min-inline-size: 0; padding: 10px; border-radius: var(--r-m); background: var(--papel); }
 .ic-dato__icono { grid-row: span 2; display: grid; place-items: center; inline-size: 32px; block-size: 32px; border-radius: 50%; }
 .ic-dato--hechas .ic-dato__icono { background: var(--salvia-suave); color: var(--bosque); }
 .ic-dato--racha .ic-dato__icono { background: var(--terracota-suave); color: var(--terracota-texto); }
 .ic-dato--logros .ic-dato__icono { background: var(--arena); color: var(--bosque); }
 .ic-dato__n { font: 600 var(--t-h3)/1.1 var(--serif); color: var(--bosque); }
-.ic-dato__t { font-size: var(--t-xs); line-height: 1.3; color: var(--tinta-suave); }
+.ic-dato__t { font-size: var(--t-xs); line-height: 1.3; color: var(--tinta-suave); overflow-wrap: anywhere; hyphens: auto; }
 @media (max-width: 479.98px) {
   .ic-dato { grid-template-columns: minmax(0, 1fr); row-gap: 2px; padding: 8px; }
   .ic-dato__icono { grid-row: auto; inline-size: 28px; block-size: 28px; }
