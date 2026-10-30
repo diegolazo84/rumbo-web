@@ -109,7 +109,7 @@ const FUNCIONES = {
   persona: [
     "soy_equipo", "mi_contexto", "marcar_accion", "desmarcar_accion", "dejar_pasar", "registrar_evidencia", "eliminar_evidencia",
     "guardar_registro_semanal", "pedir_ajuste", "actualizar_preferencias", "pedir_derecho", "exportar_mis_datos", "mi_coach",
-    "adjuntar_foto", "quitar_foto", "guardar_recordatorios",
+    "adjuntar_foto", "quitar_foto", "guardar_recordatorios", "correo_disponible",
     "evolucion_semanal", "informe_ciclo", "mis_medibles", "anotar_cantidad",
     "guardar_alias", "participar_en_ranking", "ranking_semanal",
     "aceptar_reglas_comunidad", "publicar_en_comunidad", "borrar_mi_publicacion", "reportar_publicacion", "comunidad_publicaciones",
@@ -748,19 +748,21 @@ paso("fotos: opcionales en cualquier acción, solo en las propias; la acción qu
 }
 paso("videollamadas: solo en el plan cercano; las agenda y anota el coach de la persona, con enlace https y aviso");
 
+const JSON_BASE = `'{"activos": true, "acciones_del_dia": true, "registro_semanal": false, "videollamadas": true, "mensajes_coach": true, "comunidad": false, "logros": true, "por_correo": false, "desde": 7, "hasta": 22, "hora": 8, "dias": [1, 2, 3, 4, 5, 6, 7]}'::jsonb`.replace(/::jsonb$/, "");
 // D1 · Recordatorios: cada persona elige los suyos; la base los crea a su hora, sin repetir y nunca en pausa.
 {
-  const guarda = como(ROLES.A, `select public.guardar_recordatorios(true, false, 8) \\g /dev/null
+  const guarda = como(ROLES.A, `select public.guardar_recordatorios('{"activos": true, "acciones_del_dia": true, "registro_semanal": false, "videollamadas": true, "mensajes_coach": true, "comunidad": false, "logros": true, "por_correo": false, "desde": 7, "hasta": 22, "hora": 8, "dias": [1, 2, 3, 4, 5, 6, 7]}'::jsonb) \\g /dev/null
     select acciones_del_dia::int || ' ' || registro_semanal::int || ' ' || hora from public.recordatorios`);
   exigir(guarda.ok && ultima(guarda) === "1 0 8", `A no pudo guardar sus recordatorios: ${guarda.error ?? ultima(guarda)}`);
-  const hora = como(ROLES.A, "select public.guardar_recordatorios(true, true, 3)");
+  const hora = como(ROLES.A, `select public.guardar_recordatorios('{"activos": true, "acciones_del_dia": true, "registro_semanal": false, "videollamadas": true, "mensajes_coach": true, "comunidad": false, "logros": true, "por_correo": false, "desde": 7, "hasta": 22, "hora": 3, "dias": [1, 2, 3, 4, 5, 6, 7]}'::jsonb)`);
   exigir(!hora.ok && /hora/.test(hora.error), "se aceptó un recordatorio a las 3 de la mañana");
   const cicloA = deA.p_ciclo;
   // Escenario: «hoy» es el martes de la semana 1 del ciclo de A, la revisión es el miércoles y A tiene
   // una acción hoy sin marcar y el registro semanal sin enviar.
   const escenario = `set session_replication_role = replica;
     update public.ciclos set estado = 'activo', dia_revision = 3 where id = '${cicloA}';
-    update public.recordatorios set acciones_del_dia = true, registro_semanal = true, hora = 20 where participante_id = '${ROLES.A.ficha}';
+    update public.recordatorios set activos = true, acciones_del_dia = true, registro_semanal = true, hora = 20, desde = 7, hasta = 22,
+      dias = '{1,2,3,4,5,6,7}' where participante_id = '${ROLES.A.ficha}';
     delete from public.avisos where participante_id = '${ROLES.A.ficha}';
     delete from public.registros_semanales where ciclo_id = '${cicloA}' and semana = 1;
     delete from public.registros where ocurrencia_id = (select id from public.ocurrencias where participante_id = '${ROLES.A.ficha}' order by fecha limit 1);
@@ -809,12 +811,76 @@ paso("videollamadas: solo en el plan cercano; las agenda y anota el coach de la 
     select privado.enviar_recordatorios(20, ${hoy}) \\g /dev/null
     select ${cola}; rollback;`);
   exigir(sinElegir.ok && sinElegir.salida === antesCola, `se envió un correo a quien no lo eligió: ${sinElegir.error ?? sinElegir.salida}`);
-  const elige = como(ROLES.A, "select public.guardar_recordatorios(true, true, 9, true) \\g /dev/null\n select por_correo::int from public.recordatorios");
+  const elige = como(ROLES.A, `select public.guardar_recordatorios('{"activos": true, "acciones_del_dia": true, "registro_semanal": true, "videollamadas": true, "mensajes_coach": true, "comunidad": false, "logros": true, "por_correo": true, "desde": 7, "hasta": 22, "hora": 9, "dias": [1, 2, 3, 4, 5, 6, 7]}'::jsonb) \\g /dev/null\n select por_correo::int from public.recordatorios`);
   exigir(elige.ok && ultima(elige) === "1", `A no pudo elegir recibir los recordatorios por correo: ${elige.error ?? ultima(elige)}`);
   const persona = como(ROLES.A, "select privado.enviar_recordatorios()");
   exigir(!persona.ok && persona.codigo === DENEGADO, "una persona puede disparar los recordatorios");
 }
 paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan a su hora, una vez al día y nunca en pausa; por correo solo con claves y a quien lo eligió");
+
+// R1 · Recordatorios completos: interruptor general, días, horario, videollamada 24 h antes,
+// comunidad y logros solo a quien los eligió y copia por correo de los mensajes del coach.
+{
+  const cicloA = deA.p_ciclo;
+  const hoy = `(select inicio + 1 from public.ciclos where id = '${cicloA}')`;
+  const prefs = (extra = "") => `set session_replication_role = replica;
+    update public.ciclos set estado = 'activo' where id = '${cicloA}';
+    set session_replication_role = origin;
+    update public.recordatorios set activos = true, acciones_del_dia = false, registro_semanal = false, videollamadas = true,
+      comunidad = false, logros = true, por_correo = false, hora = 20, desde = 7, hasta = 22, dias = '{1,2,3,4,5,6,7}' ${extra}
+     where participante_id = '${ROLES.A.ficha}';
+    delete from public.avisos where participante_id = '${ROLES.A.ficha}';`;
+  const tipos = `select coalesce(string_agg(tipo, ',' order by tipo), '-') from public.avisos where participante_id = '${ROLES.A.ficha}'`;
+  const llamada = `delete from public.videollamadas where ciclo_id = '${cicloA}';
+    insert into public.videollamadas (participante_id, ciclo_id, semana, programada_para, enlace)
+      values ('${ROLES.A.ficha}', '${cicloA}', 1, now() + interval '10 hours', 'https://meet.example.com/r1');`;
+  const video = psql(`begin; ${prefs()} ${llamada}
+    select privado.enviar_recordatorios(10, ${hoy}) \\g /dev/null
+    select privado.enviar_recordatorios(11, ${hoy}) \\g /dev/null
+    ${tipos}; rollback;`);
+  exigir(video.ok && video.salida === "recordatorio_videollamada", `el recordatorio de videollamada no llegó una sola vez: ${video.error ?? video.salida}`);
+  const general = psql(`begin; ${prefs(", activos = false")} ${llamada}
+    select privado.enviar_recordatorios(10, ${hoy}) \\g /dev/null ${tipos}; rollback;`);
+  exigir(general.ok && general.salida === "-", `con el interruptor general apagado llegó un recordatorio: ${general.error ?? general.salida}`);
+  const dia = psql(`begin; ${prefs(`, dias = array[(extract(isodow from ${hoy}) % 7 + 1)::smallint]`)} ${llamada}
+    select privado.enviar_recordatorios(10, ${hoy}) \\g /dev/null ${tipos}; rollback;`);
+  exigir(dia.ok && dia.salida === "-", `llegó un recordatorio un día que A no eligió: ${dia.error ?? dia.salida}`);
+  const fuera = psql(`begin; ${prefs(", desde = 12, hora = 12")} ${llamada}
+    select privado.enviar_recordatorios(10, ${hoy}) \\g /dev/null ${tipos}; rollback;`);
+  exigir(fuera.ok && fuera.salida === "-", `llegó un recordatorio fuera del horario de A: ${fuera.error ?? fuera.salida}`);
+  const logro = (extra) => psql(`begin; ${prefs(extra)}
+    select privado.avisar_app('${ROLES.A.ficha}', true, 'reconocimiento', 'Nuevo reconocimiento: Primer paso', '/mi-espacio/') \\g /dev/null
+    select privado.avisar_app('${ROLES.A.ficha}', true, 'revision_publicada', 'Tu coach publicó la revisión de la semana 1', '/mi-espacio/acompanamiento/') \\g /dev/null
+    ${tipos}; rollback;`);
+  const conLogros = logro("");
+  exigir(conLogros.ok && conLogros.salida === "reconocimiento,revision_publicada", `faltan avisos con logros elegidos: ${conLogros.error ?? conLogros.salida}`);
+  const sinLogros = logro(", logros = false");
+  exigir(sinLogros.ok && sinLogros.salida === "revision_publicada", `llegó un logro a quien no lo eligió, o faltó el mensaje del coach: ${sinLogros.error ?? sinLogros.salida}`);
+  const apagado = logro(", activos = false");
+  exigir(apagado.ok && apagado.salida === "revision_publicada", `con todo apagado no llegó el mensaje del coach o llegó un logro: ${apagado.error ?? apagado.salida}`);
+  const cola = "(select count(*) from net.http_request_queue where url = 'https://api.brevo.com/v3/smtp/email')";
+  const claves = "select vault.create_secret('clave-de-prueba', 'brevo_api_key') \\g /dev/null\n select vault.create_secret('rumbo-ci@example.com', 'correo_remitente') \\g /dev/null\n";
+  const antes = Number(sql(`select ${cola}`));
+  const copia = (extra) => psql(`begin; ${prefs(extra)} ${claves}
+    select privado.avisar_app('${ROLES.A.ficha}', true, 'revision_publicada', 'Tu coach publicó la revisión de la semana 1', '/mi-espacio/acompanamiento/') \\g /dev/null
+    select ${cola}; rollback;`);
+  const conCopia = copia(", por_correo = true");
+  exigir(conCopia.ok && conCopia.salida === String(antes + 1), `no salió la copia por correo del mensaje del coach: ${conCopia.error ?? conCopia.salida}`);
+  const sinCopia = copia(", por_correo = true, mensajes_coach = false");
+  exigir(sinCopia.ok && sinCopia.salida === String(antes), `salió una copia por correo que A no eligió: ${sinCopia.error ?? sinCopia.salida}`);
+  const disp = como(ROLES.A, "select public.correo_disponible()::int");
+  exigir(disp.ok && ultima(disp) === "0", `correo_disponible no dice la verdad sin claves: ${disp.error ?? ultima(disp)}`);
+  const dispAnon = como(ROLES.anon, "select public.correo_disponible()");
+  exigir(!dispAnon.ok && dispAnon.codigo === DENEGADO, "anon puede preguntar si hay correo");
+  for (const [malo, que] of [['"dias": [8]', "días"], ['"desde": 20, "hasta": 9', "horario"], ['"activos": "si"', "interruptor"]]) {
+    const r = como(ROLES.A, `select public.guardar_recordatorios(${JSON_BASE}::jsonb || '{${malo}}'::jsonb)`);
+    exigir(!r.ok, `se guardó un recordatorio con ${que} inválido`);
+  }
+  const todo = como(ROLES.A, `select public.guardar_recordatorios(${JSON_BASE}::jsonb || '{"dias": [1, 3, 5], "desde": 8, "hasta": 21, "hora": 19, "comunidad": true}'::jsonb) \\g /dev/null
+    select activos::int || ' ' || array_to_string(dias, ',') || ' ' || desde || '-' || hasta || ' ' || hora || ' ' || comunidad::int from public.recordatorios`);
+  exigir(todo.ok && ultima(todo) === "1 1,3,5 8-21 19 1", `A no pudo guardar días, horario y categorías: ${todo.error ?? ultima(todo)}`);
+}
+paso("recordatorios completos: interruptor general, días, horario, videollamada 24 h antes una vez, logros y comunidad solo si se eligen, copia por correo del coach");
 
 // C3 · Evolución: resume lo que hay en la base; la ve la persona, su coach y el dueño.
 {
@@ -1720,6 +1786,7 @@ paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equi
   const PA = "00000000-0000-0000-0000-0000000000a7";
   const base = `reset role; update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
     update public.alias set reglas_comunidad_en = now();
+    update public.recordatorios set activos = true, comunidad = true;
     insert into public.publicaciones (id, autor, texto) values ('${PA}', '${ROLES.A.ficha}', 'Publicación de A para avisos');`;
   const abrir = `${base} update public.modulos set estado = 'habilitado' where clave = 'comunidad';`;
   const responde = (autor) => `insert into public.publicaciones (autor, texto, respuesta_a) values ('${autor}', 'TEXTO PRIVADO de la respuesta', '${PA}');`;
