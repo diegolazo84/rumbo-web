@@ -827,8 +827,9 @@ paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan 
     update public.ciclos set estado = 'activo' where id = '${cicloA}';
     set session_replication_role = origin;
     update public.recordatorios set activos = true, acciones_del_dia = false, registro_semanal = false, videollamadas = true,
-      comunidad = false, logros = true, por_correo = false, hora = 20, desde = 7, hasta = 22, dias = '{1,2,3,4,5,6,7}' ${extra}
+      comunidad = false, logros = true, por_correo = false, hora = 20, desde = 7, hasta = 22, dias = '{1,2,3,4,5,6,7}'
      where participante_id = '${ROLES.A.ficha}';
+    ${extra ? `update public.recordatorios set ${extra.replace(/^\s*,\s*/, "")} where participante_id = '${ROLES.A.ficha}';` : ""}
     delete from public.avisos where participante_id = '${ROLES.A.ficha}';`;
   const tipos = `select coalesce(string_agg(tipo, ',' order by tipo), '-') from public.avisos where participante_id = '${ROLES.A.ficha}'`;
   const llamada = `delete from public.videollamadas where ciclo_id = '${cicloA}';
@@ -1428,6 +1429,8 @@ paso("grupos C13: destacado único y elegido por moderación, sugeridos por las 
   exigir(r1.ok && otraVez === "0", `los reconocimientos se repiten: ${otraVez}`);
   exigir(r1.ok && avisos1 === "0", `hubo avisos de reconocimiento con el módulo sin habilitar: ${avisos1}`);
   const r2 = psql(`${base} update public.modulos set estado = 'habilitado' where clave = 'reconocimientos';
+    insert into public.recordatorios (participante_id, activos, logros) values ('${ROLES.A.ficha}', true, true)
+      on conflict (participante_id) do update set activos = true, logros = true;
     update public.reconocimientos set activo = false where clave = 'primer_paso';
     set session_replication_role = replica;
     update public.metas m set hitos = '[{"texto": "Hito de CI", "logrado": true}]' from public.programas g

@@ -999,3 +999,76 @@ export const T_AVISOS = {
   } as Record<string, string>,
   descripcionOtro: "Información de Rumbo.",
 } as const;
+
+// Recordatorios (maqueta de ChatGPT, 30-oct-2026). «Recordatorios de bienestar» no se muestra: no
+// hay una fuente aprobada de frases o consejos.
+export const T_RECORDATORIOS = {
+  titulo: "Configuración de recordatorios",
+  bajada: "Te ayudamos a mantener el foco con avisos en los momentos que más te sirven.",
+  lema: "Pequeños recordatorios, grandes cambios",
+  lemaTexto: "Mantén tu plan presente, cuida tus hábitos y avanza con más facilidad.",
+  general: {
+    titulo: "Activar recordatorios",
+    texto: "Recibe avisos de tus acciones, mensajes, videollamadas y más.",
+    apagado: "Están apagados. Igual verás en Mis avisos los mensajes de tu coach y tus videollamadas agendadas. Tus elecciones de abajo se guardan para cuando los actives.",
+  },
+  que: "¿Qué quieres recordar?",
+  categorias: {
+    accionesDelDia: { titulo: "Mis acciones", texto: "Un aviso al día si tienes acciones de tu plan por marcar." },
+    registroSemanal: { titulo: "Revisión semanal", texto: "El día antes de tu revisión, si aún no envías tu registro." },
+    videollamadas: { titulo: "Videollamadas", texto: "Un recordatorio dentro de las 24 horas antes de tu videollamada." },
+    mensajesCoach: { titulo: "Mensajes de mi coach", texto: "Siempre llegan a Mis avisos. Aquí eliges si también quieres una copia por correo." },
+    comunidad: { titulo: "Comunidad", texto: "Respuestas a tus publicaciones y desafíos nuevos." },
+    logros: { titulo: "Logros y reconocimientos", texto: "Cuando consigas un reconocimiento." },
+  },
+  sinVideollamadas: "Tu plan no incluye videollamadas.",
+  comunidadCerrada: "La Comunidad todavía no está abierta.",
+  cuando: "¿Cuándo recibirlos?",
+  horario: {
+    titulo: "Horario de envío",
+    texto: "Recibe avisos solo en el horario que prefieras.",
+    desde: "Desde",
+    hasta: "Hasta",
+    hora: "Recordatorio diario",
+    zona: (z: string) => `En tu zona horaria (${z}).`,
+  },
+  dias: {
+    titulo: "Días de la semana",
+    texto: "Elige qué días quieres recibir avisos.",
+    nombres: ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
+    largos: ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"],
+    alMenosUno: "Elige al menos un día.",
+  },
+  canales: {
+    titulo: "¿Dónde los recibes?",
+    app: "En Mis avisos, dentro de Rumbo",
+    appTexto: "Siempre.",
+    correo: "También por correo",
+    correoActivo: (c: string) => `Llegan a ${c}.`,
+    correoInactivo: "El envío por correo todavía no está activo en Rumbo. Puedes dejarlo elegido y empezará cuando lo esté.",
+    correoDesconocido: "No pudimos revisar si el correo está activo.",
+  },
+  vistaPrevia: {
+    titulo: "Vista previa",
+    texto: "Así se verá un recordatorio. Esta vista previa no envía nada.",
+    remitente: "Rumbo",
+    aviso: "Hoy tienes acciones por marcar",
+    detalle: "Revisa tu día en Mi Rumbo y marca lo que vayas haciendo.",
+  },
+  contigo: {
+    titulo: "Estamos contigo",
+    texto: "Estos recordatorios están pensados para apoyarte, no para presionarte. Puedes ajustarlos cuando quieras.",
+  },
+  guardar: "Guardar cambios",
+  guardando: "Guardando…",
+  guardado: "Guardamos tus recordatorios.",
+  error: "No pudimos guardarlos. Revisa tu conexión e inténtalo de nuevo.",
+  sinConexion: "Necesitas conexión para guardar esto.",
+  noDisponible: {
+    titulo: "Los recordatorios todavía no están disponibles",
+    texto: "Estamos terminando de prepararlos. Mientras, tu coach te acompaña como siempre y tus avisos siguen llegando a Mis avisos.",
+  },
+  errorCargar: { titulo: "No pudimos cargar tus recordatorios", texto: "Vuelve a intentarlo en un momento.", reintentar: "Reintentar" },
+  volver: "Preferencias",
+  enPreferencias: { titulo: "Recordatorios", texto: "Elige qué avisos recibir, en qué horario y qué días.", enlace: "Configurar recordatorios" },
+} as const;

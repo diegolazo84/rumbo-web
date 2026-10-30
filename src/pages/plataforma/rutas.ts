@@ -51,6 +51,7 @@ export const RUTAS_PLATAFORMA: RutaPlataforma[] = [
   me("avisos/", "Mis avisos", "avisos"),
   me("lo-que-viene/", "Lo que viene en Rumbo", ""),
   me("preferencias/", "Preferencias", "preferencias"),
+  me("preferencias/recordatorios/", "Recordatorios", "preferencias", "Recordatorios"),
   me("preferencias/eliminar/", "Preferencias", "preferencias", "Eliminar mis datos"),
   me("ayuda/", "Ayuda inmediata", "rumbo"),
   // Rutas anteriores a la etapa 2: redirigen a la sección nueva.

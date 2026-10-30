@@ -11,7 +11,7 @@ import { NOMBRE, PREFERENCIAS } from "../../../data/formularios";
 import { fechaLarga, sumarDias, type Iso } from "../../../lib/fechas";
 import type { PropsPantalla } from "../registro";
 import { AlertaGuardar, Cabeza, useDescargarDatos, useEspacio } from "./comun";
-import { T_PREFERENCIAS } from "./textos";
+import { T_PREFERENCIAS, T_RECORDATORIOS } from "./textos";
 
 // Fecha límite de ejemplo para los pedidos sobre datos personales. El plazo real lo fija la
 // ley y lo confirma Diego (plataforma 9.3): aquí es solo un ejemplo.
@@ -120,6 +120,19 @@ function PantallaPreferencias() {
       </section>
 
       {servidor && <AlertaGuardar texto={errorGuardar} />}
+
+      <hr className="me-separador" />
+
+      <section className="me-seccion" aria-labelledby="pref-recordatorios">
+        <h2 id="pref-recordatorios" className="me-h2">
+          {T_RECORDATORIOS.enPreferencias.titulo}
+        </h2>
+        <p>{T_RECORDATORIOS.enPreferencias.texto}</p>
+        <Link to={R.recordatorios} className="boton boton--secundario me-preferencias__recordatorios">
+          <Icono nombre="bell" tamaño={20} />
+          {T_RECORDATORIOS.enPreferencias.enlace}
+        </Link>
+      </section>
 
       <hr className="me-separador" />
 
