@@ -841,13 +841,16 @@ paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan 
     ${tipos}; rollback;`);
   exigir(video.ok && video.salida === "recordatorio_videollamada", `el recordatorio de videollamada no llegó una sola vez: ${video.error ?? video.salida}`);
   const general = psql(`begin; ${prefs(", activos = false")} ${llamada}
-    select privado.enviar_recordatorios(10, ${hoy}) \\g /dev/null ${tipos}; rollback;`);
+    select privado.enviar_recordatorios(10, ${hoy}) \\g /dev/null
+    ${tipos}; rollback;`);
   exigir(general.ok && general.salida === "-", `con el interruptor general apagado llegó un recordatorio: ${general.error ?? general.salida}`);
   const dia = psql(`begin; ${prefs(`, dias = array[(extract(isodow from ${hoy}) % 7 + 1)::smallint]`)} ${llamada}
-    select privado.enviar_recordatorios(10, ${hoy}) \\g /dev/null ${tipos}; rollback;`);
+    select privado.enviar_recordatorios(10, ${hoy}) \\g /dev/null
+    ${tipos}; rollback;`);
   exigir(dia.ok && dia.salida === "-", `llegó un recordatorio un día que A no eligió: ${dia.error ?? dia.salida}`);
   const fuera = psql(`begin; ${prefs(", desde = 12, hora = 12")} ${llamada}
-    select privado.enviar_recordatorios(10, ${hoy}) \\g /dev/null ${tipos}; rollback;`);
+    select privado.enviar_recordatorios(10, ${hoy}) \\g /dev/null
+    ${tipos}; rollback;`);
   exigir(fuera.ok && fuera.salida === "-", `llegó un recordatorio fuera del horario de A: ${fuera.error ?? fuera.salida}`);
   const logro = (extra) => psql(`begin; ${prefs(extra)}
     select privado.avisar_app('${ROLES.A.ficha}', true, 'reconocimiento', 'Nuevo reconocimiento: Primer paso', '/mi-espacio/') \\g /dev/null

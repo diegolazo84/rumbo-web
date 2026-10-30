@@ -9,6 +9,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { operacion } from "../src/data/rumbo";
 import { SUPABASE_URL } from "../src/lib/supabase-config";
+import { T_RECORDATORIOS } from "../src/pages/vista-previa/mi-espacio/textos";
 
 const ETIQUETAS_AXE = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const CLAVE_SESION = "rumbo-sesion";
@@ -1385,4 +1386,86 @@ test("Mis avisos real: si no se pueden leer, lo dice sin romper Mi espacio", asy
   await hidratar(page);
   await expect(page.getByRole("alert")).toContainText("No pudimos cargar tus avisos");
   await expect(page.locator(".cabecera-app__avisos")).toHaveAccessibleName("Mis avisos");
+});
+
+// ---------------------------------------------------------------------------
+// Recordatorios (maqueta de ChatGPT, 30-oct-2026)
+
+const RUTA_RECORDATORIOS = "mi-espacio/preferencias/recordatorios/";
+const prefsBase = (): Fila => ({
+  participante_id: "p1", activos: true, acciones_del_dia: true, registro_semanal: false, videollamadas: true, mensajes_coach: true,
+  comunidad: false, logros: true, por_correo: false, desde: 8, hasta: 21, hora: 19, dias: [1, 3, 5],
+});
+
+test("Recordatorios real: lee las preferencias de la base y guarda con guardar_recordatorios", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.recordatorios = [prefsBase()];
+  const llamadas = await simular(page, base, {
+    correo_disponible: () => true,
+    guardar_recordatorios: () => null,
+  });
+  await page.goto(RUTA_RECORDATORIOS);
+  await hidratar(page);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(T_RECORDATORIOS.titulo);
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  const lectura = llamadas.find((l) => l.tipo === "tabla" && l.nombre === "recordatorios")!;
+  expect(decodeURIComponent(lectura.url)).toContain("select=activos,acciones_del_dia");
+  const sw = (n: string) => page.getByRole("switch", { name: n, exact: true });
+  await expect(sw(T_RECORDATORIOS.general.titulo)).toHaveAttribute("aria-checked", "true");
+  await expect(sw(T_RECORDATORIOS.categorias.accionesDelDia.titulo)).toHaveAttribute("aria-checked", "true");
+  await expect(sw(T_RECORDATORIOS.categorias.registroSemanal.titulo)).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByLabel(T_RECORDATORIOS.horario.desde)).toHaveValue("8");
+  await expect(page.getByLabel(T_RECORDATORIOS.horario.hasta)).toHaveValue("21");
+  await expect(page.getByRole("button", { name: "miércoles", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "martes", exact: true })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByText(T_RECORDATORIOS.canales.correoActivo("ana@correo.cl"))).toBeVisible();
+  await sinViolaciones(page);
+
+  await sw(T_RECORDATORIOS.categorias.registroSemanal.titulo).click();
+  await page.getByRole("button", { name: "martes", exact: true }).click();
+  await page.getByRole("button", { name: T_RECORDATORIOS.guardar }).click();
+  await expect(page.getByRole("status").filter({ hasText: T_RECORDATORIOS.guardado })).toBeVisible();
+  const g = llamadas.filter((l) => l.nombre === "guardar_recordatorios");
+  expect(g).toHaveLength(1);
+  expect(g[0].cuerpo).toEqual({
+    p: {
+      activos: true, acciones_del_dia: true, registro_semanal: true, videollamadas: true, mensajes_coach: true,
+      comunidad: false, logros: true, por_correo: false, desde: 8, hasta: 21, hora: 19, dias: [1, 2, 3, 5],
+    },
+  });
+});
+
+test("Recordatorios real: sin fila usa lo de por defecto (apagados) y el correo inactivo se dice tal cual", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial(), { correo_disponible: () => false });
+  await page.goto(RUTA_RECORDATORIOS);
+  await hidratar(page);
+  await expect(page.getByRole("switch", { name: T_RECORDATORIOS.general.titulo, exact: true })).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByText(T_RECORDATORIOS.general.apagado)).toBeVisible();
+  await expect(page.getByText(T_RECORDATORIOS.canales.correoInactivo)).toBeVisible();
+});
+
+test("Recordatorios real: sin la migración aplicada lo explica y no ofrece guardar", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial());
+  await page.route(`${SUPABASE_URL}/rest/v1/recordatorios**`, (rt) =>
+    rt.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ code: "42703", message: "column recordatorios.activos does not exist" }) }));
+  await page.goto(RUTA_RECORDATORIOS);
+  await hidratar(page);
+  await expect(page.getByText(T_RECORDATORIOS.noDisponible.titulo)).toBeVisible();
+  await expect(page.getByRole("button", { name: T_RECORDATORIOS.guardar })).toHaveCount(0);
+});
+
+test("Recordatorios real: si guardar falla, lo dice y no pierde lo elegido", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.recordatorios = [prefsBase()];
+  await simular(page, base, { correo_disponible: () => true, guardar_recordatorios: () => ({ __error: "dias:invalido" }) });
+  await page.goto(RUTA_RECORDATORIOS);
+  await hidratar(page);
+  await page.getByRole("switch", { name: T_RECORDATORIOS.categorias.logros.titulo, exact: true }).click();
+  await page.getByRole("button", { name: T_RECORDATORIOS.guardar }).click();
+  await expect(page.getByRole("status").filter({ hasText: T_RECORDATORIOS.error })).toBeVisible();
+  await expect(page.getByRole("switch", { name: T_RECORDATORIOS.categorias.logros.titulo, exact: true })).toHaveAttribute("aria-checked", "false");
 });
