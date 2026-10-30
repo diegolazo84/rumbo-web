@@ -1669,3 +1669,92 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 .rc-estado--error { color: var(--error); }
 .rc-mensaje { margin: 0; }
 .me-preferencias__recordatorios { display: inline-flex; gap: var(--e-2); justify-self: start; }
+
+/* ---------------------------------------------------------------------------
+   Asistente de Rumbo (maqueta de ChatGPT, 30-oct-2026). Reutiliza la portada y las tarjetas
+   de Recordatorios (.rc-portada, .rc-tarjeta, .rc-icono). Móvil: la conversación primero. */
+.as { display: grid; gap: var(--e-4); }
+.as-beta { display: inline-flex; align-items: center; padding: 2px var(--e-3); border-radius: var(--r-full); background: var(--orden-fondo); color: var(--orden-texto); font: 600 var(--t-xs)/1.4 var(--sans); }
+.as-claves { display: none; margin: 0; padding: 0; list-style: none; }
+.as-clave { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--e-3); padding: var(--e-3) var(--e-4); border-radius: var(--r-l); background: var(--superficie); box-shadow: var(--sombra-1); font-size: var(--t-xs); line-height: 1.4; color: var(--tinta); }
+.as-revisa { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--e-3); margin: 0; padding: var(--e-4); border-radius: var(--r-l); background: var(--salvia-suave); font-size: var(--t-s); line-height: 1.45; color: var(--tinta); }
+.as-revisa .enlace-flecha { display: inline-flex; min-block-size: 44px; align-items: center; }
+.as-cuerpo { display: grid; gap: var(--e-4); }
+.as-principal, .as-lateral { display: grid; gap: var(--e-4); align-content: start; min-inline-size: 0; }
+.as-h2 { display: flex; align-items: center; gap: var(--e-2); }
+.as-h2 .icono { color: var(--bosque); }
+@media (min-width: 1024px) {
+  .as-claves { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--e-4); }
+  .as-revisa { display: none; }
+  .as-cuerpo { grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); align-items: start; }
+}
+
+/* Conversación */
+.as-chat { gap: var(--e-4); }
+.as-mensajes { display: grid; gap: var(--e-5); margin: 0; padding: 0; list-style: none; }
+.as-par { display: grid; gap: var(--e-3); }
+.as-dia { justify-self: center; margin: 0; font-size: var(--t-xs); color: var(--tinta-suave); }
+.as-burbuja { display: grid; gap: var(--e-2); min-inline-size: 0; padding: var(--e-3) var(--e-4); border-radius: var(--r-m); font-size: var(--t-s); line-height: 1.5; color: var(--tinta); }
+.as-burbuja p { margin: 0; font-size: var(--t-s); color: var(--tinta); }
+.as-texto { white-space: pre-line; overflow-wrap: anywhere; }
+.as-burbuja--tu { justify-self: end; max-inline-size: min(100%, 36rem); background: var(--papel-hondo); }
+.as-respuesta { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: var(--e-3); max-inline-size: 40rem; }
+.as-avatar { display: grid; place-items: center; inline-size: 44px; block-size: 44px; border-radius: 50%; background: var(--niebla); color: var(--bosque); }
+.as-burbuja--ia { background: var(--superficie); border: 1px solid var(--linea); }
+.as-burbuja--estado { background: var(--crema); border: 1px dashed var(--linea-fuerte); }
+.as-burbuja--estado p { color: var(--tinta-suave); font-size: var(--t-xs); }
+.as-burbuja--estado .as-etiqueta { color: var(--tinta); font-size: var(--t-s); font-weight: 600; }
+.as-respuesta--crisis .as-avatar { background: var(--terracota-suave); color: var(--terracota-texto); }
+.as-respuesta--crisis .as-burbuja--estado { background: var(--terracota-suave); border-style: solid; border-color: var(--terracota-suave); }
+.as-respuesta--crisis .as-burbuja--estado p { color: var(--tinta); }
+.as-hora { justify-self: end; font-size: var(--t-micro); color: var(--tinta-suave); }
+.as-pie { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--e-2); }
+.as-burbuja .as-pie { font-size: var(--t-xs); }
+.as-revisada { display: inline-flex; align-items: center; gap: var(--e-1); font-size: var(--t-xs); color: var(--bosque); font-weight: 600; }
+.as-seguir { display: flex; flex-wrap: wrap; gap: var(--e-2); }
+.as-chip { display: inline-flex; align-items: center; gap: var(--e-2); min-block-size: 44px; padding: 0 var(--e-4); border: 1px solid var(--linea-fuerte); border-radius: var(--r-full); background: var(--superficie); color: var(--tinta); font: 500 var(--t-xs)/1.2 var(--sans); cursor: pointer; }
+.as-chip:hover { background: var(--niebla); }
+.as-vacia { display: grid; justify-items: center; gap: var(--e-2); padding: var(--e-5) 0; text-align: center; }
+
+/* Escribir */
+.as-escribir { display: grid; gap: var(--e-2); }
+.as-escribir__caja { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--e-2); padding: var(--e-2); border: 1px solid var(--linea-fuerte); border-radius: var(--r-m); background: var(--superficie); }
+.as-escribir__caja:focus-within { outline: var(--foco-ancho) solid var(--foco-color); outline-offset: 2px; }
+.as-escribir textarea { min-block-size: 48px; max-block-size: 40vh; padding: var(--e-2); border: 0; background: transparent; color: var(--tinta); font: var(--t-s)/1.45 var(--sans); resize: vertical; }
+.as-escribir textarea:focus { outline: none; }
+.as-enviar { display: grid; place-items: center; inline-size: 48px; block-size: 48px; border: 0; border-radius: var(--r-s); background: var(--bosque); color: var(--sobre-oscuro); cursor: pointer; }
+.as-enviar:hover { background: var(--bosque-hondo); }
+.as-enviar:disabled { opacity: 0.6; cursor: progress; }
+.as-largo, .as-aviso-pie { margin: 0; font-size: var(--t-xs); color: var(--tinta-suave); }
+.as-aviso-pie { text-align: center; }
+.as-estado { margin: 0; font-size: var(--t-xs); color: var(--bosque); }
+.as-estado:empty { display: none; }
+.as-estado--error { color: var(--error); }
+
+/* Lateral */
+.as-ejemplos ul, .as-info__lista, .as-lineas { display: grid; gap: var(--e-2); margin: 0; padding: 0; list-style: none; }
+.as-ejemplo { display: flex; justify-content: space-between; align-items: center; gap: var(--e-2); inline-size: 100%; min-block-size: 44px; padding: var(--e-2) var(--e-3); border: 1px solid var(--linea); border-radius: var(--r-s); background: var(--superficie); color: var(--tinta); font: var(--t-xs)/1.35 var(--sans); text-align: start; cursor: pointer; }
+.as-ejemplo:hover { background: var(--niebla); }
+.as-info__lista li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--e-3); font-size: var(--t-xs); line-height: 1.45; color: var(--tinta); }
+.as-info__lista .icono { color: var(--bosque); }
+.as-info:focus { outline: none; }
+.as-crisis { background: var(--terracota-suave); }
+.as-crisis p, .as-crisis .as-h2 .icono { color: var(--terracota-texto); }
+.as-lineas li { display: grid; gap: 2px; }
+.as-linea__numero { font: 600 var(--t-lead)/1.2 var(--sans); color: var(--tinta); }
+a.as-linea__numero { display: inline-flex; min-block-size: 44px; align-items: center; justify-self: start; }
+.as-linea__nombre { font-size: var(--t-xs); color: var(--tinta); }
+.as-comparte__acciones { display: grid; gap: var(--e-1); justify-items: start; }
+.as-comparte .enlace-util { min-block-size: 44px; }
+.as-confirmar { display: grid; gap: var(--e-2); }
+
+/* Consentimiento */
+.as-consentimiento { gap: var(--e-4); }
+.as-consentimiento h2:focus { outline: none; }
+.as-consentimiento > p, .as-consentimiento__puntos li { font-size: var(--t-s); color: var(--tinta); }
+.as-consentimiento__puntos { display: grid; gap: var(--e-2); margin: 0; padding-inline-start: 1.25em; line-height: 1.5; }
+.as-contexto { display: grid; gap: var(--e-2); margin: 0; padding: 0; border: 0; }
+.as-opcion { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: var(--e-3); min-block-size: 44px; padding: var(--e-3); border: 1px solid var(--linea); border-radius: var(--r-s); background: var(--superficie); cursor: pointer; }
+.as-opcion input { inline-size: 22px; block-size: 22px; margin: 2px 0 0; accent-color: var(--bosque); }
+.as-opcion__titulo { display: block; font-weight: 600; color: var(--tinta); }
+.as-opcion__texto { display: block; font-size: var(--t-xs); color: var(--tinta-suave); }

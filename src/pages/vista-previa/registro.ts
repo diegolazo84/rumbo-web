@@ -111,6 +111,7 @@ const progreso = () => import("./mi-espacio/Progreso");
 const creditos = () => import("./mi-espacio/Creditos");
 const misAvisos = () => import("./mi-espacio/MisAvisos");
 const recordatorios = () => import("./mi-espacio/Recordatorios");
+const asistente = () => import("./mi-espacio/Asistente");
 const acompanamiento = () => import("./mi-espacio/Acompanamiento");
 const misMetas = () => import("./mi-espacio/MisMetas");
 const comunidad = () => import("./mi-espacio/Comunidad");
@@ -185,6 +186,9 @@ const MI_ESPACIO_FILAS: Fila[] = [
   { ruta: "mi-espacio/preferencias/", nombre: "Preferencias y Mis datos", estado: "preferencias", titulo: MI_ESPACIO("Preferencias"), marco: "mi-espacio", seccion: "Preferencias", apartado: "Preferencias", cargar: preferencias },
   { ruta: "mi-espacio/preferencias/eliminar/", nombre: "Pedir que eliminen mis datos", estado: "eliminar", titulo: MI_ESPACIO("Preferencias"), marco: "mi-espacio", seccion: "Preferencias", apartado: "Preferencias", cargar: preferencias },
   { ruta: "mi-espacio/preferencias/recordatorios/", nombre: "Recordatorios", titulo: MI_ESPACIO("Recordatorios"), marco: "mi-espacio", seccion: "Recordatorios", activo: "preferencias", apartado: "Preferencias", cargar: recordatorios },
+  { ruta: "mi-espacio/asistente/", nombre: "Asistente de Rumbo", titulo: MI_ESPACIO("Asistente de Rumbo"), marco: "mi-espacio", seccion: "Asistente de Rumbo", activo: "asistente", apartado: "Asistente", cargar: asistente },
+  { ruta: "mi-espacio/asistente/autorizar/", nombre: "Asistente: autorización antes de empezar", estado: "consentimiento", titulo: MI_ESPACIO("Asistente de Rumbo"), marco: "mi-espacio", seccion: "Asistente de Rumbo", activo: "asistente", apartado: "Asistente", cargar: asistente },
+  { ruta: "mi-espacio/asistente/apagado/", nombre: "Asistente: no disponible", estado: "apagado", titulo: MI_ESPACIO("Asistente de Rumbo"), marco: "mi-espacio", seccion: "Asistente de Rumbo", activo: "asistente", apartado: "Asistente", cargar: asistente },
   { ruta: "mi-espacio/ayuda/", nombre: "Ayuda inmediata", titulo: MI_ESPACIO("Ayuda inmediata"), marco: "mi-espacio", seccion: "Ayuda inmediata", apartado: "Ayuda", sinDatos: true, cargar: ayudaInmediata },
 ];
 

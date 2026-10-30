@@ -7,10 +7,10 @@
 //   · Dónde: Mis avisos siempre; por correo si la persona lo elige (Brevo, con su estado real).
 //   · Vista previa ilustrativa (no envía nada) y «Guardar cambios» con guardar_recordatorios.
 // En la vista previa, guardar solo confirma en la pantalla.
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Icono, type NombreIconoApp } from "../../../components/app";
-import { EtiquetaEjemplo, useEspacio } from "./comun";
+import { EtiquetaEjemplo, MensajeAviso as Mensaje, useEspacio } from "./comun";
 import { FOTO_PORTADA, PaisajePortada } from "./comunidad/Paisaje";
 import type { PrefRecordatorios } from "./espacio";
 import { T_RECORDATORIOS as T } from "./textos";
@@ -65,19 +65,6 @@ export default function Recordatorios() {
       ) : (
         <Formulario inicial={pref} />
       )}
-    </div>
-  );
-}
-
-function Mensaje({ icono, titulo, texto, rol, accion }: { icono: NombreIconoApp; titulo: string; texto: string; rol?: "alert"; accion?: ReactNode }) {
-  return (
-    <div className="aviso rc-mensaje" role={rol}>
-      <Icono nombre={icono} tamaño={20} className="aviso-icono" />
-      <div className="aviso-cuerpo">
-        <h2 className="aviso-titulo">{titulo}</h2>
-        <p>{texto}</p>
-        {accion && <div className="acciones">{accion}</div>}
-      </div>
     </div>
   );
 }

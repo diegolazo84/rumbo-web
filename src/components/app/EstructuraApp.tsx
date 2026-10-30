@@ -24,6 +24,7 @@ export const TEXTOS_ESTRUCTURA = {
   preferencias: "Preferencias",
   misDatos: "Mis datos",
   loQueViene: "Lo que viene en Rumbo",
+  asistente: "Asistente de Rumbo",
   salir: "Salir",
 } as const;
 
@@ -49,7 +50,7 @@ type Props = {
 
 // Raíces de las cinco secciones de Mi espacio (Rumbo 2.0): su nombre ya es el H1 de la pantalla,
 // así que la cabecera móvil no lo repite. En las subpáginas (Acción, Créditos…) sí se muestra.
-const SECCIONES_RAIZ = new Set(["Mi Rumbo", "Mi plan", "Mi acompañamiento", "Comunidad", "Mis logros", "Mis avisos", "Lo que viene en Rumbo"]);
+const SECCIONES_RAIZ = new Set(["Mi Rumbo", "Mi plan", "Mi acompañamiento", "Comunidad", "Mis logros", "Mis avisos", "Lo que viene en Rumbo", "Asistente de Rumbo"]);
 
 const ES_TEXTO = "textarea, input:not([type]), input[type=text], input[type=email], input[type=search]";
 
@@ -95,11 +96,15 @@ export default function EstructuraApp({
   const conAvisos = miEspacio && !sinNavegacion && avisos ? avisos : undefined;
   const destinosLateral: DestinoNav[] = conAvisos
     ? [...destinos, { id: "avisos", texto: TEXTOS_CABECERA.avisos, icono: "bell", href: conAvisos.href, contador: conAvisos.sinLeer, contadorTexto: TEXTOS_CABECERA.sinLeer(conAvisos.sinLeer) }]
-    : destinos;
+    : [...destinos];
+  // Asistente de Rumbo: solo cuando está disponible (rutas.asistente). En el móvil, en el menú.
+  if (miEspacio && !sinNavegacion && rutas.asistente)
+    destinosLateral.push({ id: "asistente", texto: TEXTOS_ESTRUCTURA.asistente, icono: "sprout", href: rutas.asistente });
   const etiqueta = miEspacio ? TEXTOS_ESTRUCTURA.miEspacio : TEXTOS_ESTRUCTURA.panel;
 
   // Menú de la cabecera de Mi espacio (Rumbo 2.0, etapa 2): lo que antes era «Más» en la barra.
   const filasMas: FilaMas[] = [
+    { id: "asistente", texto: TEXTOS_ESTRUCTURA.asistente, icono: "sprout", href: rutas.asistente },
     { id: "ajuste", texto: TEXTOS_ESTRUCTURA.ajuste, icono: "sliders-horizontal", href: rutas.ajuste },
     { id: "preferencias", texto: TEXTOS_ESTRUCTURA.preferencias, icono: "settings", href: rutas.preferencias },
     { id: "datos", texto: TEXTOS_ESTRUCTURA.misDatos, icono: "download", href: rutas.misDatos },

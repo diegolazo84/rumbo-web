@@ -9,7 +9,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { operacion } from "../src/data/rumbo";
 import { SUPABASE_URL } from "../src/lib/supabase-config";
-import { T_RECORDATORIOS } from "../src/pages/vista-previa/mi-espacio/textos";
+import { T_ASISTENTE, T_RECORDATORIOS } from "../src/pages/vista-previa/mi-espacio/textos";
 
 const ETIQUETAS_AXE = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const CLAVE_SESION = "rumbo-sesion";
@@ -1468,4 +1468,123 @@ test("Recordatorios real: si guardar falla, lo dice y no pierde lo elegido", asy
   await page.getByRole("button", { name: T_RECORDATORIOS.guardar }).click();
   await expect(page.getByRole("status").filter({ hasText: T_RECORDATORIOS.error })).toBeVisible();
   await expect(page.getByRole("switch", { name: T_RECORDATORIOS.categorias.logros.titulo, exact: true })).toHaveAttribute("aria-checked", "false");
+});
+
+// ---------------------------------------------------------------------------
+// Asistente de Rumbo (maqueta de ChatGPT, 30-oct-2026): solo RPC que ya están en la base (E2).
+
+const RUTA_ASISTENTE = "mi-espacio/asistente/";
+const consentido = (): Fila => ({ participante_id: "p1", metas: true, acciones: false, registro_semanal: false, aceptado_en: "2026-10-06T13:00:00Z", retirado_en: null });
+const consultasBase = (): Fila[] => [
+  { id: "q3", pregunta: "Quiero morir", estado: "crisis", respuesta: null, creada_en: "2026-10-13T15:00:00Z", revisada_en: null },
+  { id: "q2", pregunta: "¿Qué hábitos me recomiendas?", estado: "descartada", respuesta: null, creada_en: "2026-10-13T12:00:00Z", revisada_en: "2026-10-13T13:00:00Z" },
+  { id: "q1", pregunta: "¿Cómo mantengo la motivación?", estado: "aprobada", respuesta: "Texto aprobado por el coach.", creada_en: "2026-10-12T12:00:00Z", revisada_en: "2026-10-12T13:00:00Z" },
+];
+
+test("Asistente real apagado: sin entrada en la navegación, lo explica y la ayuda en crisis sigue visible", async ({ page, isMobile }) => {
+  await conSesion(page);
+  const llamadas = await simular(page, baseInicial(), { ia_disponible: () => false, mis_consultas_ia: () => [] });
+  await page.goto(RUTA_ASISTENTE);
+  await hidratar(page);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(T_ASISTENTE.titulo);
+  await expect(page.getByText(T_ASISTENTE.apagado.titulo)).toBeVisible();
+  await expect(page.getByLabel(T_ASISTENTE.escribir)).toHaveCount(0);
+  await expect(page.locator(".as-crisis")).toContainText("*4141");
+  if (!isMobile) await expect(page.locator("nav.lateral").getByRole("link", { name: T_ASISTENTE.titulo })).toHaveCount(0);
+  expect(llamadas.filter((l) => l.nombre === "ia_preguntar")).toHaveLength(0);
+  // Nunca se lee la tabla de consultas (tiene borradores): solo mis_consultas_ia.
+  expect(llamadas.filter((l) => l.tipo === "tabla" && l.nombre === "ia_consultas")).toHaveLength(0);
+});
+
+test("Asistente real: sin consentimiento no se puede preguntar; aceptar guarda lo elegido", async ({ page, isMobile }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  const llamadas = await simular(page, base, {
+    ia_disponible: () => true,
+    mis_consultas_ia: () => [],
+    ia_guardar_consentimiento: () => null,
+  });
+  await page.goto(RUTA_ASISTENTE);
+  await hidratar(page);
+  if (!isMobile) await expect(page.locator("nav.lateral").getByRole("link", { name: T_ASISTENTE.titulo })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("heading", { name: T_ASISTENTE.consentimiento.titulo })).toBeVisible();
+  await expect(page.getByLabel(T_ASISTENTE.escribir)).toHaveCount(0);
+  await sinViolaciones(page);
+  await page.getByRole("checkbox", { name: new RegExp(T_ASISTENTE.consentimiento.opciones.acciones.titulo) }).check();
+  await page.getByRole("button", { name: T_ASISTENTE.consentimiento.aceptar }).click();
+  await expect(page.getByLabel(T_ASISTENTE.escribir)).toBeVisible();
+  expect(llamadas.filter((l) => l.nombre === "ia_guardar_consentimiento").map((l) => l.cuerpo)).toEqual([
+    { p_metas: false, p_acciones: true, p_registro_semanal: false },
+  ]);
+  await expect(page.getByText(T_ASISTENTE.vacia.titulo)).toBeVisible();
+});
+
+test("Asistente real: muestra solo lo aprobado, lo no compartido y la crisis; preguntar va a ia_preguntar y relee", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.ia_consentimientos = [consentido()];
+  const consultas = consultasBase();
+  const llamadas = await simular(page, base, {
+    ia_disponible: () => true,
+    mis_consultas_ia: () => consultas,
+    ia_preguntar: (c) => {
+      consultas.unshift({ id: "q4", pregunta: c.p_pregunta, estado: "en_revision", respuesta: null, creada_en: "2026-10-13T16:00:00Z", revisada_en: null });
+      return { id: "q4", estado: "enviada" };
+    },
+  });
+  await page.goto(RUTA_ASISTENTE);
+  await hidratar(page);
+  const pares = page.locator(".as-par");
+  await expect(pares).toHaveCount(3);
+  await expect(pares.nth(0)).toContainText("Texto aprobado por el coach.");
+  await expect(pares.nth(0)).toContainText(T_ASISTENTE.estados.aprobada.etiqueta);
+  await expect(pares.nth(1)).toContainText(T_ASISTENTE.estados.descartada.texto);
+  await expect(pares.nth(2)).toContainText(T_ASISTENTE.estados.crisis.etiqueta);
+  await expect(pares.nth(2).getByRole("link", { name: "131" })).toBeVisible();
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  await sinViolaciones(page);
+
+  await page.getByLabel(T_ASISTENTE.escribir).fill("  ¿Cómo organizo mi semana?  ");
+  await page.getByRole("button", { name: T_ASISTENTE.enviar }).click();
+  await expect(page.locator("#as-pregunta-estado")).toHaveText(T_ASISTENTE.enviadaAviso);
+  expect(llamadas.filter((l) => l.nombre === "ia_preguntar").map((l) => l.cuerpo)).toEqual([{ p_pregunta: "¿Cómo organizo mi semana?" }]);
+  await expect(pares).toHaveCount(4);
+  await expect(pares.nth(3)).toContainText(T_ASISTENTE.estados.en_revision.texto);
+});
+
+test("Asistente real: el tope diario se explica sin perder lo escrito", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.ia_consentimientos = [consentido()];
+  await simular(page, base, { ia_disponible: () => true, mis_consultas_ia: () => [], ia_preguntar: () => ({ __error: "ia:demasiadas", __estado: 429 }) });
+  await page.goto(RUTA_ASISTENTE);
+  await hidratar(page);
+  await page.getByLabel(T_ASISTENTE.escribir).fill("¿Cómo sigo mañana?");
+  await page.getByRole("button", { name: T_ASISTENTE.enviar }).click();
+  await expect(page.locator("#as-pregunta-estado")).toHaveText(T_ASISTENTE.errores.demasiadas);
+  await expect(page.getByLabel(T_ASISTENTE.escribir)).toHaveValue("¿Cómo sigo mañana?");
+});
+
+test("Asistente real: retirar la autorización llama a la base y deja de ofrecer preguntar", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.ia_consentimientos = [consentido()];
+  const llamadas = await simular(page, base, { ia_disponible: () => true, mis_consultas_ia: () => consultasBase().slice(2), ia_retirar_consentimiento: () => null });
+  await page.goto(RUTA_ASISTENTE);
+  await hidratar(page);
+  await page.getByRole("button", { name: T_ASISTENTE.ajustes.retirar }).click();
+  await page.getByRole("button", { name: T_ASISTENTE.ajustes.confirmarSi }).click();
+  await expect(page.getByRole("heading", { name: T_ASISTENTE.retirado.titulo })).toBeVisible();
+  await expect(page.getByLabel(T_ASISTENTE.escribir)).toHaveCount(0);
+  await expect(page.locator(".as-par")).toHaveCount(1); // lo anterior sigue a la vista
+  expect(llamadas.filter((l) => l.nombre === "ia_retirar_consentimiento")).toHaveLength(1);
+});
+
+test("Asistente real: si no se puede leer, lo dice sin romper Mi espacio", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial(), { ia_disponible: () => true, mis_consultas_ia: () => ({ __error: "sesion:sin_ficha", __estado: 403 }) });
+  await page.goto(RUTA_ASISTENTE);
+  await hidratar(page);
+  await expect(page.getByRole("alert")).toContainText(T_ASISTENTE.errorCargar.titulo);
+  await expect(page.locator(".as-crisis")).toContainText("*4141");
 });
