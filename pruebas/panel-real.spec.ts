@@ -224,7 +224,7 @@ function sesion(aal: "aal1" | "aal2", factores: Factor[]) {
 
 type Llamada = { tipo: "rpc" | "tabla" | "auth"; metodo: string; nombre: string; url: string; cuerpo: unknown; aal: string };
 
-const ADMIN = new Set(["cambiar_modulo", "propuestas_grupo_equipo", "responder_propuesta_grupo", "moderar_publicacion", "guardar_grupo_comunidad", "guardar_desafio", "crear_espacio", "nuevo_enlace_solicitud", "nuevo_borrador", "solapamientos", "carga_prevista", "publicar_programa", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "eliminar_participante", "ia_bandeja", "ia_revisar"]);
+const ADMIN = new Set(["cambiar_modulo", "propuestas_grupo_equipo", "responder_propuesta_grupo", "moderar_publicacion", "guardar_grupo_comunidad", "guardar_desafio", "crear_espacio", "nuevo_enlace_solicitud", "nuevo_borrador", "solapamientos", "carga_prevista", "publicar_programa", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "eliminar_participante", "ia_bandeja", "ia_revisar", "ia_gasto", "guardar_ia_config"]);
 
 async function simular(page: Page, base: Base, { equipo = true, factores = [] as Factor[] } = {}) {
   const llamadas: Llamada[] = [];
@@ -312,6 +312,15 @@ async function simular(page: Page, base: Base, { equipo = true, factores = [] as
         revisada_en: AHORA.toISOString(),
         nota_revision: c.p_nota ?? null,
       });
+      return null;
+    },
+    ia_gasto: () => ({ tope_usd: base.ia_config[0].tope_mensual_usd, gastado_usd: 0.0123, reservado_usd: 0.0005, consultas: 3, crisis: 1, sin_presupuesto: 0, errores: 1 }),
+    guardar_ia_config: (c) => {
+      const p = c.p as Fila;
+      const g = base.ia_config[0];
+      if (p.activo === true && !base.ia_clave) return { __error: "ia:sin_clave", __estado: 409 };
+      if (p.tope_diario_persona !== undefined && (Number(p.tope_diario_persona) < 1 || Number(p.tope_diario_persona) > 50)) return { __error: "ia:config_invalida", __estado: 400 };
+      Object.assign(g, p, p.activo === true ? { activado_en: AHORA.toISOString() } : p.activo === false ? { activado_en: null } : {});
       return null;
     },
     revisar_evidencia: (c) => {
@@ -1154,4 +1163,71 @@ test("Asistente: aprobar tal cual no reenvía el texto; si ya fue revisada, se e
   await fila.getByRole("button", { name: "Aprobar con mis cambios" }).click();
   await expect(fila.getByText("La respuesta no puede quedar vacía.").first()).toBeVisible();
   expect(llamadas.filter((l) => l.nombre === "ia_revisar")).toHaveLength(1);
+});
+
+const configIa = (): Fila => ({ id: true, activo: false, modelo: "gpt-4o-mini", instrucciones: "Eres el asistente de Rumbo. Un coach humano revisa tu respuesta antes de que la persona la lea.", max_tokens_respuesta: 400, tokens_entrada_estimados: 2000, precio_entrada_1m: 0.15, precio_salida_1m: 0.6, tope_mensual_usd: 5, tope_diario_persona: 5, activado_en: null });
+
+test("Asistente (dueño): consumo sin conversaciones, estimación por persona, límites y encender con la clave", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  base.ia_config = [configIa()];
+  base.ia_consultas = consultasIa();
+  base.modulos.push({ clave: "asistente_ia", nombre: "Asistente con inteligencia artificial", estado: "planificado", probado_en: null, respaldo: null, que_falta: null, orden: 4, cambiado_en: AHORA.toISOString() });
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  await page.getByRole("link", { name: "Asistente: encender, límites y consumo" }).click();
+  await expect(page.locator("h1")).toHaveText("Asistente: administración.");
+  await expect(page.getByText("Apagado", { exact: true })).toBeVisible();
+  await expect(page.getByText("Módulo «Asistente con inteligencia artificial»: Planificado.")).toBeVisible();
+  // Consumo: montos y cuentas, nunca preguntas ni respuestas.
+  const consumo = page.locator("section", { has: page.getByRole("heading", { name: "Consumo de este mes" }) });
+  await expect(consumo).toContainText("USD 0,0123 de USD 5,00");
+  await expect(consumo).toContainText("Respuestas por revisar2");
+  await expect(page.locator("main")).not.toContainText("¿Cómo mantengo la motivación?");
+  await expect(page.locator("main")).not.toContainText("Quiero morir");
+  // Estimación: (2000 × 0,15 + 400 × 0,60) / 1e6 = 0,00054 por consulta; × 5 × 28.
+  const est = page.locator("section", { has: page.getByRole("heading", { name: "Costo estimado por persona" }) });
+  await expect(est).toContainText("USD 0,0005");
+  await expect(est).toContainText("USD 0,08");
+  await sinViolaciones(page);
+
+  // Límites: valida y guarda.
+  await page.getByLabel("Límite mensual (USD)").fill("diez");
+  await page.getByRole("button", { name: "Guardar límites" }).click();
+  await expect(page.getByLabel("Límite mensual (USD)")).toBeFocused();
+  expect(llamadas.some((l) => l.nombre === "guardar_ia_config")).toBe(false);
+  await page.getByLabel("Límite mensual (USD)").fill("10");
+  await page.getByRole("button", { name: "Guardar límites" }).click();
+  await expect(page.getByText("Límites guardados.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "guardar_ia_config")!.cuerpo).toEqual({
+    p: { tope_mensual_usd: 10, tope_diario_persona: 5, modelo: "gpt-4o-mini", max_tokens_respuesta: 400, tokens_entrada_estimados: 2000, precio_entrada_1m: 0.15, precio_salida_1m: 0.6 },
+  });
+  await expect(consumo).toContainText("USD 0,0123 de USD 10,00");
+
+  // Encender sin clave: la base lo rechaza y se explica.
+  await page.getByRole("button", { name: "Encender el asistente" }).click();
+  await expect(page.getByText(/se envía a OpenAI \(servicio pagado\)/)).toBeVisible();
+  await page.getByRole("button", { name: "Sí, continuar" }).click();
+  await expect(page.getByText("Falta la clave de OpenAI en el Vault de Supabase.", { exact: false })).toBeVisible();
+  expect(base.ia_config[0].activo).toBe(false);
+  // Con la clave, enciende.
+  base.ia_clave = true;
+  await page.getByRole("button", { name: "Encender el asistente" }).click();
+  await page.getByRole("button", { name: "Sí, continuar" }).click();
+  await expect(page.getByText("El asistente quedó encendido.")).toBeVisible();
+  await expect(page.getByText("Encendido", { exact: true })).toBeVisible();
+  expect(llamadas.filter((l) => l.nombre === "guardar_ia_config").at(-1)!.cuerpo).toEqual({ p: { activo: true } });
+});
+
+test("Asistente (dueño): un coach no ve la administración", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  base.ia_config = [configIa()];
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/mi_rol_equipo`, (rt) => rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ rol: "coach", puede_moderar: false }) }));
+  await page.goto("equipo/asistente/administracion/");
+  await hidratar(page);
+  await expect(page.getByText("Solo el dueño puede administrar el asistente.")).toBeVisible();
+  expect(llamadas.filter((l) => l.nombre === "ia_config" || l.nombre === "ia_gasto")).toHaveLength(0);
 });
