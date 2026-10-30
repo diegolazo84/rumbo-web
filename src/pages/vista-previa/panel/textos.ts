@@ -633,6 +633,9 @@ export const PANEL_REAL = {
     "registro:no_pendiente": "Esta evidencia ya fue revisada.",
     "fotos:borrar_primero": "Primero hay que borrar sus fotos del almacenamiento.",
     "sesion:no_autorizado": "Tu sesión no tiene el segundo factor. Vuelve a entrar al panel.",
+    "mensaje:corto": "Escribe un mensaje de al menos 10 caracteres.",
+    "mensaje:largo": "El mensaje puede tener hasta 800 caracteres.",
+    "ciclo:no_termina": "El mensaje de cierre se escribe desde la última semana del ciclo.",
     "nombre:largo": "Escribe un nombre de 2 a 60 caracteres.",
     "nombre:en_uso": "Ya existe un grupo con ese nombre.",
     "descripcion:largo": "La descripción es demasiado larga.",
@@ -889,3 +892,18 @@ export const MODULOS_PANEL = {
   guardado: (nombre: string) => `«${nombre}» quedó guardado.`,
 } as const;
 
+
+// Mensaje de cierre en la ficha (informe de cierre de ciclo, 30-oct-2026): lo escribe el coach;
+// la persona lo ve en su informe con el nombre de quien lo escribió.
+export const MENSAJE_CIERRE_PANEL = {
+  titulo: "Mensaje de cierre",
+  ayuda: "La persona lo ve en su informe de cierre de ciclo, con tu nombre. Escríbelo tú: no se genera solo. Si lo dejas vacío, el informe muestra tu último foco.",
+  campo: "Tu mensaje para cerrar el ciclo",
+  ejemplo: "Lo que más se notó en este ciclo, lo que vale la pena llevarse y cómo seguir.",
+  guardar: "Guardar mensaje",
+  quitar: "Quitar mensaje",
+  guardado: "Mensaje guardado. La persona lo verá en su informe de cierre.",
+  quitado: "Mensaje quitado. El informe mostrará tu último foco.",
+  escrito: (quien: string, cuando: string) => `Escrito por ${quien} el ${cuando}.`,
+  error: "Escribe entre 10 y 800 caracteres.",
+} as const;

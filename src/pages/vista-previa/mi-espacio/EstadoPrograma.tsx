@@ -14,14 +14,15 @@ import { Link } from "react-router-dom";
 import CalendarioEjemplo from "../../../components/CalendarioEjemplo";
 import { Acordeon, Aviso, ListaCheck } from "../../../components/Bloques";
 import Etiqueta from "../../../components/Etiqueta";
-import { ChipMeta, EstadoVacio, Hoja, HojaAyuda, Icono, MetaTarjeta } from "../../../components/app";
-import { calcularProgreso, ciclo as cicloEjemplo, cuentaComoHecha, ocurrenciasDel, type Ocurrencia } from "../../../data/ejemplo-app";
+import { EstadoVacio, Hoja, HojaAyuda, Icono } from "../../../components/app";
+import { ciclo as cicloEjemplo, ocurrenciasDel, type Ocurrencia } from "../../../data/ejemplo-app";
 import { LIMITES } from "../../../data/formularios";
 import { DIAS, diaCorto, fechaLarga, mayuscula, sumarDias, type Iso } from "../../../lib/fechas";
 import { recursosAyuda, reglasCreditosTextos } from "../../../data/rumbo";
 import type { PropsPantalla } from "../registro";
 import Detalle from "./Detalle";
-import { EtiquetaEjemplo, FilaOcurrencia, prepararLista, useDescargarDatos, useEspacio } from "./comun";
+import InformeCierre from "./cierre/InformeCierre";
+import { EtiquetaEjemplo, FilaOcurrencia, prepararLista, useEspacio } from "./comun";
 import { T_COMUN, T_ESTADOS, T_HOY, T_PROGRESO, nombrePlan } from "./textos";
 
 // «Hoy» de ejemplo antes de empezar: el jueves anterior al primer lunes del ciclo.
@@ -293,69 +294,9 @@ function Pausa({ cuidado }: { cuidado: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
-// 4.3.5 Ciclo cerrado
+// 4.3.5 Ciclo cerrado: informe de cierre (maqueta de ChatGPT, 30-oct-2026).
 
 function Cerrado() {
   const esp = useEspacio();
-  const { real, ciclo, participante, esc, R } = esp;
-  const descargarDatos = useDescargarDatos();
-  const hoy = real ? esp.hoy : HOY_CERRADO;
-  const metas = esc.metas;
-  const t = T_ESTADOS.cerrado;
-  const lista = prepararLista({}, hoy, esc.ocurrencias);
-  const progreso = esp.progreso ?? calcularProgreso(lista, hoy, ciclo.inicio);
-
-  return (
-    <div className="me-pantalla me-estado">
-      <EstadoVacio
-        nivel={1}
-        titulo={t.titulo(ciclo.semanas)}
-        antes={<FilaOjo ojo={t.ojo} />}
-        accion={
-          <>
-            <button type="button" className="boton boton--secundario" onClick={() => void descargarDatos(hoy).catch(() => undefined)}>
-              <Icono nombre="download" tamaño={20} />
-              {t.descargar}
-            </button>
-            <Link to={R.semanaPublicada} className="boton boton--terciario">
-              {t.ultimaRevision}
-            </Link>
-          </>
-        }
-      >
-        {t.texto}
-      </EstadoVacio>
-
-      <section className="me-bloque" aria-labelledby="cerrado-metas">
-        <h2 id="cerrado-metas" className="sr-only">
-          {T_PROGRESO.metas}
-        </h2>
-        <div className="me-metas">
-          {metas.map((m) => {
-            const registradas = lista.filter((o) => o.metaId === m.id && o.vigente && cuentaComoHecha(o.registro)).length;
-            const hitos = m.hitos.filter((h) => h.logrado);
-            return (
-              <MetaTarjeta key={m.id} cat={m.categoria} como="article" className="me-meta">
-                <ChipMeta cat={m.categoria} />
-                <h3 className="me-h2">{m.titulo}</h3>
-                <p className="me-estado__registradas">{t.registradas(registradas)}</p>
-                {hitos.length > 0 && <ListaCheck className="me-hitos" items={hitos.map((h) => h.texto)} />}
-              </MetaTarjeta>
-            );
-          })}
-        </div>
-        {participante.mostrarCreditosEnHoy && (
-          <p className="me-resumen__fila me-resumen__fila--inicio">
-            <Etiqueta variante="activo" grande nowrap>
-              {T_HOY.resumen.nivel(progreso.nivel.nivel, progreso.nivel.nombre)}
-            </Etiqueta>
-            <span className="me-resumen__creditos">{T_HOY.resumen.creditos(progreso.creditos)}</span>
-          </p>
-        )}
-      </section>
-
-      <p className="voz me-estado__voz">{t.voz}</p>
-      <p className="microcopia">{t.nota}</p>
-    </div>
-  );
+  return <InformeCierre hoy={esp.real ? esp.hoy : HOY_CERRADO} />;
 }
