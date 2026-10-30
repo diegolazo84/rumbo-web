@@ -6,3 +6,11 @@
 /* Segundo factor y pantallas cortas del panel real */
 .pa-pantalla--angosta { max-inline-size: 36rem; }
 .pa-qr { inline-size: 200px; block-size: 200px; background: var(--superficie); border-radius: var(--r-s); }
+
+/* Asistente de Rumbo: bandeja de revisión (panel real). */
+.ia-fila { display: grid; gap: var(--e-3); }
+.ia-pregunta, .ia-texto { margin: 0; font-size: var(--t-s); line-height: 1.5; color: var(--tinta); overflow-wrap: anywhere; }
+.ia-texto { white-space: pre-line; padding: var(--e-3) var(--e-4); border-radius: var(--r-s); background: var(--papel-hondo); }
+.ia-rotulo { font-weight: 600; }
+.ia-original summary { display: inline-flex; align-items: center; min-block-size: 44px; color: var(--bosque); font-weight: 600; cursor: pointer; }
+.ia-confirmar { display: grid; gap: var(--e-2); }

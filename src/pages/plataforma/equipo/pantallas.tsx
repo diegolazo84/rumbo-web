@@ -20,13 +20,14 @@ import { ContenidoSolicitud, type AcuerdoSolicitud, type ServidorSolicitud } fro
 import { ListaEvidencias } from "../../vista-previa/panel/Fotos";
 import { ColaHoy } from "../../vista-previa/panel/Hoy";
 import { ListaSolicitudes } from "../../vista-previa/panel/Solicitudes";
-import { COMUNIDAD_PANEL, MODULOS_PANEL, CONTACTO_PANEL, MAS, PANEL_REAL, T_PANEL } from "../../vista-previa/panel/textos";
+import { ASISTENTE_PANEL, COMUNIDAD_PANEL, MODULOS_PANEL, CONTACTO_PANEL, MAS, PANEL_REAL, T_PANEL } from "../../vista-previa/panel/textos";
 import { ConstructorReal } from "./constructor";
 import { aAjuste, aSolicitud, colaReal, nombreDe, reordenesDe, reordenesUsados, type FilaMensaje, type FilaPeticion } from "./datos";
 import { RegistrarFactor, factoresTotp } from "./Mfa";
 import { FichaParticipanteReal, RevisionReal } from "./participante";
 import { ComunidadReal, R_COMUNIDAD } from "./comunidad";
 import { ModulosReal, R_MODULOS } from "./modulos";
+import { AsistenteReal, R_ASISTENTE } from "./asistente";
 import { MisParticipantesReal } from "./participantes";
 import { Alerta, NoEncontrada, useDatosPanel, useEscritura, useInstantanea } from "./comun";
 
@@ -56,6 +57,8 @@ export default function Pantallas({ ruta }: { ruta: RutaPlataforma }) {
       return <ComunidadReal />;
     case "/equipo/modulos/":
       return <ModulosReal />;
+    case "/equipo/asistente/":
+      return <AsistenteReal />;
     case "/equipo/mas/":
       return <MasReal />;
     default:
@@ -541,6 +544,11 @@ function MasReal() {
       <Link to={R_MODULOS} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
         <Icono nombre="sliders-horizontal" tamaño={20} />
         <span>{MODULOS_PANEL.enlace}</span>
+        <Icono nombre="arrow-right" tamaño={20} />
+      </Link>
+      <Link to={R_ASISTENTE} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
+        <Icono nombre="sprout" tamaño={20} />
+        <span>{ASISTENTE_PANEL.enlace}</span>
         <Icono nombre="arrow-right" tamaño={20} />
       </Link>
 

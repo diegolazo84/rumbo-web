@@ -224,7 +224,7 @@ function sesion(aal: "aal1" | "aal2", factores: Factor[]) {
 
 type Llamada = { tipo: "rpc" | "tabla" | "auth"; metodo: string; nombre: string; url: string; cuerpo: unknown; aal: string };
 
-const ADMIN = new Set(["cambiar_modulo", "propuestas_grupo_equipo", "responder_propuesta_grupo", "moderar_publicacion", "guardar_grupo_comunidad", "guardar_desafio", "crear_espacio", "nuevo_enlace_solicitud", "nuevo_borrador", "solapamientos", "carga_prevista", "publicar_programa", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "eliminar_participante"]);
+const ADMIN = new Set(["cambiar_modulo", "propuestas_grupo_equipo", "responder_propuesta_grupo", "moderar_publicacion", "guardar_grupo_comunidad", "guardar_desafio", "crear_espacio", "nuevo_enlace_solicitud", "nuevo_borrador", "solapamientos", "carga_prevista", "publicar_programa", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "eliminar_participante", "ia_bandeja", "ia_revisar"]);
 
 async function simular(page: Page, base: Base, { equipo = true, factores = [] as Factor[] } = {}) {
   const llamadas: Llamada[] = [];
@@ -296,6 +296,23 @@ async function simular(page: Page, base: Base, { equipo = true, factores = [] as
       g.estado = "publicado";
       g.publicado_en = AHORA.toISOString();
       return 4;
+    },
+    // Asistente (E2): la bandeja muestra lo pendiente; revisar solo lo que está «por revisar».
+    ia_bandeja: () =>
+      (base.ia_consultas ?? [])
+        .filter((q) => ["enviada", "por_revisar", "lista", "crisis", "error"].includes(String(q.estado)))
+        .map((q) => ({ id: q.id, participante_id: q.participante_id, tipo: q.tipo, pregunta: q.pregunta, estado: q.estado, respuesta: q.respuesta, creada_en: q.creada_en })),
+    ia_revisar: (c) => {
+      const q = (base.ia_consultas ?? []).find((x) => x.id === c.p_consulta);
+      if (!q || q.estado !== "por_revisar") return { __error: "consulta:no_por_revisar", __estado: 409 };
+      Object.assign(q, {
+        estado: c.p_aprobar ? "aprobada" : "descartada",
+        texto_final: c.p_aprobar ? (c.p_texto ?? q.respuesta) : null,
+        revisada_por: UID,
+        revisada_en: AHORA.toISOString(),
+        nota_revision: c.p_nota ?? null,
+      });
+      return null;
     },
     revisar_evidencia: (c) => {
       const r = base.registros.find((x) => x.id === c.p_registro)!;
@@ -1058,4 +1075,83 @@ test("Comunidad en móvil: la barra inferior no tapa reportes ni botones al desp
   await hidratar(page);
   await expect(page.getByText("2 reportes").first()).toBeVisible();
   await revisarBarra(page);
+});
+
+// ---------------------------------------------------------------------------
+// Asistente de Rumbo: bandeja de revisión (E2)
+
+const consultasIa = (): Fila[] => [
+  { id: "ia1", participante_id: "p1", tipo: "pregunta", pregunta: "¿Cómo mantengo la motivación?", estado: "por_revisar", respuesta: "Borrador del asistente.", texto_final: null, contexto_enviado: { semana_del_ciclo: 2, semanas: 4, metas: [{ titulo: "Caminar" }] }, error: null, creada_en: "2026-10-13T10:00:00Z", revisada_por: null, revisada_en: null, nota_revision: null },
+  { id: "ia2", participante_id: "p1", tipo: "pregunta", pregunta: "¿Qué hábitos me recomiendas?", estado: "por_revisar", respuesta: "Otro borrador.", texto_final: null, contexto_enviado: { semana_del_ciclo: 2, semanas: 4 }, error: null, creada_en: "2026-10-13T11:00:00Z", revisada_por: null, revisada_en: null, nota_revision: null },
+  { id: "ia3", participante_id: "p1", tipo: "pregunta", pregunta: "Quiero morir", estado: "crisis", respuesta: null, texto_final: null, contexto_enviado: null, error: null, creada_en: "2026-10-12T22:00:00Z", revisada_por: null, revisada_en: null, nota_revision: null },
+  { id: "ia4", participante_id: "p1", tipo: "pregunta", pregunta: "Pregunta antigua", estado: "error", respuesta: null, texto_final: null, contexto_enviado: null, error: "tiempo_agotado", creada_en: "2026-09-01T10:00:00Z", revisada_por: null, revisada_en: null, nota_revision: null },
+  { id: "ia5", participante_id: "p1", tipo: "pregunta", pregunta: "¿Cómo retomo?", estado: "aprobada", respuesta: "Original.", texto_final: "Corregido por el coach.", contexto_enviado: null, error: null, creada_en: "2026-10-10T10:00:00Z", revisada_por: "otra-persona", revisada_en: "2026-10-10T12:00:00Z", nota_revision: "Ajusté el tono." },
+];
+
+test("Asistente: aprobar tal cual, aprobar corregida y no compartir; alertas y revisadas con quién y cuándo", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  base.ia_consultas = consultasIa();
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  await page.getByRole("link", { name: "Asistente: respuestas por revisar" }).click();
+  await expect(page.locator("h1")).toHaveText("Asistente: por revisar.");
+  await expect(page.getByText("2 respuestas esperan tu revisión.")).toBeVisible();
+  // Alerta reciente visible con la ficha; el error de hace más de 7 días no.
+  const alertas = page.locator("section", { has: page.getByRole("heading", { name: "Alertas" }) });
+  await expect(alertas).toContainText("Quiero morir");
+  await expect(alertas.getByRole("link", { name: "Abrir la ficha" })).toBeVisible();
+  await expect(page.getByText("Pregunta antigua")).toHaveCount(0);
+  // Contexto enviado, sin el contenido.
+  const primera = page.locator("li", { hasText: "¿Cómo mantengo la motivación?" });
+  await expect(primera).toContainText("Lo que se envió además de la pregunta: semana_del_ciclo".replace("semana_del_ciclo", "semana del ciclo"));
+  await expect(primera).toContainText("metas");
+  await sinViolaciones(page);
+
+  // 1) Corregida: envía el texto nuevo y la nota.
+  await primera.getByLabel("Respuesta que verá la persona").fill("Texto corregido por el coach.");
+  await primera.getByLabel(/Nota interna/).fill("Tono más cálido.");
+  await primera.getByRole("button", { name: "Aprobar con mis cambios" }).click();
+  await expect(page.getByText("Aprobada: la persona ya la puede ver.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "ia_revisar")!.cuerpo).toEqual({ p_consulta: "ia1", p_aprobar: true, p_texto: "Texto corregido por el coach.", p_nota: "Tono más cálido." });
+  expect(llamadas.find((l) => l.nombre === "ia_revisar")!.aal).toBe("aal2");
+
+  // 2) No compartir pide confirmación.
+  const segunda = page.locator("li", { hasText: "¿Qué hábitos me recomiendas?" }).filter({ has: page.getByRole("button", { name: "No compartir" }) });
+  await segunda.getByRole("button", { name: "No compartir" }).click();
+  await expect(segunda.getByText("La persona verá que tu coach decidió no compartir esta respuesta. ¿Seguro?")).toBeVisible();
+  await segunda.getByRole("button", { name: "Sí, no compartir" }).click();
+  await expect(page.getByText("No compartida.", { exact: true })).toBeVisible();
+  expect(llamadas.filter((l) => l.nombre === "ia_revisar")[1].cuerpo).toEqual({ p_consulta: "ia2", p_aprobar: false, p_texto: null, p_nota: null });
+  await expect(page.getByText("No hay respuestas por revisar.").first()).toBeVisible();
+
+  // Revisadas: quién y cuándo, y si se corrigió.
+  const revisadas = page.locator("section", { has: page.getByRole("heading", { name: "Revisadas recientemente" }) });
+  await expect(revisadas.locator("li")).toHaveCount(3);
+  await expect(revisadas.locator("li", { hasText: "¿Cómo retomo?" })).toContainText("Por otra persona del equipo");
+  await expect(revisadas.locator("li", { hasText: "¿Cómo retomo?" })).toContainText("Con cambios");
+  await expect(revisadas.locator("li", { hasText: "¿Cómo mantengo la motivación?" })).toContainText("Por ti");
+});
+
+test("Asistente: aprobar tal cual no reenvía el texto; si ya fue revisada, se explica", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  base.ia_consultas = consultasIa().slice(0, 1);
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/asistente/");
+  await hidratar(page);
+  const fila = page.locator("li", { hasText: "¿Cómo mantengo la motivación?" });
+  await expect(fila.getByRole("button", { name: "Aprobar y compartir" })).toBeVisible();
+  // Otra persona del equipo la revisó mientras tanto.
+  base.ia_consultas[0].estado = "aprobada";
+  await fila.getByRole("button", { name: "Aprobar y compartir" }).click();
+  await expect(fila.getByRole("alert")).toContainText("Esta respuesta ya fue revisada o ya no está pendiente.");
+  expect(llamadas.find((l) => l.nombre === "ia_revisar")!.cuerpo).toEqual({ p_consulta: "ia1", p_aprobar: true, p_texto: null, p_nota: null });
+  // Vaciar la respuesta no se aprueba.
+  base.ia_consultas[0].estado = "por_revisar";
+  await fila.getByLabel("Respuesta que verá la persona").fill("   ");
+  await fila.getByRole("button", { name: "Aprobar con mis cambios" }).click();
+  await expect(fila.getByText("La respuesta no puede quedar vacía.").first()).toBeVisible();
+  expect(llamadas.filter((l) => l.nombre === "ia_revisar")).toHaveLength(1);
 });
