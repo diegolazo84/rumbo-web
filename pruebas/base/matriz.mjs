@@ -1714,6 +1714,46 @@ paso("ranking: voluntario, solo con alias, por % de la semana; con menos de 3 no
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
 
+// R1 · Mis avisos: avisos de la Comunidad (respuesta a tu publicación y desafío nuevo), solo con el
+// módulo visible; con el alias de quien responde y nunca su texto; ni a uno mismo ni de alguien bloqueado.
+{
+  const PA = "00000000-0000-0000-0000-0000000000a7";
+  const base = `reset role; update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    update public.alias set reglas_comunidad_en = now();
+    insert into public.publicaciones (id, autor, texto) values ('${PA}', '${ROLES.A.ficha}', 'Publicación de A para avisos');`;
+  const abrir = `${base} update public.modulos set estado = 'habilitado' where clave = 'comunidad';`;
+  const responde = (autor) => `insert into public.publicaciones (autor, texto, respuesta_a) values ('${autor}', 'TEXTO PRIVADO de la respuesta', '${PA}');`;
+  const verA = "set local role authenticated; select coalesce(string_agg(tipo || '|' || titulo || '|' || enlace, ';'), '-') from public.avisos where tipo like 'comunidad%' or tipo = 'desafio_nuevo'";
+  const cerrada = como(ROLES.A, `${base} ${responde(ROLES.B.ficha)} ${verA}`);
+  exigir(cerrada.ok && ultima(cerrada) === "-", `llegó un aviso de la Comunidad con el módulo cerrado: ${cerrada.error ?? ultima(cerrada)}`);
+  const respuesta = como(ROLES.A, `${abrir} ${responde(ROLES.B.ficha)} ${verA}`);
+  exigir(
+    respuesta.ok && ultima(respuesta) === "comunidad_respuesta|Alias B respondió tu publicación|/mi-espacio/comunidad/",
+    `el aviso de respuesta no es el esperado (alias, sin texto): ${respuesta.error ?? ultima(respuesta)}`,
+  );
+  const otro = como(ROLES.B, `${abrir} ${responde(ROLES.B.ficha)} set local role authenticated; select count(*) from public.avisos where tipo = 'comunidad_respuesta'`);
+  exigir(otro.ok && ultima(otro) === "0", `B ve el aviso de respuesta de A: ${otro.error ?? ultima(otro)}`);
+  const propia = como(ROLES.A, `${abrir} ${responde(ROLES.A.ficha)} ${verA}`);
+  exigir(propia.ok && ultima(propia) === "-", `llegó un aviso por responderse a sí misma: ${propia.error ?? ultima(propia)}`);
+  const bloqueada = como(ROLES.A, `${abrir} insert into public.bloqueos_comunidad (bloqueador, bloqueado) values ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    ${responde(ROLES.B.ficha)} ${verA}`);
+  exigir(bloqueada.ok && ultima(bloqueada) === "-", `llegó un aviso de alguien bloqueado: ${bloqueada.error ?? ultima(bloqueada)}`);
+  const desafio = (activo) => `insert into public.desafios (titulo, reglas, dias, inicio, activo) values ('Siete días de calma', 'Reglas de CI.', 7, current_date, ${activo});`;
+  const nuevo = como(ROLES.A, `${abrir} ${desafio(true)} ${verA}`);
+  exigir(
+    nuevo.ok && ultima(nuevo) === "desafio_nuevo|Nuevo desafío en la Comunidad: «Siete días de calma»|/mi-espacio/comunidad/",
+    `el aviso de desafío nuevo no es el esperado: ${nuevo.error ?? ultima(nuevo)}`,
+  );
+  const sinReglas = como(ROLES.A, `${abrir} update public.alias set reglas_comunidad_en = null where participante_id = '${ROLES.A.ficha}'; ${desafio(true)} ${verA}`);
+  exigir(sinReglas.ok && ultima(sinReglas) === "-", `llegó un desafío nuevo a quien no entró a la Comunidad: ${sinReglas.error ?? ultima(sinReglas)}`);
+  const alActivar = como(ROLES.A, `${abrir} ${desafio(false)} update public.desafios set activo = true where titulo = 'Siete días de calma';
+    update public.desafios set activo = true where titulo = 'Siete días de calma'; ${verA}`);
+  exigir(alActivar.ok && ultima(alActivar).split(";").length === 1, `al activar un desafío el aviso no llega una sola vez: ${alActivar.error ?? ultima(alActivar)}`);
+  const malTipo = como(ROLES.A, `reset role; insert into public.avisos (destinatario, tipo, titulo, enlace) values ('${ROLES.A.uid}', 'inventado', 'x', '/mi-espacio/')`);
+  exigir(!malTipo.ok, "la tabla avisos acepta un tipo que no existe");
+}
+paso("avisos de la Comunidad: solo con el módulo visible, con alias y sin el texto; ni propios ni de bloqueados; desafío nuevo una vez a quien entró");
+
 // 5. Esquema privado --------------------------------------------------------
 for (const t of PRIVADAS)
   for (const rol of ["anon", "authenticated"])

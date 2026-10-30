@@ -33,7 +33,7 @@ test.beforeEach(({}, info) => {
 test("las cinco secciones se abren desde la navegación y cada una tiene su nombre completo como H1", async ({ page, isMobile }) => {
   await abrir(page, "mi-espacio/");
   const nav = page.locator(isMobile ? "nav.barra-inferior" : "nav.lateral");
-  await expect(nav.locator(".nav-app__item")).toHaveCount(5);
+  await expect(nav.locator(".nav-app__item")).toHaveCount(isMobile ? 5 : 6); // escritorio: + «Mis avisos»
   // Barra inferior: rótulos cortos (opción B). Barra lateral de escritorio: nombres completos.
   for (const s of SECCIONES) {
     const nombre = isMobile ? s.rotulo : s.h1;

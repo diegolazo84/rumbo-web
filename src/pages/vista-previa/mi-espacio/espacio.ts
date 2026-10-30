@@ -10,6 +10,7 @@ import type { Escenario, EstadoRegistro, Meta, Novedad, Ocurrencia, PlanParam, R
 import { LIMITES } from "../../../data/formularios";
 import { diasEntre, sumarDias, type Iso } from "../../../lib/fechas";
 import { RUTAS_MI_ESPACIO, RUTAS_PUBLICAS, rutaPrevia } from "../rutas";
+import type { Aviso } from "./avisos/datos";
 
 export type Progreso = ReturnType<typeof calcularProgreso>;
 
@@ -46,6 +47,7 @@ export type RutasEspacio = {
   ayuda: string;
   privacidad: string;
   condiciones: string;
+  avisos: string;
 };
 
 export const R_PREVIA: RutasEspacio = {
@@ -76,6 +78,7 @@ export const R_PREVIA: RutasEspacio = {
   ayuda: rutaPrevia("mi-espacio/ayuda/"),
   privacidad: "/privacidad/",
   condiciones: "/condiciones/",
+  avisos: rutaPrevia("mi-espacio/avisos/"),
 };
 
 // Rutas reales (plataforma 2.1). Los identificadores van en la búsqueda (?id=, ?n=), nunca en la ruta.
@@ -107,6 +110,7 @@ export const R_REAL: RutasEspacio = {
   ayuda: "/mi-espacio/ayuda/",
   privacidad: "/privacidad/",
   condiciones: "/condiciones/",
+  avisos: "/mi-espacio/avisos/",
 };
 
 // ---------------------------------------------------------------------------
@@ -168,6 +172,8 @@ export type Servidor = {
   pedirDerecho: (tipo: string, detalle: string | null) => Promise<Iso | null>; // fecha límite, si hay
   exportar: () => Promise<unknown>;
   verNovedad: (id: string) => void; // la novedad deja de mostrarse en Hoy
+  // Mis avisos: marca como leídos los indicados (o todos con null); queda igual en todos los equipos.
+  marcarAvisos: (ids: string[] | null) => Promise<void>;
   recargar: () => void;
 };
 
@@ -189,10 +195,28 @@ export type Espacio = {
   videollamadas: VideollamadaEspacio[];
   servidor: Servidor | null;
   fotos: boolean; // módulo «fotos» visible para las personas (solo Mi espacio real)
+  avisos: Aviso[] | null; // Mis avisos (null: no se pudieron leer)
+  comunidad: boolean; // módulo «comunidad» visible: su filtro y sus enlaces existen
 };
 
 // ---------------------------------------------------------------------------
 // Vista previa (por defecto)
+
+// Mis avisos de ejemplo: los mismos textos fijos que crea la base (sin nombres ni mensajes
+// inventados). Fechas alrededor de E.HOY (13-oct-2026), hora de Chile (UTC−3).
+const aviso = (id: string, tipo: string, titulo: string, enlace: string, creadoEn: string, leido = false): Aviso => ({
+  id, tipo, titulo, enlace, creadoEn, leidoEn: leido ? creadoEn : null,
+});
+export const AVISOS_EJEMPLO: Aviso[] = [
+  aviso("av-1", "recordatorio_acciones", "Hoy tienes acciones por marcar", "/mi-espacio/", "2026-10-13T11:00:00Z"),
+  aviso("av-2", "revision_publicada", "Tu coach publicó la revisión de la semana 2", "/mi-espacio/acompanamiento/", "2026-10-13T12:15:00Z"),
+  aviso("av-3", "reconocimiento", "Nuevo reconocimiento: Primera semana", "/mi-espacio/", "2026-10-12T22:40:00Z"),
+  aviso("av-4", "recordatorio_registro", "Mañana es tu revisión: cuéntale a tu coach cómo te fue esta semana", "/mi-espacio/", "2026-10-12T21:00:00Z", true),
+  aviso("av-5", "ajuste_respondido", "Tu coach respondió tu solicitud de ajuste", "/mi-espacio/acompanamiento/", "2026-10-12T15:30:00Z", true),
+  aviso("av-6", "programa_publicado", "Tu plan tiene cambios", "/mi-espacio/plan/", "2026-10-12T15:25:00Z", true),
+  aviso("av-7", "recordatorio_acciones", "Hoy tienes acciones por marcar", "/mi-espacio/", "2026-10-09T12:00:00Z", true),
+  aviso("av-8", "reconocimiento", "Nuevo reconocimiento: Primer paso", "/mi-espacio/", "2026-10-06T23:10:00Z", true),
+];
 
 export const ESPACIO_PREVIA: Espacio = {
   real: false,
@@ -213,6 +237,8 @@ export const ESPACIO_PREVIA: Espacio = {
   videollamadas: [],
   servidor: null,
   fotos: false,
+  avisos: AVISOS_EJEMPLO,
+  comunidad: false,
 };
 
 export const EspacioContexto = createContext<Espacio>(ESPACIO_PREVIA);

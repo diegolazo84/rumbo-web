@@ -76,6 +76,31 @@
 }
 .cabecera-app__menu[aria-expanded="true"] { background: var(--niebla); color: var(--bosque); }
 @media (hover: hover) { .cabecera-app__menu:hover { background: var(--niebla); color: var(--bosque); } }
+/* Mis avisos (Mi espacio): campana con el número sin leer. */
+.cabecera-app__avisos {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  inline-size: 44px;
+  block-size: 44px;
+  border-radius: var(--r-full);
+  color: var(--tinta);
+}
+.cabecera-app__avisos[aria-current="page"] { background: var(--niebla); color: var(--bosque); }
+@media (hover: hover) { .cabecera-app__avisos:hover { background: var(--niebla); color: var(--bosque); } }
+.cabecera-app__avisos-numero {
+  position: absolute;
+  inset-block-start: 4px;
+  inset-inline-end: 2px;
+  min-inline-size: 18px;
+  padding: 2px 4px;
+  border-radius: var(--r-full);
+  background: var(--terracota-texto); /* papel sobre terracota-texto: 5,65 */
+  color: var(--papel);
+  font: 700 var(--t-micro)/1 var(--sans);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
 
 .app__cuerpo { flex: 1; min-inline-size: 0; }
 @media (min-width: 1024px) {

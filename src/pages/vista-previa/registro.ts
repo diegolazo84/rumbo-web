@@ -109,6 +109,7 @@ const detalle = () => import("./mi-espacio/DetalleAccion");
 const anteriores = () => import("./mi-espacio/DiasAnteriores");
 const progreso = () => import("./mi-espacio/Progreso");
 const creditos = () => import("./mi-espacio/Creditos");
+const misAvisos = () => import("./mi-espacio/MisAvisos");
 const acompanamiento = () => import("./mi-espacio/Acompanamiento");
 const misMetas = () => import("./mi-espacio/MisMetas");
 const comunidad = () => import("./mi-espacio/Comunidad");
@@ -162,6 +163,7 @@ const MI_ESPACIO_FILAS: Fila[] = [
   { ruta: "mi-espacio/plan/accion/foto-depurada/", nombre: "Foto depurada", estado: "foto-depurada", titulo: MI_ESPACIO("Acción"), marco: "mi-espacio", seccion: "Acción", activo: "plan", apartado: "Detalle de acción", cargar: detalle },
   { ruta: "mi-espacio/logros/", nombre: "Progreso", titulo: MI_ESPACIO("Mis logros"), marco: "mi-espacio", seccion: "Mis logros", activo: "logros", apartado: "Mis logros", cargar: progreso },
   { ruta: "mi-espacio/logros/creditos/", nombre: "Historial de créditos", titulo: MI_ESPACIO("Créditos"), marco: "mi-espacio", seccion: "Créditos", activo: "logros", apartado: "Mis logros", cargar: creditos },
+  { ruta: "mi-espacio/avisos/", nombre: "Mis avisos", titulo: MI_ESPACIO("Mis avisos"), marco: "mi-espacio", seccion: "Mis avisos", activo: "avisos", apartado: "Mis avisos", cargar: misAvisos },
   { ruta: "mi-espacio/acompanamiento/", nombre: "Registro sin enviar", estado: "sin-enviar", titulo: MI_ESPACIO("Mi acompañamiento"), marco: "mi-espacio", seccion: "Mi acompañamiento", activo: "acompanamiento", apartado: "Mi acompañamiento", cargar: acompanamiento },
   { ruta: "mi-espacio/acompanamiento/enviado/", nombre: "Registro enviado", estado: "enviado", titulo: MI_ESPACIO("Mi acompañamiento"), marco: "mi-espacio", seccion: "Mi acompañamiento", activo: "acompanamiento", apartado: "Mi acompañamiento", cargar: acompanamiento },
   { ruta: "mi-espacio/acompanamiento/en-revision/", nombre: "Revisión en curso", estado: "en-revision", titulo: MI_ESPACIO("Mi acompañamiento"), marco: "mi-espacio", seccion: "Mi acompañamiento", activo: "acompanamiento", apartado: "Mi acompañamiento", cargar: acompanamiento },

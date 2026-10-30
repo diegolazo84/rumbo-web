@@ -41,12 +41,15 @@ type Props = {
   banda?: ReactNode; // <Banda> de aviso global (sin conexión, ausencia, sesión por terminar)
   sinNavegacion?: boolean; // ingreso: solo cabecera y contenido
   rutaWeb?: string; // «Volver a la web»
+  // Mi espacio: campana de la cabecera y «Mis avisos» en la barra lateral (escritorio), con el
+  // número sin leer. La barra inferior del móvil no cambia: ahí se llega por la campana.
+  avisos?: { href: string; sinLeer: number };
   children: ReactNode;
 };
 
 // Raíces de las cinco secciones de Mi espacio (Rumbo 2.0): su nombre ya es el H1 de la pantalla,
 // así que la cabecera móvil no lo repite. En las subpáginas (Acción, Créditos…) sí se muestra.
-const SECCIONES_RAIZ = new Set(["Mi Rumbo", "Mi plan", "Mi acompañamiento", "Comunidad", "Mis logros", "Lo que viene en Rumbo"]);
+const SECCIONES_RAIZ = new Set(["Mi Rumbo", "Mi plan", "Mi acompañamiento", "Comunidad", "Mis logros", "Mis avisos", "Lo que viene en Rumbo"]);
 
 const ES_TEXTO = "textarea, input:not([type]), input[type=text], input[type=email], input[type=search]";
 
@@ -60,6 +63,7 @@ export default function EstructuraApp({
   banda,
   sinNavegacion,
   rutaWeb = "/",
+  avisos,
   children,
 }: Props) {
   const [ayuda, setAyuda] = useState(false);
@@ -88,6 +92,10 @@ export default function EstructuraApp({
     href: rutas[d.id],
     contador: miEspacio ? undefined : contadores[d.id],
   }));
+  const conAvisos = miEspacio && !sinNavegacion && avisos ? avisos : undefined;
+  const destinosLateral: DestinoNav[] = conAvisos
+    ? [...destinos, { id: "avisos", texto: TEXTOS_CABECERA.avisos, icono: "bell", href: conAvisos.href, contador: conAvisos.sinLeer, contadorTexto: TEXTOS_CABECERA.sinLeer(conAvisos.sinLeer) }]
+    : destinos;
   const etiqueta = miEspacio ? TEXTOS_ESTRUCTURA.miEspacio : TEXTOS_ESTRUCTURA.panel;
 
   // Menú de la cabecera de Mi espacio (Rumbo 2.0, etapa 2): lo que antes era «Más» en la barra.
@@ -139,11 +147,12 @@ export default function EstructuraApp({
         rutaWeb={rutaWeb}
         onMenu={miEspacio && !sinNavegacion ? () => setMas(true) : undefined}
         menuAbierto={mas}
+        avisos={conAvisos && { ...conAvisos, actual: activo === "avisos" }}
       />
       {banda}
       <div className="app__cuerpo">
         {!sinNavegacion && (
-          <Lateral etiqueta={etiqueta} destinos={destinos} activo={activo} novedades={novedades} pie={pieLateral} />
+          <Lateral etiqueta={etiqueta} destinos={destinosLateral} activo={activo} novedades={novedades} pie={pieLateral} />
         )}
         <main id="contenido" className="app__main">
           <div className="app__contenido">{children}</div>
