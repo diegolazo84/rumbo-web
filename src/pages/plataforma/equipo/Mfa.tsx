@@ -165,10 +165,48 @@ export function PedirSegundoFactor({ sb, verificados, onListo }: { sb: Cliente; 
 }
 
 // La cuenta no es del equipo.
-export function SinAcceso() {
+// Sin acceso: si la persona fue invitada al equipo con este correo, la acepta aquí
+// (aceptar_invitacion_equipo) y después registra su segundo factor.
+export function SinAcceso({ sb, onAceptada }: { sb?: Cliente; onAceptada?: () => void }) {
+  const [error, setError] = useState<string | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+  const I = T.invitacion;
   return (
     <div className="pa-pantalla pa-pantalla--angosta">
       <Cabeza ojo={T.ojo} titulo={T.sinAcceso} bajada={T.sinAccesoTexto} />
+      {sb && onAceptada && (
+        <section className="tarjeta pa-tarjeta" aria-labelledby="invitacion-titulo">
+          <h2 id="invitacion-titulo" className="pa-h2">
+            {I.titulo}
+          </h2>
+          <p>{I.texto}</p>
+          <div role="alert" className="envio__alerta">
+            {error && (
+              <p className="aviso aviso--error-envio">
+                <Icono nombre="info" tamaño={20} className="aviso-icono" />
+                <span>{error}</span>
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            className="boton boton--primario pa-boton-solo"
+            aria-disabled={ocupado ? true : undefined}
+            onClick={async () => {
+              if (ocupado) return;
+              setOcupado(true);
+              setError(null);
+              const { error: e } = await sb.rpc("aceptar_invitacion_equipo");
+              setOcupado(false);
+              if (!e) onAceptada();
+              else setError(/invitacion:no_encontrada/.test(e.message ?? "") ? I.noHay : T.error);
+            }}
+          >
+            <Icono nombre="user-check" tamaño={20} />
+            {I.boton}
+          </button>
+        </section>
+      )}
       <div className="acciones">
         <Link to={R_REAL.hoy} className="boton boton--secundario">
           {T.irAMiEspacio}

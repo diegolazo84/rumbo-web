@@ -28,6 +28,8 @@ import {
 import { EtiquetaCiclo, semanaTexto } from "../../vista-previa/panel/Participantes";
 import { FormularioRevision } from "../../vista-previa/panel/Revision";
 import { Alerta, NoEncontrada, useDatosPanel, useEscritura, useParticipante } from "./comun";
+import { VerPostulacion } from "./postulacion";
+import { VideollamadasFicha, type FilaVideollamada } from "./videollamadas";
 import {
   aFicha,
   estadoCiclo,
@@ -68,11 +70,12 @@ export type Detalle = {
   metas: FilaMetaP[];
   acciones: FilaAccionP[];
   peticiones: FilaPeticion[];
+  videollamadas: FilaVideollamada[];
 };
 
 async function leerDetalle(sb: Cliente, p: FilaParticipantePanel, c: FilaCicloPanel | null, programas: string[]): Promise<Detalle> {
   const vacio = Promise.resolve({ data: [], error: null, status: 200 });
-  const [ocurrencias, registros, semanales, dias, metas, acciones, peticiones] = await Promise.all([
+  const [ocurrencias, registros, semanales, dias, metas, acciones, peticiones, videollamadas] = await Promise.all([
     c
       ? sb.from("ocurrencias").select("id,programa_id,fecha,hora,duracion_min,titulo,meta_titulo,categoria,vigente").eq("ciclo_id", c.id).order("fecha").order("hora")
       : vacio,
@@ -84,6 +87,7 @@ async function leerDetalle(sb: Cliente, p: FilaParticipantePanel, c: FilaCicloPa
       ? sb.from("acciones").select("id,programa_id,meta_id,titulo,dias,hora,duracion_min,orden").in("programa_id", programas).order("orden")
       : vacio,
     sb.from("peticiones_derechos").select("id,recibida_en,origen,participante_id,correo,tipo,detalle,fecha_limite,estado,respuesta").eq("participante_id", p.id),
+    c?.plan_id === "cercano" ? sb.from("videollamadas").select("id,semana,programada_para,enlace,estado").eq("ciclo_id", c.id) : vacio,
   ]);
   return {
     ocurrencias: datos(ocurrencias) as FilaOcurrencia[],
@@ -93,6 +97,7 @@ async function leerDetalle(sb: Cliente, p: FilaParticipantePanel, c: FilaCicloPa
     metas: datos(metas) as FilaMetaP[],
     acciones: datos(acciones) as FilaAccionP[],
     peticiones: datos(peticiones) as FilaPeticion[],
+    videollamadas: datos(videollamadas) as FilaVideollamada[],
   };
 }
 
@@ -218,7 +223,12 @@ function ContenidoFicha({ p, c, inicial }: { p: FilaParticipantePanel; c: FilaCi
           <>
             {pestana === "programa" && <ProgramaReal p={p} c={c} det={detalle} />}
             {pestana === "semana" && <SemanaReal c={c} det={detalle} />}
-            {pestana === "revisiones" && <RevisionesReal p={p} c={c} det={detalle} />}
+            {pestana === "revisiones" && (
+              <>
+                {c?.plan_id === "cercano" && <VideollamadasFicha c={c} zona={p.zona_horaria} lista={detalle.videollamadas} alCambiar={leer} />}
+                <RevisionesReal p={p} c={c} det={detalle} />
+              </>
+            )}
             {pestana === "ajustes" && <AjustesFicha c={c} />}
             {pestana === "fotos" && <FotosFicha det={detalle} />}
             {pestana === "datos" && <DatosReal p={p} det={detalle} />}
@@ -526,6 +536,7 @@ function DatosReal({ p, det }: { p: FilaParticipantePanel; det: Detalle }) {
         {aviso}
       </p>
       <div className="acciones">
+        {p.solicitud_id && <VerPostulacion participante={p.id} />}
         <button type="button" className="boton boton--secundario" onClick={exportar}>
           <Icono nombre="download" tamaño={20} />
           {F.datos.exportar}
