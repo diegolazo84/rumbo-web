@@ -242,7 +242,10 @@ test.describe("barra inferior", () => {
     const tapados: string[] = [];
     for (let i = 0; i < 40; i++) {
       await page.keyboard.press("Tab");
-      const t = await page.evaluate(() => {
+      const t = await page.evaluate(async () => {
+        // Se mide después de dos cuadros: WebKit termina de llevar el foco a la vista un cuadro
+        // más tarde, y medir antes daba falsos «tapados» (fallaba a veces en el proyecto iphone).
+        await new Promise((listo) => requestAnimationFrame(() => requestAnimationFrame(listo)));
         const el = document.activeElement as HTMLElement | null;
         const barra = document.querySelector<HTMLElement>(".barra-inferior");
         if (!el || !barra || barra.contains(el) || el === document.body || el.closest("dialog, .tostada-zona")) return null;
