@@ -60,3 +60,8 @@ Pruebas:
 Hay dos formas:
 - Borrar la dirección: `delete from vault.secrets where name = 'depurar_fotos_url';`. La tarea sigue programada, pero no hace nada.
 - Deshacer todo con `supabase/deshacer/20261121000000_depurar_fotos.sql`.
+
+## Procedimientos del equipo
+
+- Eliminar una foto antes de plazo, a pedido: `docs/fotos-eliminacion-anticipada.md`.
+- Revisión de fotos pendientes (2 días hábiles, 7 y 14 días): `docs/revision-fotos-pendientes.md`.
