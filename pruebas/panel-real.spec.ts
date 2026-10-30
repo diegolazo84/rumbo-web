@@ -1291,7 +1291,9 @@ test("capturas del bloque 2", async ({ page }, info) => {
   const foto = async (ruta: string, nombre: string) => {
     await page.goto(ruta);
     await hidratar(page);
-    await page.waitForTimeout(300);
+    await page.locator("main h1").first().waitFor();
+    await expect(page.getByText("Cargando…")).toHaveCount(0);
+    await page.waitForTimeout(500);
     await sinBarras();
     await page.screenshot({ path: `${dir}/${nombre}-${info.project.name}.png`, fullPage: true });
   };
