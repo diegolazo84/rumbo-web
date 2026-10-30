@@ -959,12 +959,12 @@ export const EQUIPO_PANEL = {
     titulo: "Invitaciones pendientes",
     vacio: "No hay invitaciones pendientes.",
     vence: (fecha: string) => `Vence el ${fecha}`,
-    vencida: "Vencida",
+    caducada: "Ya no sirve",
     vigente: "Vigente",
     copiar: "Copiar el mensaje",
     revocar: "Revocar",
     revocada: (correo: string) => `Invitación a ${correo} revocada.`,
-    vencidaAyuda: "Para volver a invitar, crea una invitación nueva con el mismo correo.",
+    caducadaAyuda: "Para volver a invitar, crea una invitación nueva con el mismo correo.",
   },
   mensaje: (nombre: string, correo: string, enlace: string, vence: string) =>
     [

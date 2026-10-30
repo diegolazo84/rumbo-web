@@ -276,7 +276,7 @@ function FilaInvitacion({ i, alRevocar }: { i: Invitacion; alRevocar: (aviso: st
   const { sb } = useDatosPanel();
   const [correr, error, ocupado] = useEscritura();
   const P = T.pendientes;
-  const vencida = new Date(i.expira_en).getTime() <= Date.now();
+  const caducada = new Date(i.expira_en).getTime() <= Date.now();
   const id = `invitacion-${i.id}`;
   return (
     <li className="tarjeta pa-fila" aria-labelledby={`${id}-nombre`}>
@@ -284,13 +284,13 @@ function FilaInvitacion({ i, alRevocar }: { i: Invitacion; alRevocar: (aviso: st
         <h3 id={`${id}-nombre`} className="pa-h3">
           {i.nombre}
         </h3>
-        <Etiqueta variante={vencida ? "pronto" : "nota"}>{vencida ? P.vencida : P.vigente}</Etiqueta>
+        <Etiqueta variante={caducada ? "pronto" : "nota"}>{caducada ? P.caducada : P.vigente}</Etiqueta>
       </div>
       <p className="pa-largo">{i.correo}</p>
-      <p className="microcopia">{vencida ? P.vencidaAyuda : P.vence(dia(i.expira_en))}</p>
+      <p className="microcopia">{caducada ? P.caducadaAyuda : P.vence(dia(i.expira_en))}</p>
       <Alerta texto={error} />
       <div className="acciones">
-        {!vencida && <BotonCopiar texto={mensajeDe(i)} etiqueta={P.copiar} variante="terciario" />}
+        {!caducada && <BotonCopiar texto={mensajeDe(i)} etiqueta={P.copiar} variante="terciario" />}
         <button
           type="button"
           className="boton boton--terciario"
