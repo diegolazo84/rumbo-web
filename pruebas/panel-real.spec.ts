@@ -1184,14 +1184,26 @@ test("invitación: la persona invitada la acepta y pasa a registrar su segundo f
   await page.goto("equipo/");
   await hidratar(page);
   await expect(page.locator("h1")).toHaveText("Esta cuenta no tiene acceso al panel.");
-  // Sin invitación para su correo: se explica.
+  // Al llegar se busca sola; sin invitación para su correo queda el botón, y al pulsarlo se explica.
+  await expect(page.getByRole("button", { name: "Aceptar mi invitación" })).toBeVisible();
   await page.getByRole("button", { name: "Aceptar mi invitación" }).click();
   await expect(page.getByRole("alert")).toContainText("No encontramos una invitación vigente para este correo.");
   base.invitaciones_equipo.push({ id: "inv9", correo: "diego@correo.cl", nombre: "Diego", puede_moderar: false, creada_en: "2026-10-12T12:00:00Z", expira_en: "2026-10-19T12:00:00Z", aceptada_en: null, revocada_en: null });
   await page.getByRole("button", { name: "Aceptar mi invitación" }).click();
   await expect(page.locator("h1")).toHaveText("Segundo factor.");
-  expect(llamadas.filter((l) => l.nombre === "aceptar_invitacion_equipo")).toHaveLength(2);
+  expect(llamadas.filter((l) => l.nombre === "aceptar_invitacion_equipo")).toHaveLength(3);
   await sinViolaciones(page);
+});
+
+test("invitación vigente: se acepta sola al llegar y pasa directo al segundo factor", async ({ page }) => {
+  await preparar(page, "aal1");
+  const base = baseInicial();
+  base.invitaciones_equipo.push({ id: "inv9", correo: "diego@correo.cl", nombre: "Diego", puede_moderar: false, creada_en: "2026-10-12T12:00:00Z", expira_en: "2026-10-19T12:00:00Z", aceptada_en: null, revocada_en: null });
+  const llamadas = await simular(page, base, { equipo: false });
+  await page.goto("equipo/");
+  await hidratar(page);
+  await expect(page.locator("h1")).toHaveText("Segundo factor.");
+  expect(llamadas.filter((l) => l.nombre === "aceptar_invitacion_equipo")).toHaveLength(1);
 });
 
 test("Más: «Tu perfil» guarda nombre y presentación con actualizar_mi_perfil", async ({ page }) => {
@@ -1223,6 +1235,11 @@ test("ficha: videollamadas del plan cercano, agendar con enlace y anotar", async
   await expect(vl.getByRole("heading", { name: "Videollamadas" })).toBeVisible();
   const s1 = vl.locator("li", { has: page.getByRole("heading", { name: "Semana 1" }) });
   await expect(s1.getByRole("link", { name: /meet\.google\.com/ })).toHaveAttribute("rel", "noopener noreferrer");
+  // Ya pasó la hora: queda «Por anotar» y se pide anotar qué pasó. Sin próximas, no hay destacado.
+  await expect(s1.getByText("Por anotar")).toBeVisible();
+  await expect(s1.getByRole("heading", { name: "Anota qué pasó en esta videollamada" })).toBeVisible();
+  await expect(s1.getByRole("button", { name: "La persona no asistió" })).toBeVisible();
+  await expect(vl.locator(".pa-vl-proxima")).toHaveCount(0);
   await s1.getByRole("button", { name: "Se realizó" }).click();
   await expect(vl.getByText("Videollamada de la semana 1 anotada.")).toBeVisible();
   expect(llamadas.find((l) => l.nombre === "anotar_videollamada")!.cuerpo).toEqual({ p_videollamada: "vl1", p_estado: "realizada" });
@@ -1243,6 +1260,13 @@ test("ficha: videollamadas del plan cercano, agendar con enlace y anotar", async
   expect(cuerpo.p_semana).toBe(2);
   expect(cuerpo.p_enlace).toBe("https://meet.google.com/xyz-abcd-efg");
   await expect(s2.getByText("Agendada")).toBeVisible();
+  // La próxima queda destacada arriba, con su enlace a mano; antes de la hora solo se puede cancelar.
+  const proxima = vl.locator(".pa-vl-proxima");
+  await expect(proxima.getByRole("heading", { name: "Próxima videollamada" })).toBeVisible();
+  await expect(proxima).toContainText("Semana 2 ·");
+  await expect(proxima.getByRole("link", { name: "Abrir la videollamada" })).toHaveAttribute("href", "https://meet.google.com/xyz-abcd-efg");
+  await expect(s2.getByRole("heading", { name: "¿No se hará?" })).toBeVisible();
+  await expect(s2.getByRole("button", { name: "Se realizó" })).toHaveCount(0);
   await sinViolaciones(page);
 });
 
