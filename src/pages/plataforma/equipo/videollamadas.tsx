@@ -34,9 +34,14 @@ function sugerencia(c: FilaCicloPanel, n: number) {
 export function VideollamadasFicha({ c, zona, lista, alCambiar }: { c: FilaCicloPanel; zona: string; lista: FilaVideollamada[]; alCambiar: () => Promise<void> }) {
   const [aviso, setAviso] = useState("");
   const semanas = Array.from({ length: c.semanas }, (_, i) => i + 1);
+  const ahora = Date.now();
+  const proxima = lista
+    .filter((v) => v.estado === "programada" && new Date(v.programada_para).getTime() > ahora)
+    .sort((a, b) => a.programada_para.localeCompare(b.programada_para))[0];
   return (
     <Seccion titulo={T.titulo} id="videollamadas" className="tarjeta pa-tarjeta">
       <p className="microcopia">{T.ayuda(zona)}</p>
+      {proxima && <Proxima v={proxima} alCopiar={setAviso} />}
       <p role="status" className="microcopia">
         {aviso}
       </p>
@@ -58,6 +63,41 @@ export function VideollamadasFicha({ c, zona, lista, alCambiar }: { c: FilaCiclo
   );
 }
 
+// La próxima videollamada agendada, destacada arriba con su enlace a mano.
+function Proxima({ v, alCopiar }: { v: FilaVideollamada; alCopiar: (texto: string) => void }) {
+  const P = T.proxima;
+  return (
+    <div className="pa-vl-proxima" aria-labelledby="vl-proxima-titulo">
+      <Icono nombre="video" tamaño={24} className="pa-vl-proxima__icono" />
+      <div className="pa-vl-proxima__texto">
+        <h3 id="vl-proxima-titulo" className="pa-h3">
+          {P.titulo}
+        </h3>
+        <p>{P.cuando(v.semana, cuandoTexto(v.programada_para))}</p>
+      </div>
+      <div className="acciones">
+        <a href={v.enlace} target="_blank" rel="noopener noreferrer" className="boton boton--primario">
+          <Icono nombre="video" tamaño={20} />
+          {P.abrir}
+        </a>
+        <button
+          type="button"
+          className="boton boton--terciario"
+          onClick={() => {
+            navigator.clipboard?.writeText(v.enlace).then(
+              () => alCopiar(P.copiado),
+              () => alCopiar(P.noCopiado),
+            ) ?? alCopiar(P.noCopiado);
+          }}
+        >
+          <Icono nombre="copy" tamaño={20} />
+          {P.copiar}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function FilaSemana({ c, n, v, alGuardar }: { c: FilaCicloPanel; n: number; v: FilaVideollamada | null; alGuardar: (aviso: string) => Promise<void> }) {
   const { sb } = useDatosPanel();
   const [editando, setEditando] = useState(false);
@@ -76,7 +116,13 @@ function FilaSemana({ c, n, v, alGuardar }: { c: FilaCicloPanel; n: number; v: F
         <h3 id={`${id}-titulo`} className="pa-h3">
           {T.semana(n)}
         </h3>
-        {estado ? <Etiqueta variante={estado.variante}>{estado.texto}</Etiqueta> : <Etiqueta variante="pronto">{T.sinAgendar}</Etiqueta>}
+        {v?.estado === "programada" && yaPaso ? (
+          <Etiqueta variante="nota">{T.porAnotar}</Etiqueta>
+        ) : estado ? (
+          <Etiqueta variante={estado.variante}>{estado.texto}</Etiqueta>
+        ) : (
+          <Etiqueta variante="pronto">{T.sinAgendar}</Etiqueta>
+        )}
       </div>
       {v && !editando && (
         <Datos
@@ -118,7 +164,8 @@ function FilaSemana({ c, n, v, alGuardar }: { c: FilaCicloPanel; n: number; v: F
           )}
           {v?.estado === "programada" && (
             <div className="pa-pila pa-pila--chica">
-              <h4 className="pa-h3">{T.anotar}</h4>
+              <h4 className="pa-h3">{yaPaso ? T.anotar : T.noSeHara}</h4>
+              <p className="microcopia">{yaPaso ? T.anotarAyuda : T.antesDeLaHora}</p>
               <div className="acciones">
                 {yaPaso && (
                   <>
