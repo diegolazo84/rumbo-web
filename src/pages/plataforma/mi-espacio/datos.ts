@@ -78,7 +78,11 @@ export type FilaRegistro = {
   revisado_en: string | null;
   foto_ruta?: string | null;
   foto_depurada_en?: string | null;
+  cantidad?: number | null;
 };
+// Lo medible de cada acción (mis_medibles) y las notas de la persona (registros.nota, R1).
+export type FilaMedible = { ocurrencia_id: string; cantidad_objetivo: number; unidad: string; cantidad: number | null };
+export type FilaNota = { ocurrencia_id: string; nota: string | null };
 export type FilaProgreso = { creditos: number; nivel: number; racha: number; bono_siguiente: number };
 export type FilaDia = {
   fecha: Iso;
@@ -133,6 +137,8 @@ export type Filas = {
   revisiones: FilaRevision[];
   ajustes: FilaAjuste[];
   planes: FilaPlan[];
+  medibles?: FilaMedible[];
+  notas?: FilaNota[] | null; // null: la columna nota todavía no existe en la base
 };
 
 // ---------------------------------------------------------------------------
@@ -204,7 +210,7 @@ export function estadoRegistro(r: FilaRegistro | undefined): EstadoRegistro | nu
   }
 }
 
-export function aOcurrencia(o: FilaOcurrencia, r: FilaRegistro | undefined, inicio: Iso): Ocurrencia {
+export function aOcurrencia(o: FilaOcurrencia, r: FilaRegistro | undefined, inicio: Iso, m?: FilaMedible, notas?: Map<string, string | null> | null): Ocurrencia {
   return {
     id: o.id,
     accionId: o.accion_id,
@@ -226,6 +232,8 @@ export function aOcurrencia(o: FilaOcurrencia, r: FilaRegistro | undefined, inic
     notaRevision: r?.nota_revision ?? null,
     fotoRuta: r?.foto_ruta ?? null,
     fotoDepurada: !!r?.foto_depurada_en,
+    ...(m ? { medible: { objetivo: m.cantidad_objetivo, unidad: m.unidad, cantidad: r?.cantidad ?? m.cantidad ?? null } } : {}),
+    ...(notas ? { nota: notas.get(o.id) ?? null } : {}),
   };
 }
 
@@ -411,7 +419,9 @@ export function armarDatos(filas: Filas, ctx: Contexto) {
   const { ciclo: c } = filas;
   const publicado = filas.programas.find((p) => p.estado === "publicado");
   const registros = new Map(filas.registros.map((r) => [r.ocurrencia_id, r]));
-  const lista = filas.ocurrencias.map((o) => aOcurrencia(o, registros.get(o.id), c.inicio)).sort(ordenOcurrencias);
+  const medibles = new Map((filas.medibles ?? []).map((m) => [m.ocurrencia_id, m]));
+  const notas = filas.notas ? new Map(filas.notas.map((n) => [n.ocurrencia_id, n.nota])) : null;
+  const lista = filas.ocurrencias.map((o) => aOcurrencia(o, registros.get(o.id), c.inicio, medibles.get(o.id), notas)).sort(ordenOcurrencias);
   const { metas, todas } = metasDe(filas, publicado);
   const ciclo = armarCiclo(c, !!publicado, ctx.hoy, filas.ajustes, filas.planes);
   const p = filas.participante;

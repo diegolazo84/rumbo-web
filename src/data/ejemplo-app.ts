@@ -264,6 +264,10 @@ export type Ocurrencia = {
   // Foto privada guardada en el bucket «evidencias» (ruta) y si ya se borró por plazo.
   fotoRuta?: string | null;
   fotoDepurada?: boolean;
+  // Acción medible (C4): cuánto se propone (objetivo y unidad) y cuánto anotó la persona.
+  medible?: { objetivo: number; unidad: string; cantidad: number | null };
+  // Nota «¿Cómo te sentiste hoy?» (R1, migración 20261123000000): undefined si no existe en la base.
+  nota?: string | null;
 };
 
 // Registros de la semana 1 y de la semana 2 hasta hoy («accion@fecha»).
@@ -699,6 +703,25 @@ export const accionFotoAprobada: Ocurrencia = { ...accionConFoto, registro: "apr
 export const NOTA_FOTO_APROBADA = "Se ve ordenado y con lo justo a mano.";
 export const accionFotoNoAprobada: Ocurrencia = { ...accionConFoto, registro: "no_aprobada" };
 export const NOTA_FOTO_NO_APROBADA = "No alcanzo a ver la acción en la foto. ¿Puedes enviar otra?";
+
+// Acción medible (maqueta «Registrar acción», 30-oct-2026): la pausa de hoy de Camila con una
+// cantidad propuesta. Solo para los estados de la vista previa; el programa de ejemplo no cambia.
+export const accionMedible: Ocurrencia = {
+  ...ocurrencias.find((o) => o.id === "a7-2026-10-13")!,
+  id: "a7m-2026-10-13",
+  titulo: "Caminar sin el teléfono",
+  duracion: 20,
+  instrucciones: ["Cuando puedas este día, sal a caminar sin el teléfono.", "Al volver, anota cuántos minutos caminaste."],
+  registro: null,
+  medible: { objetivo: 20, unidad: "minutos", cantidad: null },
+  nota: null,
+};
+export const accionMedibleHecha: Ocurrencia = {
+  ...accionMedible,
+  registro: "hecha",
+  medible: { objetivo: 20, unidad: "minutos", cantidad: 25 },
+  nota: "Me costó salir, pero volví con más calma.",
+};
 
 // Acciones anuladas (4.8): la versión de «Revisar la agenda» de las 18:00 que Camila tenía los
 // martes, quitada en el ajuste del 6 de octubre (s1), y una mañana de portafolio de Martín en

@@ -384,6 +384,46 @@ export const T_DETALLE = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// Registrar acción medible (maqueta de ChatGPT, 30-oct-2026). PROPUESTO salvo lo que viene de la maqueta.
+
+// Unidades sugeridas en el constructor (la base acepta cualquier texto de 1 a 20 caracteres).
+export const UNIDADES_MEDIBLES = ["minutos", "horas", "páginas", "vasos", "kilómetros", "unidades"] as const;
+const SINGULAR: Record<string, string> = { minutos: "minuto", horas: "hora", páginas: "página", vasos: "vaso", kilómetros: "kilómetro", unidades: "unidad" };
+export const cantidadTexto = (n: number, unidad: string) => `${n} ${n === 1 ? (SINGULAR[unidad] ?? unidad) : unidad}`;
+
+export const T_REGISTRAR = {
+  objetivo: (texto: string) => `Para hoy: ${texto}`,
+  pregunta: (unidad: string) =>
+    unidad === "minutos" || unidad === "horas"
+      ? "¿Cuánto tiempo hiciste hoy?"
+      : unidad === "páginas" || unidad === "unidades"
+        ? `¿Cuántas ${unidad} hiciste hoy?`
+        : unidad === "vasos" || unidad === "kilómetros"
+          ? `¿Cuántos ${unidad} hiciste hoy?`
+          : "¿Cuánto hiciste hoy?",
+  rapidos: "Valores rápidos",
+  rapido: (texto: string) => `Elegir ${texto}`,
+  invalido: (unidad: string) => `Ingresa un valor válido: un número entero de ${unidad}, desde 1.`,
+  nota: "¿Cómo te sentiste hoy?",
+  notaAyuda: "Solo la ven tú y quien te acompaña.",
+  guardar: "Guardar acción",
+  guardando: "Guardando…",
+  guardarCambios: "Guardar cambios",
+  cancelar: "Cancelar",
+  registrada: "¡Acción registrada!",
+  hecha: "Acción hecha",
+  hechaCorta: "Hecha en su versión corta",
+  credito: "+1 crédito",
+  anotaste: (texto: string) => `Anotaste ${texto}.`,
+  sinCantidad: "Todavía no anotas cuánto hiciste.",
+  tuNota: "Tu nota",
+  editar: "Editar lo que anotaste",
+  verPlan: "Ver mi plan",
+  error: "No pudimos guardarlo. Revisa tu conexión e inténtalo de nuevo; nada se perdió.",
+  errorDespues: "Tu acción quedó marcada, pero no pudimos guardar lo que anotaste. Inténtalo de nuevo.",
+} as const;
+
+// ---------------------------------------------------------------------------
 // 4.10 Progreso e historial de créditos
 
 export const T_PROGRESO = {

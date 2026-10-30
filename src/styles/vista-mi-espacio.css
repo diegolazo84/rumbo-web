@@ -377,6 +377,32 @@
 .me-hecha__circulo { display: grid; place-items: center; flex: none; inline-size: 40px; block-size: 40px; border-radius: 50%; background: var(--bosque); color: var(--sobre-oscuro); }
 .me-hecha__texto { font: 600 var(--t-lead)/1.3 var(--serif); color: var(--bosque); }
 
+/* Registrar acción medible (maqueta de ChatGPT, 30-oct-2026) */
+.me-registrar { display: grid; gap: var(--e-4); }
+.me-registrar__campo .campo__etiqueta { font: 600 var(--t-lead)/1.3 var(--serif); color: var(--bosque); }
+.me-registrar__fila { display: flex; align-items: center; gap: var(--e-3); }
+.me-registrar__numero { inline-size: 9rem; font: 600 var(--t-lead)/1.2 var(--sans); }
+.me-registrar__unidad { color: var(--tinta-suave); }
+.me-registrar__rapidos { display: flex; flex-wrap: wrap; gap: var(--e-2); }
+.me-registrar__rapido {
+  min-inline-size: 56px; min-block-size: 44px; padding-inline: var(--e-3); border: 1px solid var(--linea); border-radius: var(--r-s);
+  background: var(--papel); color: var(--tinta); font: 600 var(--t-s)/1 var(--sans); cursor: pointer;
+}
+.me-registrar__rapido:hover { border-color: var(--bosque); }
+.me-registrar__rapido[aria-pressed="true"] { border-color: var(--bosque); background: var(--bosque); color: var(--sobre-oscuro); }
+.me-registrar__botones { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-3); }
+.me-registrada { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: var(--e-3) var(--e-4); padding: 16px 20px; border-radius: var(--r-m); background: var(--salvia-suave); }
+.me-registrada__textos { display: grid; gap: var(--e-2); }
+.me-registrada__titulo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-2) var(--e-3); font: 600 var(--t-lead)/1.3 var(--serif); color: var(--bosque); }
+.me-registrada__credito { padding: 2px 10px; border-radius: var(--r-full); background: var(--papel); color: var(--bosque); font: 600 var(--t-xs)/1.4 var(--sans); }
+.me-registrada__nota { margin: 0; }
+.me-registrada__nota blockquote { margin: var(--e-1) 0 0; padding: 10px 14px; border-radius: var(--r-s); background: var(--papel); }
+.me-registrada__botones { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-3); }
+@media (max-width: 559px) {
+  .me-registrar__botones > .boton--primario, .me-registrada__botones > .boton--primario { inline-size: 100%; }
+  .me-registrada__botones { grid-column: 1 / -1; }
+}
+
 /* Secciones numeradas */
 .me-detalle__seccion { display: grid; gap: var(--e-4); padding-block-start: var(--e-5); border-block-start: 1px solid var(--linea); }
 .me-seccion-num { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: var(--e-3); align-items: start; }

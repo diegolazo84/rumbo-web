@@ -401,11 +401,21 @@ export const CONSTRUCTOR = {
     versionCortaAyuda: "«Si el día se complica, la versión corta es…»",
     conFoto: "Con foto",
     conFotoAyuda: "Solo en Acompañamiento cercano.",
+    // Acción medible (C4; maqueta «Registrar acción», 30-oct-2026). PROPUESTO.
+    medible: "Se mide con una cantidad",
+    medibleAyuda: "La persona anota cuánto hizo al registrarla. No cambia los créditos.",
+    objetivo: "Cantidad propuesta",
+    objetivoAyuda: "Un número entero, de 1 a 10.000.",
+    unidad: "Unidad",
+    unidadOtra: "otra",
+    unidadCual: "¿Cuál unidad?",
     errores: {
       titulo: "Escribe un título de 2 a 60 caracteres.", // (vista previa)
       duracion: "La duración va de 5 a 240 minutos.", // (vista previa)
       dias: "Elige al menos un día.", // (vista previa)
       instrucciones: "Escribe las instrucciones.", // (vista previa)
+      objetivo: "La cantidad propuesta va de 1 a 10.000.",
+      unidad: "Escribe la unidad (hasta 20 caracteres).",
     },
     fotoAviso: "Más de 1 acción con foto por semana: es alcance comercial, no cuota técnica.", // (vista previa) 5.6
   },
@@ -690,7 +700,7 @@ export const PANEL_REAL = {
     erroresMeta: "Cada meta necesita un título de 2 a 80 caracteres.",
     erroresAccion: (titulo: string, semana: number, faltan: string[]) =>
       `Falta completar la acción ${titulo ? `«${titulo}»` : "sin título"} (semana ${semana}): ${faltan.join(", ")}. Te la dejamos abierta.`,
-    campos: { titulo: "título", dias: "días", duracion: "duración de 5 a 240 minutos", instrucciones: "instrucciones" },
+    campos: { titulo: "título", dias: "días", duracion: "duración de 5 a 240 minutos", instrucciones: "instrucciones", objetivo: "cantidad propuesta de 1 a 10.000", unidad: "unidad" },
     sinDias: "Sin día asignado",
   },
   revision: {
