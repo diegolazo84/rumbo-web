@@ -297,6 +297,14 @@ async function simular(page: Page, base: Base, { equipo = true, factores = [] as
       g.publicado_en = AHORA.toISOString();
       return 4;
     },
+    // Como la base (20261122000000): desde la última semana o con el ciclo cerrado; 10 a 800 caracteres.
+    guardar_mensaje_cierre: (c) => {
+      const ciclo = base.ciclos.find((x) => x.id === c.p_ciclo)!;
+      const v = String(c.p_mensaje ?? "").trim();
+      if (v && v.length < 10) return { __error: "mensaje:corto", __estado: 400 };
+      Object.assign(ciclo, { mensaje_cierre: v || null, mensaje_cierre_por: v ? UID : null, mensaje_cierre_en: v ? AHORA.toISOString() : null });
+      return null;
+    },
     revisar_evidencia: (c) => {
       const r = base.registros.find((x) => x.id === c.p_registro)!;
       r.estado = c.p_aprobar ? "aprobada" : "rechazada";
@@ -1058,4 +1066,38 @@ test("Comunidad en móvil: la barra inferior no tapa reportes ni botones al desp
   await hidratar(page);
   await expect(page.getByText("2 reportes").first()).toBeVisible();
   await revisarBarra(page);
+});
+
+// Informe de cierre (30-oct-2026): el coach escribe el mensaje de cierre en la ficha.
+test("ficha: mensaje de cierre al final del ciclo, con su autor; oculto sin la migración", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  Object.assign(base.ciclos[0], { estado: "cerrado", mensaje_cierre: null, mensaje_cierre_por: null, mensaje_cierre_en: null });
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/participante/?id=p1");
+  await hidratar(page);
+  await page.getByRole("tab", { name: "Revisiones" }).click();
+  const s = page.locator('section[aria-labelledby="mensaje-cierre-titulo"]');
+  await expect(s).toBeVisible();
+  await s.getByLabel("Tu mensaje para cerrar el ciclo").fill("Bien");
+  await s.getByRole("button", { name: "Guardar mensaje" }).click();
+  await expect(s.getByText("Escribe entre 10 y 800 caracteres.")).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "guardar_mensaje_cierre")).toBe(false);
+  await s.getByLabel("Tu mensaje para cerrar el ciclo").fill("Cerraste el ciclo con constancia. Sigamos.");
+  await s.getByRole("button", { name: "Guardar mensaje" }).click();
+  await expect(s.getByText("Mensaje guardado. La persona lo verá en su informe de cierre.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "guardar_mensaje_cierre")?.cuerpo).toEqual({ p_ciclo: "c1", p_mensaje: "Cerraste el ciclo con constancia. Sigamos." });
+  await expect(s).toContainText(/Escrito por .+ el /);
+  await s.getByRole("button", { name: "Quitar mensaje" }).click();
+  await expect(s.getByText("Mensaje quitado. El informe mostrará tu último foco.")).toBeVisible();
+  expect(base.ciclos[0].mensaje_cierre).toBeNull();
+  await sinViolaciones(page);
+
+  // Sin la migración aplicada, la columna no existe: la tarjeta no aparece.
+  await page.route(/\/rest\/v1\/ciclos\?.*mensaje_cierre/, (rt) => rt.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ code: "42703", message: "column ciclos.mensaje_cierre does not exist" }) }));
+  await page.reload();
+  await hidratar(page);
+  await page.getByRole("tab", { name: "Revisiones" }).click();
+  await expect(page.getByRole("heading", { name: "Semana 4" }).or(page.getByRole("heading", { name: /Semana \d/ }).first())).toBeVisible();
+  await expect(s).toHaveCount(0);
 });

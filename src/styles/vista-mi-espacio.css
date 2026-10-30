@@ -1371,7 +1371,7 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 .ic-grafico__semanas li { flex: 1; text-align: center; }
 .ic-leyenda { display: flex; flex-wrap: wrap; gap: var(--e-2) var(--e-4); font-size: var(--t-xs); color: var(--tinta-suave); }
 .ic-leyenda__item { display: inline-flex; align-items: center; gap: 6px; }
-.ic-leyenda__item::before { content: ""; inline-size: 12px; block-size: 12px; border-radius: 3px; background: var(--bosque); }
+.ic-leyenda__item::before { content: ""; inline-size: 12px; block-size: 12px; border-radius: var(--r-s); background: var(--bosque); }
 .ic-leyenda__item--prog::before { background: var(--arena); }
 @media (forced-colors: active) { .ic-grafico__hechas { fill: CanvasText; } .ic-grafico__prog { fill: GrayText; } }
 
@@ -1379,7 +1379,6 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 .ic-areas__lista, .ic-logros__lista { display: grid; gap: var(--e-3); margin: 0; padding: 0; list-style: none; }
 .ic-area { display: grid; gap: 6px; }
 .ic-area__fila { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--e-2); }
-.ic-area__fila .chip-meta { font-size: 0; gap: 0; padding: 4px; }
 .ic-area__titulo { font-size: var(--t-s); line-height: 1.35; color: var(--tinta); overflow-wrap: anywhere; }
 .ic-area__pct { font-size: var(--t-s); font-weight: 600; color: var(--bosque); }
 .ic-area__barra .progreso__texto, .ic-area__barra p { display: none; }
