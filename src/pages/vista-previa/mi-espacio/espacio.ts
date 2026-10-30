@@ -115,6 +115,7 @@ export const R_REAL: RutasEspacio = {
 export type EstadoCiclo = "preparacion" | "en_curso" | "pausa" | "cerrado";
 
 export type CicloEspacio = {
+  id?: string; // solo en Mi espacio real (informe_ciclo)
   numero: number;
   plan: PlanParam;
   semanas: number;

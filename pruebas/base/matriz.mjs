@@ -124,7 +124,7 @@ const FUNCIONES = {
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
     "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion", "cambiar_modulo", "indicadores",
     "registrar_pago", "devolucion_sugerida", "registrar_devolucion",
-    "invitar_coach", "revocar_invitacion", "cambiar_coach", "programar_videollamada", "anotar_videollamada",
+    "invitar_coach", "revocar_invitacion", "cambiar_coach", "programar_videollamada", "anotar_videollamada", "guardar_mensaje_cierre",
     "moderar_publicacion", "guardar_grupo_comunidad", "propuestas_grupo_equipo", "responder_propuesta_grupo", "guardar_desafio", "guardar_reconocimiento", "guardar_beneficio", "otorgar_beneficio", "aplicar_beneficio",
     "ia_pedir_borrador", "ia_revisar", "guardar_ia_config", "ia_gasto",
     "invitar_especialista", "revisar_credencial", "decidir_especialista", "guardar_config_especialistas", "guardar_especialidad",
@@ -140,7 +140,7 @@ const FUNCIONES = {
 const PRIVADO_EJECUTABLES = ["mi_especialista_id", "es_admin", "es_dueno", "es_coach", "gestiona", "puede_moderar", "foto_permitida", "foto_comunidad_permitida", "mi_participante_id"];
 // Del coach: las usa con sus participantes; con los de otro coach, «sin autorización».
 const DEL_COACH = ["publicar_programa", "nuevo_borrador", "revisar_evidencia", "solapamientos", "carga_prevista", "ver_postulacion",
-  "programar_videollamada", "anotar_videollamada", "ia_pedir_borrador", "ia_revisar"];
+  "programar_videollamada", "anotar_videollamada", "guardar_mensaje_cierre", "ia_pedir_borrador", "ia_revisar"];
 
 // ---------------------------------------------------------------------------
 // SQL
@@ -843,6 +843,36 @@ paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan 
   exigir(informe.ok && informe.salida === `${enBase} ${focos}`, `el informe del ciclo de A no cuadra: ${informe.error ?? informe.salida} (base: ${enBase} ${focos})`);
 }
 paso("evolución: semanas e informe de ciclo cuadran con la base; solo los ven la persona, su coach y el dueño");
+
+// R1 · Mensaje de cierre: lo escribe el coach (o el dueño) al final del ciclo y la persona lo ve en su informe.
+{
+  const cicloA = deA.p_ciclo;
+  const cerrar = `reset role; set session_replication_role = replica;
+    update public.ciclos set estado = 'cerrado' where id = '${cicloA}';
+    set session_replication_role = origin; set local role authenticated;\n`;
+  const abierto = sql(`select (estado <> 'cerrado' and privado.hoy_chile() < fin - 6)::int from public.ciclos where id = '${cicloA}'`);
+  if (abierto === "1") {
+    const antes = como(ROLES.X, `select public.guardar_mensaje_cierre('${cicloA}', 'Un mensaje antes de tiempo.')`);
+    exigir(!antes.ok && /no_termina/.test(antes.error), `se escribió el mensaje de cierre a mitad de ciclo: ${antes.error ?? "funcionó"}`);
+  }
+  const corto = como(ROLES.X, `${cerrar} select public.guardar_mensaje_cierre('${cicloA}', 'Bien')`);
+  exigir(!corto.ok && /mensaje:corto|mensaje.*corto/.test(corto.error), `se aceptó un mensaje de cierre de 4 letras: ${corto.error ?? "funcionó"}`);
+  const texto = "Cerraste tu ciclo con constancia. Sigamos conversando lo que viene.";
+  const nombreX = sql(`select nombre from public.equipo where user_id = '${ROLES.X.uid}'`);
+  const escribe = como(ROLES.X, `${cerrar} select public.guardar_mensaje_cierre('${cicloA}', '${texto}') \\g /dev/null
+    select set_config('request.jwt.claims', '${JSON.stringify({ sub: ROLES.A.uid, role: "authenticated", aal: "aal1" })}', true) \\g /dev/null
+    select (i->'mensaje_cierre'->>'texto') || '|' || (i->'mensaje_cierre'->>'autor') from (select public.informe_ciclo('${cicloA}') i) x`);
+  exigir(escribe.ok && ultima(escribe) === `${texto}|${nombreX}`, `la persona no ve el mensaje de cierre de su coach: ${escribe.error ?? ultima(escribe)}`);
+  const quita = como(ROLES.aal2, `${cerrar} select public.guardar_mensaje_cierre('${cicloA}', '${texto}') \\g /dev/null
+    select public.guardar_mensaje_cierre('${cicloA}', '') \\g /dev/null
+    select coalesce(public.informe_ciclo('${cicloA}')->>'mensaje_cierre', 'sin mensaje')`);
+  exigir(quita.ok && ultima(quita) === "sin mensaje", `el dueño no pudo quitar el mensaje de cierre: ${quita.error ?? ultima(quita)}`);
+  const ajeno = como(ROLES.Y, `${cerrar} select public.guardar_mensaje_cierre('${cicloA}', '${texto}')`);
+  exigir(!ajeno.ok && /no_autorizado/.test(ajeno.error), `otro coach escribió el mensaje de cierre de A: ${ajeno.error ?? "funcionó"}`);
+  const sinMensaje = como(ROLES.A, `select coalesce(public.informe_ciclo('${cicloA}')->>'mensaje_cierre', 'sin mensaje')`);
+  exigir(sinMensaje.ok && ultima(sinMensaje) === "sin mensaje", `el informe trae un mensaje que nadie escribió: ${sinMensaje.error ?? ultima(sinMensaje)}`);
+}
+paso("mensaje de cierre: solo el coach de la persona o el dueño, al final del ciclo; la persona lo ve con el nombre real de quien lo escribió");
 
 // C4 · Acciones medibles y plantillas.
 {

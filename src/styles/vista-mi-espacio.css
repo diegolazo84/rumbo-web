@@ -1353,3 +1353,93 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 .ml-hoja__h3 { margin: var(--e-5) 0 var(--e-2); font: 600 var(--t-lead)/1.2 var(--serif); color: var(--bosque); }
 .ml-hoja__lista { display: grid; gap: var(--e-3); list-style: none; margin: 0 0 var(--e-4); padding: 0; font-size: var(--t-s); line-height: 1.45; }
 .ml-metas { margin-block-start: var(--e-3); }
+
+/* ---------------------------------------------------------------------------
+   Informe de cierre de ciclo (maqueta de ChatGPT, 30-oct-2026). Reutiliza .ml-portada y
+   .ml-tarjeta de Mis logros; aquí solo lo propio. */
+.ic { display: grid; gap: var(--e-4); }
+.ic-cargando { padding: var(--e-6) 0; text-align: center; color: var(--tinta-suave); }
+.ic-chip { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 6px 14px; border: 1.5px solid var(--terracota); border-radius: var(--r-full); background: var(--superficie); font-size: var(--t-s); font-weight: 600; color: var(--bosque); }
+.ic-chip .icono { color: var(--terracota-texto); }
+.ic-h2 { margin: 0; font: 600 var(--t-h3)/1.25 var(--serif); color: var(--bosque); }
+
+/* Objetivo y progreso */
+.ic-objetivo { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--e-4); }
+.ic-objetivo__icono { display: grid; place-items: center; inline-size: 56px; block-size: 56px; border-radius: 50%; background: var(--terracota-suave); color: var(--terracota-texto); }
+.ic-objetivo__texto { display: grid; gap: 4px; min-inline-size: 0; }
+.ic-objetivo__meta { font-size: var(--t-lead); line-height: 1.4; color: var(--tinta); overflow-wrap: anywhere; }
+.ic-objetivo__lista { margin: 0; padding-inline-start: 1.1em; display: grid; gap: 2px; overflow-wrap: anywhere; }
+.ic-progreso__cabeza { display: flex; align-items: baseline; justify-content: space-between; gap: var(--e-3); }
+.ic-progreso__pct { margin: 0; font: 600 var(--t-h2)/1 var(--serif); color: var(--bosque); }
+.ic-progreso__barra .barra { block-size: 12px; }
+.ic-datos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--e-2); margin: 0; padding: 0; list-style: none; }
+.ic-dato { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 8px; min-inline-size: 0; padding: 10px; border-radius: var(--r-m); background: var(--papel); }
+.ic-dato__icono { grid-row: span 2; display: grid; place-items: center; inline-size: 32px; block-size: 32px; border-radius: 50%; }
+.ic-dato--hechas .ic-dato__icono { background: var(--salvia-suave); color: var(--bosque); }
+.ic-dato--racha .ic-dato__icono { background: var(--terracota-suave); color: var(--terracota-texto); }
+.ic-dato--logros .ic-dato__icono { background: var(--arena); color: var(--bosque); }
+.ic-dato__n { font: 600 var(--t-h3)/1.1 var(--serif); color: var(--bosque); }
+.ic-dato__t { font-size: var(--t-xs); line-height: 1.3; color: var(--tinta-suave); overflow-wrap: anywhere; hyphens: auto; }
+@media (max-width: 479.98px) {
+  .ic-dato { grid-template-columns: minmax(0, 1fr); row-gap: 2px; padding: 8px; }
+  .ic-dato__icono { grid-row: auto; inline-size: 28px; block-size: 28px; }
+}
+
+/* Evolución semanal */
+.ic-grafico { display: grid; gap: var(--e-3); margin: 0; }
+.ic-grafico__area { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 160px auto; column-gap: 8px; row-gap: 6px; }
+.ic-grafico__eje { display: flex; flex-direction: column; justify-content: space-between; margin: -0.6em 0; padding: 0; list-style: none; font-size: var(--t-micro); line-height: 1.2; color: var(--tinta-suave); text-align: end; }
+.ic-grafico__svg { display: block; inline-size: 100%; block-size: 100%; overflow: visible; }
+.ic-grafico__linea { stroke: var(--linea); stroke-width: 1; }
+.ic-grafico__prog { fill: var(--arena); }
+.ic-grafico__hechas { fill: var(--bosque); }
+.ic-grafico__semanas { grid-column: 2; display: flex; margin: 0; padding: 0; list-style: none; font-size: var(--t-xs); color: var(--tinta-suave); }
+.ic-grafico__semanas li { flex: 1; text-align: center; }
+.ic-leyenda { display: flex; flex-wrap: wrap; gap: var(--e-2) var(--e-4); font-size: var(--t-xs); color: var(--tinta-suave); }
+.ic-leyenda__item { display: inline-flex; align-items: center; gap: 6px; }
+.ic-leyenda__item::before { content: ""; inline-size: 12px; block-size: 12px; border-radius: var(--r-s); background: var(--bosque); }
+.ic-leyenda__item--prog::before { background: var(--arena); }
+@media (forced-colors: active) { .ic-grafico__hechas { fill: CanvasText; } .ic-grafico__prog { fill: GrayText; } }
+
+/* Áreas y logros */
+.ic-areas__lista, .ic-logros__lista { display: grid; gap: var(--e-3); margin: 0; padding: 0; list-style: none; }
+.ic-area { display: grid; gap: 6px; }
+.ic-area__fila { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--e-2); }
+.ic-area__titulo { font-size: var(--t-s); line-height: 1.35; color: var(--tinta); overflow-wrap: anywhere; }
+.ic-area__pct { font-size: var(--t-s); font-weight: 600; color: var(--bosque); }
+.ic-area__barra .progreso__texto, .ic-area__barra p { display: none; }
+.ic-area__hitos { font-size: var(--t-xs); }
+.ic-logro { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: var(--e-3); padding: 10px 12px; border-radius: var(--r-m); background: var(--papel); }
+.ic-logro__icono { display: grid; place-items: center; inline-size: 36px; block-size: 36px; border-radius: 50%; background: var(--salvia-suave); color: var(--bosque); }
+.ic-logro__texto { display: grid; gap: 2px; min-inline-size: 0; font-size: var(--t-xs); line-height: 1.35; color: var(--tinta-suave); }
+.ic-logro__nombre { font-size: var(--t-s); font-weight: 600; color: var(--tinta); }
+.ic-logros__ver { display: inline-flex; align-items: center; gap: 6px; justify-self: start; }
+
+/* Mensaje del coach y qué sigue */
+.ic-coach { grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: var(--e-4); position: relative; }
+.ic-coach__avatar { inline-size: 64px; block-size: 64px; }
+.ic-coach__cuerpo { display: grid; gap: 6px; min-inline-size: 0; }
+.ic-coach__texto { font-size: var(--t-base); line-height: 1.5; color: var(--tinta); white-space: pre-line; overflow-wrap: anywhere; }
+.ic-coach__firma { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 0; font-size: var(--t-xs); color: var(--tinta-suave); }
+.ic-coach__autor { font-weight: 600; color: var(--bosque); }
+.ic-coach__hoja { position: absolute; inset: auto var(--e-4) var(--e-4) auto; color: var(--salvia-honda); }
+.ic-sigue { grid-template-columns: auto minmax(0, 1fr); gap: var(--e-3); background: var(--salvia-suave); border: 1px solid var(--salvia); }
+.ic-sigue__icono { color: var(--bosque); }
+.ic-sigue__cuerpo { display: grid; gap: var(--e-2); min-inline-size: 0; }
+.ic-sigue__acciones { display: grid; gap: var(--e-2); margin-block-start: var(--e-2); }
+.ic-sigue__acciones .boton { justify-content: center; inline-size: 100%; }
+@media (max-width: 479.98px) { .ic-coach { gap: var(--e-3); } .ic-coach__avatar { inline-size: 48px; block-size: 48px; font-size: var(--t-base); } .ic-coach__hoja { display: none; } .ic-sigue { grid-template-columns: minmax(0, 1fr); } .ic-sigue__icono { display: none; } }
+
+@media (min-width: 1024px) {
+  .app__contenido:has(.ic) { max-inline-size: calc(var(--ancho-sitio) + 12rem + 2 * var(--gutter)); }
+  .ic-fila--resumen { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); }
+  .ic-fila--tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ic-fila--tres.ic-fila--sin-logros { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ic-fila--cierre { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: start; }
+  .ic-grafico__area { grid-template-rows: 200px auto; }
+  .ic-fila--resumen, .ic-fila--cierre { margin-block-start: 0; }
+}
+@media (min-width: 1024px) and (max-width: 1279.98px) {
+  .ic-fila--tres { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ic-fila--tres > .ic-logros { grid-column: 1 / -1; }
+}
