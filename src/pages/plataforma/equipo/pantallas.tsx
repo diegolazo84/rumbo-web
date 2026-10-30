@@ -26,6 +26,7 @@ import { aAjuste, aSolicitud, colaReal, nombreDe, reordenesDe, reordenesUsados, 
 import { RegistrarFactor, factoresTotp } from "./Mfa";
 import { FichaParticipanteReal, RevisionReal } from "./participante";
 import { ComunidadReal, R_COMUNIDAD } from "./comunidad";
+import { MantencionFotos } from "./mantencion";
 import { ModulosReal, R_MODULOS } from "./modulos";
 import { MisParticipantesReal } from "./participantes";
 import { Alerta, NoEncontrada, useDatosPanel, useEscritura, useInstantanea } from "./comun";
@@ -624,6 +625,7 @@ function MasReal() {
       </Seccion>
 
       <Feriados />
+      <MantencionFotos />
       <Cuenta />
     </div>
   );

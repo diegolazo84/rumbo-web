@@ -819,6 +819,120 @@ test("Más: postulaciones y cuenta con sus factores", async ({ page }) => {
   await expect(seccion.getByText("Guardado.")).toBeVisible();
 });
 
+const ESTADO_MANTENCION = {
+  estado: "con_problemas",
+  horario: "30 7 * * *",
+  dias: 30,
+  horas_seguridad: 48,
+  conteo: { vencidas: 1, vencidas_guardadas: 1, proximas_7_dias: 3, en_revision: 2, archivos_sin_registro: 0, archivos_recientes_sin_registro: 1, registros_sin_archivo: 0 },
+  fallos: { fotos: 1, repetidos: 0, ultimo_error: "storage:503" },
+  interrumpidas_30_dias: 0,
+  borradas_30_dias: 7,
+  ejecuciones: [
+    { origen: "programada", iniciada_en: "2026-10-29T07:30:02Z", terminada_en: "2026-10-29T07:30:05Z", estado: "con_errores", vencidas: 3, borradas: 2, fallidas: 1, huerfanos_borrados: 0, error: null },
+    { origen: "manual", iniciada_en: "2026-10-28T15:10:00Z", terminada_en: "2026-10-28T15:10:03Z", estado: "ok", vencidas: 1, borradas: 1, fallidas: 0, huerfanos_borrados: 2, error: null },
+    { origen: "programada", iniciada_en: "2026-10-28T07:30:01Z", terminada_en: "2026-10-28T07:30:04Z", estado: "ok", vencidas: 5, borradas: 5, fallidas: 0, huerfanos_borrados: 0, error: null },
+  ],
+};
+
+async function abrirMantencion(page: Page, estado: object, pedir: (rt: Route) => unknown = (rt) => rt.fulfill({ status: 200, contentType: "application/json", body: "false" })) {
+  await preparar(page, "aal2", VERIFICADO);
+  await simular(page, baseInicial(), { factores: VERIFICADO });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/pedir_depuracion_fotos`, pedir);
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/estado_depuracion_fotos`, (rt) => rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(estado) }));
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  return page.locator("section.pa-mant");
+}
+
+test("Más → Mantención: el borrado automático de fotos con datos reales de la base y «Revisar ahora»", async ({ page }) => {
+  let pedidas = 0;
+  const m = await abrirMantencion(page, ESTADO_MANTENCION, (rt) => {
+    pedidas++;
+    return rt.fulfill({ status: 200, contentType: "application/json", body: "true" });
+  });
+  // A. Estado general: el que calcula la base, con la hora de Chile del horario UTC.
+  await expect(m.locator(".pa-mant__estado-titulo")).toHaveText("Activo, con problemas");
+  await expect(m.getByText(/Todos los días a las 0[34]:30, hora de Chile/)).toBeVisible();
+  await expect(m.locator(".pa-mant__estado-datos")).toContainText("Programada");
+  await expect(m.locator(".pa-mant__estado-datos")).toContainText("Con problemas");
+  // B. Indicadores.
+  const cifra = (t: string) => m.locator(".pa-mant__cifra", { hasText: t }).locator(".pa-mant__cifra-n");
+  await expect(cifra("Vencidas")).toHaveText("1");
+  await expect(cifra("Próximas a vencer")).toHaveText("3");
+  await expect(cifra("En revisión")).toHaveText("2");
+  await expect(cifra("Eliminadas")).toHaveText("7");
+  // C. Alertas: lo que tiene problemas se distingue; lo demás dice «Sin problemas».
+  const problema = (t: string) => m.locator(".pa-mant__problema", { hasText: t });
+  await expect(problema("Errores de eliminación")).toHaveClass(/pa-mant__problema--hay/);
+  await expect(problema("Errores de eliminación")).toContainText("Último código: storage:503.");
+  await expect(problema("Archivos huérfanos")).not.toHaveClass(/pa-mant__problema--hay/);
+  await expect(problema("Archivos huérfanos")).toContainText("1 archivo reciente en espera");
+  await expect(problema("Registros sin archivo")).toContainText("Sin problemas");
+  await expect(problema("Ejecuciones interrumpidas")).toContainText("Sin problemas");
+  // D. Historial.
+  await expect(m.locator(".pa-mant__tabla tbody tr")).toHaveCount(3);
+  await expect(m.locator(".pa-mant__tabla tbody tr").nth(1)).toContainText("+2 sin registro");
+  // Nunca rutas privadas.
+  await expect(m).not.toContainText("/");
+  // Sin desplazamiento horizontal.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  await sinViolaciones(page);
+  if (process.env.CAPTURAS) {
+    // Sin las barras fijas del panel, que taparían parte de la sección en la captura.
+    await page.addStyleTag({ content: "header, nav, .barra-inferior, [class*='navegacion'] { visibility: hidden !important; }" });
+    await m.screenshot({ path: `/mnt/project-files/rumbo-web/fotos-privadas/mantencion-${test.info().project.name}.png`, animations: "disabled" });
+  }
+  // Desde 320 px, sin desbordes.
+  const tam = page.viewportSize();
+  await page.setViewportSize({ width: 320, height: 700 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  expect(await m.evaluate((el) => [...el.querySelectorAll("*")].filter((x) => x.getBoundingClientRect().right > window.innerWidth + 0.5).length)).toBe(0);
+  if (tam) await page.setViewportSize(tam);
+  // E. Acciones.
+  await m.getByRole("button", { name: "Revisar ahora" }).click();
+  await expect(m.getByText("Listo: la revisión empezó.")).toBeVisible();
+  expect(pedidas).toBe(1);
+});
+
+test("Más → Mantención: «Activo» solo cuando la base lo confirma; sin activar no se simula nada", async ({ page }) => {
+  const m = await abrirMantencion(page, {
+    ...ESTADO_MANTENCION,
+    estado: "sin_activar",
+    conteo: { ...ESTADO_MANTENCION.conteo, vencidas_guardadas: 0, archivos_recientes_sin_registro: 0 },
+    fallos: { fotos: 0, repetidos: 0, ultimo_error: null },
+    borradas_30_dias: 0,
+    ejecuciones: [],
+  });
+  await expect(m.locator(".pa-mant__estado-titulo")).toHaveText("Sin activar");
+  await expect(m.locator(".pa-mant__estado")).toHaveClass(/pa-mant__estado--neutro/);
+  await expect(m.getByText("Activo")).toHaveCount(0);
+  await expect(m.getByText("Todavía no se ha ejecutado.")).toBeVisible();
+  await expect(m.getByText("Aún no hay ejecuciones.")).toBeVisible();
+  await m.getByRole("button", { name: "Revisar ahora" }).click();
+  await expect(m.getByText("No se pudo empezar: el borrado automático aún no está activo.")).toBeVisible();
+  await sinViolaciones(page);
+});
+
+test("Más → Mantención: detenido y tarea apagada se muestran como atención, sin colores de error", async ({ page }) => {
+  for (const [estado, titulo] of [["detenida", "Detenido"], ["desactivada", "Tarea apagada"], ["activa", "Activo"]] as const) {
+    const m = await abrirMantencion(page, { ...ESTADO_MANTENCION, estado, interrumpidas_30_dias: estado === "activa" ? 0 : 1 });
+    await expect(m.locator(".pa-mant__estado-titulo")).toHaveText(titulo);
+    await expect(m.locator(".pa-mant__estado")).toHaveClass(estado === "activa" ? /pa-mant__estado--bien/ : /pa-mant__estado--atencion/);
+    await page.unrouteAll({ behavior: "ignoreErrors" });
+  }
+});
+
+test("Más → Mantención: un coach (o sin la migración) no ve la sección", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  await simular(page, baseInicial(), { factores: VERIFICADO });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/estado_depuracion_fotos`, (rt) => rt.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ code: "PT403", message: "sesion:no_autorizado" }) }));
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  await expect(page.locator("h1")).toHaveText("Más.");
+  await expect(page.locator("#mantencion-titulo")).toHaveCount(0);
+});
+
 test("contacto: lo resuelto o respondido se puede volver a abrir", async ({ page }) => {
   await preparar(page, "aal2", VERIFICADO);
   const base = baseInicial();

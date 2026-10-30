@@ -615,6 +615,69 @@ export const MAS = {
 // Panel real (etapa 3). PROPUESTO: la especificación no fija estos textos (errores, avisos de
 // guardado y el segundo factor); Diego los revisa.
 
+// C21: Más → Mantención en el panel real (borrado automático de fotos). PROPUESTO: textos nuevos.
+export const MANTENCION_FOTOS = {
+  titulo: "Mantención",
+  ojo: "Borrado automático de fotos",
+  // Estado real que calcula la base (privado.estado_borrado_fotos): nunca se simula.
+  estado: {
+    activa: { titulo: "Activo", texto: "Corrió en el último día y terminó sin problemas." },
+    con_problemas: { titulo: "Activo, con problemas", texto: "La última ejecución terminó con errores. Revisa «Alertas y problemas»." },
+    esperando: { titulo: "Esperando la primera ejecución", texto: "Se activó hace menos de un día. La primera ejecución programada aparecerá aquí." },
+    detenida: { titulo: "Detenido", texto: "Pasaron más de 26 horas sin una ejecución programada. Revisa la Edge Function y la tarea en Supabase." },
+    desactivada: { titulo: "Tarea apagada", texto: "La tarea diaria no existe o está desactivada en Supabase. Mientras tanto no se borra ninguna foto." },
+    sin_activar: { titulo: "Sin activar", texto: "Falta desplegar la función y activarla (docs/borrado-fotos.md). Mientras tanto no se borra ninguna foto." },
+  } as Record<string, { titulo: string; texto: string }>,
+  frecuencia: "Frecuencia",
+  diario: (hora: string) => `Todos los días a las ${hora}, hora de Chile`,
+  sinHorario: "Sin programar",
+  cambioHora: "Se ajusta solo al cambio de horario.",
+  ultima: "Última ejecución",
+  nunca: "Todavía no se ha ejecutado.",
+  plazo: (dias: number) =>
+    `Las fotos revisadas se borran ${dias} días después de su revisión; las opcionales, ${dias} días después de adjuntarse. Las que están en revisión no se borran. El registro, la revisión y los créditos se mantienen.`,
+  cifras: {
+    titulo: "Fotos",
+    vencidas: { titulo: "Vencidas", nota: "Cumplieron el plazo y siguen guardadas" },
+    proximas: { titulo: "Próximas a vencer", nota: "En los próximos 7 días" },
+    enRevision: { titulo: "En revisión", nota: "No se borran mientras esperan" },
+    borradas: { titulo: "Eliminadas", nota: "En los últimos 30 días" },
+  },
+  alertas: {
+    titulo: "Alertas y problemas",
+    sinProblemas: "Sin problemas",
+    errores: {
+      titulo: "Errores de eliminación",
+      texto: "Fotos que no se pudieron borrar. Se reintentan en la próxima ejecución.",
+      repetidos: (n: number) => `${n} fallan hace 3 días o más.`,
+      codigo: (c: string) => `Último código: ${c}.`,
+    },
+    huerfanos: {
+      titulo: "Archivos huérfanos",
+      texto: (horas: number) => `Archivos sin registro con más de ${horas} horas. Se borran en la próxima ejecución.`,
+      recientes: (n: number) => (n === 1 ? "1 archivo reciente en espera (puede ser una subida en curso)." : `${n} archivos recientes en espera (pueden ser subidas en curso).`),
+    },
+    sinArchivo: { titulo: "Registros sin archivo", texto: "Registros que apuntan a una foto que ya no existe." },
+    interrumpidas: { titulo: "Ejecuciones interrumpidas", texto: "En los últimos 30 días, ejecuciones que no alcanzaron a terminar." },
+  },
+  historial: {
+    titulo: "Historial",
+    vacio: "Aún no hay ejecuciones.",
+    fecha: "Fecha",
+    resultado: "Resultado",
+    eliminadas: "Eliminadas",
+    errores: "Errores",
+    huerfanos: (n: number) => `+${n} sin registro`,
+    codigo: (c: string) => `código ${c}`,
+  },
+  resultados: { ok: "Sin problemas", con_errores: "Con problemas", fallida: "No terminó", en_curso: "En curso" } as Record<string, string>,
+  origen: { programada: "Programada", manual: "Manual" } as Record<string, string>,
+  revisar: "Revisar ahora",
+  pedida: "Listo: la revisión empezó. Actualiza en un minuto para ver el resultado.",
+  noActiva: "No se pudo empezar: el borrado automático aún no está activo.",
+  actualizar: "Actualizar",
+} as const;
+
 export const PANEL_REAL = {
   error: "No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.",
   guardado: "Guardado.",

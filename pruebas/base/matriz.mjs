@@ -99,7 +99,7 @@ const TABLAS = {
   revisiones: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // solo publicadas
   asignaciones_coach: { leer: "equipo", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
 };
-const PRIVADAS = ["correos_equipo", "limites", "sales"];
+const PRIVADAS = ["correos_equipo", "limites", "sales", "depuracion_fotos", "depuracion_fotos_fallos", "depuracion_reservas", "depuracion_firmas"];
 
 // Funciones de public que la API deja ejecutar. «anon»: también sin sesión. «persona»: actúan
 // solo sobre la ficha de quien llama. «equipo-error»: fallan sin equipo con aal2.
@@ -131,6 +131,7 @@ const FUNCIONES = {
     "guardar_perfil_especialista", "agregar_credencial", "guardar_servicio_especialista", "enviar_perfil_a_revision",
     "responder_reserva", "agendar_reserva", "anotar_reserva", "mis_participantes_especialista", "especialista_seguimiento",
     "recomendar", "comisiones_especialistas",
+    "estado_depuracion_fotos", "pedir_depuracion_fotos",
   ],
   equipo: ["mi_rol_equipo", "actualizar_mi_perfil", "guardar_plantilla"],
   "con-sesion": ["aceptar_invitacion_especialista", "especialistas_publicados", "ia_disponible", "modulo_visible", "marcar_avisos_leidos", "aceptar_invitacion_equipo"],
