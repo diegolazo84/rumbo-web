@@ -2,7 +2,7 @@
 // entrar directo por accion/?id=. Desde una lista (Hoy, calendario) el mismo contenido se abre
 // en una hoja. Estados: por-hacer, hecha, futura, dejada-pasar, anulada-ajuste, anulada-pausa
 // y, en acciones con foto (Martín), con-foto, foto-en-revision, foto-aprobada, foto-no-aprobada
-// y foto-depurada.
+// y foto-depurada; en una acción medible, medible y medible-hecha.
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { TEXTOS_CARGA, Tostada } from "../../../components/app";
@@ -14,6 +14,8 @@ import {
   accionFotoAprobada,
   accionFotoDepurada,
   accionFotoNoAprobada,
+  accionMedible,
+  accionMedibleHecha,
   ocurrenciaPorId,
   type EstadoRegistro,
   type Ocurrencia,
@@ -36,6 +38,8 @@ const POR_ESTADO: Record<string, () => Ocurrencia> = {
   "foto-aprobada": () => accionFotoAprobada,
   "foto-no-aprobada": () => accionFotoNoAprobada,
   "foto-depurada": () => accionFotoDepurada,
+  medible: () => accionMedible,
+  "medible-hecha": () => accionMedibleHecha,
 };
 
 const FOTO: Record<string, FotoInicial> = {
@@ -56,7 +60,7 @@ function DetallePrevia({ estado = "por-hacer" }: PropsPantalla) {
   const [registro, setRegistro] = useState<EstadoRegistro | null>(inicial.registro);
   return (
     <div className="me-pantalla me-pantalla--detalle">
-      <Detalle o={{ ...inicial, registro }} hoy={HOY} onRegistrar={setRegistro} fotoInicial={FOTO[estado]} />
+      <Detalle key={estado} o={{ ...inicial, registro }} hoy={HOY} onRegistrar={setRegistro} fotoInicial={FOTO[estado]} />
     </div>
   );
 }

@@ -1,47 +1,65 @@
 # Inventario de funciones de Rumbo
 
-Lista única de todas las funciones del producto y su estado real. Se actualiza en cada PR que
-cambia una función. Viene de la auditoría del 21 de octubre de 2026.
+Lista única de las funciones del producto y su estado real. Se actualiza en cada PR que cambia
+una función. Última revisión: 30 de octubre de 2026 (auditoría de cierre de Rumbo 1.0, `main` en
+735df8d).
 
-**Estados:** *operativa* (funciona en producción) · *parcial* (una parte real funciona) ·
-*simulada* (se ve pero no funciona) · *inexistente* · *desarrollada* (código y pruebas listos,
-falta integrar o activar). Nada pasa a *operativa* sin estar implementado, probado, integrado y
-aplicado en producción con autorización de Diego.
+**Estados:**
+- *operativa*: funciona en producción.
+- *apagada*: está en producción, pero detrás de un módulo apagado.
+- *en PR*: código y pruebas listos en un PR sin publicar.
+- *sin pantalla*: la base existe en producción, pero ninguna pantalla la usa.
+- *próximamente*: fuera de Rumbo 1.0.
 
-**Dependencias:** `diseño` (espera la maqueta aprobada) · `migración` (pegar en Supabase con
-autorización) · `externo` (servicio externo; se indica si es gratis) · `decisión` (comercial o
-legal de Diego).
+Nada pasa a *operativa* sin estar implementado, probado, publicado y aplicado en producción con
+autorización de Diego.
 
-| # | Función | Estado | Falta | Depende de | PR |
-|---|---|---|---|---|---|
-| 1 | Postular, acuerdo, crear espacio, ingreso, Mi plan, ajustes, registro y revisión semanal, constructor | operativa · Mi plan (C18): encabezado con la semana del ciclo, «Tu día de hoy» con los registros de hoy, «Lo que estás construyendo» con las metas publicadas y calendario semanal con hoy, días completos y futuros diferenciados · Detalle de una acción (C19): referencia de ChatGPT en página, panel lateral y hoja; foto obligatoria: subida real con el módulo «fotos» habilitado (C20), siempre con «No puedo subir una foto» | Recorrido completo con correo de prueba | — | — |
-| 1b | Formulario de contacto | **con error** (no guarda mensajes) | Aplicar el arreglo | migración | #22 |
-| 2 | Mi Rumbo rediseñado | parcial | Integrar; meta principal elegida por el coach | autorización | #19 |
-| 3 | Mi acompañamiento | parcial | Diseño nuevo; coach real (#8); «nuevo» entre dispositivos (base lista en A5) | diseño, #8, #11 | #20 |
-| 4 | 10 niveles | operativa (cálculo) · Pantalla Mis logros (C17): nivel actual, barra al siguiente y los 10 niveles | Camino de los 10 niveles, historial de subidas | diseño | — |
-| 5 | Créditos, rachas y multiplicadores | operativa · Mis logros (C17): créditos de cada día de la semana, bono siguiente, racha actual y mejor racha del ciclo | Historial día a día; corrección con motivo | diseño, #9 | — |
-| 6 | Recompensas y reconocimientos | desarrollada (base de datos y pruebas): 6 reconocimientos digitales que se otorgan solos y una vez (visibles con el módulo «reconocimientos»); 10 % en una renovación por completar todo lo vigente del ciclo de 28 días, apagado hasta que el dueño lo active, no acumulable y descontado del pago sugerido; catálogo listo para convenios, descuentos de especialistas y premios físicos (los otorga el dueño). Niveles, créditos y rachas sin cambios (E1) · Mis logros (C17): los 6 reconocimientos con fecha o avance (con el módulo «reconocimientos» habilitado) y el 10 % con su avance solo si el dueño lo activa (`mi_beneficio_renovacion`, sin aplicar) | Pantallas (maqueta); aplicar migración; activar el descuento cuando Diego decida | migración, diseño | E1 |
-| 7 | Ranking voluntario | desarrollada (base de datos y pruebas): alias propio (único), entrar y salir del ranking, ranking de cada semana por % de acciones hechas; solo alias; lo ven quienes participan y el equipo; con menos de 3 no se muestra (C5). La tarjeta de la portada sigue siendo un ejemplo rotulado · Mis logros (C17): tarjeta para entrar o salir con alias y puesto de la semana pasada, solo con el módulo «ranking» habilitado | Pantallas (maqueta); describirlo en la política de privacidad y habilitar el módulo «ranking» (solo funciona habilitado); aplicar migración | diseño, migración, decisión legal | C5 |
-| 8 | Roles y asignación de coaches | desarrollada (base de datos y pruebas): roles y asignación (A1); invitar, aceptar, activar y dar permiso de moderar (B5) | Integrar, aplicar en producción; pantallas del coach, de invitación y de asignación; correo de invitación | migración, diseño | A1, B5 |
-| 8b | Perfil del coach y «Tu coach» real | desarrollada (base de datos y pruebas) | Pantallas (Mi acompañamiento y panel); foto del coach con C1 | migración, diseño | A3 |
-| 9 | Panel del dueño | parcial | Tablero, pagos, módulos, pantalla de auditoría. Auditoría de cambios y «Ver con motivo»: desarrolladas en la base (A2). Indicadores de negocio: función `indicadores` desarrollada y probada (B3); falta la pantalla (maqueta) y los que dependen de minutos e IA. Registro de pagos y devoluciones: desarrollado y probado (B4) | #8, diseño, migración | A2, B3, B4 |
-| 10 | Panel del coach | parcial: datos de la bandeja de seguimiento desarrollados y probados (B2) | Pantalla de la bandeja y vista propia (maqueta), «Ver como» | #8, diseño | B2 |
-| 11 | Notificaciones sincronizadas | desarrollada: base de avisos (A5, aplicada) y pantalla Mis avisos (maqueta de ChatGPT, R1): campana con número sin leer, «Mis avisos» en la barra lateral, filtros con números reales, grupos por día, búsqueda, marcar leído igual en todos los equipos. Avisos de la Comunidad (respuesta a tu publicación, desafío nuevo) en migración 20261124000000, sin aplicar | Publicar; aplicar la migración de la Comunidad; avisos al teléfono (push) | autorización, migración | A5, R1 |
-| 12 | Recordatorios automáticos | desarrollada: preferencias de cada persona y envío cada hora como aviso de Rumbo (D1) y correo con Brevo apagado sin claves (D3). Pantalla «Configuración de recordatorios» (maqueta de ChatGPT, R1) en Preferencias: interruptor general (apagado por defecto), 6 categorías (acciones, revisión semanal, videollamadas solo plan cercano, mensajes del coach, comunidad solo con módulo, logros), horario desde/hasta y hora dentro de 7–22, días de la semana, copia por correo con su estado real, vista previa que no envía nada. Migración 20261125000000_recordatorios_completos sin aplicar (sin ella la pantalla dice que aún no está disponible) | Publicar; aplicar la migración; Diego crea la clave de Brevo y verifica el remitente; prueba de envío real con cuenta de prueba; avisos al teléfono | autorización, migración; externo (Brevo gratis 300/día) | D1, R1 |
-| 13 | Fotos opcionales | desarrollada (PR en borrador, C20), sin activar: solo con el módulo «fotos» habilitado. Subida real al bucket privado «evidencias» en WebP de hasta 1600 px sin metadatos (si el navegador no puede, se rechaza), foto obligatoria y opcional, eliminar y quitar con la base primero y limpieza de archivos sueltos, miniaturas con enlace firmado de 5 minutos en Mi espacio, Revisar y la ficha del panel; sin migraciones | Borrado a los 30 días (propuesta sin implementar: no existe depuración real), política de privacidad, prueba en iPhone real; la columna `planes.fotos_por_semana` queda sin uso | #8, migración, decisión legal | C1 |
-| 14 | Asistente de IA | desarrollada (base de datos y pruebas, con respuestas de OpenAI simuladas): consentimiento con contexto elegido por la persona, sin nombre ni correo; la respuesta la aprueba o corrige el coach antes de que la persona la vea; borradores para el coach; crisis sin IA, con *4141/131 y alerta; tope mensual en USD y diario por persona; costo por tokens; APAGADO (E2, aplicado). Pantalla del participante «Asistente de Rumbo» (maqueta de ChatGPT, R1): autorización con contexto elegido, retiro, conversación con solo lo aprobado por el coach, «En revisión», no compartida, crisis con *4141/131, tope diario, «Más ideas» y «Profundizar» como pregunta nueva; aparece en la navegación solo si ia_disponible; sin migraciones | Bandeja del coach y administración del dueño (pantallas); autorización de Diego para la API pagada, clave en el Vault, prueba real con OpenAI, política de privacidad | #8, #11; externo **pagado** | E2 |
-| 15 | Seguimiento e informes de evolución | parcial: datos del gráfico semanal (cumplimiento, días completos, créditos, carga, revisión) e informe de cierre de ciclo (totales, constancia, mejor racha, focos publicados) desarrollados y probados; los ve la persona, su coach y el dueño (C3) · Mis logros (C17): % de lo programado hecho por semana y acciones de esta semana | Pantallas del gráfico y del informe (maqueta); aplicar migración | diseño, migración | C3 |
-| 16 | Comunidad | desarrollada (base de datos y pruebas): solo con el módulo «comunidad» habilitado por el dueño; alias y aceptación de reglas; publicaciones y respuestas con alias (nadie ve quién es quién); borrar las propias; reportar; moderación (dueño o coach con permiso) oculta o deja visible con motivo; tope de 20 al día (C6). Grupos (el equipo los crea; unirse y salir), reacciones, foto opcional privada (bucket «comunidad») y filtro por grupo (C7). Tipo de publicación (progreso, pregunta, consejo, logro), guardar, bloquear en ambos sentidos, temas populares con conteo real y «tu impacto» (C8). Desafíos voluntarios creados por moderación, con avance verificable (días con todas las acciones programadas hechas, de progreso_diario), conteo real de participantes y sin créditos (C9). Panel /equipo/comunidad/ (C10): reportes abiertos con contenido y motivos (sin quién reporta ni quién publicó), ocultar con motivo o dejar visible, volver a mostrar lo oculto, crear y editar grupos y desafíos, estado del módulo; solo para quien modera. Crear publicación (C11): hasta 5 fotos propias, «Permitir comentarios» que la base hace cumplir, sin duplicados por doble envío. Explorador de grupos (C13): categoría y un grupo destacado elegidos por moderación, sugerencias por categoría de las metas publicadas (sin IA), conteo real de publicaciones visibles, «Proponer un grupo» al equipo (máximo 3 pendientes; el equipo ve solo el alias). Pantalla de participantes en PR #51 | Texto de las reglas y política de privacidad; foto de portada definitiva; aplicar migraciones | migración, decisión legal | C6, C7, C8, C9, C10, C11, C13 |
-| 17 | Especialistas Rumbo | desarrollada (base de datos y pruebas): el dueño invita; el especialista entra con TOTP, completa su perfil, credenciales y servicios; el dueño verifica cada credencial anotando cómo y aprueba la publicación; si cambia el perfil vuelve a revisión; directorio solo con el módulo «especialistas» (E3). Trabajo con participantes (E4): vínculo autorizado por la persona con lo que comparte (metas, acciones, evolución), reservas pedidas por la persona o agendadas por el especialista, seguimiento, recomendaciones que ve también el coach, mensajes privados entre las partes, retiro inmediato del acceso; comisión 15 % (por validar) solo en reservas originadas en Rumbo y liquidación para el dueño; sin pagos | Pantallas del especialista, de la persona y del dueño (maqueta); revisión legal y validación de la comisión; activar reservas; aplicar migraciones | decisión, migración, diseño | E3, E4 |
-| 18 | Videollamada del plan cercano | desarrollada (base de datos y pruebas): el coach agenda cada semana con enlace https, la persona recibe aviso, se anota realizada, no asistió o cancelada; lo conversado va en la revisión de tipo videollamada (C2) | Pantallas del coach y de Mi acompañamiento (maqueta); aplicar migración | #8, migración, diseño | C2 |
-| 19 | Pagos | desarrollada (base de datos y pruebas): registro manual de pagos y devoluciones (B4) | Pantalla del dueño (maqueta); aplicar migración; pago en línea después | #9, migración; SII | B4 |
-| 20 | «Lo que viene» desde la base | parcial: tabla de módulos desarrollada (A4). Pantalla del dueño /equipo/modulos/ (C12): ve el estado real de cada módulo y lo cambia; la base exige «probado» antes de habilitar y respaldo para «operativo» | Que «Lo que viene» y cada sección lean la tabla; aplicar migración | migración, diseño | A4, C12 |
-| 21 | App instalable con avisos | desarrollada (web): Mi espacio se instala como app con su manifiesto y un service worker solo en /mi-espacio/; sin conexión muestra un aviso con los números de ayuda; no guarda datos de la persona (D2) | Integrar; avisos en el teléfono (push) junto al centro de notificaciones | autorización, #11 | D2 (#39) |
-| 22 | Acciones medibles y plantillas | desarrollada (base de datos y pruebas): cantidad objetivo y unidad por acción; la persona anota cuánto hizo en lo ya marcado, sin cambiar créditos; plantillas del equipo (cada uno edita las suyas, el dueño todas, se archivan) (C4) | Campos en el constructor y en Mi espacio, catálogo de plantillas (maqueta); aplicar migración | migración, diseño | C4 |
-| 23 | WhatsApp | inexistente | Después de correo y avisos en el teléfono | #12; externo **pagado** | — |
-| 24 | Rumbo Inicial gratuito | pendiente de evaluación | No se construye sin decisión | decisión | — |
+## Rumbo 1.0
+
+| Área | Función | Estado | Falta |
+|---|---|---|---|
+| Ingreso | Postular, acuerdo, crear espacio, ingreso por código | operativa | Recorrido completo con cuenta de prueba (bloque 9) |
+| Planificación | Mi Rumbo, Mi plan, detalle de acción, ajustes, constructor | operativa | — |
+| Planificación | Acciones medibles (`anotar_cantidad`, `mis_medibles`) | sin pantalla | Campos en el constructor; anotar en el detalle (maqueta) |
+| Planificación | Plantillas del equipo (`guardar_plantilla`) | sin pantalla | Catálogo dentro del constructor |
+| Planificación | Informe de cierre de ciclo (`informe_ciclo`) | sin pantalla | Pantalla de la persona (maqueta) y ficha |
+| Acompañamiento | Revisión semanal, Mi acompañamiento, bandeja del coach | operativa | — |
+| Acompañamiento | Equipo: invitar, aceptar, revocar, asignar y reasignar coaches | sin pantalla | Pantalla Equipo (bloque 2) |
+| Acompañamiento | Perfil del coach y «Tu coach» real (`actualizar_mi_perfil`) | sin pantalla | Mi perfil en el panel (bloque 2) |
+| Acompañamiento | Videollamada del plan cercano (`programar_videollamada`, `anotar_videollamada`) | sin pantalla (Mi acompañamiento ya la muestra) | Sección en la ficha (bloque 2) |
+| Acompañamiento | Ver postulación con motivo (`ver_postulacion`) | sin pantalla | Botón en la ficha (bloque 2) |
+| Avisos | Mis avisos: campana, filtros, búsqueda y marcar como leído (`marcar_avisos_leidos`) | operativa (#73); avisos de la Comunidad con la migración 20261124, sin aplicar | Autorizar 20261124 al abrir la Comunidad |
+| Avisos | Configuración de recordatorios: interruptor general, categorías, horario, días, correo (`guardar_recordatorios`, `correo_disponible`) | en PR (#74), 1 migración sin aplicar (20261125); correo sin clave de Brevo | Autorización |
+| Comunidad | Comunidad, crear publicación, grupos, panel de moderación | apagada (módulo «comunidad») | Revisión legal |
+| Comunidad | Interior de grupo, desafíos, foto por desafío | en PR (#61, #62, #63), con 3 migraciones sin aplicar | Autorización |
+| Gamificación | Niveles, créditos, rachas, Mis logros | operativa | — |
+| Gamificación | Reconocimientos y ranking | apagada (módulos «reconocimientos» y «ranking») | Revisión legal del ranking |
+| Gamificación | 10 % en una renovación (`guardar_beneficio`, `aplicar_beneficio`) y ajuste de reconocimientos (`guardar_reconocimiento`) | sin pantalla; descuento apagado | Sección del dueño; Diego decide si se activa |
+| Fotos | Subida privada en las acciones | apagada (módulo «fotos», #67) | Revisión legal, iPhone real |
+| Fotos | Borrado a los 30 días y Mantención | en PR (#68), con 1 migración sin aplicar | Etapas 3 a 8 de la guía de despliegue |
+| IA | Asistente con consentimiento y aprobación del coach (`ia_*`, `mis_consultas_ia`, `guardar_ia_config`) | pantalla del participante en PR (#75), sin migraciones; apagado | Bandeja del coach y administración (#76, #77), prueba real con tope de USD 10 |
+| Administración | Módulos | operativa | — |
+| Administración | Indicadores de negocio (`indicadores`) | sin pantalla | Pantalla Negocio |
+| Administración | Pagos y devoluciones (`registrar_pago`, `registrar_devolucion`, `devolucion_sugerida`) | sin pantalla | Pantalla Pagos (transferencia y PayPal) |
+| Administración | Auditoría de cambios y accesos | sin pantalla | Pantalla Auditoría |
+| Perfil | Preferencias, tus datos, eliminar cuenta | operativa | — |
+| Móvil | Mi espacio instalable | en PR (#39) | Autorización |
+
+**Funciones internas, sin pantalla propia:**
+- `ping`: vigilancia.
+- `depuracion_*`: la usa la Edge Function de #68.
+
+## Próximamente (fuera de Rumbo 1.0)
+
+| Función | Estado |
+|---|---|
+| Especialistas Rumbo: perfiles, credenciales, reservas, mensajes y comisión (22 funciones `*especialista*`, `*reserva*`, `*credencial*`) | Base aplicada, sin pantallas, módulo apagado |
+| Beneficios por convenio y premios físicos (`otorgar_beneficio`) | Base aplicada, sin pantalla |
+| Pago en línea con tarjeta | No existe; requiere SII y pasarela |
+| WhatsApp, avisos push, app en tiendas, IA avanzada | No existen |
+| Rumbo Inicial gratuito | Pendiente de evaluación |
 
 ## Pruebas de la base
 
 `pruebas/base/matriz.mjs` comprueba en GitHub Actions, tabla por tabla y rol por rol, quién lee,
-escribe y ejecuta qué. Toda tabla o función nueva debe declararse ahí (PR #21).
+escribe y ejecuta qué. Toda tabla o función nueva debe declararse ahí.

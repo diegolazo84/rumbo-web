@@ -26,6 +26,7 @@ import { Cabeza, CasillaAjuste } from "./comun";
 import { participantes } from "./ejemplo";
 import { textoError } from "./FichaSolicitud";
 import { CONSTRUCTOR as C, PANEL_REAL, T_PANEL } from "./textos";
+import { UNIDADES_MEDIBLES } from "../mi-espacio/textos";
 
 export type MetaB = { id: string; titulo: string; paraQue: string; categoria: CategoriaId; hitos: { texto: string; logrado: boolean }[] };
 export type AccionB = {
@@ -40,6 +41,8 @@ export type AccionB = {
   instrucciones: string;
   versionCorta: string;
   conFoto: boolean;
+  // Acción medible (C4): cantidad propuesta y su unidad; null si no se mide.
+  medible?: { objetivo: number; unidad: string } | null;
 };
 
 // Lo publicado, para el teléfono (solo lectura).
@@ -167,8 +170,12 @@ function errorDe(a: AccionB) {
         : null,
     dias: a.dias.length ? null : C.accion.errores.dias,
     instrucciones: a.instrucciones.trim().length < LIMITES.instrucciones.min ? C.accion.errores.instrucciones : null,
+    objetivo:
+      a.medible && (!Number.isInteger(a.medible.objetivo) || a.medible.objetivo < 1 || a.medible.objetivo > MEDIBLE_MAX) ? C.accion.errores.objetivo : null,
+    unidad: a.medible && (a.medible.unidad.trim().length < 1 || a.medible.unidad.trim().length > 20) ? C.accion.errores.unidad : null,
   };
 }
+const MEDIBLE_MAX = 10000; // tope de acciones.cantidad_objetivo
 const accionValida = (a: AccionB) => Object.values(errorDe(a)).every((e) => !e);
 const metaValida = (m: MetaB) => m.titulo.trim().length >= 2 && m.titulo.trim().length <= LIMITES.tituloMeta.max;
 
@@ -861,6 +868,10 @@ function FormAccion({
         onChange={(ev) => onCambio({ versionCorta: ev.target.value })}
         rows={3}
       />
+      <CasillaAjuste id="accion-medible" checked={!!a.medible} onChange={(v) => onCambio({ medible: v ? { objetivo: 20, unidad: "minutos" } : null })} ayuda={C.accion.medibleAyuda}>
+        {C.accion.medible}
+      </CasillaAjuste>
+      {a.medible && <CamposMedible m={a.medible} err={err} tocar={tocar} onCambio={(m) => onCambio({ medible: { ...a.medible!, ...m } })} />}
       {cercano ? (
         <CasillaAjuste id="accion-foto" checked={a.conFoto} onChange={(v) => onCambio({ conFoto: v })} ayuda={conFotoSemana > 1 ? C.accion.fotoAviso : undefined}>
           {C.accion.conFoto}
@@ -869,6 +880,69 @@ function FormAccion({
         <p className="microcopia">{`${C.accion.conFoto}: ${C.accion.conFotoAyuda}`}</p>
       )}
     </form>
+  );
+}
+
+// Cantidad propuesta y unidad de una acción medible (unidades sugeridas u «Otra»).
+function CamposMedible({
+  m,
+  err,
+  tocar,
+  onCambio,
+}: {
+  m: { objetivo: number; unidad: string };
+  err: (c: "objetivo" | "unidad") => string | null;
+  tocar: (c: string) => void;
+  onCambio: (m: Partial<{ objetivo: number; unidad: string }>) => void;
+}) {
+  const sugerida = (UNIDADES_MEDIBLES as readonly string[]).includes(m.unidad);
+  const [otra, setOtra] = useState(!sugerida);
+  return (
+    <div className="pa-dos pa-dos--siempre">
+      <CampoTexto
+        id="accion-objetivo"
+        etiqueta={C.accion.objetivo}
+        ayuda={C.accion.objetivoAyuda}
+        type="number"
+        inputMode="numeric"
+        min={1}
+        max={MEDIBLE_MAX}
+        value={Number.isFinite(m.objetivo) ? m.objetivo : ""}
+        error={err("objetivo")}
+        onChange={(ev) => onCambio({ objetivo: ev.target.value === "" ? NaN : Number(ev.target.value) })}
+        onBlur={() => tocar("objetivo")}
+      />
+      <div className="pa-medible-unidad">
+        <CampoSelect
+          id="accion-unidad"
+          etiqueta={C.accion.unidad}
+          value={otra ? "otra" : m.unidad}
+          onChange={(ev) => {
+            const v = ev.target.value;
+            setOtra(v === "otra");
+            onCambio({ unidad: v === "otra" ? "" : v });
+          }}
+        >
+          {UNIDADES_MEDIBLES.map((u) => (
+            <option key={u} value={u}>
+              {u}
+            </option>
+          ))}
+          <option value="otra">{C.accion.unidadOtra}</option>
+        </CampoSelect>
+        {otra && (
+          <CampoTexto
+            id="accion-unidad-otra"
+            etiqueta={C.accion.unidadCual}
+            maxLength={20}
+            value={m.unidad}
+            error={err("unidad")}
+            onChange={(ev) => onCambio({ unidad: ev.target.value })}
+            onBlur={() => tocar("unidad")}
+          />
+        )}
+      </div>
+    </div>
   );
 }
 
