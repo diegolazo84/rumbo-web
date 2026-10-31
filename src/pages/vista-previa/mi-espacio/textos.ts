@@ -1221,6 +1221,13 @@ export const T_ASISTENTE = {
     preguntaMasIdeas: (p: string) => `Sobre «${p}»: ¿me das otras ideas distintas?`,
     preguntaProfundizar: (p: string) => `Sobre «${p}»: ¿me ayudas a profundizar en la primera idea?`,
   },
+  // Portada compacta para quien vuelve (móvil): accesos directos.
+  atajos: {
+    titulo: "Accesos rápidos",
+    escribir: "Escribir una pregunta",
+    privacidad: "Privacidad y supervisión",
+    ayuda: "Ayuda inmediata",
+  },
   // «Me sirvió» / «No me sirvió»: una valoración por respuesta; se puede cambiar o quitar.
   valorar: {
     grupo: "¿Te sirvió esta respuesta?",
