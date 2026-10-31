@@ -1441,6 +1441,7 @@ test("Asistente: aprobar tal cual, aprobar corregida y no compartir; alertas y r
   await preparar(page, "aal2", VERIFICADO);
   const base = baseInicial();
   base.ia_consultas = consultasIa();
+  base.ia_valoraciones = [{ consulta_id: "ia5", participante_id: "p1", util: false, motivo: "Muy general" }];
   const llamadas = await simular(page, base, { factores: VERIFICADO });
   await page.goto("equipo/mas/");
   await hidratar(page);
@@ -1481,6 +1482,9 @@ test("Asistente: aprobar tal cual, aprobar corregida y no compartir; alertas y r
   await expect(revisadas.locator("li", { hasText: "¿Cómo retomo?" })).toContainText("Por otra persona del equipo");
   await expect(revisadas.locator("li", { hasText: "¿Cómo retomo?" })).toContainText("Con cambios");
   await expect(revisadas.locator("li", { hasText: "¿Cómo mantengo la motivación?" })).toContainText("Por ti");
+  // La valoración de la persona («No me sirvió» y su comentario) la ve su coach.
+  await expect(revisadas.locator("li", { hasText: "¿Cómo retomo?" })).toContainText("Valoración de la persona: No le sirvió · «Muy general»");
+  await expect(revisadas.locator("li", { hasText: "¿Cómo mantengo la motivación?" })).not.toContainText("Valoración de la persona");
 });
 
 test("Asistente: aprobar tal cual no reenvía el texto; si ya fue revisada, se explica", async ({ page }) => {
