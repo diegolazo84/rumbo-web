@@ -1133,6 +1133,7 @@ export const ASISTENTE_PANEL = {
   nota: "Nota interna",
   notaAyuda: "Solo la ve el equipo. Hasta 300 caracteres.",
   notaRevisada: "Nota interna",
+  valoracion: { rotulo: "Valoración de la persona", sirvio: "Le sirvió", noSirvio: "No le sirvió" },
   aprobar: "Aprobar y compartir",
   aprobarCorregida: "Aprobar con mis cambios",
   descartar: "No compartir",

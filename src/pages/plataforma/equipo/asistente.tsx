@@ -23,6 +23,8 @@ export const R_ASISTENTE = "/equipo/asistente/";
 
 type Pendiente = { id: string; participante_id: string; tipo: "pregunta" | "borrador_coach"; pregunta: string; estado: string; respuesta: string | null; creada_en: string };
 type Revisada = { id: string; participante_id: string; pregunta: string; estado: "aprobada" | "descartada"; respuesta: string | null; texto_final: string | null; revisada_por: string | null; revisada_en: string; nota_revision: string | null };
+// «Me sirvió» / «No me sirvió» de la persona (20261127; si la tabla no existe, no se muestra).
+type Valoracion = { consulta_id: string; util: boolean; motivo: string | null };
 type Contexto = { id: string; contexto_enviado: Record<string, unknown> | null; error: string | null };
 
 const MAX = 2000;
@@ -31,7 +33,7 @@ const fechaDe = (ts: string) => fechaLarga(ts.slice(0, 10) as Iso);
 
 export function AsistenteReal() {
   const { sb } = useDatosPanel();
-  const [estado, setEstado] = useState<{ pendientes: Pendiente[]; revisadas: Revisada[]; contexto: Map<string, Contexto>; yo: string | null } | null>(null);
+  const [estado, setEstado] = useState<{ pendientes: Pendiente[]; revisadas: Revisada[]; contexto: Map<string, Contexto>; valoraciones: Map<string, Valoracion>; yo: string | null } | null>(null);
   const [error, setError] = useState(false);
   const [aviso, setAviso] = useState("");
 
@@ -49,9 +51,13 @@ export function AsistenteReal() {
       ids.length ? sb.from("ia_consultas").select("id,contexto_enviado,error").in("id", ids) : Promise.resolve({ data: [], error: null }),
       sb.auth.getSession(),
     ]);
+    const lista = datos(revisadas) as Revisada[];
+    const aprobadas = lista.filter((r) => r.estado === "aprobada").map((r) => r.id);
+    const val = aprobadas.length ? await sb.from("ia_valoraciones").select("consulta_id,util,motivo").in("consulta_id", aprobadas) : { data: [], error: null };
     setEstado({
       pendientes,
-      revisadas: datos(revisadas) as Revisada[],
+      revisadas: lista,
+      valoraciones: new Map(val.error ? [] : ((val.data ?? []) as Valoracion[]).map((v) => [v.consulta_id, v])),
       contexto: new Map((datos(contexto) as Contexto[]).map((c) => [c.id, c])),
       yo: sesion.data.session?.user.id ?? null,
     });
@@ -142,7 +148,7 @@ export function AsistenteReal() {
         {estado.revisadas.length ? (
           <ul className="pa-filas">
             {estado.revisadas.map((r) => (
-              <RevisadaFila key={r.id} r={r} yo={estado.yo} />
+              <RevisadaFila key={r.id} r={r} yo={estado.yo} valoracion={estado.valoraciones.get(r.id)} />
             ))}
           </ul>
         ) : (
@@ -292,7 +298,7 @@ function Revisar({ p, contexto, alRevisar }: { p: Pendiente; contexto: Record<st
   );
 }
 
-function RevisadaFila({ r, yo }: { r: Revisada; yo: string | null }) {
+function RevisadaFila({ r, yo, valoracion }: { r: Revisada; yo: string | null; valoracion?: Valoracion }) {
   const nombre = usePersona(r.participante_id);
   const corregida = r.estado === "aprobada" && r.texto_final != null && r.respuesta != null && r.texto_final.trim() !== r.respuesta.trim();
   return (
@@ -312,6 +318,13 @@ function RevisadaFila({ r, yo }: { r: Revisada; yo: string | null }) {
         <p className="microcopia">
           <span className="ia-rotulo">{T.notaRevisada}: </span>
           {r.nota_revision}
+        </p>
+      )}
+      {valoracion && (
+        <p className="microcopia ia-valoracion">
+          <span className="ia-rotulo">{T.valoracion.rotulo}: </span>
+          {valoracion.util ? T.valoracion.sirvio : T.valoracion.noSirvio}
+          {valoracion.motivo && ` · «${valoracion.motivo}»`}
         </p>
       )}
     </li>
