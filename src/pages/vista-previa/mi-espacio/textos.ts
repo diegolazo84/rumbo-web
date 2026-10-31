@@ -384,6 +384,46 @@ export const T_DETALLE = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// Registrar acción medible (maqueta de ChatGPT, 30-oct-2026). PROPUESTO salvo lo que viene de la maqueta.
+
+// Unidades sugeridas en el constructor (la base acepta cualquier texto de 1 a 20 caracteres).
+export const UNIDADES_MEDIBLES = ["minutos", "horas", "páginas", "vasos", "kilómetros", "unidades"] as const;
+const SINGULAR: Record<string, string> = { minutos: "minuto", horas: "hora", páginas: "página", vasos: "vaso", kilómetros: "kilómetro", unidades: "unidad" };
+export const cantidadTexto = (n: number, unidad: string) => `${n} ${n === 1 ? (SINGULAR[unidad] ?? unidad) : unidad}`;
+
+export const T_REGISTRAR = {
+  objetivo: (texto: string) => `Para hoy: ${texto}`,
+  pregunta: (unidad: string) =>
+    unidad === "minutos" || unidad === "horas"
+      ? "¿Cuánto tiempo hiciste hoy?"
+      : unidad === "páginas" || unidad === "unidades"
+        ? `¿Cuántas ${unidad} hiciste hoy?`
+        : unidad === "vasos" || unidad === "kilómetros"
+          ? `¿Cuántos ${unidad} hiciste hoy?`
+          : "¿Cuánto hiciste hoy?",
+  rapidos: "Valores rápidos",
+  rapido: (texto: string) => `Elegir ${texto}`,
+  invalido: (unidad: string) => `Ingresa un valor válido: un número entero de ${unidad}, desde 1.`,
+  nota: "¿Cómo te sentiste hoy?",
+  notaAyuda: "Solo la ven tú y quien te acompaña.",
+  guardar: "Guardar acción",
+  guardando: "Guardando…",
+  guardarCambios: "Guardar cambios",
+  cancelar: "Cancelar",
+  registrada: "¡Acción registrada!",
+  hecha: "Acción hecha",
+  hechaCorta: "Hecha en su versión corta",
+  credito: "+1 crédito",
+  anotaste: (texto: string) => `Anotaste ${texto}.`,
+  sinCantidad: "Todavía no anotas cuánto hiciste.",
+  tuNota: "Tu nota",
+  editar: "Editar lo que anotaste",
+  verPlan: "Ver mi plan",
+  error: "No pudimos guardarlo. Revisa tu conexión e inténtalo de nuevo; nada se perdió.",
+  errorDespues: "Tu acción quedó marcada, pero no pudimos guardar lo que anotaste. Inténtalo de nuevo.",
+} as const;
+
+// ---------------------------------------------------------------------------
 // 4.10 Progreso e historial de créditos
 
 export const T_PROGRESO = {
@@ -998,6 +1038,55 @@ export const T_AVISOS = {
     beneficio_disponible: "Revisa sus condiciones en Mis logros.",
   } as Record<string, string>,
   descripcionOtro: "Información de Rumbo.",
+} as const;
+
+// ---------------------------------------------------------------------------
+// Informe de cierre de ciclo (maqueta de ChatGPT, 30-oct-2026). Todo sale de informe_ciclo, de las
+// metas y de los reconocimientos reales; el mensaje lo escribe el coach (sin él, su último foco).
+
+export const T_CIERRE = {
+  chip: "Ciclo completado",
+  titulo: "Mira todo lo que has avanzado",
+  bajada: ["Cada pequeño paso te trajo hasta aquí.", "Este es el camino que construiste."],
+  cargando: "Preparando tu informe…",
+  objetivo: { uno: "Tu objetivo principal", varios: "Tus objetivos de este ciclo", sinMetas: "Tu plan de este ciclo no tuvo metas cargadas." },
+  progreso: {
+    titulo: "Tu progreso del ciclo",
+    barra: "Acciones hechas de las programadas en el ciclo",
+    deTotal: (h: number, p: number) => `${h} de ${p} ${plural(p, "acción hecha", "acciones hechas")}`,
+    sinAcciones: "Este ciclo no tuvo acciones programadas.",
+    hechas: (n: number) => plural(n, "acción completada", "acciones completadas"),
+    racha: (n: number) => plural(n, "día de racha máxima", "días de racha máxima"),
+    reconocimientos: (n: number) => plural(n, "reconocimiento ganado", "reconocimientos ganados"),
+    completos: (n: number) => plural(n, "día con todo hecho", "días con todo hecho"),
+    creditos: (c: number, nivel: number, nombre: string) => `Sumaste ${c} ${plural(c, "crédito", "créditos")} en este ciclo · Nivel ${nivel}: ${nombre}`,
+  },
+  evolucion: {
+    titulo: "Evolución semanal",
+    hechas: "Acciones hechas",
+    programadas: "Programadas",
+    semana: (n: number) => `S${n}`,
+    resumen: (s: { semana: number; hechas: number; programadas: number }[]) =>
+      `Acciones hechas por semana: ${s.map((x) => `semana ${x.semana}, ${x.hechas} de ${x.programadas}`).join("; ")}.`,
+    columnas: ["Semana", "Hechas", "Programadas"] as const,
+  },
+  areas: { titulo: "Áreas de tu plan", pct: (n: number) => `${n} %`, barra: (m: string) => `Acciones hechas de «${m}»`, valor: (h: number, p: number) => `${h} de ${p} acciones` },
+  logros: { titulo: "Logros más destacados", ninguno: "Los reconocimientos que consigas aparecerán aquí.", ver: "Ver Mis logros" },
+  coach: {
+    mensaje: "Mensaje de tu coach",
+    foco: "El último foco de tu coach",
+    rol: "Tu coach",
+    semana: (n: number) => `Revisión de la semana ${n}`,
+  },
+  sigue: {
+    titulo: "¿Qué sigue ahora?",
+    texto: "Lo que sigue lo conversamos contigo: continuar con un nuevo ciclo, reformular tu plan o cerrar aquí.",
+    nuevo: "Quiero seguir con un nuevo ciclo",
+    descargar: "Descargar mis registros",
+    revision: "Ver mi última revisión",
+  },
+  voz: "Tu valor no se mide en una racha.",
+  nota: "Tus registros siguen aquí mientras no pidas eliminarlos.",
 } as const;
 
 // Recordatorios (maqueta de ChatGPT, 30-oct-2026). «Recordatorios de bienestar» no se muestra: no

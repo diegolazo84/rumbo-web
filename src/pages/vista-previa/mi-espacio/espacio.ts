@@ -122,6 +122,7 @@ export const R_REAL: RutasEspacio = {
 export type EstadoCiclo = "preparacion" | "en_curso" | "pausa" | "cerrado";
 
 export type CicloEspacio = {
+  id?: string; // solo en Mi espacio real (informe_ciclo)
   numero: number;
   plan: PlanParam;
   semanas: number;
@@ -160,6 +161,9 @@ export type DatosAjuste = { tipo: string; ocurrencias: string[]; desde: Iso; tex
 export type Servidor = {
   // Marcar (hecha o corta), desmarcar (null) o dejar pasar: devuelve el progreso del servidor (D4).
   registrar: (id: string, estado: EstadoRegistro | null) => Promise<Progreso>;
+  // Registrar acción (R1): cantidad de una acción medible y nota «¿Cómo te sentiste hoy?» en una
+  // acción ya marcada. No vuelve a marcar: los créditos no cambian. null borra el dato.
+  anotar: (id: string, d: { cantidad?: number | null; nota?: string | null }) => Promise<void>;
   // «No puedo subir una foto» (4.9): la explicación queda «En revisión».
   registrarEvidencia: (id: string, explicacion: string) => Promise<Progreso>;
   eliminarEvidencia: (id: string) => Promise<Progreso>;

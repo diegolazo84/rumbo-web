@@ -42,6 +42,7 @@
 .pa-dos { display: grid; gap: var(--e-4); min-inline-size: 0; }
 @media (min-width: 600px) { .pa-dos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .pa-dos--siempre { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pa-medible-unidad { display: grid; gap: var(--e-3); align-content: start; }
 
 .pa-boton-izq { padding-inline: 0; }
 .pa-boton-solo { justify-self: start; }
@@ -415,3 +416,10 @@ img.pa-miniatura { padding: 0; border-style: solid; border-width: 1px; border-co
 .pa-coach__texto { color: var(--tinta); }
 a.pa-coach__texto { text-decoration: none; }
 a.pa-coach__texto:hover { text-decoration: underline; }
+
+/* Próxima videollamada destacada en la ficha (mejora de #70). */
+.pa-vl-proxima { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--e-3) var(--e-4); align-items: center; padding: var(--e-4); border-radius: var(--r-s); background: var(--salvia-suave); border: 1px solid var(--bosque); }
+.pa-vl-proxima__icono { color: var(--bosque); }
+.pa-vl-proxima__texto { display: grid; gap: 2px; min-width: 0; }
+.pa-vl-proxima__texto p { margin: 0; color: var(--tinta); font-weight: 600; }
+.pa-vl-proxima .acciones { grid-column: 1 / -1; }

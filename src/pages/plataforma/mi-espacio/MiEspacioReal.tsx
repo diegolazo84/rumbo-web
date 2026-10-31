@@ -78,7 +78,7 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
     await sb.from("ciclos").select(COLUMNAS.ciclo).eq("participante_id", participante.id).order("numero", { ascending: false }).limit(1).maybeSingle(),
   ) as Filas["ciclo"] | null;
   if (!ciclo) return "sin-ficha";
-  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas, moduloFotos, avisos, moduloComunidad, recordatorios, correo] =
+  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas, moduloFotos, avisos, moduloComunidad, medibles, notas, recordatorios, correo] =
     await Promise.all([
       sb.from("programas").select(COLUMNAS.programa).eq("ciclo_id", ciclo.id).neq("estado", "borrador").order("version"),
       sb.from("ocurrencias").select(COLUMNAS.ocurrencia).eq("ciclo_id", ciclo.id).order("fecha").limit(5000),
@@ -99,6 +99,7 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
       // Mis avisos (A5): los propios, por RLS. Si no se pueden leer, la pantalla lo dice.
       leerAvisos(sb),
       sb.rpc("modulo_visible", { p_clave: "comunidad" }),
+      ...leerMedibles(sb, participante.id, ciclo),
       // Recordatorios (R1): sin la migración de recordatorios completos, la pantalla lo dice.
       sb.from("recordatorios").select(COLUMNAS_RECORDATORIOS).maybeSingle(),
       sb.rpc("correo_disponible"),
@@ -128,6 +129,7 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
       revisiones: datos(revisiones) as Filas["revisiones"],
       ajustes: datos(ajustes) as Filas["ajustes"],
       planes: datos(planes) as Filas["planes"],
+      ...armarMedibles(medibles, notas),
     },
     ctx,
     ausencia: armarAusencia(aus),
@@ -197,18 +199,36 @@ function armarVideollamadas(d: unknown): VideollamadaEspacio[] {
   return filas.map((f) => ({ semana: f.semana, programadaPara: f.programada_para, enlace: f.enlace, estado: f.estado }));
 }
 
-// Después de marcar: solo lo que cambia (registros y progreso).
+// Lo medible de las acciones del ciclo (C4) y las notas de la persona (R1). Si la base todavía no
+// tiene la columna nota (migración 20261123000000 sin aplicar), la nota no se muestra.
+function leerMedibles(sb: Cliente, participante: string, ciclo: Filas["ciclo"]) {
+  return [
+    sb.rpc("mis_medibles", { p_desde: ciclo.inicio, p_hasta: ciclo.fin }),
+    sb.from("registros").select("ocurrencia_id,nota").eq("participante_id", participante).limit(5000),
+  ] as const;
+}
+type Respuesta = { data: unknown; error: unknown };
+function armarMedibles(medibles: Respuesta, notas: Respuesta): Pick<Filas, "medibles" | "notas"> {
+  return {
+    medibles: medibles.error || !Array.isArray(medibles.data) ? [] : (medibles.data as NonNullable<Filas["medibles"]>),
+    notas: notas.error || !Array.isArray(notas.data) ? null : (notas.data as NonNullable<Filas["notas"]>),
+  };
+}
+
+// Después de marcar: solo lo que cambia (registros, progreso, cantidades y notas).
 async function leerRegistros(sb: Cliente, f: Filas): Promise<Filas> {
-  const [registros, progreso, dias] = await Promise.all([
+  const [registros, progreso, dias, medibles, notas] = await Promise.all([
     sb.from("registros").select(COLUMNAS.registro).eq("participante_id", f.participante.id).limit(5000),
     sb.from("progreso").select(COLUMNAS.progreso).eq("participante_id", f.participante.id).maybeSingle(),
     sb.from("progreso_diario").select(COLUMNAS.dia).eq("participante_id", f.participante.id).gte("fecha", f.ciclo.inicio).order("fecha"),
+    ...leerMedibles(sb, f.participante.id, f.ciclo),
   ]);
   return {
     ...f,
     registros: datos(registros) as Filas["registros"],
     progreso: datos(progreso) as Filas["progreso"],
     dias: datos(dias) as Filas["dias"],
+    ...armarMedibles(medibles, notas),
   };
 }
 
@@ -366,6 +386,11 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
         if (e === "hecha" || e === "corta") return conProgreso("marcar_accion", { p_ocurrencia: id, p_version: e === "corta" ? "corta" : "completa" });
         if (e === "dejada") return conProgreso("dejar_pasar", { p_ocurrencia: id });
         return Promise.reject(new Error("estado no registrable"));
+      },
+      anotar: async (id, d) => {
+        if (d.cantidad !== undefined) datos(await sb().rpc("anotar_cantidad", { p_ocurrencia: id, p_cantidad: d.cantidad }));
+        if (d.nota !== undefined) datos(await sb().rpc("anotar_nota", { p_ocurrencia: id, p_nota: d.nota ?? "" }));
+        await releer();
       },
       registrarEvidencia: (id, explicacion) =>
         conProgreso("registrar_evidencia", { p_ocurrencia: id, p_foto_ruta: null, p_explicacion: explicacion }),
