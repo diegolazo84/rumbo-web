@@ -160,8 +160,18 @@ test("4. respuesta aprobada: aviso de revisión, «Revisada por tu coach» y las
   await acciones.getByRole("button", { name: T.seguir.crearPlan }).click();
   await expect(page.getByLabel(T.escribir)).toHaveValue(/plan simple para esta semana.*antes de cambiar mi plan\.$/);
   await expect(page.getByLabel(T.escribir)).toBeFocused();
-  // Sin «Me sirvió» ni «No me sirvió» hasta que exista dónde guardarlo.
-  await expect(page.getByRole("button", { name: /Me sirvió|No me sirvió/ })).toHaveCount(0);
+  // «Me sirvió» / «No me sirvió»: una sola vigente; «No me sirvió» ofrece un comentario opcional.
+  const valorar = page.getByRole("group", { name: T.valorar.grupo });
+  const sirvio = valorar.getByRole("button", { name: T.valorar.sirvio, exact: true });
+  const noSirvio = valorar.getByRole("button", { name: T.valorar.noSirvio });
+  await sirvio.click();
+  await expect(sirvio).toHaveAttribute("aria-pressed", "true");
+  await noSirvio.click();
+  await expect(sirvio).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByLabel(T.valorar.motivo)).toBeVisible();
+  await noSirvio.click();
+  await expect(noSirvio).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByText(T.valorar.quitada)).toBeVisible();
 });
 
 test("5. no compartida: se explica sin mostrar el borrador; «Escribir una nueva pregunta» lleva al campo", async ({ page }) => {

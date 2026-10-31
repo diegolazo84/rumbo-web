@@ -1029,6 +1029,7 @@ export const T_AVISOS = {
     programa_publicado: "Revisa las acciones de los próximos días en Mi plan.",
     videollamada_programada: "Revisa la fecha, la hora y el enlace en Mi acompañamiento.",
     ia_respondida: "Tu coach la revisó antes de que llegara a ti.",
+    ia_no_compartida: "Puedes reformular tu pregunta o pedir orientación sobre otro tema.",
     mensaje_especialista: "Léelo en tu espacio.",
     recomendacion_especialista: "Revísala en tu espacio.",
     reserva_respondida: "Revisa los detalles de tu sesión.",
@@ -1219,6 +1220,19 @@ export const T_ASISTENTE = {
       `Sobre «${p}»: ¿me propones un plan simple para esta semana con acciones realistas? Lo conversaré con mi coach antes de cambiar mi plan.`,
     preguntaMasIdeas: (p: string) => `Sobre «${p}»: ¿me das otras ideas distintas?`,
     preguntaProfundizar: (p: string) => `Sobre «${p}»: ¿me ayudas a profundizar en la primera idea?`,
+  },
+  // «Me sirvió» / «No me sirvió»: una valoración por respuesta; se puede cambiar o quitar.
+  valorar: {
+    grupo: "¿Te sirvió esta respuesta?",
+    sirvio: "Me sirvió",
+    noSirvio: "No me sirvió",
+    motivo: "¿Qué faltó? (opcional)",
+    motivoAyuda: "Hasta 300 caracteres. Tu coach puede leerlo para orientarte mejor.",
+    guardarMotivo: "Guardar comentario",
+    gracias: "Gracias. Guardamos tu valoración; puedes cambiarla cuando quieras.",
+    quitada: "Quitamos tu valoración.",
+    motivoGuardado: "Guardamos tu comentario.",
+    error: "No pudimos guardar tu valoración. Vuelve a intentarlo.",
   },
   // Escribir
   escribir: "Escribe tu pregunta",

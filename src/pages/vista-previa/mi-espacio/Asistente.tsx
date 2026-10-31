@@ -18,8 +18,15 @@ import { diaCorto, fechaLarga, mayuscula } from "../../../lib/fechas";
 import { ErrorBase } from "../../../lib/supabase";
 import { diaDe, horaDe } from "./avisos/datos";
 import { EtiquetaEjemplo, MensajeAviso, useEspacio } from "./comun";
-import { FOTO_PORTADA, PaisajePortada } from "./comunidad/Paisaje";
-import { ASISTENTE_HISTORIAL, ASISTENTE_NO_COMPARTIDA, type Asistente as DatosAsistente, type ConsultaAsistente, type ContextoAsistente } from "./espacio";
+import { ASISTENTE_HISTORIAL, ASISTENTE_NO_COMPARTIDA, type Asistente as DatosAsistente, type ConsultaAsistente, type ContextoAsistente, type ValoracionAsistente } from "./espacio";
+import portada1200 from "../../../assets/asistente/portada-1200.webp";
+import portada2400 from "../../../assets/asistente/portada-2400.webp";
+import portadaMovil600 from "../../../assets/asistente/portada-movil-600.webp";
+import portadaMovil1146 from "../../../assets/asistente/portada-movil-1146.webp";
+import bienvenida600 from "../../../assets/asistente/bienvenida-600.webp";
+import bienvenida1200 from "../../../assets/asistente/bienvenida-1200.webp";
+import desactivado400 from "../../../assets/asistente/desactivado-400.webp";
+import desactivado800 from "../../../assets/asistente/desactivado-800.webp";
 import type { PropsPantalla } from "../registro";
 import { T_ASISTENTE as T } from "./textos";
 
@@ -130,7 +137,21 @@ export default function Asistente({ estado }: PropsPantalla) {
   return (
     <div className="me-pantalla as">
       <header className="rc-portada as-portada">
-        {FOTO_PORTADA ? <img className="rc-portada__fondo" src={FOTO_PORTADA} alt="" /> : <PaisajePortada className="rc-portada__fondo" />}
+        {/* Ilustraciones definitivas de ChatGPT (31-oct-2026): panorámica en escritorio, recorte propio en móvil. */}
+        <picture>
+          <source media="(min-width: 1024px)" srcSet={`${portada1200} 1200w, ${portada2400} 2400w`} sizes="(min-width: 1024px) 70vw, 100vw" />
+          <img
+            className="rc-portada__fondo as-portada__img"
+            src={portadaMovil1146}
+            srcSet={`${portadaMovil600} 600w, ${portadaMovil1146} 1146w`}
+            sizes="100vw"
+            width={1146}
+            height={500}
+            alt=""
+            decoding="async"
+            fetchPriority="high"
+          />
+        </picture>
         <div className="rc-portada__texto">
           <h1 className="rc-portada__h1">{T.titulo}</h1>
           <p className="as-sellos">
@@ -327,6 +348,81 @@ function Conversacion({
   );
 }
 
+// «Me sirvió» / «No me sirvió» (maqueta definitiva). Una valoración vigente por respuesta aprobada:
+// tocar la elegida la quita; «No me sirvió» admite un comentario opcional. Si la base todavía no
+// tiene ia_valoraciones (migración 20261127000000 sin aplicar), no se muestra nada.
+function Valorar({ consulta }: { consulta: string }) {
+  const esp = useEspacio();
+  const guardadas = esp.asistente?.valoraciones;
+  const [local, setLocal] = useState<ValoracionAsistente | null | undefined>(undefined);
+  const [motivo, setMotivo] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<{ texto: string; error?: boolean }>({ texto: "" });
+  const [ocupado, setOcupado] = useState(false);
+  if (!guardadas) return null;
+  const actual = local !== undefined ? local : (guardadas[consulta] ?? null);
+  const guardar = async (util: boolean | null, m: string | null, texto: string) => {
+    setOcupado(true);
+    try {
+      if (esp.servidor) await esp.servidor.valorarAsistente(consulta, util, m);
+      setLocal(util === null ? null : { util, motivo: util ? null : m?.trim() || null });
+      setAviso({ texto });
+    } catch {
+      setAviso({ texto: T.valorar.error, error: true });
+    } finally {
+      setOcupado(false);
+    }
+  };
+  const elegir = (util: boolean) => {
+    setMotivo(null);
+    if (actual?.util === util) return void guardar(null, null, T.valorar.quitada);
+    void guardar(util, null, T.valorar.gracias);
+  };
+  const idMotivo = `as-motivo-${consulta}`;
+  return (
+    <>
+      <div className="as-valorar" role="group" aria-label={T.valorar.grupo}>
+        <button type="button" className="as-chip" aria-pressed={actual?.util === true} disabled={ocupado} onClick={() => elegir(true)}>
+          <Icono nombre="thumbs-up" tamaño={16} className="as-chip__sol" />
+          {T.valorar.sirvio}
+        </button>
+        <button type="button" className="as-chip" aria-pressed={actual?.util === false} disabled={ocupado} onClick={() => elegir(false)}>
+          <Icono nombre="thumbs-down" tamaño={16} className="as-chip__sol" />
+          {T.valorar.noSirvio}
+        </button>
+      </div>
+      {actual?.util === false && (
+        <form
+          className="as-motivo"
+          data-formulario-largo
+          onSubmit={(e) => {
+            e.preventDefault();
+            void guardar(false, motivo ?? actual.motivo, T.valorar.motivoGuardado);
+          }}
+        >
+          <label htmlFor={idMotivo}>{T.valorar.motivo}</label>
+          <textarea
+            id={idMotivo}
+            rows={2}
+            maxLength={300}
+            value={motivo ?? actual.motivo ?? ""}
+            onChange={(e) => setMotivo(e.target.value)}
+            aria-describedby={`${idMotivo}-ayuda`}
+          />
+          <p id={`${idMotivo}-ayuda`} className="as-largo">
+            {T.valorar.motivoAyuda}
+          </p>
+          <button type="submit" className="boton boton--secundario" disabled={ocupado}>
+            {T.valorar.guardarMotivo}
+          </button>
+        </form>
+      )}
+      <p className={`as-estado${aviso.error ? " as-estado--error" : ""}`} role="status">
+        {aviso.texto}
+      </p>
+    </>
+  );
+}
+
 const iniciales = (nombre: string) =>
   nombre
     .split(/\s+/)
@@ -397,6 +493,7 @@ function Respuesta({ c, onSeguir, onNueva }: { c: ConsultaAsistente; onSeguir?: 
             </p>
           </div>
         </div>
+        <div className="as-acciones">
         {onSeguir && (
           <div className="as-seguir" role="group" aria-label={T.seguir.titulo}>
             <button type="button" className="as-chip" onClick={() => onSeguir(T.seguir.preguntaMasIdeas(corta))}>
@@ -413,6 +510,8 @@ function Respuesta({ c, onSeguir, onNueva }: { c: ConsultaAsistente; onSeguir?: 
             </button>
           </div>
         )}
+          <Valorar consulta={c.id} />
+        </div>
       </>
     );
   const e = T.estados[c.estado];
@@ -704,7 +803,7 @@ function Bienvenida({ alComenzar }: { alComenzar: () => void }) {
   return (
     <section className="rc-tarjeta as-bienvenida" aria-labelledby="as-bienvenida-t">
       <div className="as-bienvenida__ilustracion" aria-hidden="true">
-        {FOTO_PORTADA ? <img src={FOTO_PORTADA} alt="" /> : <PaisajePortada />}
+        <img src={bienvenida1200} srcSet={`${bienvenida600} 600w, ${bienvenida1200} 1200w`} sizes="(min-width: 1024px) 560px, 100vw" width={1200} height={486} alt="" decoding="async" />
       </div>
       <div className="as-bienvenida__cuerpo">
         <h2 id="as-bienvenida-t" className="rc-h2">
@@ -734,7 +833,7 @@ function Desactivado({ titulo, texto, detalle, accion }: { titulo: string; texto
   return (
     <section className="rc-tarjeta as-desactivado" aria-labelledby="as-desactivado-t">
       <div className="as-desactivado__ilustracion" aria-hidden="true">
-        {FOTO_PORTADA ? <img src={FOTO_PORTADA} alt="" /> : <PaisajePortada />}
+        <img src={desactivado800} srcSet={`${desactivado400} 400w, ${desactivado800} 800w`} sizes="320px" width={800} height={388} alt="" decoding="async" />
       </div>
       <h2 id="as-desactivado-t" className="rc-h2">
         {titulo}

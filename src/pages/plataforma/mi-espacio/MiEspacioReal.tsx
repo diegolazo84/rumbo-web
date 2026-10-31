@@ -196,10 +196,11 @@ async function leerAvisos(sb: Cliente): Promise<Aviso[] | null> {
 // Asistente: ia_disponible (dueño + clave + módulo), el consentimiento (yo_leer) y mis_consultas_ia,
 // que nunca trae borradores sin revisar. Si algo falla: null (la pantalla lo dice).
 async function leerAsistente(sb: Cliente): Promise<Asistente | null> {
-  const [disp, cons, consultas] = await Promise.all([
+  const [disp, cons, consultas, valoraciones] = await Promise.all([
     sb.rpc("ia_disponible"),
     sb.from("ia_consentimientos").select("metas,acciones,registro_semanal,aceptado_en,retirado_en").maybeSingle(),
     leerConsultas(sb),
+    leerValoraciones(sb),
   ]);
   if (disp.error || cons.error || !consultas) return null;
   const c = cons.data as { metas: boolean; acciones: boolean; registro_semanal: boolean; aceptado_en: string | null; retirado_en: string | null } | null;
@@ -207,7 +208,16 @@ async function leerAsistente(sb: Cliente): Promise<Asistente | null> {
     disponible: disp.data === true,
     consentimiento: c && { metas: c.metas, acciones: c.acciones, registroSemanal: c.registro_semanal, aceptadoEn: c.aceptado_en, retiradoEn: c.retirado_en },
     consultas,
+    valoraciones,
   };
+}
+
+// «Me sirvió» / «No me sirvió» (20261127000000). Si la tabla todavía no existe, los botones no se muestran.
+async function leerValoraciones(sb: Cliente): Promise<Asistente["valoraciones"]> {
+  const r = await sb.from("ia_valoraciones").select("consulta_id,util,motivo").limit(1000);
+  if (r.error) return null;
+  const filas = (r.data ?? []) as { consulta_id: string; util: boolean; motivo: string | null }[];
+  return Object.fromEntries(filas.map((f) => [f.consulta_id, { util: f.util, motivo: f.motivo }]));
 }
 
 async function leerConsultas(sb: Cliente): Promise<ConsultaAsistente[] | null> {
@@ -554,6 +564,16 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
         if (actual?.asistente && consultas) poner({ ...actual, asistente: { ...actual.asistente, consultas } });
         // La base devuelve «enviada» (la persona la ve como «en revisión»), «crisis» o «sin_presupuesto».
         return r?.estado === "crisis" || r?.estado === "sin_presupuesto" ? r.estado : "en_revision";
+      },
+      valorarAsistente: async (consulta, util, motivo) => {
+        datos(await sb().rpc("ia_valorar", { p_consulta: consulta, p_util: util, p_motivo: util === false ? motivo : null }));
+        const actual = filas.current;
+        if (actual?.asistente?.valoraciones) {
+          const v = { ...actual.asistente.valoraciones };
+          if (util === null) delete v[consulta];
+          else v[consulta] = { util, motivo: util ? null : motivo?.trim() || null };
+          poner({ ...actual, asistente: { ...actual.asistente, valoraciones: v } });
+        }
       },
       verNovedad: (id) => {
         setVistas((v) => {
