@@ -14,3 +14,5 @@
 .ia-rotulo { font-weight: 600; }
 .ia-original summary { display: inline-flex; align-items: center; min-block-size: 44px; color: var(--bosque); font-weight: 600; cursor: pointer; }
 .ia-confirmar { display: grid; gap: var(--e-2); }
+.ia-barra { block-size: 12px; border-radius: var(--r-full); background: var(--papel-hondo); overflow: hidden; }
+.ia-barra span { display: block; block-size: 100%; border-radius: var(--r-full); background: var(--bosque); }
