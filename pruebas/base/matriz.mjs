@@ -819,7 +819,8 @@ const JSON_BASE = `'{"activos": true, "acciones_del_dia": true, "registro_semana
 paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan a su hora, una vez al día y nunca en pausa; por correo solo con claves y a quien lo eligió");
 
 // R1 · Recordatorios completos: interruptor general, días, horario, videollamada 24 h antes,
-// comunidad y logros solo a quien los eligió y copia por correo de los mensajes del coach.
+// comunidad solo a quien la eligió; logros siempre en Mis avisos; copia por correo de los mensajes del
+// coach y de los logros solo a quien la eligió.
 {
   const cicloA = deA.p_ciclo;
   const hoy = `(select inicio + 1 from public.ciclos where id = '${cicloA}')`;
@@ -856,12 +857,18 @@ paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan 
     select privado.avisar_app('${ROLES.A.ficha}', true, 'reconocimiento', 'Nuevo reconocimiento: Primer paso', '/mi-espacio/') \\g /dev/null
     select privado.avisar_app('${ROLES.A.ficha}', true, 'revision_publicada', 'Tu coach publicó la revisión de la semana 1', '/mi-espacio/acompanamiento/') \\g /dev/null
     ${tipos}; rollback;`);
+  // Decisión de Diego (31-oct-2026): los logros llegan siempre a Mis avisos, sin depender de los recordatorios.
   const conLogros = logro("");
   exigir(conLogros.ok && conLogros.salida === "reconocimiento,revision_publicada", `faltan avisos con logros elegidos: ${conLogros.error ?? conLogros.salida}`);
   const sinLogros = logro(", logros = false");
-  exigir(sinLogros.ok && sinLogros.salida === "revision_publicada", `llegó un logro a quien no lo eligió, o faltó el mensaje del coach: ${sinLogros.error ?? sinLogros.salida}`);
+  exigir(sinLogros.ok && sinLogros.salida === "reconocimiento,revision_publicada", `no llegó el logro a quien apagó su copia por correo: ${sinLogros.error ?? sinLogros.salida}`);
   const apagado = logro(", activos = false");
-  exigir(apagado.ok && apagado.salida === "revision_publicada", `con todo apagado no llegó el mensaje del coach o llegó un logro: ${apagado.error ?? apagado.salida}`);
+  exigir(apagado.ok && apagado.salida === "reconocimiento,revision_publicada", `con los recordatorios apagados no llegó el logro o el mensaje del coach: ${apagado.error ?? apagado.salida}`);
+  const sinFila = psql(`begin; delete from public.recordatorios where participante_id = '${ROLES.A.ficha}';
+    delete from public.avisos where participante_id = '${ROLES.A.ficha}';
+    select privado.avisar_app('${ROLES.A.ficha}', true, 'reconocimiento', 'Nuevo reconocimiento: Primer paso', '/mi-espacio/') \\g /dev/null
+    ${tipos}; rollback;`);
+  exigir(sinFila.ok && sinFila.salida === "reconocimiento", `quien nunca configuró recordatorios no recibió su logro: ${sinFila.error ?? sinFila.salida}`);
   const cola = "(select count(*) from net.http_request_queue where url = 'https://api.brevo.com/v3/smtp/email')";
   const claves = "select vault.create_secret('clave-de-prueba', 'brevo_api_key') \\g /dev/null\n select vault.create_secret('rumbo-ci@example.com', 'correo_remitente') \\g /dev/null\n";
   const antes = Number(sql(`select ${cola}`));
@@ -872,6 +879,15 @@ paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan 
   exigir(conCopia.ok && conCopia.salida === String(antes + 1), `no salió la copia por correo del mensaje del coach: ${conCopia.error ?? conCopia.salida}`);
   const sinCopia = copia(", por_correo = true, mensajes_coach = false");
   exigir(sinCopia.ok && sinCopia.salida === String(antes), `salió una copia por correo que A no eligió: ${sinCopia.error ?? sinCopia.salida}`);
+  const copiaLogro = (extra) => psql(`begin; ${prefs(extra)} ${claves}
+    select privado.avisar_app('${ROLES.A.ficha}', true, 'reconocimiento', 'Nuevo reconocimiento: Primer paso', '/mi-espacio/') \\g /dev/null
+    select ${cola}; rollback;`);
+  const logroConCopia = copiaLogro(", por_correo = true");
+  exigir(logroConCopia.ok && logroConCopia.salida === String(antes + 1), `no salió la copia por correo del logro: ${logroConCopia.error ?? logroConCopia.salida}`);
+  const logroSinCopia = copiaLogro(", por_correo = true, logros = false");
+  exigir(logroSinCopia.ok && logroSinCopia.salida === String(antes), `salió una copia por correo de un logro que A no eligió: ${logroSinCopia.error ?? logroSinCopia.salida}`);
+  const logroSinCorreo = copiaLogro("");
+  exigir(logroSinCorreo.ok && logroSinCorreo.salida === String(antes), `salió un correo de logro sin elegir el correo: ${logroSinCorreo.error ?? logroSinCorreo.salida}`);
   const disp = como(ROLES.A, "select public.correo_disponible()::int");
   exigir(disp.ok && ultima(disp) === "0", `correo_disponible no dice la verdad sin claves: ${disp.error ?? ultima(disp)}`);
   const dispAnon = como(ROLES.anon, "select public.correo_disponible()");
@@ -884,7 +900,7 @@ paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan 
     select activos::int || ' ' || array_to_string(dias, ',') || ' ' || desde || '-' || hasta || ' ' || hora || ' ' || comunidad::int from public.recordatorios`);
   exigir(todo.ok && ultima(todo) === "1 1,3,5 8-21 19 1", `A no pudo guardar días, horario y categorías: ${todo.error ?? ultima(todo)}`);
 }
-paso("recordatorios completos: interruptor general, días, horario, videollamada 24 h antes una vez, logros y comunidad solo si se eligen, copia por correo del coach");
+paso("recordatorios completos: interruptor general, días, horario, videollamada 24 h antes una vez, logros siempre en Mis avisos, comunidad solo si se elige, copia por correo solo si se elige");
 
 // C3 · Evolución: resume lo que hay en la base; la ve la persona, su coach y el dueño.
 {

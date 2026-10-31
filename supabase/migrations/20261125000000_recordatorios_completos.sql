@@ -5,7 +5,8 @@
 --    agendada) y nunca correos.
 --  · Categorías: acciones del día y revisión semanal (ya existían); videollamadas (recordatorio
 --    24 h antes); mensajes del coach (copia por correo: dentro de Rumbo llegan siempre);
---    comunidad y logros (sus avisos en Mis avisos).
+--    comunidad (sus avisos en Mis avisos) y logros (copia por correo: dentro de Rumbo llegan siempre,
+--    decisión de Diego del 31-oct-2026).
 --  · Horario desde/hasta (7 a 22), hora del recordatorio diario dentro de ese horario, días de la
 --    semana y la zona horaria de la persona (participantes.zona_horaria).
 --  · Correo: por_correo (D3) y Brevo solo si existen sus claves; correo_disponible() lo dice.
@@ -34,13 +35,14 @@ alter table public.avisos add constraint avisos_tipo_check check (tipo in ('revi
   'recordatorio_acciones','recordatorio_registro','reporte_comunidad','reconocimiento','beneficio_disponible',
   'ia_por_revisar','ia_respondida','ia_alerta',
   'reserva_pedida','reserva_respondida','mensaje_especialista','recomendacion_especialista',
-  'comunidad_respuesta','desafio_nuevo','recordatorio_videollamada'));
+  'recordatorio_videollamada'));
 
 -- ¿Quiere la persona esta categoría? Sin preferencias guardadas: no (todo viene apagado).
 create or replace function privado.quiere(p_participante uuid, p_categoria text) returns boolean
 language sql stable security definer set search_path = '' as $$
   select coalesce((select x.activos and case p_categoria
-      when 'comunidad' then x.comunidad when 'logros' then x.logros
+      when 'comunidad' then x.comunidad
+      when 'logros' then x.logros and x.por_correo
       when 'mensajes_coach' then x.mensajes_coach and x.por_correo
       when 'videollamadas' then x.videollamadas and x.por_correo
       else false end
@@ -49,9 +51,10 @@ $$;
 revoke execute on function privado.quiere(uuid, text) from public, anon, authenticated;
 
 -- Avisos: igual que A5, y además:
---  · comunidad y logros solo llegan a quien los eligió;
---  · los mensajes del coach y la videollamada agendada llegan siempre, con copia por correo a quien
---    la eligió (sin el contenido: dice qué pasó y enlaza a Mi espacio).
+--  · los avisos de la Comunidad solo llegan a quien los eligió;
+--  · los mensajes del coach, la videollamada agendada y los logros llegan siempre a Mis avisos, con
+--    copia por correo solo a quien la eligió (sin el contenido: dice qué pasó y enlaza a Mi espacio).
+--    Cada logro se otorga una sola vez, así que su aviso no se repite.
 create or replace function privado.avisar_app(p_participante uuid, p_para_participante boolean, p_tipo text,
   p_titulo text, p_enlace text) returns void
 language plpgsql security definer set search_path = '' as $$
@@ -59,7 +62,6 @@ declare v_correo text; v_sitio text := 'https://diegolazo84.github.io/rumbo-web'
 begin
   if p_para_participante then
     if p_tipo in ('comunidad_respuesta','desafio_nuevo') and not privado.quiere(p_participante, 'comunidad') then return; end if;
-    if p_tipo in ('reconocimiento','beneficio_disponible') and not privado.quiere(p_participante, 'logros') then return; end if;
   end if;
   delete from public.avisos a where a.leido_en < now() - interval '90 days'
      and a.destinatario in (select p.user_id from public.participantes p where p.id = p_participante
@@ -69,7 +71,8 @@ begin
     select p.user_id, p.id, p_tipo, p_titulo, p_enlace from public.participantes p
      where p.id = p_participante and p.user_id is not null and p.estado <> 'cerrado';
     if (p_tipo in ('revision_publicada','ajuste_respondido','programa_publicado') and privado.quiere(p_participante, 'mensajes_coach'))
-       or (p_tipo = 'videollamada_programada' and privado.quiere(p_participante, 'videollamadas')) then
+       or (p_tipo = 'videollamada_programada' and privado.quiere(p_participante, 'videollamadas'))
+       or (p_tipo in ('reconocimiento','beneficio_disponible') and privado.quiere(p_participante, 'logros')) then
       select p.correo::text into v_correo from public.participantes p
        where p.id = p_participante and p.user_id is not null and p.estado <> 'cerrado';
       perform privado.enviar_correo(v_correo, 'Rumbo: ' || p_titulo,
@@ -82,35 +85,6 @@ begin
   end if;
 end $$;
 revoke all on function privado.avisar_app(uuid, boolean, text, text, text) from public, anon, authenticated;
-
--- Avisos de la Comunidad (20261124000000): el desafío nuevo también solo a quien eligió la categoría.
-create or replace function privado.aviso_comunidad() returns trigger
-language plpgsql security definer set search_path = '' as $$
-declare v_autor uuid; v_alias text;
-begin
-  if not public.modulo_visible('comunidad') then return null; end if;
-  if tg_table_name = 'publicaciones' then
-    if new.respuesta_a is null or new.estado <> 'visible' then return null; end if;
-    select x.autor into v_autor from public.publicaciones x where x.id = new.respuesta_a and x.estado = 'visible';
-    if v_autor is null or v_autor = new.autor then return null; end if;
-    if exists (select 1 from public.bloqueos_comunidad b where b.bloqueador = v_autor and b.bloqueado = new.autor) then
-      return null;
-    end if;
-    select a.alias::text into v_alias from public.alias a where a.participante_id = new.autor;
-    perform privado.avisar_app(v_autor, true, 'comunidad_respuesta',
-      left(coalesce(v_alias, 'Alguien') || ' respondió tu publicación', 120), '/mi-espacio/comunidad/');
-  elsif tg_table_name = 'desafios' then
-    if not new.activo or (tg_op = 'UPDATE' and old.activo) then return null; end if;
-    insert into public.avisos (destinatario, participante_id, tipo, titulo, enlace)
-    select p.user_id, p.id, 'desafio_nuevo', left('Nuevo desafío en la Comunidad: «' || new.titulo || '»', 120),
-           '/mi-espacio/comunidad/'
-      from public.participantes p join public.alias a on a.participante_id = p.id
-     where p.user_id is not null and p.estado = 'activo' and a.reglas_comunidad_en is not null
-       and privado.quiere(p.id, 'comunidad');
-  end if;
-  return null;
-end $$;
-revoke all on function privado.aviso_comunidad() from public, anon, authenticated;
 
 -- Guardar: p = {activos, acciones_del_dia, registro_semanal, videollamadas, mensajes_coach, comunidad,
 -- logros, por_correo (booleanos), desde, hasta, hora (7 a 22), dias (1 = lunes … 7 = domingo)}.
