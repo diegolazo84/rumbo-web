@@ -110,7 +110,7 @@ const FUNCIONES = {
     "soy_equipo", "mi_contexto", "marcar_accion", "desmarcar_accion", "dejar_pasar", "registrar_evidencia", "eliminar_evidencia",
     "guardar_registro_semanal", "pedir_ajuste", "actualizar_preferencias", "pedir_derecho", "exportar_mis_datos", "mi_coach",
     "adjuntar_foto", "quitar_foto", "guardar_recordatorios",
-    "evolucion_semanal", "informe_ciclo", "mis_medibles", "anotar_cantidad",
+    "evolucion_semanal", "informe_ciclo", "mis_medibles", "anotar_cantidad", "anotar_nota",
     "guardar_alias", "participar_en_ranking", "ranking_semanal",
     "aceptar_reglas_comunidad", "publicar_en_comunidad", "borrar_mi_publicacion", "reportar_publicacion", "comunidad_publicaciones",
     "reaccionar_publicacion", "unirme_a_grupo", "salir_de_grupo", "comunidad_grupos", "proponer_grupo", "mis_propuestas_grupo",
@@ -921,6 +921,54 @@ paso("mensaje de cierre: solo el coach de la persona o el dueño, al final del c
   }
 }
 paso("medibles y plantillas: la cantidad se anota en lo propio ya marcado y no cambia créditos; las plantillas son del equipo");
+
+// R1 · Nota «¿Cómo te sentiste hoy?»: solo en lo propio ya marcado; no cambia créditos; la ve su coach.
+{
+  const oc = sql(`select o.id from public.ocurrencias o join public.registros r on r.ocurrencia_id = o.id and r.estado in ('hecha','aprobada')
+    where o.participante_id = '${ROLES.A.ficha}' limit 1`);
+  const ocSin = sql(`select o.id from public.ocurrencias o where o.participante_id = '${ROLES.A.ficha}'
+    and not exists (select 1 from public.registros r where r.ocurrencia_id = o.id) limit 1`);
+  const creditos = `select creditos from public.progreso where participante_id = '${ROLES.A.ficha}'`;
+  const anota = como(ROLES.A, `${creditos}; select public.anotar_nota('${oc}', '  Me sentí con energía.  ') \\g /dev/null
+    ${creditos}; select nota from public.registros where ocurrencia_id = '${oc}'`);
+  const [c0, c1, nota] = (anota.salida ?? "").split("\n");
+  exigir(anota.ok && nota === "Me sentí con energía.", `A no pudo anotar su nota: ${anota.error ?? nota}`);
+  exigir(c0 === c1, `anotar la nota cambió los créditos: ${c0} → ${c1}`);
+  const larga = como(ROLES.A, `select public.anotar_nota('${oc}', '${"x".repeat(201)}')`);
+  exigir(!larga.ok && /nota/.test(larga.error), "se aceptó una nota de 201 caracteres");
+  const sinMarcar = como(ROLES.A, `select public.anotar_nota('${ocSin}', 'Hola')`);
+  exigir(!sinMarcar.ok && /sin_marcar/.test(sinMarcar.error), "se anotó una nota en una acción sin marcar");
+  const ajena = como(ROLES.B, `select public.anotar_nota('${oc}', 'Ajena')`);
+  exigir(!ajena.ok && /no_encontrada/.test(ajena.error), "B anotó una nota en una acción de A");
+  const coach = como(ROLES.X, `reset role; update public.registros set nota = 'Para el coach' where ocurrencia_id = '${oc}';
+    set local role authenticated; select coalesce((select nota from public.registros where ocurrencia_id = '${oc}'), 'no la ve')`);
+  exigir(coach.ok && ultima(coach) === "Para el coach", `el coach de A no ve su nota: ${coach.error ?? ultima(coach)}`);
+  const otro = como(ROLES.Y, `select count(*) from public.registros where ocurrencia_id = '${oc}'`);
+  exigir(otro.ok && ultima(otro) === "0", "otro coach ve la nota de A");
+  const borra = como(ROLES.A, `select public.anotar_nota('${oc}', 'Algo') \\g /dev/null
+    select public.anotar_nota('${oc}', '') \\g /dev/null
+    select coalesce(nota, 'sin nota') from public.registros where ocurrencia_id = '${oc}'`);
+  exigir(borra.ok && ultima(borra) === "sin nota", `A no pudo borrar su nota: ${borra.error ?? ultima(borra)}`);
+}
+paso("nota de la acción: solo lo propio ya marcado, hasta 200 caracteres, sin tocar créditos; la ve su coach y nadie más");
+
+// R1 · Una nueva versión del programa conserva lo medible de cada acción (nuevo_borrador).
+{
+  const prog = sql(`select p.id || ' ' || p.ciclo_id from public.programas p join public.ciclos c on c.id = p.ciclo_id
+    where p.participante_id = '${ROLES.A.ficha}' and p.estado = 'publicado' and c.estado <> 'cerrado' limit 1`);
+  const [pub, ciclo] = prog.split(" ");
+  exigir(Boolean(pub), "A no tiene un programa publicado para probar la nueva versión");
+  const copia = como(ROLES.X, `reset role; set session_replication_role = replica;
+    delete from public.programas where ciclo_id = '${ciclo}' and estado = 'borrador';
+    update public.acciones set cantidad_objetivo = 8, unidad = 'vasos' where programa_id = '${pub}';
+    set session_replication_role = origin; set local role authenticated;
+    select public.nuevo_borrador('${ciclo}') \\g /dev/null
+    reset role; select count(*) filter (where cantidad_objetivo = 8 and unidad = 'vasos') || '/' || count(*)
+      from public.acciones a join public.programas p on p.id = a.programa_id where p.ciclo_id = '${ciclo}' and p.estado = 'borrador'`);
+  const [medibles, total] = (copia.ok ? ultima(copia) : "0/0").split("/").map(Number);
+  exigir(copia.ok && total > 0 && medibles === total, `la nueva versión perdió lo medible: ${copia.error ?? `${medibles} de ${total}`}`);
+}
+paso("nueva versión del programa: las acciones conservan su cantidad objetivo y su unidad");
 
 // C5 · Alias y ranking semanal voluntario.
 {

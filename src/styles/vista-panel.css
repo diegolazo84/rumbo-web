@@ -42,6 +42,7 @@
 .pa-dos { display: grid; gap: var(--e-4); min-inline-size: 0; }
 @media (min-width: 600px) { .pa-dos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .pa-dos--siempre { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pa-medible-unidad { display: grid; gap: var(--e-3); align-content: start; }
 
 .pa-boton-izq { padding-inline: 0; }
 .pa-boton-solo { justify-self: start; }

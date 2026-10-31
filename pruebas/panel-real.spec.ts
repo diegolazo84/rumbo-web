@@ -1122,6 +1122,37 @@ test("Comunidad en móvil: la barra inferior no tapa reportes ni botones al desp
   await revisarBarra(page);
 });
 
+test("constructor: una acción medible guarda su cantidad propuesta y su unidad (sugerida u otra)", async ({ page }, info) => {
+  test.skip(info.project.name !== "escritorio", "el constructor es de escritorio (5.6)");
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/constructor/?id=p2");
+  await hidratar(page);
+  await page.getByRole("button", { name: "Crear el borrador" }).click();
+  await page.getByRole("button", { name: "Nueva meta" }).click();
+  await page.locator("#meta-titulo").fill("Moverme más");
+  await page.getByRole("button", { name: "Nueva acción" }).click();
+  await page.locator("#accion-titulo").fill("Tomar agua");
+  await page.locator('input[name="accion-dias"][value="1"]').check();
+  await page.locator("#accion-instrucciones").fill("Ten una botella a mano.");
+  await page.getByLabel("Se mide con una cantidad").check();
+  await page.locator("#accion-objetivo").fill("8");
+  await page.locator("#accion-unidad").selectOption("vasos");
+  await page.getByRole("button", { name: "Guardar borrador" }).click();
+  await expect.poll(() => base.acciones.find((a) => a.titulo === "Tomar agua")).toMatchObject({ cantidad_objetivo: 8, unidad: "vasos" });
+
+  await page.locator("#accion-unidad").selectOption("otra");
+  await page.locator("#accion-unidad-otra").fill("series");
+  await page.getByRole("button", { name: "Guardar borrador" }).click();
+  await expect.poll(() => base.acciones.find((a) => a.titulo === "Tomar agua")).toMatchObject({ cantidad_objetivo: 8, unidad: "series" });
+
+  await page.getByLabel("Se mide con una cantidad").uncheck();
+  await page.getByRole("button", { name: "Guardar borrador" }).click();
+  await expect.poll(() => base.acciones.find((a) => a.titulo === "Tomar agua")).toMatchObject({ cantidad_objetivo: null, unidad: null });
+  await sinViolaciones(page);
+});
+
 // Informe de cierre (30-oct-2026): el coach escribe el mensaje de cierre en la ficha.
 test("ficha: mensaje de cierre al final del ciclo, con su autor; oculto sin la migración", async ({ page }) => {
   await preparar(page, "aal2", VERIFICADO);

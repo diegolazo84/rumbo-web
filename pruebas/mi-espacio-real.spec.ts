@@ -1313,6 +1313,93 @@ test("Fotos en todo equipo (escritorio, móvil, iPhone y 320 px): sube o, si el 
   await sinViolaciones(page);
 });
 
+// ---------------------------------------------------------------------------
+// Registrar acción medible (maqueta de ChatGPT, 30-oct-2026)
+
+function rpcMedibles(base: Base, orden: string[]) {
+  const fila = (id: unknown) => base.registros.find((r) => r.ocurrencia_id === id);
+  return {
+    mis_medibles: () => [{ ocurrencia_id: `o-${HOY}`, cantidad_objetivo: 30, unidad: "minutos", cantidad: fila(`o-${HOY}`)?.cantidad ?? null }],
+    anotar_cantidad: (c: Record<string, unknown>) => {
+      orden.push(`cantidad:${c.p_cantidad}`);
+      const r = fila(c.p_ocurrencia);
+      if (!r) return { __error: "accion:sin_marcar", __estado: 409 };
+      r.cantidad = c.p_cantidad;
+      return null;
+    },
+    anotar_nota: (c: Record<string, unknown>) => {
+      orden.push(`nota:${c.p_nota}`);
+      const r = fila(c.p_ocurrencia);
+      if (!r) return { __error: "accion:sin_marcar", __estado: 409 };
+      r.nota = c.p_nota || null;
+      return null;
+    },
+  };
+}
+
+test("Registrar acción medible: marca una vez, anota cantidad y nota; editar no vuelve a marcar", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  const orden: string[] = [];
+  const llamadas = await simular(page, base, rpcMedibles(base, orden));
+  await page.goto(`mi-espacio/plan/accion/?id=o-${HOY}`);
+  await hidratar(page);
+  await expect(page.getByText("Para hoy: 30 minutos")).toBeVisible();
+  const cantidad = page.getByLabel("¿Cuánto tiempo hiciste hoy?");
+  await expect(cantidad).toHaveValue("30");
+  await expect(page.getByRole("button", { name: "Elegir 30 minutos" })).toHaveAttribute("aria-pressed", "true");
+  await sinViolaciones(page);
+
+  // Valor inválido: no se llama a la base.
+  await cantidad.fill("abc");
+  await page.getByRole("button", { name: "Guardar acción" }).click();
+  await expect(page.getByText(/Ingresa un valor válido/)).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "marcar_accion")).toBe(false);
+
+  await page.getByRole("button", { name: "Elegir 45 minutos" }).click();
+  await page.getByLabel(/¿Cómo te sentiste hoy\?/).fill("Con más calma.");
+  await page.getByRole("button", { name: "Guardar acción" }).click();
+  await expect(page.locator(".me-registrada").getByText("¡Acción registrada!")).toBeVisible();
+  await expect(page.locator(".me-registrada").getByText("Anotaste 45 minutos.")).toBeVisible();
+  await expect(page.locator(".me-registrada__nota")).toContainText("Con más calma.");
+  const marcas = () => llamadas.filter((l) => l.nombre === "marcar_accion").length;
+  expect(marcas()).toBe(1);
+  expect(orden).toEqual(["cantidad:45", "nota:Con más calma."]);
+  const creditos = (base.progreso[0] as Fila).creditos;
+
+  // Editar: solo anota (sin marcar de nuevo ni sumar créditos).
+  await page.getByRole("button", { name: "Editar lo que anotaste" }).click();
+  await page.getByLabel("¿Cuánto tiempo hiciste hoy?").fill("50");
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.locator(".me-registrada").getByText("Anotaste 50 minutos.")).toBeVisible();
+  expect(marcas()).toBe(1);
+  expect((base.progreso[0] as Fila).creditos).toBe(creditos);
+  await sinViolaciones(page);
+});
+
+test("Registrar acción medible: sin la columna nota no se muestra la nota; si falla lo anotado, la acción queda marcada", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  const orden: string[] = [];
+  const rpc = rpcMedibles(base, orden);
+  let falla = true;
+  await simular(page, base, { ...rpc, anotar_cantidad: (c) => (falla ? { __error: "red:caida", __estado: 500 } : rpc.anotar_cantidad(c)) });
+  // La base todavía no tiene registros.nota (migración 20261123000000 sin aplicar).
+  await page.route(`${SUPABASE_URL}/rest/v1/registros?select=ocurrencia_id%2Cnota*`, (rt) =>
+    rt.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ code: "42703", message: "column registros.nota does not exist" }) }),
+  );
+  await page.goto(`mi-espacio/plan/accion/?id=o-${HOY}`);
+  await hidratar(page);
+  await expect(page.getByLabel("¿Cuánto tiempo hiciste hoy?")).toBeVisible();
+  await expect(page.getByText("¿Cómo te sentiste hoy?")).toHaveCount(0);
+  await page.getByRole("button", { name: "Guardar acción" }).click();
+  await expect(page.getByRole("alert")).toContainText("Tu acción quedó marcada");
+  falla = false;
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.locator(".me-registrada").getByText("Anotaste 30 minutos.")).toBeVisible();
+  expect(orden.some((x) => x.startsWith("nota:"))).toBe(false);
+});
+
 // Informe de cierre de ciclo (maqueta de ChatGPT, 30-oct-2026): todo de informe_ciclo; el mensaje
 // lo escribe el coach (si no, su último foco y, sin focos, ninguna tarjeta); sin reconocimientos
 // mientras el módulo esté apagado.
