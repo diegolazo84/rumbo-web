@@ -193,6 +193,8 @@ test("6b. desde la conversación se abren Mis conversaciones y la configuración
   await expect(page).toHaveURL(/\?ver=conversaciones$/);
   await expect(page.getByRole("heading", { name: T.historial.titulo })).toBeVisible();
   await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`${RUTA}$`));
+  await expect(page.locator(".as-chat .as-par")).toHaveCount(2);
   await page.getByRole("button", { name: T.configuracion.abrir, exact: true }).click();
   await expect(page.getByRole("heading", { name: T.configuracion.titulo })).toBeVisible();
 });
