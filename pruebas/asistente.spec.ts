@@ -262,3 +262,34 @@ test("los 8 estados pasan axe y no desbordan a 320, 768 y 1600 px", async ({ pag
     }
   }
 });
+
+test("quien ya conversó: en móvil la portada es compacta, con accesos a escribir, privacidad y ayuda; la primera visita no cambia", async ({ page, isMobile }) => {
+  await abrir(page);
+  const atajos = page.getByRole("navigation", { name: T.atajos.titulo });
+  if (!isMobile) {
+    await expect(atajos).toBeHidden();
+    await expect(page.locator(".as-claves")).toBeVisible();
+    return;
+  }
+  await expect(page.locator(".as--compacta")).toHaveCount(1);
+  await expect(atajos).toBeVisible();
+  await expect(page.locator(".as-portada .rc-portada__bajada")).toBeHidden();
+  await expect(page.locator(".as-portada .as-supervision")).toBeVisible();
+  const alto = await page.locator(".as-portada").evaluate((e) => e.getBoundingClientRect().height);
+  expect(alto).toBeLessThan(260);
+  // Lo informativo y legal sigue en la página, a un toque.
+  await atajos.getByRole("link", { name: T.atajos.privacidad }).click();
+  await expect(page.locator("#as-info")).toBeInViewport();
+  await atajos.getByRole("link", { name: T.atajos.ayuda }).click();
+  await expect(page.locator("#as-crisis")).toBeInViewport();
+  await expect(page.getByRole("link", { name: "131" }).first()).toBeVisible();
+  await atajos.getByRole("button", { name: T.atajos.escribir }).click();
+  await expect(page.getByLabel(T.escribir)).toBeFocused();
+
+  // Primera visita: la bienvenida y la explicación completa.
+  await estado(page, "bienvenida");
+  await expect(page.locator(".as--compacta")).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: T.atajos.titulo })).toHaveCount(0);
+  await expect(page.locator(".as-portada .rc-portada__bajada")).toBeVisible();
+  await expect(page.locator(".as-revisa")).toBeVisible();
+});

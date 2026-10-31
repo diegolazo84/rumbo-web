@@ -1903,6 +1903,21 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
   .as-acciones, .as-seguir, .as-valorar { gap: var(--e-1); }
   .as-chip { gap: var(--e-1); padding: 0 10px; }
 }
+/* Portada compacta para quien ya conversó (solo móvil): ilustración en franja baja, título más
+   chico y accesos directos; la descripción y la franja de supervisión quedan en «Información
+   importante», a un toque. */
+.as-atajos { display: none; }
+@media (max-width: 1023px) {
+  .as--compacta .as-portada .as-portada__img { aspect-ratio: auto; block-size: 104px; object-position: 72% 58%; }
+  .as--compacta .as-portada .rc-portada__h1 { font-size: var(--t-h3); }
+  .as--compacta .as-portada .rc-portada__bajada, .as--compacta .as-revisa { display: none; }
+  .as-atajos { display: flex; flex-wrap: wrap; gap: var(--e-1); }
+  .as-atajos .as-chip { text-decoration: none; }
+  .as-atajo--escribir { border-color: var(--bosque); background: var(--bosque); color: var(--sobre-oscuro); font-weight: 600; }
+  .as-atajo--escribir .icono { color: var(--sobre-oscuro); }
+  .as-atajo--escribir:hover { background: var(--bosque-hondo); }
+}
+.as-crisis:focus { outline: none; }
 .as-vacia { display: grid; justify-items: center; gap: var(--e-2); padding: var(--e-5) 0; text-align: center; }
 @media (min-width: 1024px) {
   .as-acciones { justify-content: center; padding-inline-start: calc(48px + var(--e-3)); max-inline-size: 42rem; }
