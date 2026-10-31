@@ -12,7 +12,7 @@ import type { EstadoRegistro, SolicitudAjuste } from "../../../data/ejemplo-app"
 import type { Iso } from "../../../lib/fechas";
 import { datos, supabase, type Cliente } from "../../../lib/supabase";
 import type { RutaPlataforma } from "../rutas";
-import { ESPACIO_PREVIA, EspacioContexto, R_REAL, RECORDATORIOS_POR_DEFECTO, type PrefRecordatorios, type Ausencia, type CoachEspacio, type Espacio, type VideollamadaEspacio, type Progreso, type Servidor } from "../../vista-previa/mi-espacio/espacio";
+import { ESPACIO_PREVIA, EspacioContexto, R_REAL, RECORDATORIOS_POR_DEFECTO, type PrefRecordatorios, type Asistente, type ConsultaAsistente, type EstadoConsulta, type Ausencia, type CoachEspacio, type Espacio, type VideollamadaEspacio, type Progreso, type Servidor } from "../../vista-previa/mi-espacio/espacio";
 import Ajuste from "../../vista-previa/mi-espacio/Ajuste";
 import AyudaInmediata from "../../vista-previa/mi-espacio/AyudaInmediata";
 import Calendario from "../../vista-previa/mi-espacio/Calendario";
@@ -25,6 +25,7 @@ import Preferencias from "../../vista-previa/mi-espacio/Preferencias";
 import ProgresoPantalla from "../../vista-previa/mi-espacio/Progreso";
 import MisAvisos from "../../vista-previa/mi-espacio/MisAvisos";
 import Recordatorios from "../../vista-previa/mi-espacio/Recordatorios";
+import AsistentePantalla from "../../vista-previa/mi-espacio/Asistente";
 import { categoriaDe, type Aviso } from "../../vista-previa/mi-espacio/avisos/datos";
 import Acompanamiento from "../../vista-previa/mi-espacio/Acompanamiento";
 import Comunidad from "../../vista-previa/mi-espacio/Comunidad";
@@ -67,6 +68,7 @@ type Leido = {
   comunidad: boolean;
   recordatorios: PrefRecordatorios | "no-disponible" | null;
   correoDisponible: boolean | null;
+  asistente: Asistente | null;
 };
 
 async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> {
@@ -78,7 +80,7 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
     await sb.from("ciclos").select(COLUMNAS.ciclo).eq("participante_id", participante.id).order("numero", { ascending: false }).limit(1).maybeSingle(),
   ) as Filas["ciclo"] | null;
   if (!ciclo) return "sin-ficha";
-  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas, moduloFotos, avisos, moduloComunidad, medibles, notas, recordatorios, correo] =
+  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas, moduloFotos, avisos, moduloComunidad, medibles, notas, recordatorios, correo, asistente] =
     await Promise.all([
       sb.from("programas").select(COLUMNAS.programa).eq("ciclo_id", ciclo.id).neq("estado", "borrador").order("version"),
       sb.from("ocurrencias").select(COLUMNAS.ocurrencia).eq("ciclo_id", ciclo.id).order("fecha").limit(5000),
@@ -103,6 +105,8 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
       // Recordatorios (R1): sin la migración de recordatorios completos, la pantalla lo dice.
       sb.from("recordatorios").select(COLUMNAS_RECORDATORIOS).maybeSingle(),
       sb.rpc("correo_disponible"),
+      // Asistente de Rumbo (E2): si está encendido, el consentimiento y las consultas propias.
+      leerAsistente(sb),
     ]);
   const progs = datos(programas) as Filas["programas"];
   const ids = progs.map((p) => p.id);
@@ -140,6 +144,7 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
     comunidad: !moduloComunidad.error && moduloComunidad.data === true,
     recordatorios: armarRecordatorios(recordatorios),
     correoDisponible: correo.error ? null : correo.data === true,
+    asistente,
   };
 }
 
@@ -186,6 +191,40 @@ async function leerAvisos(sb: Cliente): Promise<Aviso[] | null> {
   if (r.error) return null;
   const filas = (r.data ?? []) as { id: string; tipo: string; titulo: string; enlace: string; creado_en: string; leido_en: string | null }[];
   return filas.map((f) => ({ id: f.id, tipo: f.tipo, titulo: f.titulo, enlace: f.enlace, creadoEn: f.creado_en, leidoEn: f.leido_en }));
+}
+
+// Asistente: ia_disponible (dueño + clave + módulo), el consentimiento (yo_leer) y mis_consultas_ia,
+// que nunca trae borradores sin revisar. Si algo falla: null (la pantalla lo dice).
+async function leerAsistente(sb: Cliente): Promise<Asistente | null> {
+  const [disp, cons, consultas, valoraciones] = await Promise.all([
+    sb.rpc("ia_disponible"),
+    sb.from("ia_consentimientos").select("metas,acciones,registro_semanal,aceptado_en,retirado_en").maybeSingle(),
+    leerConsultas(sb),
+    leerValoraciones(sb),
+  ]);
+  if (disp.error || cons.error || !consultas) return null;
+  const c = cons.data as { metas: boolean; acciones: boolean; registro_semanal: boolean; aceptado_en: string | null; retirado_en: string | null } | null;
+  return {
+    disponible: disp.data === true,
+    consentimiento: c && { metas: c.metas, acciones: c.acciones, registroSemanal: c.registro_semanal, aceptadoEn: c.aceptado_en, retiradoEn: c.retirado_en },
+    consultas,
+    valoraciones,
+  };
+}
+
+// «Me sirvió» / «No me sirvió» (20261127000000). Si la tabla todavía no existe, los botones no se muestran.
+async function leerValoraciones(sb: Cliente): Promise<Asistente["valoraciones"]> {
+  const r = await sb.from("ia_valoraciones").select("consulta_id,util,motivo").limit(1000);
+  if (r.error) return null;
+  const filas = (r.data ?? []) as { consulta_id: string; util: boolean; motivo: string | null }[];
+  return Object.fromEntries(filas.map((f) => [f.consulta_id, { util: f.util, motivo: f.motivo }]));
+}
+
+async function leerConsultas(sb: Cliente): Promise<ConsultaAsistente[] | null> {
+  const r = await sb.rpc("mis_consultas_ia");
+  if (r.error) return null;
+  const filas = (Array.isArray(r.data) ? r.data : []) as { id: string; pregunta: string; estado: EstadoConsulta; respuesta: string | null; creada_en: string; revisada_en: string | null }[];
+  return filas.map((f) => ({ id: f.id, pregunta: f.pregunta, estado: f.estado, respuesta: f.respuesta, creadaEn: f.creada_en, revisadaEn: f.revisada_en }));
 }
 
 function armarCoach(d: unknown): CoachEspacio | null {
@@ -505,6 +544,37 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
         const actual = filas.current;
         if (actual) poner({ ...actual, recordatorios: { ...x, dias: [...x.dias] } });
       },
+      aceptarAsistente: async (c) => {
+        datos(await sb().rpc("ia_guardar_consentimiento", { p_metas: c.metas, p_acciones: c.acciones, p_registro_semanal: c.registroSemanal }));
+        const actual = filas.current;
+        if (actual?.asistente)
+          poner({ ...actual, asistente: { ...actual.asistente, consentimiento: { ...c, aceptadoEn: new Date().toISOString(), retiradoEn: null } } });
+      },
+      retirarAsistente: async () => {
+        datos(await sb().rpc("ia_retirar_consentimiento"));
+        const actual = filas.current;
+        const previo = actual?.asistente?.consentimiento;
+        if (actual?.asistente && previo)
+          poner({ ...actual, asistente: { ...actual.asistente, consentimiento: { metas: false, acciones: false, registroSemanal: false, aceptadoEn: previo.aceptadoEn, retiradoEn: new Date().toISOString() } } });
+      },
+      preguntarAsistente: async (pregunta) => {
+        const r = datos(await sb().rpc("ia_preguntar", { p_pregunta: pregunta })) as { estado?: string } | null;
+        const consultas = await leerConsultas(sb());
+        const actual = filas.current;
+        if (actual?.asistente && consultas) poner({ ...actual, asistente: { ...actual.asistente, consultas } });
+        // La base devuelve «enviada» (la persona la ve como «en revisión»), «crisis» o «sin_presupuesto».
+        return r?.estado === "crisis" || r?.estado === "sin_presupuesto" ? r.estado : "en_revision";
+      },
+      valorarAsistente: async (consulta, util, motivo) => {
+        datos(await sb().rpc("ia_valorar", { p_consulta: consulta, p_util: util, p_motivo: util === false ? motivo : null }));
+        const actual = filas.current;
+        if (actual?.asistente?.valoraciones) {
+          const v = { ...actual.asistente.valoraciones };
+          if (util === null) delete v[consulta];
+          else v[consulta] = { util, motivo: util ? null : motivo?.trim() || null };
+          poner({ ...actual, asistente: { ...actual.asistente, valoraciones: v } });
+        }
+      },
       verNovedad: (id) => {
         setVistas((v) => {
           const n = new Set(v).add(id);
@@ -547,6 +617,7 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
       comunidad: estado.comunidad,
       recordatorios: estado.recordatorios,
       correoDisponible: estado.correoDisponible,
+      asistente: estado.asistente,
     };
   }, [estado, vistas, servidor]);
 
@@ -566,7 +637,7 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
     <EspacioContexto.Provider value={espacio ?? ESPACIO_CARGANDO}>
       <EstructuraApp
         tipo="mi-espacio"
-        rutas={RUTAS_NAV}
+        rutas={espacio?.asistente?.disponible ? { ...RUTAS_NAV, asistente: R_REAL.asistente } : RUTAS_NAV}
         seccion={ruta.seccion}
         activo={ruta.activo}
         novedades={novedades}
@@ -610,7 +681,7 @@ const RUTAS_NAV = {
 };
 
 // Mientras carga: rutas reales y sin datos de ejemplo visibles (solo se muestra «Cargando…»).
-const ESPACIO_CARGANDO: Espacio = { ...ESPACIO_PREVIA, real: true, R: R_REAL, novedades: [], ausencia: null, avisos: [], comunidad: false, recordatorios: null, correoDisponible: null };
+const ESPACIO_CARGANDO: Espacio = { ...ESPACIO_PREVIA, real: true, R: R_REAL, novedades: [], ausencia: null, avisos: [], comunidad: false, recordatorios: null, correoDisponible: null, asistente: null };
 
 // Qué pantalla corresponde a la ruta. En mi-espacio/ decide el estado del ciclo (4.3).
 function PantallaReal({ ruta, espacio }: { ruta: RutaPlataforma; espacio: Espacio }): ReactNode {
@@ -645,6 +716,8 @@ function PantallaReal({ ruta, espacio }: { ruta: RutaPlataforma; espacio: Espaci
       return <Preferencias />;
     case "/mi-espacio/preferencias/recordatorios/":
       return <Recordatorios />;
+    case "/mi-espacio/asistente/":
+      return <AsistentePantalla />;
     case "/mi-espacio/preferencias/eliminar/":
       return <Preferencias estado="eliminar" />;
     case "/mi-espacio/ayuda/":

@@ -23,6 +23,7 @@ export const RUTAS_MI_ESPACIO = {
   loQueViene: rutaPrevia("mi-espacio/lo-que-viene/"),
   salir: rutaPrevia("mi-espacio/entrar/saliste/"),
   avisos: rutaPrevia("mi-espacio/avisos/"),
+  asistente: rutaPrevia("mi-espacio/asistente/"),
 } as const;
 
 // Destinos del panel (EstructuraApp tipo "panel").

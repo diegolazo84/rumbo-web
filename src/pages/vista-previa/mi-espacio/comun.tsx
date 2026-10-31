@@ -7,7 +7,7 @@
 // En la vista previa se simula esa respuesta con las mismas reglas de rumbo.ts.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Etiqueta from "../../../components/Etiqueta";
-import { FilaAccion, Icono, TEXTOS_CARGA } from "../../../components/app";
+import { FilaAccion, Icono, TEXTOS_CARGA, type NombreIconoApp } from "../../../components/app";
 import { calcularProgreso, cuentaComoHecha, type EstadoRegistro, type Ocurrencia } from "../../../data/ejemplo-app";
 import { diaCorto, type Iso } from "../../../lib/fechas";
 import { ICONO_CATEGORIA, colorDeMeta } from "../../../lib/mi-rumbo";
@@ -282,6 +282,20 @@ export function AlertaGuardar({ texto }: { texto: string | null }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Mensaje de estado de una pantalla (no disponible, error al cargar…), con una acción opcional.
+export function MensajeAviso({ icono, titulo, texto, rol, accion }: { icono: NombreIconoApp; titulo: string; texto: string; rol?: "alert"; accion?: ReactNode }) {
+  return (
+    <div className="aviso rc-mensaje" role={rol}>
+      <Icono nombre={icono} tamaño={20} className="aviso-icono" />
+      <div className="aviso-cuerpo">
+        <h2 className="aviso-titulo">{titulo}</h2>
+        <p>{texto}</p>
+        {accion && <div className="acciones">{accion}</div>}
+      </div>
     </div>
   );
 }

@@ -1029,6 +1029,7 @@ export const T_AVISOS = {
     programa_publicado: "Revisa las acciones de los próximos días en Mi plan.",
     videollamada_programada: "Revisa la fecha, la hora y el enlace en Mi acompañamiento.",
     ia_respondida: "Tu coach la revisó antes de que llegara a ti.",
+    ia_no_compartida: "Puedes reformular tu pregunta o pedir orientación sobre otro tema.",
     mensaje_especialista: "Léelo en tu espacio.",
     recomendacion_especialista: "Revísala en tu espacio.",
     reserva_respondida: "Revisa los detalles de tu sesión.",
@@ -1160,4 +1161,230 @@ export const T_RECORDATORIOS = {
   errorCargar: { titulo: "No pudimos cargar tus recordatorios", texto: "Vuelve a intentarlo en un momento.", reintentar: "Reintentar" },
   volver: "Preferencias",
   enPreferencias: { titulo: "Recordatorios", texto: "Elige qué avisos recibir, en qué horario y qué días.", enlace: "Configurar recordatorios" },
+} as const;
+
+// ---------------------------------------------------------------------------
+// Asistente de Rumbo (maqueta de ChatGPT, 30-oct-2026). Complementa al coach, nunca lo reemplaza:
+// cada respuesta la revisa y aprueba el coach antes de que la persona la vea.
+export const T_ASISTENTE = {
+  titulo: "Asistente de Rumbo",
+  beta: "Beta",
+  supervision: "Con la supervisión de tu coach",
+  bajada: "Un espacio para hacer tus preguntas, reflexionar y recibir orientación, siempre con la supervisión de tu coach.",
+  claves: [
+    { icono: "user-round", texto: "Tu coach revisa y aprueba cada respuesta." },
+    { icono: "shield-check", texto: "Solo usa lo que tú autorizas compartir." },
+    { icono: "sprout", texto: "Te apoya a reflexionar y avanzar en tu proceso." },
+  ],
+  revisaCoach: "Tu coach revisa y aprueba cada respuesta antes de que la veas.",
+  saberMas: "Saber más",
+  // Conversación
+  conversacion: "Tu conversación con el asistente",
+  tu: "Tú",
+  asistente: "Asistente de Rumbo",
+  vacia: {
+    titulo: "Todavía no hay preguntas",
+    texto: "Escribe tu primera pregunta o elige un ejemplo. Tu coach revisará la respuesta antes de que la veas.",
+  },
+  estados: {
+    en_revision: {
+      etiqueta: "Tu pregunta fue enviada",
+      texto: "Tu coach la revisará antes de compartirla contigo.",
+    },
+    aprobada: { etiqueta: "Revisada por tu coach" },
+    descartada: {
+      etiqueta: "Tu coach revisó esta respuesta",
+      texto: "Por ahora no podemos compartir esta respuesta. Puedes reformular tu pregunta o pedir orientación sobre otro tema.",
+    },
+    crisis: {
+      etiqueta: "Busca apoyo ahora",
+      texto: "No enviamos esta pregunta al asistente. Tu coach recibió un aviso. Si estás en peligro o piensas en hacerte daño, llama ahora:",
+    },
+    sin_presupuesto: {
+      etiqueta: "No enviada",
+      texto: "El asistente llegó a su límite de este mes y tu pregunta no se envió. Tu coach sigue disponible en Mi acompañamiento.",
+    },
+    error: {
+      etiqueta: "Sin respuesta",
+      texto: "No pudimos obtener una respuesta y tu pregunta no llegó a tu coach. Puedes intentarlo de nuevo.",
+    },
+  },
+  lista: { titulo: "Tu coach ya revisó la respuesta", texto: "Aquí tienes su orientación." },
+  nuevaPregunta: "Escribir una nueva pregunta",
+  seguir: {
+    titulo: "Seguir con esta respuesta",
+    masIdeas: "Más ideas",
+    crearPlan: "Crear plan",
+    profundizar: "Profundizar",
+    preguntaCrearPlan: (p: string) =>
+      `Sobre «${p}»: ¿me propones un plan simple para esta semana con acciones realistas? Lo conversaré con mi coach antes de cambiar mi plan.`,
+    preguntaMasIdeas: (p: string) => `Sobre «${p}»: ¿me das otras ideas distintas?`,
+    preguntaProfundizar: (p: string) => `Sobre «${p}»: ¿me ayudas a profundizar en la primera idea?`,
+  },
+  // Portada compacta para quien vuelve (móvil): accesos directos.
+  atajos: {
+    titulo: "Accesos rápidos",
+    escribir: "Escribir una pregunta",
+    privacidad: "Privacidad y supervisión",
+    ayuda: "Ayuda inmediata",
+  },
+  // «Me sirvió» / «No me sirvió»: una valoración por respuesta; se puede cambiar o quitar.
+  valorar: {
+    grupo: "¿Te sirvió esta respuesta?",
+    sirvio: "Me sirvió",
+    noSirvio: "No me sirvió",
+    motivo: "¿Qué faltó? (opcional)",
+    motivoAyuda: "Hasta 300 caracteres. Tu coach puede leerlo para orientarte mejor.",
+    guardarMotivo: "Guardar comentario",
+    gracias: "Gracias. Guardamos tu valoración; puedes cambiarla cuando quieras.",
+    quitada: "Quitamos tu valoración.",
+    motivoGuardado: "Guardamos tu comentario.",
+    error: "No pudimos guardar tu valoración. Vuelve a intentarlo.",
+  },
+  // Escribir
+  escribir: "Escribe tu pregunta",
+  placeholder: "Escribe tu pregunta…",
+  enviar: "Enviar pregunta",
+  enviando: "Enviando…",
+  largo: (n: number) => `${n} de 1000 caracteres`,
+  muyCorta: "Escribe al menos 3 caracteres.",
+  pie: "El asistente puede cometer errores. Ante una crisis, busca apoyo inmediato en los números de ayuda.",
+  errores: {
+    demasiadas: "Llegaste al máximo de preguntas por hoy. Puedes volver a preguntar mañana.",
+    ciclo: "Puedes usar el asistente mientras tu ciclo está en curso.",
+    apagado: "El asistente no está disponible en este momento. Tu pregunta no se envió.",
+    conexion: "No pudimos enviar tu pregunta. Revisa tu conexión e inténtalo de nuevo.",
+    sinConexion: "Sin conexión. Tu pregunta queda escrita; envíala cuando vuelva la conexión.",
+  },
+  enviadaAviso: "Tu pregunta fue enviada. Tu coach revisará la respuesta antes de compartirla contigo.",
+  // Ejemplos
+  ejemplos: {
+    titulo: "Ejemplos de preguntas",
+    lista: [
+      "¿Cómo puedo mantener la motivación?",
+      "¿Me puedes ayudar a organizar mi semana?",
+      "¿Qué hábitos me recomiendas para mi meta?",
+      "¿Cómo puedo avanzar en mi objetivo?",
+      "Me desordené estos días, ¿cómo retomo?",
+    ],
+  },
+  // Información
+  info: {
+    titulo: "Información importante",
+    puntos: [
+      { icono: "users", texto: "El asistente es una herramienta de apoyo y no reemplaza el acompañamiento humano." },
+      { icono: "user-round", texto: "Tu coach revisa cada respuesta: puede aprobarla, corregirla o no compartirla." },
+      { icono: "lock", texto: "Lo que preguntas lo ven tú, tu coach y el equipo de Rumbo. La pregunta y lo que autorizas se envían a OpenAI para generar la respuesta." },
+      { icono: "heart", texto: "No es atención de salud ni de urgencias. Ante una crisis, busca ayuda profesional." },
+    ],
+  },
+  crisis: {
+    titulo: "Si te sientes en una crisis",
+    bajada: "Busca apoyo inmediato:",
+  },
+  // Consentimiento
+  consentimiento: {
+    titulo: "Antes de empezar",
+    intro: "Para usar el asistente necesitamos tu autorización. Léelo con calma: puedes cambiarlo o retirarlo cuando quieras.",
+    puntos: [
+      "Qué hace: te propone ideas para reflexionar, organizarte y avanzar en tu plan.",
+      "Cómo funciona: tu pregunta y lo que autorices abajo se envían a OpenAI, un proveedor externo, para generar una respuesta. Nunca se envían tu nombre, tu correo ni tus datos de contacto.",
+      "Revisión humana: la respuesta la lee primero tu coach. Solo verás lo que tu coach apruebe.",
+      "Quién lo ve: tú, tu coach y el equipo de Rumbo. Queda registrado qué se envió y quién revisó.",
+      "Límites: no reemplaza a tu coach ni la atención de salud. Si tu pregunta sugiere riesgo, no se envía al asistente y tu coach recibe un aviso.",
+      "Retirar: si retiras tu autorización, no se envía nada nuevo. Tus preguntas anteriores siguen en esta pantalla y en la copia de tus datos.",
+    ],
+    contexto: "¿Qué puede usar el asistente además de tu pregunta?",
+    contextoAyuda: "Elige solo lo que quieras. Puedes no elegir nada.",
+    opciones: {
+      metas: { titulo: "Mis metas", texto: "El título y el «para qué» de las metas de tu plan." },
+      acciones: { titulo: "Mis acciones de esta semana", texto: "Qué acciones tienes y cuáles marcaste." },
+      registroSemanal: { titulo: "Mi último registro semanal", texto: "Lo que contaste sobre cómo te fue." },
+    },
+    aceptar: "Acepto y quiero usar el asistente",
+    guardar: "Guardar lo que comparto",
+    aceptando: "Guardando…",
+    error: "No pudimos guardar tu autorización. Inténtalo de nuevo.",
+    guardado: "Guardamos lo que compartes con el asistente.",
+  },
+  ajustes: {
+    titulo: "Lo que compartes",
+    autorizadoEl: (f: string) => `Autorizaste el asistente el ${f}.`,
+    nada: "Solo tu pregunta.",
+    con: (l: string) => `Tu pregunta y ${l}.`,
+    cambiar: "Cambiar lo que comparto",
+    retirar: "Retirar mi autorización",
+    retirando: "Retirando…",
+    confirmar: "¿Retirar tu autorización? No se enviará nada nuevo al asistente. Puedes volver a autorizarlo cuando quieras.",
+    confirmarSi: "Sí, retirar",
+    confirmarNo: "Cancelar",
+    error: "No pudimos retirar tu autorización. Inténtalo de nuevo.",
+  },
+  retirado: {
+    titulo: "Retiraste tu autorización",
+    texto: (f: string) => `El ${f} retiraste tu autorización. No se envía nada nuevo al asistente. Tus preguntas anteriores siguen aquí.`,
+    volver: "Volver a autorizar",
+  },
+  // Bienvenida (primera visita)
+  bienvenida: {
+    titulo: "Te damos la bienvenida al Asistente de Rumbo",
+    texto: "Un espacio para hacer tus preguntas, reflexionar y recibir orientación, siempre con la supervisión de tu coach.",
+    puntos: ["Respuestas revisadas por tu coach", "Solo usa lo que tú autorizas compartir", "Te apoya a avanzar en tu proceso"],
+    comenzar: "Comenzar",
+  },
+  privacidad: {
+    titulo: "Tu privacidad es importante",
+    intro: "Para usar el asistente necesitamos tu autorización. Puedes cambiarla o retirarla cuando quieras.",
+    resumen:
+      "Tu pregunta y lo que marques se envían a OpenAI para preparar una respuesta. Nunca se envían tu nombre, tu correo ni tus datos de contacto. Tu coach lee la respuesta antes que tú.",
+    saberMas: "Saber más sobre tu privacidad",
+    aceptar: "Aceptar y continuar",
+  },
+  // Mis conversaciones
+  historial: {
+    titulo: "Mis conversaciones",
+    abrir: "Mis conversaciones",
+    volver: "Volver a la conversación",
+    vacio: "Todavía no tienes conversaciones.",
+    grupos: { hoy: "Hoy", semana: "Esta semana", pasada: "La semana pasada", antes: "Anteriores" },
+    estados: {
+      aprobada: "Respuesta disponible",
+      en_revision: "En revisión",
+      descartada: "No compartida",
+      crisis: "Busca apoyo ahora",
+      sin_presupuesto: "No enviada",
+      error: "Sin respuesta",
+    },
+  },
+  // Configuración
+  configuracion: {
+    titulo: "Configuración del asistente",
+    abrir: "Configuración",
+    activado: "Activado",
+    desactivado: "Desactivado",
+    interruptor: "Asistente de Rumbo",
+    verConversaciones: "Ver mis conversaciones",
+  },
+  desactivado: {
+    titulo: "El asistente está desactivado",
+    texto: "Puedes activarlo cuando quieras para seguir recibiendo orientación con la supervisión de tu coach.",
+    activar: "Activar asistente",
+    saberMas: "Saber más",
+  },
+  // Estados de la pantalla
+  apagado: {
+    titulo: "El asistente no está disponible",
+    texto: "Por ahora el asistente de Rumbo no está activo. Tu coach sigue acompañándote como siempre en Mi acompañamiento.",
+    ir: "Ir a Mi acompañamiento",
+  },
+  sinCiclo: {
+    titulo: "Tu ciclo no está en curso",
+    texto: "Puedes hacer preguntas al asistente mientras tu ciclo está en curso.",
+  },
+  errorCargar: {
+    titulo: "No pudimos cargar el asistente",
+    texto: "Revisa tu conexión e inténtalo de nuevo.",
+    reintentar: "Reintentar",
+  },
+  enPreferencias: { lateral: "Asistente de Rumbo" },
 } as const;

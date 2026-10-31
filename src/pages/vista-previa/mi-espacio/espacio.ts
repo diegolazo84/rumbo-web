@@ -49,6 +49,7 @@ export type RutasEspacio = {
   condiciones: string;
   avisos: string;
   recordatorios: string;
+  asistente: string;
 };
 
 export const R_PREVIA: RutasEspacio = {
@@ -81,6 +82,7 @@ export const R_PREVIA: RutasEspacio = {
   condiciones: "/condiciones/",
   avisos: rutaPrevia("mi-espacio/avisos/"),
   recordatorios: rutaPrevia("mi-espacio/preferencias/recordatorios/"),
+  asistente: rutaPrevia("mi-espacio/asistente/"),
 };
 
 // Rutas reales (plataforma 2.1). Los identificadores van en la búsqueda (?id=, ?n=), nunca en la ruta.
@@ -114,6 +116,7 @@ export const R_REAL: RutasEspacio = {
   condiciones: "/condiciones/",
   avisos: "/mi-espacio/avisos/",
   recordatorios: "/mi-espacio/preferencias/recordatorios/",
+  asistente: "/mi-espacio/asistente/",
 };
 
 // ---------------------------------------------------------------------------
@@ -183,6 +186,13 @@ export type Servidor = {
   marcarAvisos: (ids: string[] | null) => Promise<void>;
   // Recordatorios: guarda todas las preferencias de una vez (guardar_recordatorios).
   guardarRecordatorios: (p: PrefRecordatorios) => Promise<void>;
+  // Asistente de Rumbo (E2, ya en la base): consentimiento, retiro y preguntas. Preguntar devuelve
+  // el estado que dejó la base («en_revision», «crisis» o «sin_presupuesto») y relee las consultas.
+  aceptarAsistente: (c: ContextoAsistente) => Promise<void>;
+  retirarAsistente: () => Promise<void>;
+  preguntarAsistente: (pregunta: string) => Promise<EstadoConsulta>;
+  // Valora una respuesta aprobada; util null quita la valoración. El motivo es solo para «No me sirvió».
+  valorarAsistente: (consulta: string, util: boolean | null, motivo: string | null) => Promise<void>;
   recargar: () => void;
 };
 
@@ -210,6 +220,30 @@ export type Espacio = {
   // todavía no tiene la migración de recordatorios completos; null si no se pudieron leer.
   recordatorios: PrefRecordatorios | "no-disponible" | null;
   correoDisponible: boolean | null; // Brevo configurado (correo_disponible); null: no se sabe
+  asistente: Asistente | null; // null: no se pudo leer
+};
+
+// Asistente de Rumbo (E2). La persona nunca lee borradores: mis_consultas_ia() solo trae la
+// respuesta cuando su coach la aprobó.
+export type ContextoAsistente = { metas: boolean; acciones: boolean; registroSemanal: boolean };
+export type ConsentimientoAsistente = ContextoAsistente & { aceptadoEn: string | null; retiradoEn: string | null };
+export type EstadoConsulta = "en_revision" | "aprobada" | "descartada" | "crisis" | "sin_presupuesto" | "error";
+export type ConsultaAsistente = {
+  id: string;
+  pregunta: string;
+  estado: EstadoConsulta;
+  respuesta: string | null; // solo la aprobada por el coach
+  creadaEn: string;
+  revisadaEn: string | null;
+};
+// «Me sirvió» / «No me sirvió»: una valoración vigente por respuesta aprobada (ia_valoraciones).
+export type ValoracionAsistente = { util: boolean; motivo: string | null };
+export type Asistente = {
+  disponible: boolean; // ia_disponible(): encendido por el dueño, con clave y módulo visible
+  consentimiento: ConsentimientoAsistente | null;
+  consultas: ConsultaAsistente[]; // las más nuevas primero (como las entrega la base)
+  // Por id de consulta. null: la base todavía no tiene ia_valoraciones (migración sin aplicar).
+  valoraciones: Record<string, ValoracionAsistente> | null;
 };
 
 // Preferencias de recordatorios (tabla recordatorios). dias: 1 = lunes … 7 = domingo.
@@ -264,6 +298,45 @@ export const AVISOS_EJEMPLO: Aviso[] = [
   aviso("av-8", "reconocimiento", "Nuevo reconocimiento: Primer paso", "/mi-espacio/", "2026-10-06T23:10:00Z", true),
 ];
 
+// Asistente de ejemplo: una respuesta ya revisada por el coach y una pregunta en revisión. Es
+// texto de ejemplo para mostrar la pantalla, no una respuesta generada.
+export const ASISTENTE_EJEMPLO: Asistente = {
+  disponible: true,
+  consentimiento: { metas: true, acciones: true, registroSemanal: false, aceptadoEn: "2026-10-06T13:00:00Z", retiradoEn: null },
+  consultas: [
+    {
+      id: "ia-2",
+      pregunta: "¿Me puedes ayudar a organizar mi semana?",
+      estado: "en_revision",
+      respuesta: null,
+      creadaEn: "2026-10-13T14:10:00Z",
+      revisadaEn: null,
+    },
+    {
+      id: "ia-1",
+      pregunta: "Me está costando mantener la motivación esta semana. ¿Qué me recomiendas?",
+      estado: "aprobada",
+      respuesta:
+        "Es normal que algunas semanas cuesten más. Algunas ideas:\n1. Vuelve a tu «para qué»: recuerda qué te hizo empezar.\n2. Empieza con la acción más pequeña de tu plan hoy.\n3. Mira lo que ya marcaste esta semana: también cuenta.\nSi quieres cambiar algo del plan, conversémoslo en tu próxima revisión.",
+      creadaEn: "2026-10-12T13:24:00Z",
+      revisadaEn: "2026-10-12T14:05:00Z",
+    },
+  ],
+  valoraciones: {},
+};
+
+// Vista previa de «Mis conversaciones» y de una respuesta no compartida (texto de ejemplo).
+export const ASISTENTE_HISTORIAL: ConsultaAsistente[] = [
+  { id: "ih-1", pregunta: "Me está costando mantener la motivación esta semana. ¿Qué me recomiendas?", estado: "aprobada", respuesta: "Ejemplo.", creadaEn: "2026-10-13T14:05:00Z", revisadaEn: "2026-10-13T15:00:00Z" },
+  { id: "ih-2", pregunta: "¿Me puedes ayudar a organizar mi semana?", estado: "en_revision", respuesta: null, creadaEn: "2026-10-13T12:40:00Z", revisadaEn: null },
+  { id: "ih-3", pregunta: "¿Qué hábitos me recomiendas para mi meta?", estado: "aprobada", respuesta: "Ejemplo.", creadaEn: "2026-10-08T22:10:00Z", revisadaEn: "2026-10-09T12:00:00Z" },
+  { id: "ih-4", pregunta: "Estoy pasando por un momento difícil con el trabajo.", estado: "descartada", respuesta: null, creadaEn: "2026-10-06T23:30:00Z", revisadaEn: "2026-10-07T13:00:00Z" },
+  { id: "ih-5", pregunta: "Me desordené estos días, ¿cómo retomo?", estado: "aprobada", respuesta: "Ejemplo.", creadaEn: "2026-10-03T21:00:00Z", revisadaEn: "2026-10-04T12:30:00Z" },
+];
+export const ASISTENTE_NO_COMPARTIDA: ConsultaAsistente[] = [
+  { id: "in-1", pregunta: "¿Puedo dejar de tomar mis medicamentos si me siento mejor?", estado: "descartada", respuesta: null, creadaEn: "2026-10-13T14:10:00Z", revisadaEn: "2026-10-13T16:00:00Z" },
+];
+
 export const ESPACIO_PREVIA: Espacio = {
   real: false,
   R: R_PREVIA,
@@ -288,6 +361,7 @@ export const ESPACIO_PREVIA: Espacio = {
   // Vista previa: como en la maqueta (interruptor encendido) y el correo sin configurar, como hoy.
   recordatorios: { ...RECORDATORIOS_POR_DEFECTO, activos: true, accionesDelDia: true, registroSemanal: true, dias: [1, 2, 3, 4, 5] },
   correoDisponible: false,
+  asistente: ASISTENTE_EJEMPLO,
 };
 
 export const EspacioContexto = createContext<Espacio>(ESPACIO_PREVIA);
