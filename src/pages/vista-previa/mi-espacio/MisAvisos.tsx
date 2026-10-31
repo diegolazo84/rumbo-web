@@ -229,7 +229,7 @@ export default function MisAvisos() {
                 {T.noEncuentras}
               </h2>
               <p>{T.noEncuentrasTexto}</p>
-              <Link to={esp.R.preferencias} className="boton boton--secundario av-ayuda__boton">
+              <Link to={esp.R.recordatorios} className="boton boton--secundario av-ayuda__boton">
                 {T.irPreferencias}
                 <Icono nombre="arrow-right" tamaño={20} />
               </Link>

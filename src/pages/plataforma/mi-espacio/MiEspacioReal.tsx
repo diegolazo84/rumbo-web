@@ -12,7 +12,7 @@ import type { EstadoRegistro, SolicitudAjuste } from "../../../data/ejemplo-app"
 import type { Iso } from "../../../lib/fechas";
 import { datos, supabase, type Cliente } from "../../../lib/supabase";
 import type { RutaPlataforma } from "../rutas";
-import { ESPACIO_PREVIA, EspacioContexto, R_REAL, type Ausencia, type CoachEspacio, type Espacio, type VideollamadaEspacio, type Progreso, type Servidor } from "../../vista-previa/mi-espacio/espacio";
+import { ESPACIO_PREVIA, EspacioContexto, R_REAL, RECORDATORIOS_POR_DEFECTO, type PrefRecordatorios, type Ausencia, type CoachEspacio, type Espacio, type VideollamadaEspacio, type Progreso, type Servidor } from "../../vista-previa/mi-espacio/espacio";
 import Ajuste from "../../vista-previa/mi-espacio/Ajuste";
 import AyudaInmediata from "../../vista-previa/mi-espacio/AyudaInmediata";
 import Calendario from "../../vista-previa/mi-espacio/Calendario";
@@ -24,6 +24,7 @@ import Hoy from "../../vista-previa/mi-espacio/Hoy";
 import Preferencias from "../../vista-previa/mi-espacio/Preferencias";
 import ProgresoPantalla from "../../vista-previa/mi-espacio/Progreso";
 import MisAvisos from "../../vista-previa/mi-espacio/MisAvisos";
+import Recordatorios from "../../vista-previa/mi-espacio/Recordatorios";
 import { categoriaDe, type Aviso } from "../../vista-previa/mi-espacio/avisos/datos";
 import Acompanamiento from "../../vista-previa/mi-espacio/Acompanamiento";
 import Comunidad from "../../vista-previa/mi-espacio/Comunidad";
@@ -64,6 +65,8 @@ type Leido = {
   fotos: boolean;
   avisos: Aviso[] | null;
   comunidad: boolean;
+  recordatorios: PrefRecordatorios | "no-disponible" | null;
+  correoDisponible: boolean | null;
 };
 
 async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> {
@@ -75,7 +78,7 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
     await sb.from("ciclos").select(COLUMNAS.ciclo).eq("participante_id", participante.id).order("numero", { ascending: false }).limit(1).maybeSingle(),
   ) as Filas["ciclo"] | null;
   if (!ciclo) return "sin-ficha";
-  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas, moduloFotos, avisos, moduloComunidad, medibles, notas] =
+  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas, moduloFotos, avisos, moduloComunidad, medibles, notas, recordatorios, correo] =
     await Promise.all([
       sb.from("programas").select(COLUMNAS.programa).eq("ciclo_id", ciclo.id).neq("estado", "borrador").order("version"),
       sb.from("ocurrencias").select(COLUMNAS.ocurrencia).eq("ciclo_id", ciclo.id).order("fecha").limit(5000),
@@ -97,6 +100,9 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
       leerAvisos(sb),
       sb.rpc("modulo_visible", { p_clave: "comunidad" }),
       ...leerMedibles(sb, participante.id, ciclo),
+      // Recordatorios (R1): sin la migración de recordatorios completos, la pantalla lo dice.
+      sb.from("recordatorios").select(COLUMNAS_RECORDATORIOS).maybeSingle(),
+      sb.rpc("correo_disponible"),
     ]);
   const progs = datos(programas) as Filas["programas"];
   const ids = progs.map((p) => p.id);
@@ -132,6 +138,45 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
     fotos: !moduloFotos.error && moduloFotos.data === true,
     avisos,
     comunidad: !moduloComunidad.error && moduloComunidad.data === true,
+    recordatorios: armarRecordatorios(recordatorios),
+    correoDisponible: correo.error ? null : correo.data === true,
+  };
+}
+
+const COLUMNAS_RECORDATORIOS =
+  "activos,acciones_del_dia,registro_semanal,videollamadas,mensajes_coach,comunidad,logros,por_correo,desde,hasta,hora,dias";
+type FilaRecordatorios = {
+  activos: boolean;
+  acciones_del_dia: boolean;
+  registro_semanal: boolean;
+  videollamadas: boolean;
+  mensajes_coach: boolean;
+  comunidad: boolean;
+  logros: boolean;
+  por_correo: boolean;
+  desde: number;
+  hasta: number;
+  hora: number;
+  dias: number[];
+};
+function armarRecordatorios(r: { data: unknown; error: { code?: string } | null }): PrefRecordatorios | "no-disponible" | null {
+  // 42703: columna inexistente (la migración todavía no está en la base).
+  if (r.error) return r.error.code === "42703" || r.error.code === "PGRST204" ? "no-disponible" : null;
+  const f = r.data as FilaRecordatorios | null;
+  if (!f) return RECORDATORIOS_POR_DEFECTO;
+  return {
+    activos: f.activos,
+    accionesDelDia: f.acciones_del_dia,
+    registroSemanal: f.registro_semanal,
+    videollamadas: f.videollamadas,
+    mensajesCoach: f.mensajes_coach,
+    comunidad: f.comunidad,
+    logros: f.logros,
+    porCorreo: f.por_correo,
+    desde: f.desde,
+    hasta: f.hasta,
+    hora: f.hora,
+    dias: [...f.dias].sort((a, b) => a - b),
   };
 }
 
@@ -438,6 +483,28 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
         const marcados = new Set(ids ?? []);
         poner({ ...actual, avisos: actual.avisos.map((a) => (!a.leidoEn && (todos || marcados.has(a.id)) ? { ...a, leidoEn: ahora } : a)) });
       },
+      guardarRecordatorios: async (x) => {
+        datos(
+          await sb().rpc("guardar_recordatorios", {
+            p: {
+              activos: x.activos,
+              acciones_del_dia: x.accionesDelDia,
+              registro_semanal: x.registroSemanal,
+              videollamadas: x.videollamadas,
+              mensajes_coach: x.mensajesCoach,
+              comunidad: x.comunidad,
+              logros: x.logros,
+              por_correo: x.porCorreo,
+              desde: x.desde,
+              hasta: x.hasta,
+              hora: x.hora,
+              dias: x.dias,
+            },
+          }),
+        );
+        const actual = filas.current;
+        if (actual) poner({ ...actual, recordatorios: { ...x, dias: [...x.dias] } });
+      },
       verNovedad: (id) => {
         setVistas((v) => {
           const n = new Set(v).add(id);
@@ -478,6 +545,8 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
       // Con la Comunidad cerrada, sus avisos no se muestran ni cuentan en la campana.
       avisos: estado.comunidad ? estado.avisos : (estado.avisos?.filter((a) => categoriaDe(a.tipo) !== "comunidad") ?? null),
       comunidad: estado.comunidad,
+      recordatorios: estado.recordatorios,
+      correoDisponible: estado.correoDisponible,
     };
   }, [estado, vistas, servidor]);
 
@@ -541,7 +610,7 @@ const RUTAS_NAV = {
 };
 
 // Mientras carga: rutas reales y sin datos de ejemplo visibles (solo se muestra «Cargando…»).
-const ESPACIO_CARGANDO: Espacio = { ...ESPACIO_PREVIA, real: true, R: R_REAL, novedades: [], ausencia: null, avisos: [], comunidad: false };
+const ESPACIO_CARGANDO: Espacio = { ...ESPACIO_PREVIA, real: true, R: R_REAL, novedades: [], ausencia: null, avisos: [], comunidad: false, recordatorios: null, correoDisponible: null };
 
 // Qué pantalla corresponde a la ruta. En mi-espacio/ decide el estado del ciclo (4.3).
 function PantallaReal({ ruta, espacio }: { ruta: RutaPlataforma; espacio: Espacio }): ReactNode {
@@ -574,6 +643,8 @@ function PantallaReal({ ruta, espacio }: { ruta: RutaPlataforma; espacio: Espaci
       return <LoQueViene />;
     case "/mi-espacio/preferencias/":
       return <Preferencias />;
+    case "/mi-espacio/preferencias/recordatorios/":
+      return <Recordatorios />;
     case "/mi-espacio/preferencias/eliminar/":
       return <Preferencias estado="eliminar" />;
     case "/mi-espacio/ayuda/":

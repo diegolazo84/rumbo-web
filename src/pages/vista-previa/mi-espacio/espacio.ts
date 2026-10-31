@@ -48,6 +48,7 @@ export type RutasEspacio = {
   privacidad: string;
   condiciones: string;
   avisos: string;
+  recordatorios: string;
 };
 
 export const R_PREVIA: RutasEspacio = {
@@ -79,6 +80,7 @@ export const R_PREVIA: RutasEspacio = {
   privacidad: "/privacidad/",
   condiciones: "/condiciones/",
   avisos: rutaPrevia("mi-espacio/avisos/"),
+  recordatorios: rutaPrevia("mi-espacio/preferencias/recordatorios/"),
 };
 
 // Rutas reales (plataforma 2.1). Los identificadores van en la búsqueda (?id=, ?n=), nunca en la ruta.
@@ -111,6 +113,7 @@ export const R_REAL: RutasEspacio = {
   privacidad: "/privacidad/",
   condiciones: "/condiciones/",
   avisos: "/mi-espacio/avisos/",
+  recordatorios: "/mi-espacio/preferencias/recordatorios/",
 };
 
 // ---------------------------------------------------------------------------
@@ -178,6 +181,8 @@ export type Servidor = {
   verNovedad: (id: string) => void; // la novedad deja de mostrarse en Hoy
   // Mis avisos: marca como leídos los indicados (o todos con null); queda igual en todos los equipos.
   marcarAvisos: (ids: string[] | null) => Promise<void>;
+  // Recordatorios: guarda todas las preferencias de una vez (guardar_recordatorios).
+  guardarRecordatorios: (p: PrefRecordatorios) => Promise<void>;
   recargar: () => void;
 };
 
@@ -201,6 +206,43 @@ export type Espacio = {
   fotos: boolean; // módulo «fotos» visible para las personas (solo Mi espacio real)
   avisos: Aviso[] | null; // Mis avisos (null: no se pudieron leer)
   comunidad: boolean; // módulo «comunidad» visible: su filtro y sus enlaces existen
+  // Recordatorios: las preferencias guardadas (o las de por defecto); «no-disponible» si la base
+  // todavía no tiene la migración de recordatorios completos; null si no se pudieron leer.
+  recordatorios: PrefRecordatorios | "no-disponible" | null;
+  correoDisponible: boolean | null; // Brevo configurado (correo_disponible); null: no se sabe
+};
+
+// Preferencias de recordatorios (tabla recordatorios). dias: 1 = lunes … 7 = domingo.
+export type PrefRecordatorios = {
+  activos: boolean;
+  accionesDelDia: boolean;
+  registroSemanal: boolean;
+  videollamadas: boolean;
+  mensajesCoach: boolean;
+  comunidad: boolean;
+  logros: boolean;
+  porCorreo: boolean;
+  desde: number;
+  hasta: number;
+  hora: number;
+  dias: number[];
+};
+
+// Como vienen en la base si la persona nunca las guardó: todo apagado salvo lo que se activa al
+// encender el interruptor general.
+export const RECORDATORIOS_POR_DEFECTO: PrefRecordatorios = {
+  activos: false,
+  accionesDelDia: false,
+  registroSemanal: false,
+  videollamadas: true,
+  mensajesCoach: true,
+  comunidad: false,
+  logros: true,
+  porCorreo: false,
+  desde: 7,
+  hasta: 22,
+  hora: 20,
+  dias: [1, 2, 3, 4, 5, 6, 7],
 };
 
 // ---------------------------------------------------------------------------
@@ -243,6 +285,9 @@ export const ESPACIO_PREVIA: Espacio = {
   fotos: false,
   avisos: AVISOS_EJEMPLO,
   comunidad: false,
+  // Vista previa: como en la maqueta (interruptor encendido) y el correo sin configurar, como hoy.
+  recordatorios: { ...RECORDATORIOS_POR_DEFECTO, activos: true, accionesDelDia: true, registroSemanal: true, dias: [1, 2, 3, 4, 5] },
+  correoDisponible: false,
 };
 
 export const EspacioContexto = createContext<Espacio>(ESPACIO_PREVIA);

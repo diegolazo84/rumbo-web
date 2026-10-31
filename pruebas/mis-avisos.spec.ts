@@ -82,7 +82,7 @@ test("«Tipos de avisos» filtra y «Ir a mis preferencias» lleva a Preferencia
   await page.locator(".av-tipo", { hasText: T.filtro.mensajes }).click();
   await expect(filtro(page, T.filtro.mensajes)).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("link", { name: T.irPreferencias }).click();
-  await page.waitForURL("**/vista-previa/mi-espacio/preferencias/");
+  await page.waitForURL("**/vista-previa/mi-espacio/preferencias/recordatorios/");
 });
 
 test("accesible y sin desborde; en móvil la barra no tapa nada", async ({ page, isMobile }) => {
