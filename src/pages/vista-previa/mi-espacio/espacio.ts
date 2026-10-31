@@ -191,6 +191,8 @@ export type Servidor = {
   aceptarAsistente: (c: ContextoAsistente) => Promise<void>;
   retirarAsistente: () => Promise<void>;
   preguntarAsistente: (pregunta: string) => Promise<EstadoConsulta>;
+  // Valora una respuesta aprobada; util null quita la valoración. El motivo es solo para «No me sirvió».
+  valorarAsistente: (consulta: string, util: boolean | null, motivo: string | null) => Promise<void>;
   recargar: () => void;
 };
 
@@ -234,10 +236,14 @@ export type ConsultaAsistente = {
   creadaEn: string;
   revisadaEn: string | null;
 };
+// «Me sirvió» / «No me sirvió»: una valoración vigente por respuesta aprobada (ia_valoraciones).
+export type ValoracionAsistente = { util: boolean; motivo: string | null };
 export type Asistente = {
   disponible: boolean; // ia_disponible(): encendido por el dueño, con clave y módulo visible
   consentimiento: ConsentimientoAsistente | null;
   consultas: ConsultaAsistente[]; // las más nuevas primero (como las entrega la base)
+  // Por id de consulta. null: la base todavía no tiene ia_valoraciones (migración sin aplicar).
+  valoraciones: Record<string, ValoracionAsistente> | null;
 };
 
 // Preferencias de recordatorios (tabla recordatorios). dias: 1 = lunes … 7 = domingo.
@@ -316,6 +322,7 @@ export const ASISTENTE_EJEMPLO: Asistente = {
       revisadaEn: "2026-10-12T14:05:00Z",
     },
   ],
+  valoraciones: {},
 };
 
 // Vista previa de «Mis conversaciones» y de una respuesta no compartida (texto de ejemplo).

@@ -83,6 +83,7 @@ const TABLAS = {
   ia_config: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   ia_consentimientos: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   ia_consultas: { leer: "equipo", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
+  ia_valoraciones: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   especialidades: { leer: "con-sesion", escribir: "funciones", coach: { leer: "con-sesion", escribir: "nada" } },
   especialistas_config: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   especialistas: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
@@ -117,7 +118,7 @@ const FUNCIONES = {
     "guardar_publicacion", "bloquear_autor", "desbloquear_alias", "mis_bloqueos", "comunidad_temas", "mi_impacto_comunidad",
     "unirme_a_desafio", "salir_de_desafio", "comunidad_desafios", "mi_avance_desafio",
     "mis_reconocimientos", "mis_beneficios", "mi_beneficio_renovacion",
-    "ia_guardar_consentimiento", "ia_retirar_consentimiento", "ia_preguntar", "mis_consultas_ia",
+    "ia_guardar_consentimiento", "ia_retirar_consentimiento", "ia_preguntar", "mis_consultas_ia", "ia_valorar",
     "autorizar_especialista", "retirar_especialista", "pedir_reserva", "cancelar_reserva", "enviar_mensaje_especialista",
   ],
   "equipo-error": [
@@ -269,6 +270,13 @@ insert into public.ia_consentimientos (participante_id, metas, acciones, registr
 insert into public.ia_consultas (participante_id, tipo, pedida_por, pregunta, estado, respuesta)
   values ('${ROLES.A.ficha}', 'pregunta', '${ROLES.A.uid}', 'Pregunta de prueba de CI de A.', 'por_revisar', 'Borrador de prueba.'),
          ('${ROLES.B.ficha}', 'pregunta', '${ROLES.B.uid}', 'Pregunta de prueba de CI de B.', 'por_revisar', 'Borrador de prueba.');
+insert into public.ia_consultas (id, participante_id, tipo, pedida_por, pregunta, estado, respuesta, texto_final)
+  values ('00000000-0000-0000-0000-0000000000a1', '${ROLES.A.ficha}', 'pregunta', '${ROLES.A.uid}', 'Pregunta aprobada de CI de A.', 'aprobada', 'Borrador.', 'Respuesta aprobada de CI.'),
+         ('00000000-0000-0000-0000-0000000000b1', '${ROLES.B.ficha}', 'pregunta', '${ROLES.B.uid}', 'Pregunta aprobada de CI de B.', 'aprobada', 'Borrador.', 'Respuesta aprobada de CI.')
+  on conflict do nothing;
+insert into public.ia_valoraciones (consulta_id, participante_id, util)
+  values ('00000000-0000-0000-0000-0000000000a1', '${ROLES.A.ficha}', true), ('00000000-0000-0000-0000-0000000000b1', '${ROLES.B.ficha}', true)
+  on conflict do nothing;
 insert into public.especialistas (id, correo, nombre, estado) values ('00000000-0000-0000-0000-0000000e5e01', 'otro-especialista-ci@example.com', 'Otra especialista', 'en_revision')
   on conflict do nothing;
 insert into public.especialistas_credenciales (especialista_id, tipo, descripcion) values ('00000000-0000-0000-0000-0000000e5e01', 'titulo', 'Título de prueba de CI');
@@ -1732,6 +1740,49 @@ paso("mis logros C17: la persona sabe si el 10 % está activo, sin leer el catá
   exigir(borrador.ok && ultima(borrador) === "0", `la persona ve los borradores pedidos por su coach: ${borrador.error ?? ultima(borrador)}`);
 }
 paso("asistente de IA: apagado sin clave y sin módulo; con consentimiento y solo el contexto autorizado; la respuesta la aprueba el coach; crisis sin IA y con alerta; topes de gasto");
+
+// R1 · «Me sirvió» / «No me sirvió» y aviso cuando el coach no comparte una respuesta.
+{
+  const RA = "00000000-0000-0000-0000-0000000000a1";
+  const RB = "00000000-0000-0000-0000-0000000000b1";
+  const cambia = como(ROLES.A, `select public.ia_valorar('${RA}', false, '  No era lo que buscaba  ') \\g /dev/null
+    select public.ia_valorar('${RA}', false) \\g /dev/null
+    select public.ia_valorar('${RA}', false, 'Muy general') \\g /dev/null
+    select count(*) || ' ' || bool_and(not util) || ' ' || max(motivo) from public.ia_valoraciones where consulta_id = '${RA}'`);
+  exigir(cambia.ok && ultima(cambia) === "1 true Muy general", `A no pudo cambiar su valoración (una vigente, con motivo): ${cambia.error ?? ultima(cambia)}`);
+  const sirvio = como(ROLES.A, `select public.ia_valorar('${RA}', false, 'Muy general') \\g /dev/null
+    select public.ia_valorar('${RA}', true, 'Se ignora') \\g /dev/null
+    select util || ' ' || coalesce(motivo, '-') from public.ia_valoraciones where consulta_id = '${RA}'`);
+  exigir(sirvio.ok && ultima(sirvio) === "true -", `«Me sirvió» guardó un motivo: ${sirvio.error ?? ultima(sirvio)}`);
+  const quita = como(ROLES.A, `select public.ia_valorar('${RA}', null) \\g /dev/null
+    select count(*) from public.ia_valoraciones where consulta_id = '${RA}'`);
+  exigir(quita.ok && ultima(quita) === "0", `A no pudo quitar su valoración: ${quita.error ?? ultima(quita)}`);
+  const ajena = como(ROLES.A, `select public.ia_valorar('${RB}', false)`);
+  exigir(!ajena.ok && /no_encontrada/.test(ajena.error), `A valoró una respuesta de B: ${ajena.error ?? "funcionó"}`);
+  const pendiente = como(ROLES.A, `select public.ia_valorar((select id from public.ia_consultas where participante_id = '${ROLES.A.ficha}' and estado = 'por_revisar' limit 1), true)`);
+  exigir(!pendiente.ok && /no_aprobada/.test(pendiente.error), `A valoró una respuesta que su coach no aprobó: ${pendiente.error ?? "funcionó"}`);
+  const largo = como(ROLES.A, `select public.ia_valorar('${RA}', false, repeat('x', 301))`);
+  exigir(!largo.ok && /motivo/.test(largo.error), "se aceptó un motivo de más de 300 caracteres");
+  const coachX = como(ROLES.X, `select count(*) from public.ia_valoraciones where consulta_id = '${RA}'`);
+  exigir(coachX.ok && ultima(coachX) === "1", `el coach de A no ve su valoración: ${coachX.error ?? ultima(coachX)}`);
+  const coachY = como(ROLES.Y, `select count(*) from public.ia_valoraciones where consulta_id = '${RA}'`);
+  exigir(coachY.ok && ultima(coachY) === "0", `otro coach ve la valoración de A: ${coachY.error ?? ultima(coachY)}`);
+  const copia = como(ROLES.A, `select jsonb_array_length(public.exportar_mis_datos()->'asistente_valoraciones')`);
+  exigir(copia.ok && ultima(copia) === "1", `la copia de datos no trae las valoraciones: ${copia.error ?? ultima(copia)}`);
+
+  // No compartir: un aviso, sin la respuesta ni la nota, y sin duplicados.
+  const descarta = como(ROLES.X, `select public.ia_revisar(id, false, null, 'Nota interna de CI') from public.ia_consultas
+      where participante_id = '${ROLES.A.ficha}' and estado = 'por_revisar' \\g /dev/null
+    select public.ia_revisar(id, false) from public.ia_consultas where participante_id = '${ROLES.A.ficha}' and estado = 'descartada' limit 1 \\g /dev/null`);
+  exigir(!descarta.ok && /no_por_revisar/.test(descarta.error), `se pudo descartar dos veces la misma respuesta: ${descarta.error ?? "funcionó"}`);
+  const aviso = como(ROLES.X, `select public.ia_revisar(id, false, null, 'Nota interna de CI') from public.ia_consultas
+      where participante_id = '${ROLES.A.ficha}' and estado = 'por_revisar' \\g /dev/null
+    ${reclamosDe(ROLES.A)}
+    select count(*) || ' ' || bool_and(titulo not like '%Borrador%' and titulo not like '%Nota interna%' and coalesce(enlace, '') not like '%Borrador%')
+      from public.avisos where tipo = 'ia_no_compartida'`);
+  exigir(aviso.ok && ultima(aviso) === "1 true", `al no compartir, A no recibió un único aviso sin contenido: ${aviso.error ?? ultima(aviso)}`);
+}
+paso("asistente: «Me sirvió» / «No me sirvió» (una vigente, solo lo propio y aprobado) y aviso único al no compartir");
 
 // E3 · Especialistas Rumbo: invitación, perfil, credenciales verificadas, publicación con aprobación, sin acceso al programa.
 {

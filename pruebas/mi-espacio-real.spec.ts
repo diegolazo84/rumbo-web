@@ -9,7 +9,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { operacion } from "../src/data/rumbo";
 import { SUPABASE_URL } from "../src/lib/supabase-config";
-import { T_ASISTENTE, T_RECORDATORIOS } from "../src/pages/vista-previa/mi-espacio/textos";
+import { T_ASISTENTE, T_AVISOS, T_RECORDATORIOS } from "../src/pages/vista-previa/mi-espacio/textos";
 
 const ETIQUETAS_AXE = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const CLAVE_SESION = "rumbo-sesion";
@@ -1782,6 +1782,70 @@ test("Asistente real: retirar la autorización llama a la base y deja de ofrecer
   await expect(page.getByRole("heading", { name: T_ASISTENTE.privacidad.titulo })).toBeVisible();
   await expect(page.getByRole("checkbox", { name: new RegExp(T_ASISTENTE.consentimiento.opciones.metas.titulo) })).not.toBeChecked();
   expect(llamadas.filter((l) => l.nombre === "ia_preguntar" || l.nombre === "ia_guardar_consentimiento")).toHaveLength(0);
+});
+
+test("Asistente real: «Me sirvió» / «No me sirvió» guarda una valoración, se cambia, admite un comentario y se quita", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.ia_consentimientos = [consentido()];
+  base.ia_valoraciones = [];
+  const llamadas = await simular(page, base, { ia_disponible: () => true, mis_consultas_ia: () => consultasBase(), ia_valorar: () => null });
+  await page.goto(RUTA_ASISTENTE);
+  await hidratar(page);
+  const grupos = page.getByRole("group", { name: T_ASISTENTE.valorar.grupo });
+  await expect(grupos).toHaveCount(1); // solo en la respuesta aprobada
+  const sirvio = grupos.getByRole("button", { name: T_ASISTENTE.valorar.sirvio, exact: true });
+  const noSirvio = grupos.getByRole("button", { name: T_ASISTENTE.valorar.noSirvio });
+  await sirvio.click();
+  await expect(sirvio).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText(T_ASISTENTE.valorar.gracias)).toBeVisible();
+  await noSirvio.click();
+  await expect(noSirvio).toHaveAttribute("aria-pressed", "true");
+  await expect(sirvio).toHaveAttribute("aria-pressed", "false");
+  await page.getByLabel(T_ASISTENTE.valorar.motivo).fill("Muy general");
+  await sinViolaciones(page);
+  await page.getByRole("button", { name: T_ASISTENTE.valorar.guardarMotivo }).click();
+  await expect(page.getByText(T_ASISTENTE.valorar.motivoGuardado)).toBeVisible();
+  await noSirvio.click();
+  await expect(noSirvio).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByLabel(T_ASISTENTE.valorar.motivo)).toHaveCount(0);
+  expect(llamadas.filter((l) => l.nombre === "ia_valorar").map((l) => l.cuerpo)).toEqual([
+    { p_consulta: "q1", p_util: true, p_motivo: null },
+    { p_consulta: "q1", p_util: false, p_motivo: null },
+    { p_consulta: "q1", p_util: false, p_motivo: "Muy general" },
+    { p_consulta: "q1", p_util: null, p_motivo: null },
+  ]);
+});
+
+test("Asistente real: sin la tabla de valoraciones (migración sin aplicar) no aparecen los botones", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.ia_consentimientos = [consentido()];
+  await simular(page, base, { ia_disponible: () => true, mis_consultas_ia: () => consultasBase() });
+  await page.route(`${SUPABASE_URL}/rest/v1/ia_valoraciones*`, (rt) =>
+    rt.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ code: "PGRST205", message: "sin tabla" }) }),
+  );
+  await page.goto(RUTA_ASISTENTE);
+  await hidratar(page);
+  await expect(page.locator(".as-par").first()).toContainText("Texto aprobado por el coach.");
+  await expect(page.getByRole("group", { name: T_ASISTENTE.valorar.grupo })).toHaveCount(0);
+});
+
+test("Mis avisos real: «no compartida» no revela la respuesta y lleva al asistente", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.ia_consentimientos = [consentido()];
+  base.avisos = [
+    { id: "av9", destinatario: UID, participante_id: "p1", tipo: "ia_no_compartida", titulo: "Tu coach revisó tu pregunta al asistente", enlace: "/mi-espacio/asistente/", creado_en: "2026-10-13T12:00:00Z", leido_en: null },
+  ];
+  await simular(page, base, { modulo_visible: () => false, marcar_avisos_leidos: () => 1, ia_disponible: () => true, mis_consultas_ia: () => consultasBase() });
+  await page.goto("mi-espacio/avisos/");
+  await hidratar(page);
+  const item = page.locator(".av-item", { hasText: "Tu coach revisó tu pregunta al asistente" });
+  await expect(item).toContainText(T_AVISOS.descripcion.ia_no_compartida);
+  await sinViolaciones(page);
+  await item.click();
+  await page.waitForURL("**/mi-espacio/asistente/");
 });
 
 test("Asistente real: si no se puede leer, lo dice sin romper Mi espacio", async ({ page }) => {
