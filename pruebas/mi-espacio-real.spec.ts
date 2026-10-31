@@ -1386,3 +1386,167 @@ test("Mis avisos real: si no se pueden leer, lo dice sin romper Mi espacio", asy
   await expect(page.getByRole("alert")).toContainText("No pudimos cargar tus avisos");
   await expect(page.locator(".cabecera-app__avisos")).toHaveAccessibleName("Mis avisos");
 });
+
+// Registrar acción medible (maqueta de ChatGPT, 30-oct-2026)
+
+function rpcMedibles(base: Base, orden: string[]) {
+  const fila = (id: unknown) => base.registros.find((r) => r.ocurrencia_id === id);
+  return {
+    mis_medibles: () => [{ ocurrencia_id: `o-${HOY}`, cantidad_objetivo: 30, unidad: "minutos", cantidad: fila(`o-${HOY}`)?.cantidad ?? null }],
+    anotar_cantidad: (c: Record<string, unknown>) => {
+      orden.push(`cantidad:${c.p_cantidad}`);
+      const r = fila(c.p_ocurrencia);
+      if (!r) return { __error: "accion:sin_marcar", __estado: 409 };
+      r.cantidad = c.p_cantidad;
+      return null;
+    },
+    anotar_nota: (c: Record<string, unknown>) => {
+      orden.push(`nota:${c.p_nota}`);
+      const r = fila(c.p_ocurrencia);
+      if (!r) return { __error: "accion:sin_marcar", __estado: 409 };
+      r.nota = c.p_nota || null;
+      return null;
+    },
+  };
+}
+
+test("Registrar acción medible: marca una vez, anota cantidad y nota; editar no vuelve a marcar", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  const orden: string[] = [];
+  const llamadas = await simular(page, base, rpcMedibles(base, orden));
+  await page.goto(`mi-espacio/plan/accion/?id=o-${HOY}`);
+  await hidratar(page);
+  await expect(page.getByText("Para hoy: 30 minutos")).toBeVisible();
+  const cantidad = page.getByLabel("¿Cuánto tiempo hiciste hoy?");
+  await expect(cantidad).toHaveValue("30");
+  await expect(page.getByRole("button", { name: "Elegir 30 minutos" })).toHaveAttribute("aria-pressed", "true");
+  await sinViolaciones(page);
+
+  // Valor inválido: no se llama a la base.
+  await cantidad.fill("abc");
+  await page.getByRole("button", { name: "Guardar acción" }).click();
+  await expect(page.getByText(/Ingresa un valor válido/)).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "marcar_accion")).toBe(false);
+
+  await page.getByRole("button", { name: "Elegir 45 minutos" }).click();
+  await page.getByLabel(/¿Cómo te sentiste hoy\?/).fill("Con más calma.");
+  await page.getByRole("button", { name: "Guardar acción" }).click();
+  await expect(page.locator(".me-registrada").getByText("¡Acción registrada!")).toBeVisible();
+  await expect(page.locator(".me-registrada").getByText("Anotaste 45 minutos.")).toBeVisible();
+  await expect(page.locator(".me-registrada__nota")).toContainText("Con más calma.");
+  const marcas = () => llamadas.filter((l) => l.nombre === "marcar_accion").length;
+  expect(marcas()).toBe(1);
+  expect(orden).toEqual(["cantidad:45", "nota:Con más calma."]);
+  const creditos = (base.progreso[0] as Fila).creditos;
+
+  // Editar: solo anota (sin marcar de nuevo ni sumar créditos).
+  await page.getByRole("button", { name: "Editar lo que anotaste" }).click();
+  await page.getByLabel("¿Cuánto tiempo hiciste hoy?").fill("50");
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.locator(".me-registrada").getByText("Anotaste 50 minutos.")).toBeVisible();
+  expect(marcas()).toBe(1);
+  expect((base.progreso[0] as Fila).creditos).toBe(creditos);
+  await sinViolaciones(page);
+});
+
+test("Registrar acción medible: sin la columna nota no se muestra la nota; si falla lo anotado, la acción queda marcada", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  const orden: string[] = [];
+  const rpc = rpcMedibles(base, orden);
+  let falla = true;
+  await simular(page, base, { ...rpc, anotar_cantidad: (c) => (falla ? { __error: "red:caida", __estado: 500 } : rpc.anotar_cantidad(c)) });
+  // La base todavía no tiene registros.nota (migración 20261123000000 sin aplicar).
+  await page.route(`${SUPABASE_URL}/rest/v1/registros?select=ocurrencia_id%2Cnota*`, (rt) =>
+    rt.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ code: "42703", message: "column registros.nota does not exist" }) }),
+  );
+  await page.goto(`mi-espacio/plan/accion/?id=o-${HOY}`);
+  await hidratar(page);
+  await expect(page.getByLabel("¿Cuánto tiempo hiciste hoy?")).toBeVisible();
+  await expect(page.getByText("¿Cómo te sentiste hoy?")).toHaveCount(0);
+  await page.getByRole("button", { name: "Guardar acción" }).click();
+  await expect(page.getByRole("alert")).toContainText("Tu acción quedó marcada");
+  falla = false;
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.locator(".me-registrada").getByText("Anotaste 30 minutos.")).toBeVisible();
+  expect(orden.some((x) => x.startsWith("nota:"))).toBe(false);
+});
+
+// Informe de cierre de ciclo (maqueta de ChatGPT, 30-oct-2026): todo de informe_ciclo; el mensaje
+// lo escribe el coach (si no, su último foco y, sin focos, ninguna tarjeta); sin reconocimientos
+// mientras el módulo esté apagado.
+const INFORME = {
+  ciclo: { numero: 1, plan: "coach", inicio: "2026-10-05", fin: "2026-11-01", semanas: 4, estado: "cerrado" },
+  cerrado: true,
+  acciones: { programadas: 20, hechas: 15, cumplimiento: 75 },
+  constancia: { dias_con_acciones: 16, dias_con_alguna_hecha: 12, dias_completos: 9, mejor_racha: 6 },
+  creditos: 41,
+  semanas: [1, 2, 3, 4].map((n) => ({ semana: n, desde: "", hasta: "", programadas: 5, hechas: [5, 4, 3, 3][n - 1], en_revision: 0, cumplimiento: null, dias_completos: 0, creditos: 0, carga: null, revision_publicada: n < 3 })),
+  focos: [{ semana: 1, foco: "Escribir antes de revisar el teléfono." }, { semana: 2, foco: "Una página por día es suficiente." }],
+};
+const cerrada = () => {
+  const base = baseInicial();
+  base.ciclos[0].estado = "cerrado";
+  return base;
+};
+
+test("Informe de cierre real: datos de informe_ciclo y el mensaje escrito por el coach", async ({ page }) => {
+  await conSesion(page);
+  const llamadas = await simular(page, cerrada(), {
+    modulo_visible: () => false,
+    informe_ciclo: () => ({ ...INFORME, mensaje_cierre: { texto: "Cerraste este ciclo con mucha constancia.\nSigamos conversando.", autor: "Carla Soto", en: "2026-11-02T12:00:00Z" } }),
+  });
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mira todo lo que has avanzado");
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  await expect.poll(() => llamadas.find((l) => l.nombre === "informe_ciclo")?.cuerpo).toEqual({ p_ciclo: "c1" });
+  await expect(page.locator(".ic-progreso__pct")).toHaveText("75%");
+  await expect(page.locator(".ic-progreso")).toContainText("15 de 20 acciones hechas");
+  await expect(page.locator(".ic-dato--racha")).toContainText("6días de racha máxima");
+  // Reconocimientos apagados: sin tarjeta de logros y, en su lugar, días con todo hecho.
+  await expect(page.locator(".ic-dato--logros")).toContainText("9días con todo hecho");
+  await expect(page.getByRole("heading", { name: "Logros más destacados" })).toHaveCount(0);
+  expect(llamadas.some((l) => l.nombre === "mis_reconocimientos")).toBe(false);
+  await expect(page.locator(".ic-grafico__semanas li")).toHaveCount(4);
+  await expect(page.locator(".ic-evolucion [role=img]")).toHaveAttribute("aria-label", /semana 1, 5 de 5; semana 2, 4 de 5; semana 3, 3 de 5; semana 4, 3 de 5\.$/);
+  const coach = page.locator(".ic-coach");
+  await expect(coach.getByRole("heading")).toHaveText("Mensaje de tu coach");
+  await expect(coach.locator(".ic-coach__texto")).toHaveText("Cerraste este ciclo con mucha constancia.\nSigamos conversando.");
+  await expect(coach.locator(".ic-coach__autor")).toHaveText("Carla Soto");
+  await expect(coach.locator(".me-coach__avatar")).toHaveText("CS");
+  await expect(page.getByRole("link", { name: "Quiero seguir con un nuevo ciclo" })).toHaveAttribute("href", /\/contacto\/\?motivo=solicitud$/);
+  await sinViolaciones(page);
+});
+
+test("Informe de cierre real: sin mensaje, el último foco; sin focos, ninguna tarjeta; error con reintento", async ({ page }) => {
+  await conSesion(page);
+  let falla = true;
+  await simular(page, cerrada(), {
+    modulo_visible: () => true,
+    mis_reconocimientos: () => [],
+    informe_ciclo: () => (falla ? { __error: "sin conexión", __estado: 500 } : { ...INFORME, focos: [] }),
+  });
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  await expect(page.getByText("No pudimos cargar esta parte.")).toBeVisible();
+  falla = false;
+  await page.getByRole("button", { name: "Reintentar" }).click();
+  await expect(page.locator(".ic-progreso__pct")).toHaveText("75%");
+  await expect(page.locator(".ic-coach")).toHaveCount(0);
+  // Módulo habilitado sin reconocimientos conseguidos: tarjeta con su texto, sin inventar logros.
+  await expect(page.locator(".ic-dato--logros")).toContainText("0reconocimientos ganados");
+  await expect(page.locator(".ic-logros")).toContainText("Los reconocimientos que consigas aparecerán aquí.");
+});
+
+test("Informe de cierre real: con mensaje ausente y focos, muestra el último foco de su coach", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, cerrada(), { modulo_visible: () => false, informe_ciclo: () => INFORME, mi_coach: () => [{ nombre: "Carla Soto", presentacion: null }] });
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  const coach = page.locator(".ic-coach");
+  await expect(coach.getByRole("heading")).toHaveText("El último foco de tu coach");
+  await expect(coach.locator(".ic-coach__texto")).toHaveText("Una página por día es suficiente.");
+  await expect(coach).toContainText("Revisión de la semana 2");
+});

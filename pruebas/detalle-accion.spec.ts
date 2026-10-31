@@ -163,3 +163,27 @@ test("sin desborde a 320, 375, 390 y 430 px en todos los estados", async ({ page
     }
   }
 });
+
+test("acción medible (vista previa): cantidad con botones rápidos, nota opcional, registrada y edición", async ({ page }) => {
+  await abrir(page, "medible/");
+  await expect(page.getByText("Para hoy: 20 minutos")).toBeVisible();
+  const rapidos = page.getByRole("group", { name: "Valores rápidos" }).getByRole("button");
+  await expect(rapidos).toHaveText(["10", "20", "30", "40"]);
+  await page.getByLabel("¿Cuánto tiempo hiciste hoy?").fill("0");
+  await page.getByRole("button", { name: "Guardar acción" }).click();
+  await expect(page.getByText(/Ingresa un valor válido/)).toBeVisible();
+  await rapidos.filter({ hasText: "30" }).click();
+  await expect(page.getByText(/Ingresa un valor válido/)).toHaveCount(0);
+  await page.getByRole("button", { name: "Guardar acción" }).click();
+  await expect(page.locator(".me-registrada").getByText("¡Acción registrada!")).toBeVisible();
+  await expect(page.locator(".me-registrada").getByText("Anotaste 30 minutos.")).toBeVisible();
+  await sinViolaciones(page);
+
+  await abrir(page, "medible-hecha/");
+  await expect(page.locator(".me-registrada").getByText("Anotaste 25 minutos.")).toBeVisible();
+  await page.getByRole("button", { name: "Editar lo que anotaste" }).click();
+  await expect(page.getByLabel("¿Cuánto tiempo hiciste hoy?")).toHaveValue("25");
+  await page.getByRole("button", { name: "Cancelar" }).click();
+  await expect(page.locator(".me-registrada").getByText("Anotaste 25 minutos.")).toBeVisible();
+  expect(await desborde(page)).toBeLessThanOrEqual(0);
+});

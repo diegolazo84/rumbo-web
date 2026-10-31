@@ -22,7 +22,8 @@ import { FotoRechazada, prepararFotoPrivada } from "../../../lib/foto-privada";
 import { reglasCreditos } from "../../../data/rumbo";
 import { diaCorto, diaMes, duracionTexto, fechaLarga, mayuscula, sumarMinutos, type Iso } from "../../../lib/fechas";
 import { EtiquetaEjemplo, useEspacio } from "./comun";
-import { T_CALENDARIO, T_COMUN, T_DETALLE } from "./textos";
+import RegistroMedible from "./RegistroMedible";
+import { T_CALENDARIO, T_COMUN, T_DETALLE, T_REGISTRAR, cantidadTexto } from "./textos";
 
 type Props = {
   o: Ocurrencia;
@@ -109,7 +110,7 @@ export default function Detalle({ o, hoy, enHoja, onRegistrar, fotoInicial, sinC
     );
   } else if (o.conFoto) {
     control = <BloqueFoto o={o} inicial={fotoInicial ?? fotoInicialDe(o, o.registro)} sinConexion={sinConexion} />;
-  } else if (futura || (ventana && sinConexion && !o.registro)) {
+  } else if (futura || (ventana && sinConexion && !o.registro && !o.medible)) {
     control = (
       <>
         <BotonMarcar variante="primario" texto={T_DETALLE.marcar} bajada={marcarSub} idBajada={`${idNota}-b`} deshabilitado descrito={idNota} />
@@ -118,6 +119,26 @@ export default function Detalle({ o, hoy, enHoja, onRegistrar, fotoInicial, sinC
         </p>
       </>
     );
+  } else if (o.medible && o.registro !== "dejada" && (ventana || cuentaComoHecha(o.registro))) {
+    // Acción medible (maqueta «Registrar acción»): cuánto hizo y, si existe, cómo se sintió.
+    control = (
+      <RegistroMedible
+        o={{ ...o, medible: o.medible }}
+        ventana={ventana}
+        anterior={anterior}
+        enHoja={enHoja}
+        sinConexion={sinConexion}
+        registrar={registrar}
+        anunciar={setAnuncio}
+      />
+    );
+    if (servidor && fotos && ventana && cuentaComoHecha(o.registro))
+      control = (
+        <>
+          {control}
+          <FotoOpcional o={o} sinConexion={sinConexion} />
+        </>
+      );
   } else if (cuentaComoHecha(o.registro)) {
     control = (
       <div className="me-hecha">
@@ -218,6 +239,12 @@ export default function Detalle({ o, hoy, enHoja, onRegistrar, fotoInicial, sinC
                     : T_DETALLE.flexible(duracionTexto(o.duracion))}
                 </span>
               </li>
+              {o.medible && (
+                <li>
+                  <Icono nombre="flag" tamaño={20} />
+                  <span>{T_REGISTRAR.objetivo(cantidadTexto(o.medible.objetivo, o.medible.unidad))}</span>
+                </li>
+              )}
             </ul>
           </div>
           <Ilustracion nombre="cuaderno" className="me-detalle__ilus" />
