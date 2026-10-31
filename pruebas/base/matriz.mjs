@@ -1772,12 +1772,10 @@ paso("asistente de IA: apagado sin clave y sin módulo; con consentimiento y sol
   exigir(copia.ok && ultima(copia) === "1", `la copia de datos no trae las valoraciones: ${copia.error ?? ultima(copia)}`);
 
   // No compartir: un aviso, sin la respuesta ni la nota, y sin duplicados.
-  const descarta = como(ROLES.X, `select public.ia_revisar(id, false, null, 'Nota interna de CI') from public.ia_consultas
-      where participante_id = '${ROLES.A.ficha}' and estado = 'por_revisar' \\g /dev/null
-    select public.ia_revisar(id, false) from public.ia_consultas where participante_id = '${ROLES.A.ficha}' and estado = 'descartada' limit 1 \\g /dev/null`);
+  const descarta = como(ROLES.X, `select public.ia_revisar('${porRevisar}', false, null, 'Nota interna de CI') \\g /dev/null
+    select public.ia_revisar('${porRevisar}', false) \\g /dev/null`);
   exigir(!descarta.ok && /no_por_revisar/.test(descarta.error), `se pudo descartar dos veces la misma respuesta: ${descarta.error ?? "funcionó"}`);
-  const aviso = como(ROLES.X, `select public.ia_revisar(id, false, null, 'Nota interna de CI') from public.ia_consultas
-      where participante_id = '${ROLES.A.ficha}' and estado = 'por_revisar' \\g /dev/null
+  const aviso = como(ROLES.X, `select public.ia_revisar('${porRevisar}', false, null, 'Nota interna de CI') \\g /dev/null
     ${reclamosDe(ROLES.A)}
     select count(*) || ' ' || bool_and(titulo not like '%Borrador%' and titulo not like '%Nota interna%' and coalesce(enlace, '') not like '%Borrador%')
       from public.avisos where tipo = 'ia_no_compartida'`);
