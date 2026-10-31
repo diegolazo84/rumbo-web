@@ -1348,6 +1348,7 @@ test("Mis avisos real: lee los avisos, la campana cuenta los sin leer y abrir un
   await expect(page.getByRole("button", { name: /^Comunidad,/ })).toHaveCount(0);
   const campana = page.locator(".cabecera-app__avisos");
   await expect(campana).toHaveAccessibleName("Mis avisos, 1 sin leer");
+  await expect(page.getByRole("button", { name: "Todos, 1 sin leer" })).toBeVisible();
   if (!isMobile) await expect(page.locator("nav.lateral").getByRole("link", { name: "Mis avisos, 1 sin leer" })).toHaveAttribute("aria-current", "page");
   await sinViolaciones(page);
 
@@ -1356,6 +1357,27 @@ test("Mis avisos real: lee los avisos, la campana cuenta los sin leer y abrir un
   const m = llamadas.filter((l) => l.nombre === "marcar_avisos_leidos");
   expect(m.map((l) => l.cuerpo)).toEqual([{ p_ids: ["av1"] }]);
   await expect(campana).toHaveAccessibleName("Mis avisos");
+
+  // Volver atrás y recargar: lo leído sigue leído (viene de la base) y los tres contadores coinciden.
+  await page.goBack();
+  await page.waitForURL("**/mi-espacio/avisos/");
+  await hidratar(page);
+  for (const paso of ["volver", "recargar"]) {
+    if (paso === "recargar") {
+      await page.reload();
+      await hidratar(page);
+    }
+    await expect(campana).toHaveAccessibleName("Mis avisos");
+    await expect(page.getByRole("button", { name: "Todos, 0 sin leer" })).toBeVisible();
+    await expect(page.locator(".av-item--nuevo")).toHaveCount(0);
+    if (!isMobile) await expect(page.locator("nav.lateral").getByRole("link", { name: "Mis avisos", exact: true })).toBeVisible();
+  }
+  // Sin avisos sin leer, «No leídos» queda vacío con su mensaje y «Todos» sigue mostrando la lista.
+  await page.getByRole("button", { name: "No leídos, 0 sin leer" }).click();
+  await expect(page.locator(".av-item")).toHaveCount(0);
+  await expect(page.getByText("No hay avisos aquí")).toBeVisible();
+  await page.getByRole("button", { name: "Todos, 0 sin leer" }).click();
+  await expect(page.locator(".av-item")).toHaveCount(2);
 });
 
 test("Mis avisos real: con la Comunidad visible aparece su filtro; «Marcar todo» marca todo en la base", async ({ page }) => {
@@ -1364,7 +1386,10 @@ test("Mis avisos real: con la Comunidad visible aparece su filtro; «Marcar todo
   base.avisos = avisosBase();
   const llamadas = await simular(page, base, {
     modulo_visible: (c) => c.p_clave === "comunidad",
-    marcar_avisos_leidos: () => 2,
+    marcar_avisos_leidos: () => {
+      for (const a of base.avisos) if (!a.leido_en) a.leido_en = new Date().toISOString();
+      return 2;
+    },
   });
   await page.goto("mi-espacio/avisos/");
   await hidratar(page);
@@ -1374,6 +1399,12 @@ test("Mis avisos real: con la Comunidad visible aparece su filtro; «Marcar todo
   await page.getByRole("button", { name: "Marcar todo como leído" }).click();
   await expect(page.locator(".av-item--nuevo")).toHaveCount(0);
   expect(llamadas.filter((l) => l.nombre === "marcar_avisos_leidos").map((l) => l.cuerpo)).toEqual([{ p_ids: null }]);
+  await expect(page.locator(".cabecera-app__avisos")).toHaveAccessibleName("Mis avisos");
+  // Al recargar sigue todo leído: lo guardó la base.
+  await page.reload();
+  await hidratar(page);
+  await expect(page.locator(".av-item")).toHaveCount(3);
+  await expect(page.locator(".av-item--nuevo")).toHaveCount(0);
   await expect(page.locator(".cabecera-app__avisos")).toHaveAccessibleName("Mis avisos");
 });
 
