@@ -1702,11 +1702,15 @@ test("Asistente real: sin consentimiento no se puede preguntar; aceptar guarda l
   await page.goto(RUTA_ASISTENTE);
   await hidratar(page);
   if (!isMobile) await expect(page.locator("nav.lateral").getByRole("link", { name: T_ASISTENTE.titulo })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByRole("heading", { name: T_ASISTENTE.consentimiento.titulo })).toBeVisible();
+  await expect(page.getByRole("heading", { name: T_ASISTENTE.bienvenida.titulo })).toBeVisible();
   await expect(page.getByLabel(T_ASISTENTE.escribir)).toHaveCount(0);
   await sinViolaciones(page);
+  await page.getByRole("button", { name: T_ASISTENTE.bienvenida.comenzar }).click();
+  await expect(page.getByRole("heading", { name: T_ASISTENTE.privacidad.titulo })).toBeVisible();
+  expect(llamadas.filter((l) => l.nombre === "ia_guardar_consentimiento" || l.nombre === "ia_preguntar")).toHaveLength(0);
+  await sinViolaciones(page);
   await page.getByRole("checkbox", { name: new RegExp(T_ASISTENTE.consentimiento.opciones.acciones.titulo) }).check();
-  await page.getByRole("button", { name: T_ASISTENTE.consentimiento.aceptar }).click();
+  await page.getByRole("button", { name: T_ASISTENTE.privacidad.aceptar }).click();
   await expect(page.getByLabel(T_ASISTENTE.escribir)).toBeVisible();
   expect(llamadas.filter((l) => l.nombre === "ia_guardar_consentimiento").map((l) => l.cuerpo)).toEqual([
     { p_metas: false, p_acciones: true, p_registro_semanal: false },
@@ -1769,10 +1773,15 @@ test("Asistente real: retirar la autorización llama a la base y deja de ofrecer
   await hidratar(page);
   await page.getByRole("button", { name: T_ASISTENTE.ajustes.retirar }).click();
   await page.getByRole("button", { name: T_ASISTENTE.ajustes.confirmarSi }).click();
-  await expect(page.getByRole("heading", { name: T_ASISTENTE.retirado.titulo })).toBeVisible();
+  await expect(page.getByRole("heading", { name: T_ASISTENTE.desactivado.titulo })).toBeVisible();
   await expect(page.getByLabel(T_ASISTENTE.escribir)).toHaveCount(0);
   await expect(page.locator(".as-par")).toHaveCount(1); // lo anterior sigue a la vista
   expect(llamadas.filter((l) => l.nombre === "ia_retirar_consentimiento")).toHaveLength(1);
+  // Volver a activarlo pide autorizar otra vez, con nada marcado; hasta aceptar no se envía nada.
+  await page.getByRole("button", { name: T_ASISTENTE.desactivado.activar }).click();
+  await expect(page.getByRole("heading", { name: T_ASISTENTE.privacidad.titulo })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: new RegExp(T_ASISTENTE.consentimiento.opciones.metas.titulo) })).not.toBeChecked();
+  expect(llamadas.filter((l) => l.nombre === "ia_preguntar" || l.nombre === "ia_guardar_consentimiento")).toHaveLength(0);
 });
 
 test("Asistente real: si no se puede leer, lo dice sin romper Mi espacio", async ({ page }) => {
@@ -1782,4 +1791,32 @@ test("Asistente real: si no se puede leer, lo dice sin romper Mi espacio", async
   await hidratar(page);
   await expect(page.getByRole("alert")).toContainText(T_ASISTENTE.errorCargar.titulo);
   await expect(page.locator(".as-crisis")).toContainText("*4141");
+});
+
+test("Asistente real: «Apoyo» lleva al asistente solo cuando está disponible", async ({ page }) => {
+  await conSesion(page);
+  let disponible = true;
+  await simular(page, baseInicial(), { ia_disponible: () => disponible, mis_consultas_ia: () => [] });
+  await page.goto("mi-espacio/acompanamiento/");
+  await hidratar(page);
+  await page.locator(".as-acceso").click();
+  await page.waitForURL(`**/${RUTA_ASISTENTE}`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(T_ASISTENTE.titulo);
+  disponible = false;
+  await page.goto("mi-espacio/acompanamiento/");
+  await hidratar(page);
+  await expect(page.locator(".as-acceso")).toHaveCount(0);
+});
+
+test("Asistente real: Mis conversaciones muestra solo lo que entrega mis_consultas_ia, con su estado", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.ia_consentimientos = [consentido()];
+  const llamadas = await simular(page, base, { ia_disponible: () => true, mis_consultas_ia: () => consultasBase() });
+  await page.goto(`${RUTA_ASISTENTE}?ver=conversaciones`);
+  await hidratar(page);
+  await expect(page.locator(".as-historial__fila")).toHaveCount(consultasBase().length);
+  await expect(page.locator(".as-historial__fila--descartada")).toContainText(T_ASISTENTE.historial.estados.descartada);
+  // La pantalla nunca lee la tabla de consultas (tendría borradores sin revisar).
+  expect(llamadas.filter((l) => l.tipo === "tabla" && l.nombre === "ia_consultas")).toHaveLength(0);
 });

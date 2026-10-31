@@ -24,7 +24,7 @@ import { EtiquetaEjemplo, useEspacio } from "./comun";
 import { HojaCostando, useProximaRevision } from "./Costando";
 import type { VideollamadaEspacio } from "./espacio";
 import Semana, { ESCENARIOS } from "./Semana";
-import { T_ACOMPANAMIENTO as T, T_SECCIONES } from "./textos";
+import { T_ACOMPANAMIENTO as T, T_ASISTENTE, T_SECCIONES } from "./textos";
 
 export default function Acompanamiento({ estado = "sin-enviar" }: PropsPantalla) {
   const esp = useEspacio();
@@ -42,6 +42,7 @@ export default function Acompanamiento({ estado = "sin-enviar" }: PropsPantalla)
       {!esp.real && <EtiquetaEjemplo />}
       <TuCoach hoy={hoy} esc={esc} />
       <Acciones hoy={hoy} esc={esc} onCostando={() => setCostando(true)} />
+      <AccesoAsistente />
       <div className="me-acomp__fila">
         <EstaSemana hoy={hoy} esc={esc} />
         <ProximaRevision hoy={hoy} esc={esc} />
@@ -155,6 +156,24 @@ type Accion = { id: string; icono: NombreIconoApp; titulo: string; texto: string
   | { tipo: "ruta"; to: string }
   | { tipo: "boton"; onClick: () => void }
 );
+
+// «Apoyo» también lleva al Asistente de Rumbo, solo cuando está disponible (dueño, clave y módulo).
+function AccesoAsistente() {
+  const { R, asistente } = useEspacio();
+  if (!asistente?.disponible) return null;
+  return (
+    <Link to={R.asistente} className="as-acceso">
+      <span className="as-avatar" aria-hidden="true">
+        <Icono nombre="sprout" tamaño={22} />
+      </span>
+      <span className="as-acceso__texto">
+        <span className="as-acceso__titulo">{T_ASISTENTE.titulo}</span>
+        <span>{T_ASISTENTE.revisaCoach}</span>
+      </span>
+      <Icono nombre="chevron-right" tamaño={20} />
+    </Link>
+  );
+}
 
 // Las cuatro acciones de la referencia. La tercera depende del plan contratado: con videollamada,
 // la de la semana (la agenda el coach; aquí solo se une la persona); por escrito, la última revisión.
