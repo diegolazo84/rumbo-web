@@ -143,7 +143,7 @@ export default function PanelReal({ ruta }: { ruta: RutaPlataforma }) {
   let cuerpo: ReactNode;
   if (estado.tipo === "cargando") cuerpo = <Carga estado={estado.lento ? "cargando-lento" : "cargando"} alReintentar={() => void cargar()} />;
   else if (estado.tipo === "error") cuerpo = <Carga estado="error" alReintentar={() => void cargar()} />;
-  else if (estado.tipo === "sin-acceso") cuerpo = <SinAcceso />;
+  else if (estado.tipo === "sin-acceso") cuerpo = <SinAcceso sb={cliente.current ?? undefined} onAceptada={() => void cargar()} />;
   else if (estado.tipo === "segundo-factor")
     cuerpo = <PedirSegundoFactor sb={cliente.current!} verificados={estado.verificados} onListo={() => void cargar()} />;
   else

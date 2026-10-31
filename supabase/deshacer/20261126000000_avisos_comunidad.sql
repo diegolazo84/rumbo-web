@@ -1,4 +1,4 @@
--- Deshace 20261124000000_avisos_comunidad.sql: quita los disparadores y los avisos de Comunidad
+-- Deshace 20261126000000_avisos_comunidad.sql: quita los disparadores y los avisos de Comunidad
 -- (se borran los avisos de esos dos tipos) y vuelve a la lista de tipos anterior.
 drop trigger if exists aviso_comunidad on public.publicaciones;
 drop trigger if exists aviso_comunidad on public.desafios;
@@ -9,4 +9,5 @@ alter table public.avisos add constraint avisos_tipo_check check (tipo in ('revi
   'programa_publicado','registro_enviado','ajuste_pedido','videollamada_programada',
   'recordatorio_acciones','recordatorio_registro','reporte_comunidad','reconocimiento','beneficio_disponible',
   'ia_por_revisar','ia_respondida','ia_alerta',
-  'reserva_pedida','reserva_respondida','mensaje_especialista','recomendacion_especialista'));
+  'reserva_pedida','reserva_respondida','mensaje_especialista','recomendacion_especialista',
+  'recordatorio_videollamada'));

@@ -20,13 +20,15 @@ import { ContenidoSolicitud, type AcuerdoSolicitud, type ServidorSolicitud } fro
 import { ListaEvidencias } from "../../vista-previa/panel/Fotos";
 import { ColaHoy } from "../../vista-previa/panel/Hoy";
 import { ListaSolicitudes } from "../../vista-previa/panel/Solicitudes";
-import { ASISTENTE_ADMIN, ASISTENTE_PANEL, COMUNIDAD_PANEL, MODULOS_PANEL, CONTACTO_PANEL, MAS, PANEL_REAL, T_PANEL } from "../../vista-previa/panel/textos";
+import { ASISTENTE_ADMIN, ASISTENTE_PANEL, COMUNIDAD_PANEL, EQUIPO_PANEL, MODULOS_PANEL, CONTACTO_PANEL, MAS, PANEL_REAL, T_PANEL } from "../../vista-previa/panel/textos";
 import { ConstructorReal } from "./constructor";
 import { aAjuste, aSolicitud, colaReal, nombreDe, reordenesDe, reordenesUsados, type FilaMensaje, type FilaPeticion } from "./datos";
 import { RegistrarFactor, factoresTotp } from "./Mfa";
 import { FichaParticipanteReal, RevisionReal } from "./participante";
 import { ComunidadReal, R_COMUNIDAD } from "./comunidad";
 import { ModulosReal, R_MODULOS } from "./modulos";
+import { EquipoReal, R_EQUIPO } from "./equipo";
+import { PerfilEquipo } from "./perfil";
 import { AsistenteReal, R_ASISTENTE } from "./asistente";
 import { AsistenteAdminReal, R_ASISTENTE_ADMIN } from "./asistente-admin";
 import { MisParticipantesReal } from "./participantes";
@@ -58,6 +60,8 @@ export default function Pantallas({ ruta }: { ruta: RutaPlataforma }) {
       return <ComunidadReal />;
     case "/equipo/modulos/":
       return <ModulosReal />;
+    case "/equipo/equipo/":
+      return <EquipoReal />;
     case "/equipo/asistente/":
       return <AsistenteReal />;
     case "/equipo/asistente/administracion/":
@@ -549,6 +553,12 @@ function MasReal() {
         <span>{MODULOS_PANEL.enlace}</span>
         <Icono nombre="arrow-right" tamaño={20} />
       </Link>
+      <Link to={R_EQUIPO} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
+        <Icono nombre="user-plus" tamaño={20} />
+        <span>{EQUIPO_PANEL.enlace}</span>
+        <Icono nombre="arrow-right" tamaño={20} />
+      </Link>
+      <PerfilEquipo />
       <Link to={R_ASISTENTE} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
         <Icono nombre="sprout" tamaño={20} />
         <span>{ASISTENTE_PANEL.enlace}</span>

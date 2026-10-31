@@ -7,6 +7,9 @@
 --    reglas aceptadas) y siguen activos.
 -- Ninguno se crea mientras el módulo «comunidad» no esté visible. Textos fijos; enlazan a la
 -- Comunidad. Lo demás de avisos (lectura, marcar leídos, borrado de leídos a los 90 días) no cambia.
+-- Antes se llamaba 20261124000000; pasó a ir después de 20261125000000_recordatorios_completos
+-- (31-oct-2026) para no depender de una migración sin aplicar: ambos avisos solo llegan a quien eligió
+-- «Comunidad» en sus recordatorios (privado.quiere y privado.avisar_app, de 20261125).
 
 alter table public.avisos drop constraint avisos_tipo_check;
 alter table public.avisos add constraint avisos_tipo_check check (tipo in ('revision_publicada','ajuste_respondido',
@@ -14,7 +17,7 @@ alter table public.avisos add constraint avisos_tipo_check check (tipo in ('revi
   'recordatorio_acciones','recordatorio_registro','reporte_comunidad','reconocimiento','beneficio_disponible',
   'ia_por_revisar','ia_respondida','ia_alerta',
   'reserva_pedida','reserva_respondida','mensaje_especialista','recomendacion_especialista',
-  'comunidad_respuesta','desafio_nuevo'));
+  'recordatorio_videollamada','comunidad_respuesta','desafio_nuevo'));
 
 create or replace function privado.aviso_comunidad() returns trigger
 language plpgsql security definer set search_path = '' as $$
@@ -37,7 +40,8 @@ begin
     select p.user_id, p.id, 'desafio_nuevo', left('Nuevo desafío en la Comunidad: «' || new.titulo || '»', 120),
            '/mi-espacio/comunidad/'
       from public.participantes p join public.alias a on a.participante_id = p.id
-     where p.user_id is not null and p.estado = 'activo' and a.reglas_comunidad_en is not null;
+     where p.user_id is not null and p.estado = 'activo' and a.reglas_comunidad_en is not null
+       and privado.quiere(p.id, 'comunidad');
   end if;
   return null;
 end $$;

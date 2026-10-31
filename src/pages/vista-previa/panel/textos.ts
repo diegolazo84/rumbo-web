@@ -401,11 +401,21 @@ export const CONSTRUCTOR = {
     versionCortaAyuda: "«Si el día se complica, la versión corta es…»",
     conFoto: "Con foto",
     conFotoAyuda: "Solo en Acompañamiento cercano.",
+    // Acción medible (C4; maqueta «Registrar acción», 30-oct-2026). PROPUESTO.
+    medible: "Se mide con una cantidad",
+    medibleAyuda: "La persona anota cuánto hizo al registrarla. No cambia los créditos.",
+    objetivo: "Cantidad propuesta",
+    objetivoAyuda: "Un número entero, de 1 a 10.000.",
+    unidad: "Unidad",
+    unidadOtra: "otra",
+    unidadCual: "¿Cuál unidad?",
     errores: {
       titulo: "Escribe un título de 2 a 60 caracteres.", // (vista previa)
       duracion: "La duración va de 5 a 240 minutos.", // (vista previa)
       dias: "Elige al menos un día.", // (vista previa)
       instrucciones: "Escribe las instrucciones.", // (vista previa)
+      objetivo: "La cantidad propuesta va de 1 a 10.000.",
+      unidad: "Escribe la unidad (hasta 20 caracteres).",
     },
     fotoAviso: "Más de 1 acción con foto por semana: es alcance comercial, no cuota técnica.", // (vista previa) 5.6
   },
@@ -637,6 +647,9 @@ export const PANEL_REAL = {
     "registro:no_pendiente": "Esta evidencia ya fue revisada.",
     "fotos:borrar_primero": "Primero hay que borrar sus fotos del almacenamiento.",
     "sesion:no_autorizado": "Tu sesión no tiene el segundo factor. Vuelve a entrar al panel.",
+    "mensaje:corto": "Escribe un mensaje de al menos 10 caracteres.",
+    "mensaje:largo": "El mensaje puede tener hasta 800 caracteres.",
+    "ciclo:no_termina": "El mensaje de cierre se escribe desde la última semana del ciclo.",
     "nombre:largo": "Escribe un nombre de 2 a 60 caracteres.",
     "nombre:en_uso": "Ya existe un grupo con ese nombre.",
     "descripcion:largo": "La descripción es demasiado larga.",
@@ -655,6 +668,24 @@ export const PANEL_REAL = {
     "estado:invalido": "Elige un estado de la lista.",
     "estado:sin_probar": "Para habilitarlo, primero márcalo como probado.",
     "respaldo:requerido": "Anota qué lo respalda para marcarlo operativo.",
+    "correo:invalido": "Escribe un correo válido, por ejemplo nombre@correo.cl.",
+    "invitacion:ya_en_equipo": "Esa persona ya es parte del equipo.",
+    "invitacion:es_participante": "Ese correo es de una persona participante. Para el equipo, usa otro correo.",
+    "invitacion:ya_invitada": "Ese correo ya tiene una invitación vigente.",
+    "invitacion:no_encontrada": "Esa invitación ya no está vigente.",
+    "coach:no_encontrado": "Esa persona ya no está activa en el equipo.",
+    "coach:con_participantes": "Todavía acompaña a personas: asígnalas a otro coach antes de desactivarlo.",
+    "equipo:sin_dueno": "Siempre debe quedar un dueño activo.",
+    "participante:no_encontrado": "No encontramos a esa persona. Puede que se haya borrado.",
+    "presentacion:largo": "La presentación puede tener hasta 400 caracteres.",
+    "motivo:corto": "Escribe el motivo con al menos 10 caracteres.",
+    "plan:sin_videollamada": "Este ciclo es del plan con revisión escrita: no lleva videollamadas.",
+    "ciclo:no_activo": "El ciclo no está activo (está en pausa o cerrado).",
+    "semana:invalida": "Elige una semana del ciclo.",
+    "fecha:invalida": "Elige una fecha y una hora que todavía no hayan pasado.",
+    "enlace:invalido": "Pega el enlace completo de la videollamada; debe empezar con https://.",
+    "videollamada:ya_registrada": "Esa videollamada ya quedó anotada y no se puede reprogramar.",
+    "fecha:aun_no_ocurre": "Todavía no llega la hora de la videollamada. Por ahora solo se puede cancelar.",
   } as Record<string, string>,
   solicitud: {
     aceptada: (fecha: string) => `La persona aceptó el acuerdo el ${fecha}.`,
@@ -694,7 +725,7 @@ export const PANEL_REAL = {
     erroresMeta: "Cada meta necesita un título de 2 a 80 caracteres.",
     erroresAccion: (titulo: string, semana: number, faltan: string[]) =>
       `Falta completar la acción ${titulo ? `«${titulo}»` : "sin título"} (semana ${semana}): ${faltan.join(", ")}. Te la dejamos abierta.`,
-    campos: { titulo: "título", dias: "días", duracion: "duración de 5 a 240 minutos", instrucciones: "instrucciones" },
+    campos: { titulo: "título", dias: "días", duracion: "duración de 5 a 240 minutos", instrucciones: "instrucciones", objetivo: "cantidad propuesta de 1 a 10.000", unidad: "unidad" },
     sinDias: "Sin día asignado",
   },
   revision: {
@@ -725,6 +756,14 @@ export const PANEL_REAL = {
     error: "No se pudo verificar. Revisa tu conexión e inténtalo de nuevo.",
     sinAcceso: "Esta cuenta no tiene acceso al panel.",
     sinAccesoTexto: "El panel es solo para el equipo de Rumbo. Si tienes un programa, está en Mi espacio.",
+    invitacion: {
+      titulo: "¿Te invitaron al equipo?",
+      texto: "No encontramos una invitación vigente para el correo con que entraste. Si te acaban de invitar, pulsa el botón para buscarla de nuevo. Después vas a registrar tu segundo factor.",
+      buscando: "Buscando tu invitación…",
+      buscandoTexto: "Si te invitaron al equipo con este correo, la aceptamos y pasas a registrar tu segundo factor.",
+      boton: "Aceptar mi invitación",
+      noHay: "No encontramos una invitación vigente para este correo. Pide que te inviten de nuevo, con el correo con que entraste.",
+    },
     irAMiEspacio: "Ir a Mi espacio",
     salir: "Salir",
     nombreFactor: (n: number) => `TOTP ${n}`,
@@ -894,6 +933,173 @@ export const MODULOS_PANEL = {
 } as const;
 
 
+// Mensaje de cierre en la ficha (informe de cierre de ciclo, 30-oct-2026): lo escribe el coach;
+// la persona lo ve en su informe con el nombre de quien lo escribió.
+export const MENSAJE_CIERRE_PANEL = {
+  titulo: "Mensaje de cierre",
+  ayuda: "La persona lo ve en su informe de cierre de ciclo, con tu nombre. Escríbelo tú: no se genera solo. Si lo dejas vacío, el informe muestra tu último foco.",
+  campo: "Tu mensaje para cerrar el ciclo",
+  ejemplo: "Lo que más se notó en este ciclo, lo que vale la pena llevarse y cómo seguir.",
+  guardar: "Guardar mensaje",
+  quitar: "Quitar mensaje",
+  guardado: "Mensaje guardado. La persona lo verá en su informe de cierre.",
+  quitado: "Mensaje quitado. El informe mostrará tu último foco.",
+  escrito: (quien: string, cuando: string) => `Escrito por ${quien} el ${cuando}.`,
+  error: "Escribe entre 10 y 800 caracteres.",
+} as const;
+
+// ---------------------------------------------------------------------------
+// Equipo (panel real, bloque 2 de Rumbo 1.0): solo el dueño invita, activa, da el permiso de
+// moderar y asigna. PROPUESTO: Diego revisa estos textos con las capturas.
+export const EQUIPO_PANEL = {
+  enlace: "Equipo: coaches e invitaciones",
+  ojo: "Panel",
+  titulo: "Equipo.",
+  bajada: "Invita a quienes acompañan y decide a quién acompaña cada uno. Cada coach entra con su correo y un segundo factor, y solo ve a las personas que tiene asignadas.",
+  sinPermiso: "Solo el dueño de Rumbo puede gestionar el equipo.",
+  personas: {
+    titulo: "Personas del equipo",
+    dueno: "Dueño",
+    coach: "Coach",
+    activo: "Activo",
+    inactivo: "Inactivo",
+    modera: "Modera la comunidad",
+    acompana: "Acompaña a",
+    personas: (n: number) => (n === 1 ? "1 persona" : `${n} personas`),
+    sinPresentacion: "Todavía no escribe su presentación.",
+    presentacion: "Presentación",
+    desactivar: "Desactivar",
+    activar: "Activar",
+    darModerar: "Permitir moderar",
+    quitarModerar: "Quitar permiso de moderar",
+    desactivado: (nombre: string) => `${nombre} quedó inactivo: ya no puede entrar al panel.`,
+    activado: (nombre: string) => `${nombre} quedó activo.`,
+    moderarCambiado: (nombre: string, puede: boolean) => (puede ? `${nombre} ahora puede moderar la comunidad.` : `${nombre} ya no modera la comunidad.`),
+  },
+  invitar: {
+    titulo: "Invitar a un coach",
+    nombre: "Nombre",
+    nombreAyuda: "Es el nombre que verán las personas que acompañe. Lo puede cambiar después en su perfil.",
+    correo: "Correo",
+    correoAyuda: "Con este correo va a entrar. No puede ser el correo de una persona participante.",
+    moderar: "Puede moderar la comunidad",
+    moderarAyuda: "Revisa reportes y oculta publicaciones. Lo puedes cambiar cuando quieras.",
+    boton: "Crear invitación",
+    errorNombre: "Escribe un nombre de 2 a 60 caracteres.",
+    errorCorreo: "Escribe un correo válido, por ejemplo nombre@correo.cl.",
+    creada: (nombre: string) => `Invitación creada para ${nombre}. Copia el mensaje y envíaselo: Rumbo no lo envía solo.`,
+  },
+  pendientes: {
+    titulo: "Invitaciones pendientes",
+    vacio: "No hay invitaciones pendientes.",
+    vence: (fecha: string) => `Vence el ${fecha}`,
+    caducada: "Ya no sirve",
+    vigente: "Vigente",
+    copiar: "Copiar el mensaje",
+    revocar: "Revocar",
+    revocada: (correo: string) => `Invitación a ${correo} revocada.`,
+    caducadaAyuda: "Para volver a invitar, crea una invitación nueva con el mismo correo.",
+  },
+  mensaje: (nombre: string, correo: string, enlace: string, vence: string) =>
+    [
+      `Hola, ${nombre}:`,
+      "",
+      "Te invité al equipo de Rumbo como coach. Para entrar:",
+      `1. Abre ${enlace} y escribe tu correo: ${correo}.`,
+      "2. Escribe el código de 6 dígitos que te llega por correo.",
+      "3. Tu invitación se acepta sola. Si no pasa, pulsa «Aceptar mi invitación».",
+      "4. Registra el segundo factor con una app de autenticación, como Google Authenticator o Microsoft Authenticator.",
+      "",
+      `La invitación vence el ${vence}.`,
+    ].join("\n"),
+  asignar: {
+    titulo: "Quién acompaña a quién",
+    ayuda: "Al cambiar el coach, el anterior deja de ver a la persona de inmediato. El cambio queda registrado.",
+    vacio: "Todavía no hay participantes.",
+    coach: "Coach",
+    sinCoach: "Sin coach asignado",
+    cambiar: "Cambiar coach",
+    hojaTitulo: (nombre: string) => `Coach de ${nombre}`,
+    elegir: "Coach",
+    ninguno: "Sin coach (solo el dueño)",
+    motivo: "Motivo",
+    motivoAyuda: "Queda en el historial. Por ejemplo: «Cambio de horario del coach».",
+    guardar: "Guardar",
+    cancelar: "Cancelar",
+    asignado: (persona: string, coach: string) => `${persona} ahora la acompaña ${coach}.`,
+    quitado: (persona: string) => `${persona} quedó sin coach asignado.`,
+  },
+} as const;
+
+// Perfil de quien acompaña (Más): lo ven sus participantes en «Tu coach» (mi_coach).
+export const PERFIL_EQUIPO = {
+  titulo: "Tu perfil",
+  ayuda: "Las personas que acompañas ven tu nombre y esta presentación en «Tu coach».",
+  nombre: "Nombre",
+  presentacion: "Presentación",
+  presentacionAyuda: "Unas líneas sobre ti y cómo acompañas. Hasta 400 caracteres.",
+  ejemplo: "Acompaño a personas que quieren ordenar su semana sin exigirse de más.",
+  guardar: "Guardar perfil",
+  guardado: "Perfil guardado.",
+  errorNombre: "Escribe un nombre de 2 a 60 caracteres.",
+} as const;
+
+// Videollamadas del plan cercano (ficha, pestaña Revisiones).
+export const VIDEOLLAMADAS_PANEL = {
+  titulo: "Videollamadas",
+  ayuda: (zona: string) => `Una de 20 minutos por semana. La hora se guarda con la zona de este dispositivo; la persona la ve en la suya (${zona}). Al agendarla le llega un aviso.`,
+  semana: (n: number) => `Semana ${n}`,
+  sinAgendar: "Sin agendar",
+  estados: {
+    programada: { texto: "Agendada", variante: "nota" },
+    realizada: { texto: "Realizada", variante: "activo" },
+    no_asistio: { texto: "No asistió", variante: "nota" },
+    cancelada: { texto: "Cancelada", variante: "pronto" },
+  } as Record<string, { texto: string; variante: "activo" | "nota" | "pronto" }>,
+  cuando: "Fecha y hora",
+  enlace: "Enlace de la videollamada",
+  enlaceAyuda: "Pega el enlace de Google Meet, Zoom, Teams u otro servicio. Debe empezar con https://.",
+  abrir: "Abrir el enlace",
+  agendar: "Agendar",
+  cambiar: "Cambiar fecha o enlace",
+  guardar: "Guardar",
+  cancelar: "Cancelar",
+  anotar: "Anota qué pasó en esta videollamada",
+  anotarAyuda: "Elige una opción. La persona ve el estado en su historial.",
+  antesDeLaHora: "Cuando pase la hora, aquí anotas si se realizó o si la persona no asistió.",
+  noSeHara: "¿No se hará?",
+  porAnotar: "Por anotar",
+  realizada: "Se realizó",
+  noAsistio: "La persona no asistió",
+  proxima: {
+    titulo: "Próxima videollamada",
+    cuando: (semana: number, cuando: string) => `Semana ${semana} · ${cuando}`,
+    abrir: "Abrir la videollamada",
+    copiar: "Copiar enlace",
+    copiado: "Enlace copiado.",
+    noCopiado: "No se pudo copiar. Selecciona el enlace y cópialo.",
+  },
+  cancelarLlamada: "Cancelar la videollamada",
+  errorCuando: "Elige la fecha y la hora.",
+  errorEnlace: "Pega el enlace completo de la videollamada; debe empezar con https://.",
+  agendada: (n: number) => `Videollamada de la semana ${n} agendada. La persona recibió un aviso.`,
+  anotada: (n: number) => `Videollamada de la semana ${n} anotada.`,
+} as const;
+
+// Ver la postulación original con motivo (A2): queda en la auditoría.
+export const POSTULACION_PANEL = {
+  boton: "Ver su postulación",
+  titulo: "Postulación",
+  ayuda: "Por privacidad, la postulación se abre solo con un motivo. Queda registrado quién la vio, cuándo y por qué.",
+  motivo: "Motivo",
+  motivoEjemplo: "Revisar lo que contó sobre sus horarios para agendar.",
+  ver: "Ver la postulación",
+  cancelar: "Cerrar",
+  errorMotivo: "Escribe el motivo con al menos 10 caracteres.",
+  sinPostulacion: "Esta persona no llegó por el formulario: no hay postulación.",
+  campos: { recibida: "Recibida", area: "Área", meta: "Lo que quería lograr", apoyo: "Apoyo que eligió", dias: "Días", franjas: "Franjas", nota: "Sobre sus horarios" },
+  ninguno: "—",
+} as const;
 // ---------------------------------------------------------------------------
 // Asistente de Rumbo: bandeja de revisión (panel real, E2). Cada coach ve solo a sus participantes;
 // el dueño, a todos. La persona solo ve lo que aquí se aprueba (tal cual o corregido).
