@@ -20,7 +20,7 @@ import { ContenidoSolicitud, type AcuerdoSolicitud, type ServidorSolicitud } fro
 import { ListaEvidencias } from "../../vista-previa/panel/Fotos";
 import { ColaHoy } from "../../vista-previa/panel/Hoy";
 import { ListaSolicitudes } from "../../vista-previa/panel/Solicitudes";
-import { COMUNIDAD_PANEL, EQUIPO_PANEL, MODULOS_PANEL, CONTACTO_PANEL, MAS, PANEL_REAL, T_PANEL } from "../../vista-previa/panel/textos";
+import { ASISTENTE_PANEL, COMUNIDAD_PANEL, EQUIPO_PANEL, MODULOS_PANEL, CONTACTO_PANEL, MAS, PANEL_REAL, T_PANEL } from "../../vista-previa/panel/textos";
 import { ConstructorReal } from "./constructor";
 import { aAjuste, aSolicitud, colaReal, nombreDe, reordenesDe, reordenesUsados, type FilaMensaje, type FilaPeticion } from "./datos";
 import { RegistrarFactor, factoresTotp } from "./Mfa";
@@ -29,6 +29,7 @@ import { ComunidadReal, R_COMUNIDAD } from "./comunidad";
 import { ModulosReal, R_MODULOS } from "./modulos";
 import { EquipoReal, R_EQUIPO } from "./equipo";
 import { PerfilEquipo } from "./perfil";
+import { AsistenteReal, R_ASISTENTE } from "./asistente";
 import { MisParticipantesReal } from "./participantes";
 import { Alerta, NoEncontrada, useDatosPanel, useEscritura, useInstantanea } from "./comun";
 
@@ -60,6 +61,8 @@ export default function Pantallas({ ruta }: { ruta: RutaPlataforma }) {
       return <ModulosReal />;
     case "/equipo/equipo/":
       return <EquipoReal />;
+    case "/equipo/asistente/":
+      return <AsistenteReal />;
     case "/equipo/mas/":
       return <MasReal />;
     default:
@@ -553,6 +556,11 @@ function MasReal() {
         <Icono nombre="arrow-right" tamaño={20} />
       </Link>
       <PerfilEquipo />
+      <Link to={R_ASISTENTE} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
+        <Icono nombre="sprout" tamaño={20} />
+        <span>{ASISTENTE_PANEL.enlace}</span>
+        <Icono nombre="arrow-right" tamaño={20} />
+      </Link>
 
       <Seccion titulo={MAS.postulaciones.titulo} id="postulaciones" className="tarjeta pa-tarjeta">
         <form
