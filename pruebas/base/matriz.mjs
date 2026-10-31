@@ -1696,7 +1696,7 @@ paso("mis logros C17: la persona sabe si el 10 % está activo, sin leer el catá
     select public.ia_revisar(id, true, 'Texto revisado por el coach.') from public.ia_consultas where respuesta like 'Prueba de respuesta%' \\g /dev/null
     reset role; select costo_usd from public.ia_consultas where respuesta like 'Prueba de respuesta%';
     ${reclamos(ROLES.A)} set local role authenticated;
-    select respuesta from public.mis_consultas_ia() where estado = 'aprobada'`);
+    select respuesta from public.mis_consultas_ia() where estado = 'aprobada' and respuesta <> 'Respuesta aprobada de CI.'`);
   const [bandeja, costo, aprobada] = (flujo.salida ?? "").split("\n").slice(-3);
   exigir(flujo.ok && bandeja === "por_revisar", `la respuesta no llegó a la bandeja del coach: ${flujo.error ?? bandeja}`);
   exigir(flujo.ok && Number(costo) === 0.00021, `el costo no se calculó con los tokens: ${costo}`);
@@ -1759,7 +1759,8 @@ paso("asistente de IA: apagado sin clave y sin módulo; con consentimiento y sol
   exigir(quita.ok && ultima(quita) === "0", `A no pudo quitar su valoración: ${quita.error ?? ultima(quita)}`);
   const ajena = como(ROLES.A, `select public.ia_valorar('${RB}', false)`);
   exigir(!ajena.ok && /no_encontrada/.test(ajena.error), `A valoró una respuesta de B: ${ajena.error ?? "funcionó"}`);
-  const pendiente = como(ROLES.A, `select public.ia_valorar((select id from public.ia_consultas where participante_id = '${ROLES.A.ficha}' and estado = 'por_revisar' limit 1), true)`);
+  const porRevisar = sql(`select id from public.ia_consultas where participante_id = '${ROLES.A.ficha}' and estado = 'por_revisar' limit 1`);
+  const pendiente = como(ROLES.A, `select public.ia_valorar('${porRevisar}', true)`);
   exigir(!pendiente.ok && /no_aprobada/.test(pendiente.error), `A valoró una respuesta que su coach no aprobó: ${pendiente.error ?? "funcionó"}`);
   const largo = como(ROLES.A, `select public.ia_valorar('${RA}', false, repeat('x', 301))`);
   exigir(!largo.ok && /motivo/.test(largo.error), "se aceptó un motivo de más de 300 caracteres");
