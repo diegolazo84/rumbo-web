@@ -1,5 +1,5 @@
--- Deshace 20261125000000_recordatorios_completos.sql: vuelve a las funciones anteriores (A5, D3 y
--- avisos de Comunidad), quita las columnas nuevas y los recordatorios de videollamada. Se pierden
+-- Deshace 20261125000000_recordatorios_completos.sql: vuelve a las funciones anteriores (A5 y D3),
+-- quita las columnas nuevas y los recordatorios de videollamada. Se pierden
 -- el interruptor general, horario, días y categorías nuevas que hayan elegido las personas.
 delete from public.avisos where tipo = 'recordatorio_videollamada';
 alter table public.avisos drop constraint avisos_tipo_check;
@@ -7,8 +7,7 @@ alter table public.avisos add constraint avisos_tipo_check check (tipo in ('revi
   'programa_publicado','registro_enviado','ajuste_pedido','videollamada_programada',
   'recordatorio_acciones','recordatorio_registro','reporte_comunidad','reconocimiento','beneficio_disponible',
   'ia_por_revisar','ia_respondida','ia_alerta',
-  'reserva_pedida','reserva_respondida','mensaje_especialista','recomendacion_especialista',
-  'comunidad_respuesta','desafio_nuevo'));
+  'reserva_pedida','reserva_respondida','mensaje_especialista','recomendacion_especialista'));
 
 create or replace function privado.avisar_app(p_participante uuid, p_para_participante boolean, p_tipo text,
   p_titulo text, p_enlace text) returns void
@@ -28,32 +27,6 @@ begin
 end $$;
 revoke all on function privado.avisar_app(uuid, boolean, text, text, text) from public, anon, authenticated;
 
-create or replace function privado.aviso_comunidad() returns trigger
-language plpgsql security definer set search_path = '' as $$
-declare v_autor uuid; v_alias text;
-begin
-  if not public.modulo_visible('comunidad') then return null; end if;
-  if tg_table_name = 'publicaciones' then
-    if new.respuesta_a is null or new.estado <> 'visible' then return null; end if;
-    select x.autor into v_autor from public.publicaciones x where x.id = new.respuesta_a and x.estado = 'visible';
-    if v_autor is null or v_autor = new.autor then return null; end if;
-    if exists (select 1 from public.bloqueos_comunidad b where b.bloqueador = v_autor and b.bloqueado = new.autor) then
-      return null;
-    end if;
-    select a.alias::text into v_alias from public.alias a where a.participante_id = new.autor;
-    perform privado.avisar_app(v_autor, true, 'comunidad_respuesta',
-      left(coalesce(v_alias, 'Alguien') || ' respondió tu publicación', 120), '/mi-espacio/comunidad/');
-  elsif tg_table_name = 'desafios' then
-    if not new.activo or (tg_op = 'UPDATE' and old.activo) then return null; end if;
-    insert into public.avisos (destinatario, participante_id, tipo, titulo, enlace)
-    select p.user_id, p.id, 'desafio_nuevo', left('Nuevo desafío en la Comunidad: «' || new.titulo || '»', 120),
-           '/mi-espacio/comunidad/'
-      from public.participantes p join public.alias a on a.participante_id = p.id
-     where p.user_id is not null and p.estado = 'activo' and a.reglas_comunidad_en is not null;
-  end if;
-  return null;
-end $$;
-revoke all on function privado.aviso_comunidad() from public, anon, authenticated;
 
 drop function if exists public.guardar_recordatorios(jsonb);
 create or replace function public.guardar_recordatorios(p_acciones_del_dia boolean, p_registro_semanal boolean,

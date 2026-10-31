@@ -28,8 +28,8 @@ autorización de Diego.
 | Acompañamiento | Perfil del coach y «Tu coach» real (`actualizar_mi_perfil`) | sin pantalla | Mi perfil en el panel (bloque 2) |
 | Acompañamiento | Videollamada del plan cercano (`programar_videollamada`, `anotar_videollamada`) | sin pantalla (Mi acompañamiento ya la muestra) | Sección en la ficha (bloque 2) |
 | Acompañamiento | Ver postulación con motivo (`ver_postulacion`) | sin pantalla | Botón en la ficha (bloque 2) |
-| Avisos | Mis avisos: campana, filtros, búsqueda y marcar como leído (`marcar_avisos_leidos`) | operativa (#73); avisos de la Comunidad con la migración 20261124, sin aplicar | Autorizar 20261124 al abrir la Comunidad |
-| Avisos | Configuración de recordatorios: interruptor general, categorías, horario, días, correo (`guardar_recordatorios`, `correo_disponible`) | en PR (#74), 1 migración sin aplicar (20261125); correo sin clave de Brevo | Autorización |
+| Avisos | Mis avisos: campana, filtros, búsqueda y marcar como leído (`marcar_avisos_leidos`) | operativa (#73); avisos de la Comunidad con la migración 20261126 (antes 20261124), sin aplicar | Autorizar 20261126 al abrir la Comunidad |
+| Avisos | Configuración de recordatorios: interruptor general, categorías, horario, días, correo (`guardar_recordatorios`, `correo_disponible`) | operativa (#74, migración 20261125 aplicada); logros siempre en Mis avisos; correo sin clave de Brevo | Claves de Brevo para el correo |
 | Comunidad | Comunidad, crear publicación, grupos, panel de moderación | apagada (módulo «comunidad») | Revisión legal |
 | Comunidad | Interior de grupo, desafíos, foto por desafío | en PR (#61, #62, #63), con 3 migraciones sin aplicar | Autorización |
 | Gamificación | Niveles, créditos, rachas, Mis logros | operativa | — |
@@ -37,7 +37,7 @@ autorización de Diego.
 | Gamificación | 10 % en una renovación (`guardar_beneficio`, `aplicar_beneficio`) y ajuste de reconocimientos (`guardar_reconocimiento`) | sin pantalla; descuento apagado | Sección del dueño; Diego decide si se activa |
 | Fotos | Subida privada en las acciones | apagada (módulo «fotos», #67) | Revisión legal, iPhone real |
 | Fotos | Borrado a los 30 días y Mantención | en PR (#68), con 1 migración sin aplicar | Etapas 3 a 8 de la guía de despliegue |
-| IA | Asistente con consentimiento y aprobación del coach (`ia_*`, `mis_consultas_ia`, `guardar_ia_config`) | pantalla del participante en PR (#75), sin migraciones; apagado | Bandeja del coach y administración (#76, #77), prueba real con tope de USD 10 |
+| IA | Asistente con consentimiento y aprobación del coach (`ia_*`, `mis_consultas_ia`, `guardar_ia_config`) | pantalla del participante en PR (#75), sin migraciones; apagado; diseño definitivo pendiente (maquetas de ChatGPT) | Bandeja del coach y administración (#76, #77), prueba real con tope de USD 10 |
 | Administración | Módulos | operativa | — |
 | Administración | Indicadores de negocio (`indicadores`) | sin pantalla | Pantalla Negocio |
 | Administración | Pagos y devoluciones (`registrar_pago`, `registrar_devolucion`, `devolucion_sugerida`) | sin pantalla | Pantalla Pagos (transferencia y PayPal) |

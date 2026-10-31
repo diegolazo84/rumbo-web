@@ -1108,7 +1108,7 @@ export const T_RECORDATORIOS = {
     videollamadas: { titulo: "Videollamadas", texto: "Un recordatorio dentro de las 24 horas antes de tu videollamada." },
     mensajesCoach: { titulo: "Mensajes de mi coach", texto: "Siempre llegan a Mis avisos. Aquí eliges si también quieres una copia por correo." },
     comunidad: { titulo: "Comunidad", texto: "Respuestas a tus publicaciones y desafíos nuevos." },
-    logros: { titulo: "Logros y reconocimientos", texto: "Cuando consigas un reconocimiento." },
+    logros: { titulo: "Logros y reconocimientos", texto: "Siempre llegan a Mis avisos. Aquí eliges si también quieres una copia por correo." },
   },
   sinVideollamadas: "Tu plan no incluye videollamadas.",
   comunidadCerrada: "La Comunidad todavía no está abierta.",
