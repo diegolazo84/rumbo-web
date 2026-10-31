@@ -110,7 +110,7 @@ const FUNCIONES = {
     "soy_equipo", "mi_contexto", "marcar_accion", "desmarcar_accion", "dejar_pasar", "registrar_evidencia", "eliminar_evidencia",
     "guardar_registro_semanal", "pedir_ajuste", "actualizar_preferencias", "pedir_derecho", "exportar_mis_datos", "mi_coach",
     "adjuntar_foto", "quitar_foto", "guardar_recordatorios", "correo_disponible",
-    "evolucion_semanal", "informe_ciclo", "mis_medibles", "anotar_cantidad",
+    "evolucion_semanal", "informe_ciclo", "mis_medibles", "anotar_cantidad", "anotar_nota",
     "guardar_alias", "participar_en_ranking", "ranking_semanal",
     "aceptar_reglas_comunidad", "publicar_en_comunidad", "borrar_mi_publicacion", "reportar_publicacion", "comunidad_publicaciones",
     "reaccionar_publicacion", "unirme_a_grupo", "salir_de_grupo", "comunidad_grupos", "proponer_grupo", "mis_propuestas_grupo",
@@ -124,7 +124,7 @@ const FUNCIONES = {
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
     "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion", "cambiar_modulo", "indicadores",
     "registrar_pago", "devolucion_sugerida", "registrar_devolucion",
-    "invitar_coach", "revocar_invitacion", "cambiar_coach", "programar_videollamada", "anotar_videollamada",
+    "invitar_coach", "revocar_invitacion", "cambiar_coach", "programar_videollamada", "anotar_videollamada", "guardar_mensaje_cierre",
     "moderar_publicacion", "guardar_grupo_comunidad", "propuestas_grupo_equipo", "responder_propuesta_grupo", "guardar_desafio", "guardar_reconocimiento", "guardar_beneficio", "otorgar_beneficio", "aplicar_beneficio",
     "ia_pedir_borrador", "ia_revisar", "guardar_ia_config", "ia_gasto",
     "invitar_especialista", "revisar_credencial", "decidir_especialista", "guardar_config_especialistas", "guardar_especialidad",
@@ -140,7 +140,7 @@ const FUNCIONES = {
 const PRIVADO_EJECUTABLES = ["mi_especialista_id", "es_admin", "es_dueno", "es_coach", "gestiona", "puede_moderar", "foto_permitida", "foto_comunidad_permitida", "mi_participante_id"];
 // Del coach: las usa con sus participantes; con los de otro coach, «sin autorización».
 const DEL_COACH = ["publicar_programa", "nuevo_borrador", "revisar_evidencia", "solapamientos", "carga_prevista", "ver_postulacion",
-  "programar_videollamada", "anotar_videollamada", "ia_pedir_borrador", "ia_revisar"];
+  "programar_videollamada", "anotar_videollamada", "guardar_mensaje_cierre", "ia_pedir_borrador", "ia_revisar"];
 
 // ---------------------------------------------------------------------------
 // SQL
@@ -819,7 +819,8 @@ const JSON_BASE = `'{"activos": true, "acciones_del_dia": true, "registro_semana
 paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan a su hora, una vez al día y nunca en pausa; por correo solo con claves y a quien lo eligió");
 
 // R1 · Recordatorios completos: interruptor general, días, horario, videollamada 24 h antes,
-// comunidad y logros solo a quien los eligió y copia por correo de los mensajes del coach.
+// comunidad solo a quien la eligió; logros siempre en Mis avisos; copia por correo de los mensajes del
+// coach y de los logros solo a quien la eligió.
 {
   const cicloA = deA.p_ciclo;
   const hoy = `(select inicio + 1 from public.ciclos where id = '${cicloA}')`;
@@ -856,12 +857,18 @@ paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan 
     select privado.avisar_app('${ROLES.A.ficha}', true, 'reconocimiento', 'Nuevo reconocimiento: Primer paso', '/mi-espacio/') \\g /dev/null
     select privado.avisar_app('${ROLES.A.ficha}', true, 'revision_publicada', 'Tu coach publicó la revisión de la semana 1', '/mi-espacio/acompanamiento/') \\g /dev/null
     ${tipos}; rollback;`);
+  // Decisión de Diego (31-oct-2026): los logros llegan siempre a Mis avisos, sin depender de los recordatorios.
   const conLogros = logro("");
   exigir(conLogros.ok && conLogros.salida === "reconocimiento,revision_publicada", `faltan avisos con logros elegidos: ${conLogros.error ?? conLogros.salida}`);
   const sinLogros = logro(", logros = false");
-  exigir(sinLogros.ok && sinLogros.salida === "revision_publicada", `llegó un logro a quien no lo eligió, o faltó el mensaje del coach: ${sinLogros.error ?? sinLogros.salida}`);
+  exigir(sinLogros.ok && sinLogros.salida === "reconocimiento,revision_publicada", `no llegó el logro a quien apagó su copia por correo: ${sinLogros.error ?? sinLogros.salida}`);
   const apagado = logro(", activos = false");
-  exigir(apagado.ok && apagado.salida === "revision_publicada", `con todo apagado no llegó el mensaje del coach o llegó un logro: ${apagado.error ?? apagado.salida}`);
+  exigir(apagado.ok && apagado.salida === "reconocimiento,revision_publicada", `con los recordatorios apagados no llegó el logro o el mensaje del coach: ${apagado.error ?? apagado.salida}`);
+  const sinFila = psql(`begin; delete from public.recordatorios where participante_id = '${ROLES.A.ficha}';
+    delete from public.avisos where participante_id = '${ROLES.A.ficha}';
+    select privado.avisar_app('${ROLES.A.ficha}', true, 'reconocimiento', 'Nuevo reconocimiento: Primer paso', '/mi-espacio/') \\g /dev/null
+    ${tipos}; rollback;`);
+  exigir(sinFila.ok && sinFila.salida === "reconocimiento", `quien nunca configuró recordatorios no recibió su logro: ${sinFila.error ?? sinFila.salida}`);
   const cola = "(select count(*) from net.http_request_queue where url = 'https://api.brevo.com/v3/smtp/email')";
   const claves = "select vault.create_secret('clave-de-prueba', 'brevo_api_key') \\g /dev/null\n select vault.create_secret('rumbo-ci@example.com', 'correo_remitente') \\g /dev/null\n";
   const antes = Number(sql(`select ${cola}`));
@@ -872,6 +879,15 @@ paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan 
   exigir(conCopia.ok && conCopia.salida === String(antes + 1), `no salió la copia por correo del mensaje del coach: ${conCopia.error ?? conCopia.salida}`);
   const sinCopia = copia(", por_correo = true, mensajes_coach = false");
   exigir(sinCopia.ok && sinCopia.salida === String(antes), `salió una copia por correo que A no eligió: ${sinCopia.error ?? sinCopia.salida}`);
+  const copiaLogro = (extra) => psql(`begin; ${prefs(extra)} ${claves}
+    select privado.avisar_app('${ROLES.A.ficha}', true, 'reconocimiento', 'Nuevo reconocimiento: Primer paso', '/mi-espacio/') \\g /dev/null
+    select ${cola}; rollback;`);
+  const logroConCopia = copiaLogro(", por_correo = true");
+  exigir(logroConCopia.ok && logroConCopia.salida === String(antes + 1), `no salió la copia por correo del logro: ${logroConCopia.error ?? logroConCopia.salida}`);
+  const logroSinCopia = copiaLogro(", por_correo = true, logros = false");
+  exigir(logroSinCopia.ok && logroSinCopia.salida === String(antes), `salió una copia por correo de un logro que A no eligió: ${logroSinCopia.error ?? logroSinCopia.salida}`);
+  const logroSinCorreo = copiaLogro("");
+  exigir(logroSinCorreo.ok && logroSinCorreo.salida === String(antes), `salió un correo de logro sin elegir el correo: ${logroSinCorreo.error ?? logroSinCorreo.salida}`);
   const disp = como(ROLES.A, "select public.correo_disponible()::int");
   exigir(disp.ok && ultima(disp) === "0", `correo_disponible no dice la verdad sin claves: ${disp.error ?? ultima(disp)}`);
   const dispAnon = como(ROLES.anon, "select public.correo_disponible()");
@@ -884,7 +900,7 @@ paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan 
     select activos::int || ' ' || array_to_string(dias, ',') || ' ' || desde || '-' || hasta || ' ' || hora || ' ' || comunidad::int from public.recordatorios`);
   exigir(todo.ok && ultima(todo) === "1 1,3,5 8-21 19 1", `A no pudo guardar días, horario y categorías: ${todo.error ?? ultima(todo)}`);
 }
-paso("recordatorios completos: interruptor general, días, horario, videollamada 24 h antes una vez, logros y comunidad solo si se eligen, copia por correo del coach");
+paso("recordatorios completos: interruptor general, días, horario, videollamada 24 h antes una vez, logros siempre en Mis avisos, comunidad solo si se elige, copia por correo solo si se elige");
 
 // C3 · Evolución: resume lo que hay en la base; la ve la persona, su coach y el dueño.
 {
@@ -913,6 +929,36 @@ paso("recordatorios completos: interruptor general, días, horario, videollamada
   exigir(informe.ok && informe.salida === `${enBase} ${focos}`, `el informe del ciclo de A no cuadra: ${informe.error ?? informe.salida} (base: ${enBase} ${focos})`);
 }
 paso("evolución: semanas e informe de ciclo cuadran con la base; solo los ven la persona, su coach y el dueño");
+
+// R1 · Mensaje de cierre: lo escribe el coach (o el dueño) al final del ciclo y la persona lo ve en su informe.
+{
+  const cicloA = deA.p_ciclo;
+  const cerrar = `reset role; set session_replication_role = replica;
+    update public.ciclos set estado = 'cerrado' where id = '${cicloA}';
+    set session_replication_role = origin; set local role authenticated;\n`;
+  const abierto = sql(`select (estado <> 'cerrado' and privado.hoy_chile() < fin - 6)::int from public.ciclos where id = '${cicloA}'`);
+  if (abierto === "1") {
+    const antes = como(ROLES.X, `select public.guardar_mensaje_cierre('${cicloA}', 'Un mensaje antes de tiempo.')`);
+    exigir(!antes.ok && /no_termina/.test(antes.error), `se escribió el mensaje de cierre a mitad de ciclo: ${antes.error ?? "funcionó"}`);
+  }
+  const corto = como(ROLES.X, `${cerrar} select public.guardar_mensaje_cierre('${cicloA}', 'Bien')`);
+  exigir(!corto.ok && /mensaje:corto|mensaje.*corto/.test(corto.error), `se aceptó un mensaje de cierre de 4 letras: ${corto.error ?? "funcionó"}`);
+  const texto = "Cerraste tu ciclo con constancia. Sigamos conversando lo que viene.";
+  const nombreX = sql(`select nombre from public.equipo where user_id = '${ROLES.X.uid}'`);
+  const escribe = como(ROLES.X, `${cerrar} select public.guardar_mensaje_cierre('${cicloA}', '${texto}') \\g /dev/null
+    select set_config('request.jwt.claims', '${JSON.stringify({ sub: ROLES.A.uid, role: "authenticated", aal: "aal1" })}', true) \\g /dev/null
+    select (i->'mensaje_cierre'->>'texto') || '|' || (i->'mensaje_cierre'->>'autor') from (select public.informe_ciclo('${cicloA}') i) x`);
+  exigir(escribe.ok && ultima(escribe) === `${texto}|${nombreX}`, `la persona no ve el mensaje de cierre de su coach: ${escribe.error ?? ultima(escribe)}`);
+  const quita = como(ROLES.aal2, `${cerrar} select public.guardar_mensaje_cierre('${cicloA}', '${texto}') \\g /dev/null
+    select public.guardar_mensaje_cierre('${cicloA}', '') \\g /dev/null
+    select coalesce(public.informe_ciclo('${cicloA}')->>'mensaje_cierre', 'sin mensaje')`);
+  exigir(quita.ok && ultima(quita) === "sin mensaje", `el dueño no pudo quitar el mensaje de cierre: ${quita.error ?? ultima(quita)}`);
+  const ajeno = como(ROLES.Y, `${cerrar} select public.guardar_mensaje_cierre('${cicloA}', '${texto}')`);
+  exigir(!ajeno.ok && /no_autorizado/.test(ajeno.error), `otro coach escribió el mensaje de cierre de A: ${ajeno.error ?? "funcionó"}`);
+  const sinMensaje = como(ROLES.A, `select coalesce(public.informe_ciclo('${cicloA}')->>'mensaje_cierre', 'sin mensaje')`);
+  exigir(sinMensaje.ok && ultima(sinMensaje) === "sin mensaje", `el informe trae un mensaje que nadie escribió: ${sinMensaje.error ?? ultima(sinMensaje)}`);
+}
+paso("mensaje de cierre: solo el coach de la persona o el dueño, al final del ciclo; la persona lo ve con el nombre real de quien lo escribió");
 
 // C4 · Acciones medibles y plantillas.
 {
@@ -961,6 +1007,54 @@ paso("evolución: semanas e informe de ciclo cuadran con la base; solo los ven l
   }
 }
 paso("medibles y plantillas: la cantidad se anota en lo propio ya marcado y no cambia créditos; las plantillas son del equipo");
+
+// R1 · Nota «¿Cómo te sentiste hoy?»: solo en lo propio ya marcado; no cambia créditos; la ve su coach.
+{
+  const oc = sql(`select o.id from public.ocurrencias o join public.registros r on r.ocurrencia_id = o.id and r.estado in ('hecha','aprobada')
+    where o.participante_id = '${ROLES.A.ficha}' limit 1`);
+  const ocSin = sql(`select o.id from public.ocurrencias o where o.participante_id = '${ROLES.A.ficha}'
+    and not exists (select 1 from public.registros r where r.ocurrencia_id = o.id) limit 1`);
+  const creditos = `select creditos from public.progreso where participante_id = '${ROLES.A.ficha}'`;
+  const anota = como(ROLES.A, `${creditos}; select public.anotar_nota('${oc}', '  Me sentí con energía.  ') \\g /dev/null
+    ${creditos}; select nota from public.registros where ocurrencia_id = '${oc}'`);
+  const [c0, c1, nota] = (anota.salida ?? "").split("\n");
+  exigir(anota.ok && nota === "Me sentí con energía.", `A no pudo anotar su nota: ${anota.error ?? nota}`);
+  exigir(c0 === c1, `anotar la nota cambió los créditos: ${c0} → ${c1}`);
+  const larga = como(ROLES.A, `select public.anotar_nota('${oc}', '${"x".repeat(201)}')`);
+  exigir(!larga.ok && /nota/.test(larga.error), "se aceptó una nota de 201 caracteres");
+  const sinMarcar = como(ROLES.A, `select public.anotar_nota('${ocSin}', 'Hola')`);
+  exigir(!sinMarcar.ok && /sin_marcar/.test(sinMarcar.error), "se anotó una nota en una acción sin marcar");
+  const ajena = como(ROLES.B, `select public.anotar_nota('${oc}', 'Ajena')`);
+  exigir(!ajena.ok && /no_encontrada/.test(ajena.error), "B anotó una nota en una acción de A");
+  const coach = como(ROLES.X, `reset role; update public.registros set nota = 'Para el coach' where ocurrencia_id = '${oc}';
+    set local role authenticated; select coalesce((select nota from public.registros where ocurrencia_id = '${oc}'), 'no la ve')`);
+  exigir(coach.ok && ultima(coach) === "Para el coach", `el coach de A no ve su nota: ${coach.error ?? ultima(coach)}`);
+  const otro = como(ROLES.Y, `select count(*) from public.registros where ocurrencia_id = '${oc}'`);
+  exigir(otro.ok && ultima(otro) === "0", "otro coach ve la nota de A");
+  const borra = como(ROLES.A, `select public.anotar_nota('${oc}', 'Algo') \\g /dev/null
+    select public.anotar_nota('${oc}', '') \\g /dev/null
+    select coalesce(nota, 'sin nota') from public.registros where ocurrencia_id = '${oc}'`);
+  exigir(borra.ok && ultima(borra) === "sin nota", `A no pudo borrar su nota: ${borra.error ?? ultima(borra)}`);
+}
+paso("nota de la acción: solo lo propio ya marcado, hasta 200 caracteres, sin tocar créditos; la ve su coach y nadie más");
+
+// R1 · Una nueva versión del programa conserva lo medible de cada acción (nuevo_borrador).
+{
+  const prog = sql(`select p.id || ' ' || p.ciclo_id from public.programas p join public.ciclos c on c.id = p.ciclo_id
+    where p.participante_id = '${ROLES.A.ficha}' and p.estado = 'publicado' and c.estado <> 'cerrado' limit 1`);
+  const [pub, ciclo] = prog.split(" ");
+  exigir(Boolean(pub), "A no tiene un programa publicado para probar la nueva versión");
+  const copia = como(ROLES.X, `reset role; set session_replication_role = replica;
+    delete from public.programas where ciclo_id = '${ciclo}' and estado = 'borrador';
+    update public.acciones set cantidad_objetivo = 8, unidad = 'vasos' where programa_id = '${pub}';
+    set session_replication_role = origin; set local role authenticated;
+    select public.nuevo_borrador('${ciclo}') \\g /dev/null
+    reset role; select count(*) filter (where cantidad_objetivo = 8 and unidad = 'vasos') || '/' || count(*)
+      from public.acciones a join public.programas p on p.id = a.programa_id where p.ciclo_id = '${ciclo}' and p.estado = 'borrador'`);
+  const [medibles, total] = (copia.ok ? ultima(copia) : "0/0").split("/").map(Number);
+  exigir(copia.ok && total > 0 && medibles === total, `la nueva versión perdió lo medible: ${copia.error ?? `${medibles} de ${total}`}`);
+}
+paso("nueva versión del programa: las acciones conservan su cantidad objetivo y su unidad");
 
 // C5 · Alias y ranking semanal voluntario.
 {

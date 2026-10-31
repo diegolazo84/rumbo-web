@@ -28,6 +28,8 @@ type FilaAccion = {
   semana_desde: number;
   semanas: number;
   requiere_foto: boolean;
+  cantidad_objetivo?: number | null;
+  unidad?: string | null;
   orden: number;
 };
 
@@ -44,6 +46,7 @@ const aAccionB = (a: FilaAccion): AccionB => ({
   instrucciones: a.instrucciones,
   versionCorta: a.version_corta ?? "",
   conFoto: a.requiere_foto,
+  medible: a.cantidad_objetivo && a.unidad ? { objetivo: a.cantidad_objetivo, unidad: a.unidad } : null,
 });
 
 export function ConstructorReal() {
@@ -76,7 +79,7 @@ function ContenidoConstructor({ p, c }: { p: FilaParticipantePanel; c: FilaCiclo
       const [metas, acciones] = ids.length
         ? await Promise.all([
             sb.from("metas").select("id,programa_id,titulo,para_que,categoria,hitos,orden").in("programa_id", ids).order("orden"),
-            sb.from("acciones").select("id,programa_id,meta_id,titulo,instrucciones,version_corta,hora,duracion_min,dias,semana_desde,semanas,requiere_foto,orden").in("programa_id", ids).order("orden"),
+            sb.from("acciones").select("id,programa_id,meta_id,titulo,instrucciones,version_corta,hora,duracion_min,dias,semana_desde,semanas,requiere_foto,cantidad_objetivo,unidad,orden").in("programa_id", ids).order("orden"),
           ])
         : [{ data: [], error: null }, { data: [], error: null }];
       const m = datos(metas) as FilaMeta[];
@@ -152,6 +155,8 @@ function ContenidoConstructor({ p, c }: { p: FilaParticipantePanel; c: FilaCiclo
                 semana_desde: a.desde,
                 semanas: a.durante,
                 requiere_foto: a.conFoto,
+                cantidad_objetivo: a.medible ? a.medible.objetivo : null,
+                unidad: a.medible ? a.medible.unidad.trim() : null,
                 orden: i,
               })),
             ),
