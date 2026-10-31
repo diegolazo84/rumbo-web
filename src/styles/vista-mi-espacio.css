@@ -1889,7 +1889,7 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
   .as-portada .rc-portada__bajada { margin: 0; font-size: var(--t-s); line-height: 1.4; }
   .as-revisa { gap: var(--e-2); padding: var(--e-1) var(--e-3); font-size: var(--t-xs); line-height: 1.35; }
   .as-revisa .as-revisa__icono { inline-size: 32px; block-size: 32px; }
-  .as-revisa .enlace-flecha { min-block-size: 0; padding-block: 4px; vertical-align: middle; }
+  .as-revisa .enlace-flecha { min-block-size: 44px; margin-block: -8px; vertical-align: middle; }
   .as-chat { padding-block: var(--e-3) var(--e-4); gap: var(--e-3); }
   .as-revisa .as-revisa__icono .icono { inline-size: 18px; block-size: 18px; }
   .as-lateral { gap: var(--e-3); }
