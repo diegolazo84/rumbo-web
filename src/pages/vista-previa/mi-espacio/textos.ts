@@ -1168,6 +1168,7 @@ export const T_RECORDATORIOS = {
 export const T_ASISTENTE = {
   titulo: "Asistente de Rumbo",
   beta: "Beta",
+  supervision: "Con la supervisión de tu coach",
   bajada: "Un espacio para hacer tus preguntas, reflexionar y recibir orientación, siempre con la supervisión de tu coach.",
   claves: [
     { icono: "user-round", texto: "Tu coach revisa y aprueba cada respuesta." },
@@ -1186,13 +1187,13 @@ export const T_ASISTENTE = {
   },
   estados: {
     en_revision: {
-      etiqueta: "En revisión",
-      texto: "Tu pregunta fue enviada. Tu coach revisará la respuesta antes de compartirla contigo.",
+      etiqueta: "Tu pregunta fue enviada",
+      texto: "Tu coach la revisará antes de compartirla contigo.",
     },
     aprobada: { etiqueta: "Revisada por tu coach" },
     descartada: {
-      etiqueta: "No compartida",
-      texto: "Tu coach decidió no compartir esta respuesta. Puedes hacer otra pregunta o conversarlo en tu próxima revisión.",
+      etiqueta: "Tu coach revisó esta respuesta",
+      texto: "Por ahora no podemos compartir esta respuesta. Puedes reformular tu pregunta o pedir orientación sobre otro tema.",
     },
     crisis: {
       etiqueta: "Busca apoyo ahora",
@@ -1207,9 +1208,15 @@ export const T_ASISTENTE = {
       texto: "No pudimos obtener una respuesta y tu pregunta no llegó a tu coach. Puedes intentarlo de nuevo.",
     },
   },
+  lista: { titulo: "Tu coach ya revisó la respuesta", texto: "Aquí tienes su orientación." },
+  nuevaPregunta: "Escribir una nueva pregunta",
   seguir: {
+    titulo: "Seguir con esta respuesta",
     masIdeas: "Más ideas",
+    crearPlan: "Crear plan",
     profundizar: "Profundizar",
+    preguntaCrearPlan: (p: string) =>
+      `Sobre «${p}»: ¿me propones un plan simple para esta semana con acciones realistas? Lo conversaré con mi coach antes de cambiar mi plan.`,
     preguntaMasIdeas: (p: string) => `Sobre «${p}»: ¿me das otras ideas distintas?`,
     preguntaProfundizar: (p: string) => `Sobre «${p}»: ¿me ayudas a profundizar en la primera idea?`,
   },
@@ -1296,6 +1303,52 @@ export const T_ASISTENTE = {
     titulo: "Retiraste tu autorización",
     texto: (f: string) => `El ${f} retiraste tu autorización. No se envía nada nuevo al asistente. Tus preguntas anteriores siguen aquí.`,
     volver: "Volver a autorizar",
+  },
+  // Bienvenida (primera visita)
+  bienvenida: {
+    titulo: "Te damos la bienvenida al Asistente de Rumbo",
+    texto: "Un espacio para hacer tus preguntas, reflexionar y recibir orientación, siempre con la supervisión de tu coach.",
+    puntos: ["Respuestas revisadas por tu coach", "Solo usa lo que tú autorizas compartir", "Te apoya a avanzar en tu proceso"],
+    comenzar: "Comenzar",
+  },
+  privacidad: {
+    titulo: "Tu privacidad es importante",
+    intro: "Para usar el asistente necesitamos tu autorización. Puedes cambiarla o retirarla cuando quieras.",
+    resumen:
+      "Tu pregunta y lo que marques se envían a OpenAI para preparar una respuesta. Nunca se envían tu nombre, tu correo ni tus datos de contacto. Tu coach lee la respuesta antes que tú.",
+    saberMas: "Saber más sobre tu privacidad",
+    aceptar: "Aceptar y continuar",
+  },
+  // Mis conversaciones
+  historial: {
+    titulo: "Mis conversaciones",
+    abrir: "Mis conversaciones",
+    volver: "Volver a la conversación",
+    vacio: "Todavía no tienes conversaciones.",
+    grupos: { hoy: "Hoy", semana: "Esta semana", pasada: "La semana pasada", antes: "Anteriores" },
+    estados: {
+      aprobada: "Respuesta disponible",
+      en_revision: "En revisión",
+      descartada: "No compartida",
+      crisis: "Busca apoyo ahora",
+      sin_presupuesto: "No enviada",
+      error: "Sin respuesta",
+    },
+  },
+  // Configuración
+  configuracion: {
+    titulo: "Configuración del asistente",
+    abrir: "Configuración",
+    activado: "Activado",
+    desactivado: "Desactivado",
+    interruptor: "Asistente de Rumbo",
+    verConversaciones: "Ver mis conversaciones",
+  },
+  desactivado: {
+    titulo: "El asistente está desactivado",
+    texto: "Puedes activarlo cuando quieras para seguir recibiendo orientación con la supervisión de tu coach.",
+    activar: "Activar asistente",
+    saberMas: "Saber más",
   },
   // Estados de la pantalla
   apagado: {

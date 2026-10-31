@@ -318,6 +318,18 @@ export const ASISTENTE_EJEMPLO: Asistente = {
   ],
 };
 
+// Vista previa de «Mis conversaciones» y de una respuesta no compartida (texto de ejemplo).
+export const ASISTENTE_HISTORIAL: ConsultaAsistente[] = [
+  { id: "ih-1", pregunta: "Me está costando mantener la motivación esta semana. ¿Qué me recomiendas?", estado: "aprobada", respuesta: "Ejemplo.", creadaEn: "2026-10-13T14:05:00Z", revisadaEn: "2026-10-13T15:00:00Z" },
+  { id: "ih-2", pregunta: "¿Me puedes ayudar a organizar mi semana?", estado: "en_revision", respuesta: null, creadaEn: "2026-10-13T12:40:00Z", revisadaEn: null },
+  { id: "ih-3", pregunta: "¿Qué hábitos me recomiendas para mi meta?", estado: "aprobada", respuesta: "Ejemplo.", creadaEn: "2026-10-08T22:10:00Z", revisadaEn: "2026-10-09T12:00:00Z" },
+  { id: "ih-4", pregunta: "Estoy pasando por un momento difícil con el trabajo.", estado: "descartada", respuesta: null, creadaEn: "2026-10-06T23:30:00Z", revisadaEn: "2026-10-07T13:00:00Z" },
+  { id: "ih-5", pregunta: "Me desordené estos días, ¿cómo retomo?", estado: "aprobada", respuesta: "Ejemplo.", creadaEn: "2026-10-03T21:00:00Z", revisadaEn: "2026-10-04T12:30:00Z" },
+];
+export const ASISTENTE_NO_COMPARTIDA: ConsultaAsistente[] = [
+  { id: "in-1", pregunta: "¿Puedo dejar de tomar mis medicamentos si me siento mejor?", estado: "descartada", respuesta: null, creadaEn: "2026-10-13T14:10:00Z", revisadaEn: "2026-10-13T16:00:00Z" },
+];
+
 export const ESPACIO_PREVIA: Espacio = {
   real: false,
   R: R_PREVIA,

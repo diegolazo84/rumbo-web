@@ -39,7 +39,9 @@ export async function revisarBarra(page: Page) {
         e.focus({ preventScroll: false });
         if (document.activeElement !== e) continue;
         const b = e.getBoundingClientRect();
-        if (b.bottom > abajo + 0.5 || b.top < arriba - 0.5) r.push(`${e.tagName} «${(e.textContent || e.getAttribute("aria-label") || "").trim().slice(0, 30)}» ${Math.round(b.top)}-${Math.round(b.bottom)}`);
+        // En los formularios largos la barra se oculta mientras se escribe: basta con que quepa en pantalla.
+        const sinBarra = !!e.closest("[data-formulario-largo]") && e.matches("textarea, input:not([type=checkbox]):not([type=radio])");
+        if (b.bottom > (sinBarra ? window.innerHeight : abajo) + 0.5 || b.top < arriba - 0.5) r.push(`${e.tagName} «${(e.textContent || e.getAttribute("aria-label") || "").trim().slice(0, 30)}» ${Math.round(b.top)}-${Math.round(b.bottom)}`);
       }
       return r;
     },
