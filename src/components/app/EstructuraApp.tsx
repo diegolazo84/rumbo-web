@@ -167,7 +167,8 @@ export default function EstructuraApp({
         <BarraInferior
           etiqueta={etiqueta}
           destinos={destinos}
-          activo={activo}
+          // El asistente vive dentro de «Apoyo»: la barra inferior no cambia.
+          activo={miEspacio && activo === "asistente" ? "acompanamiento" : activo}
           novedades={novedades}
           onMas={() => setMas(true)}
           masAbierta={mas}

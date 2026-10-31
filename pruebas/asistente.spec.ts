@@ -1,6 +1,6 @@
-// Asistente de Rumbo (maqueta de ChatGPT, 30-oct-2026) en la vista previa: conversación con la
-// respuesta revisada por el coach y la pregunta en revisión, ejemplos, «Más ideas», lo que se
-// comparte, información y ayuda en crisis. Lo real (RPC de la base E2) está en
+// Asistente de Rumbo (maqueta definitiva de ChatGPT, 31-oct-2026) en la vista previa: conversación
+// con la respuesta revisada por el coach y la pregunta enviada, ejemplos, «Más ideas», «Crear plan»,
+// lo que se comparte, información, ayuda en crisis y los 8 estados de la maqueta. Lo real (RPC de la base E2) está en
 // mi-espacio-real.spec.ts; las reglas de la base, en pruebas/base/matriz.mjs.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
@@ -64,7 +64,7 @@ test("lo que compartes: cambiar abre el formulario; retirar pide confirmación",
   await abrir(page);
   await expect(page.getByText(T.ajustes.con("mis metas, mis acciones de esta semana"))).toBeVisible();
   await page.getByRole("button", { name: T.ajustes.cambiar }).click();
-  await expect(page.getByRole("heading", { name: T.ajustes.titulo, level: 2 })).toBeFocused();
+  await expect(page.getByRole("heading", { name: T.ajustes.cambiar, level: 2 })).toBeFocused();
   await expect(page.getByRole("checkbox", { name: new RegExp(T.consentimiento.opciones.metas.titulo) })).toBeChecked();
   await expect(page.getByRole("checkbox", { name: new RegExp(T.consentimiento.opciones.registroSemanal.titulo) })).not.toBeChecked();
   await page.getByRole("button", { name: T.ajustes.confirmarNo }).click();
@@ -105,12 +105,14 @@ test("accesible y sin desborde; en móvil la barra no tapa nada", async ({ page,
 test("autorización: explica qué hace, qué se envía, la revisión del coach y cómo retirarla; sin ella no se pregunta", async ({ page }) => {
   await page.goto("vista-previa/mi-espacio/asistente/autorizar/");
   await page.waitForFunction(() => document.documentElement.classList.contains("hidratado"));
-  await expect(page.getByRole("heading", { name: T.consentimiento.titulo })).toBeVisible();
+  await expect(page.getByRole("heading", { name: T.privacidad.titulo })).toBeVisible();
+  await expect(page.getByText(T.privacidad.resumen)).toBeVisible();
+  await page.getByText(T.privacidad.saberMas).click();
   for (const p of T.consentimiento.puntos) await expect(page.getByText(p)).toBeVisible();
   for (const o of ["metas", "acciones", "registroSemanal"] as const)
     await expect(page.getByRole("checkbox", { name: new RegExp(T.consentimiento.opciones[o].titulo) })).not.toBeChecked();
   await expect(page.getByLabel(T.escribir)).toHaveCount(0);
-  await page.getByRole("button", { name: T.consentimiento.aceptar }).click();
+  await page.getByRole("button", { name: T.privacidad.aceptar }).click();
   await expect(page.getByLabel(T.escribir)).toBeVisible();
 });
 
@@ -121,4 +123,130 @@ test("apagado: lo dice, lleva a Mi acompañamiento y la ayuda en crisis sigue a 
   await expect(page.getByRole("link", { name: T.apagado.ir })).toBeVisible();
   await expect(page.getByLabel(T.escribir)).toHaveCount(0);
   await expect(page.locator(".as-crisis")).toContainText("*4141");
+});
+
+// ---------------------------------------------------------------------------
+// Estados de la maqueta definitiva (31-oct)
+
+async function estado(page: Page, e: string) {
+  await page.goto(`${RUTA}${e}/`);
+  await page.waitForFunction(() => document.documentElement.classList.contains("hidratado"));
+}
+
+test("1. primera visita: bienvenida con la supervisión del coach; «Comenzar» lleva a la autorización", async ({ page }) => {
+  await estado(page, "bienvenida");
+  await expect(page.getByRole("heading", { name: T.bienvenida.titulo })).toBeVisible();
+  for (const p of T.bienvenida.puntos) await expect(page.getByText(p, { exact: true })).toBeVisible();
+  await expect(page.getByLabel(T.escribir)).toHaveCount(0);
+  await page.getByRole("button", { name: T.bienvenida.comenzar }).click();
+  await expect(page.getByRole("heading", { name: T.privacidad.titulo })).toBeFocused();
+});
+
+test("3. pregunta enviada: se dice que está enviada y que la revisa el coach", async ({ page }) => {
+  await estado(page, "enviada");
+  const enviada = page.locator(".as-enviada");
+  await expect(enviada).toContainText(T.estados.en_revision.etiqueta);
+  await expect(enviada).toContainText(T.estados.en_revision.texto);
+  await expect(page.locator(".as-burbuja--ia")).toHaveCount(0);
+});
+
+test("4. respuesta aprobada: aviso de revisión, «Revisada por tu coach» y las acciones; «Crear plan» solo prepara una pregunta", async ({ page }) => {
+  await estado(page, "aprobada");
+  await expect(page.locator(".as-lista")).toContainText(T.lista.titulo);
+  await expect(page.locator(".as-burbuja--ia ol li")).toHaveCount(3);
+  await expect(page.locator(".as-revisada")).toHaveText(T.estados.aprobada.etiqueta);
+  const acciones = page.getByRole("group", { name: T.seguir.titulo });
+  await expect(acciones.getByRole("button")).toHaveText([T.seguir.masIdeas, T.seguir.crearPlan, T.seguir.profundizar]);
+  await acciones.getByRole("button", { name: T.seguir.crearPlan }).click();
+  await expect(page.getByLabel(T.escribir)).toHaveValue(/plan simple para esta semana.*antes de cambiar mi plan\.$/);
+  await expect(page.getByLabel(T.escribir)).toBeFocused();
+  // Sin «Me sirvió» ni «No me sirvió» hasta que exista dónde guardarlo.
+  await expect(page.getByRole("button", { name: /Me sirvió|No me sirvió/ })).toHaveCount(0);
+});
+
+test("5. no compartida: se explica sin mostrar el borrador; «Escribir una nueva pregunta» lleva al campo", async ({ page }) => {
+  await estado(page, "no-compartida");
+  const nc = page.locator(".as-no-compartida");
+  await expect(nc).toContainText(T.estados.descartada.etiqueta);
+  await expect(nc).toContainText(T.estados.descartada.texto);
+  await expect(page.locator(".as-burbuja--ia")).toHaveCount(0);
+  await expect(page.locator(".as-revisada")).toHaveCount(0);
+  await nc.getByRole("button", { name: T.nuevaPregunta }).click();
+  await expect(page.getByLabel(T.escribir)).toBeFocused();
+});
+
+test("6. mis conversaciones: por fecha, con su estado; elegir una vuelve a la conversación", async ({ page }) => {
+  await estado(page, "conversaciones");
+  await expect(page.getByRole("heading", { name: T.historial.titulo })).toBeFocused();
+  await expect(page.locator(".as-historial__dia")).toHaveText([T.historial.grupos.hoy, T.historial.grupos.pasada, T.historial.grupos.antes]);
+  await expect(page.locator(".as-historial__fila").first()).toContainText(T.historial.estados.aprobada);
+  await expect(page.locator(".as-historial__fila--en_revision")).toContainText(T.historial.estados.en_revision);
+  await expect(page.locator(".as-historial__fila--descartada")).toContainText(T.historial.estados.descartada);
+  await page.locator(".as-historial__fila").first().click();
+  await expect(page.locator(".as-chat .as-par")).not.toHaveCount(0);
+  await expect(page.locator("#as-c-ih-1")).toBeFocused();
+});
+
+test("6b. desde la conversación se abren Mis conversaciones y la configuración", async ({ page }) => {
+  await abrir(page);
+  await page.getByRole("button", { name: T.historial.abrir }).click();
+  await expect(page).toHaveURL(/\?ver=conversaciones$/);
+  await expect(page.getByRole("heading", { name: T.historial.titulo })).toBeVisible();
+  await page.goBack();
+  await page.getByRole("button", { name: T.configuracion.abrir, exact: true }).click();
+  await expect(page.getByRole("heading", { name: T.configuracion.titulo })).toBeVisible();
+});
+
+test("7. configuración: el interruptor refleja la autorización y apagarlo pide confirmar el retiro", async ({ page }) => {
+  await estado(page, "configuracion");
+  const sw = page.getByRole("switch", { name: T.configuracion.interruptor });
+  await expect(sw).toHaveAttribute("aria-checked", "true");
+  await sw.click();
+  await expect(page.getByText(T.ajustes.confirmar)).toBeVisible();
+  await expect(sw).toHaveAttribute("aria-checked", "false");
+  await page.getByRole("button", { name: T.ajustes.confirmarNo }).click();
+  await expect(sw).toHaveAttribute("aria-checked", "true");
+  await page.getByRole("button", { name: T.ajustes.cambiar }).first().click();
+  await expect(page.getByRole("heading", { name: T.ajustes.cambiar, level: 2 })).toBeFocused();
+});
+
+test("8. desactivado por la persona: puede activarlo (vuelve a autorizar); apagado por el equipo: no", async ({ page }) => {
+  await estado(page, "desactivado");
+  await expect(page.getByRole("heading", { name: T.desactivado.titulo })).toBeVisible();
+  await expect(page.getByLabel(T.escribir)).toHaveCount(0);
+  await page.getByRole("button", { name: T.desactivado.activar }).click();
+  await expect(page.getByRole("heading", { name: T.privacidad.titulo })).toBeFocused();
+  for (const o of ["metas", "acciones", "registroSemanal"] as const)
+    await expect(page.getByRole("checkbox", { name: new RegExp(T.consentimiento.opciones[o].titulo) })).not.toBeChecked();
+  await estado(page, "apagado");
+  await expect(page.getByRole("button", { name: T.desactivado.activar })).toHaveCount(0);
+});
+
+test("móvil: «Apoyo» queda marcado, la barra no tapa nada en ningún estado y se oculta al escribir", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "solo móvil");
+  for (const e of ["", "bienvenida", "autorizar", "aprobada", "no-compartida", "conversaciones", "configuracion", "desactivado"]) {
+    if (e) await estado(page, e);
+    else await abrir(page);
+    await expect(page.locator("nav.barra-inferior .nav-app__item")).toHaveCount(5);
+    await expect(page.locator('nav.barra-inferior [aria-current="page"]')).toContainText("Apoyo");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+    if (test.info().project.name !== "iphone") await revisarBarra(page);
+  }
+  await abrir(page);
+  await page.getByLabel(T.escribir).focus();
+  await expect(page.locator("nav.barra-inferior")).toBeHidden();
+});
+
+test("los 8 estados pasan axe y no desbordan a 320, 768 y 1600 px", async ({ page }) => {
+  for (const ancho of [320, 768, 1600]) {
+    await page.setViewportSize({ width: ancho, height: 900 });
+    for (const e of ["bienvenida", "autorizar", "enviada", "aprobada", "no-compartida", "conversaciones", "configuracion", "desactivado"]) {
+      await estado(page, e);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), `${e} a ${ancho}`).toBeLessThanOrEqual(0);
+      if (ancho === 320) {
+        const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
+        expect(r.violations.map((v) => `${e}: ${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+      }
+    }
+  }
 });
