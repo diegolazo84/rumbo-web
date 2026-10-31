@@ -23,6 +23,8 @@ import EstadoPrograma from "../../vista-previa/mi-espacio/EstadoPrograma";
 import Hoy from "../../vista-previa/mi-espacio/Hoy";
 import Preferencias from "../../vista-previa/mi-espacio/Preferencias";
 import ProgresoPantalla from "../../vista-previa/mi-espacio/Progreso";
+import MisAvisos from "../../vista-previa/mi-espacio/MisAvisos";
+import { categoriaDe, type Aviso } from "../../vista-previa/mi-espacio/avisos/datos";
 import Acompanamiento from "../../vista-previa/mi-espacio/Acompanamiento";
 import Comunidad from "../../vista-previa/mi-espacio/Comunidad";
 import CrearPublicacion from "../../vista-previa/mi-espacio/CrearPublicacion";
@@ -53,7 +55,16 @@ const COLUMNAS = {
   ajuste: "id,creada_en,tipo,ocurrencias,desde,texto,estado,respuesta,cuenta_como_reorden,respondida_en",
 } as const;
 
-type Leido = { filas: Filas; ctx: Contexto; ausencia: Ausencia | null; coach: CoachEspacio | null; videollamadas: VideollamadaEspacio[]; fotos: boolean };
+type Leido = {
+  filas: Filas;
+  ctx: Contexto;
+  ausencia: Ausencia | null;
+  coach: CoachEspacio | null;
+  videollamadas: VideollamadaEspacio[];
+  fotos: boolean;
+  avisos: Aviso[] | null;
+  comunidad: boolean;
+};
 
 async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> {
   const participante = datos(
@@ -64,7 +75,7 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
     await sb.from("ciclos").select(COLUMNAS.ciclo).eq("participante_id", participante.id).order("numero", { ascending: false }).limit(1).maybeSingle(),
   ) as Filas["ciclo"] | null;
   if (!ciclo) return "sin-ficha";
-  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas, moduloFotos, medibles, notas] =
+  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas, moduloFotos, avisos, moduloComunidad, medibles, notas] =
     await Promise.all([
       sb.from("programas").select(COLUMNAS.programa).eq("ciclo_id", ciclo.id).neq("estado", "borrador").order("version"),
       sb.from("ocurrencias").select(COLUMNAS.ocurrencia).eq("ciclo_id", ciclo.id).order("fecha").limit(5000),
@@ -82,6 +93,9 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
       sb.from("videollamadas").select("semana,programada_para,enlace,estado").eq("ciclo_id", ciclo.id).order("semana"),
       // Módulo «fotos» (A4): mientras el dueño no lo habilite, la subida no se muestra.
       sb.rpc("modulo_visible", { p_clave: "fotos" }),
+      // Mis avisos (A5): los propios, por RLS. Si no se pueden leer, la pantalla lo dice.
+      leerAvisos(sb),
+      sb.rpc("modulo_visible", { p_clave: "comunidad" }),
       ...leerMedibles(sb, participante.id, ciclo),
     ]);
   const progs = datos(programas) as Filas["programas"];
@@ -116,7 +130,17 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
     coach: armarCoach(coach.error ? null : coach.data),
     videollamadas: llamadas.error ? [] : armarVideollamadas(llamadas.data),
     fotos: !moduloFotos.error && moduloFotos.data === true,
+    avisos,
+    comunidad: !moduloComunidad.error && moduloComunidad.data === true,
   };
+}
+
+const COLUMNAS_AVISO = "id,tipo,titulo,enlace,creado_en,leido_en";
+async function leerAvisos(sb: Cliente): Promise<Aviso[] | null> {
+  const r = await sb.from("avisos").select(COLUMNAS_AVISO).like("enlace", "/mi-espacio/%").order("creado_en", { ascending: false }).limit(200);
+  if (r.error) return null;
+  const filas = (r.data ?? []) as { id: string; tipo: string; titulo: string; enlace: string; creado_en: string; leido_en: string | null }[];
+  return filas.map((f) => ({ id: f.id, tipo: f.tipo, titulo: f.titulo, enlace: f.enlace, creadoEn: f.creado_en, leidoEn: f.leido_en }));
 }
 
 function armarCoach(d: unknown): CoachEspacio | null {
@@ -405,6 +429,15 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
         return r?.fecha_limite ?? null;
       },
       exportar: async () => datos(await sb().rpc("exportar_mis_datos")),
+      marcarAvisos: async (ids) => {
+        datos(await sb().rpc("marcar_avisos_leidos", { p_ids: ids }));
+        const actual = filas.current;
+        if (!actual?.avisos) return;
+        const ahora = new Date().toISOString();
+        const todos = ids === null;
+        const marcados = new Set(ids ?? []);
+        poner({ ...actual, avisos: actual.avisos.map((a) => (!a.leidoEn && (todos || marcados.has(a.id)) ? { ...a, leidoEn: ahora } : a)) });
+      },
       verNovedad: (id) => {
         setVistas((v) => {
           const n = new Set(v).add(id);
@@ -442,6 +475,9 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
       videollamadas: estado.videollamadas,
       servidor,
       fotos: estado.fotos,
+      // Con la Comunidad cerrada, sus avisos no se muestran ni cuentan en la campana.
+      avisos: estado.comunidad ? estado.avisos : (estado.avisos?.filter((a) => categoriaDe(a.tipo) !== "comunidad") ?? null),
+      comunidad: estado.comunidad,
     };
   }, [estado, vistas, servidor]);
 
@@ -465,6 +501,7 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
         seccion={ruta.seccion}
         activo={ruta.activo}
         novedades={novedades}
+        avisos={{ href: R_REAL.avisos, sinLeer: espacio?.avisos?.filter((a) => !a.leidoEn).length ?? 0 }}
         banda={banda}
       >
         {estado.tipo === "cargando" ? (
@@ -504,7 +541,7 @@ const RUTAS_NAV = {
 };
 
 // Mientras carga: rutas reales y sin datos de ejemplo visibles (solo se muestra «Cargando…»).
-const ESPACIO_CARGANDO: Espacio = { ...ESPACIO_PREVIA, real: true, R: R_REAL, novedades: [], ausencia: null };
+const ESPACIO_CARGANDO: Espacio = { ...ESPACIO_PREVIA, real: true, R: R_REAL, novedades: [], ausencia: null, avisos: [], comunidad: false };
 
 // Qué pantalla corresponde a la ruta. En mi-espacio/ decide el estado del ciclo (4.3).
 function PantallaReal({ ruta, espacio }: { ruta: RutaPlataforma; espacio: Espacio }): ReactNode {
@@ -531,6 +568,8 @@ function PantallaReal({ ruta, espacio }: { ruta: RutaPlataforma; espacio: Espaci
       return <ProgresoPantalla />;
     case "/mi-espacio/logros/creditos/":
       return <Creditos />;
+    case "/mi-espacio/avisos/":
+      return <MisAvisos />;
     case "/mi-espacio/lo-que-viene/":
       return <LoQueViene />;
     case "/mi-espacio/preferencias/":

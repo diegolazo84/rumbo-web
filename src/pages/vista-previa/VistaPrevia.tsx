@@ -12,6 +12,7 @@ import Etiqueta from "../../components/Etiqueta";
 import { Banda, BandaSinConexion, Cargando, EstructuraApp } from "../../components/app";
 import { AUSENCIA } from "../../data/ejemplo-app";
 import { contadores } from "./panel/cola";
+import { AVISOS_EJEMPLO } from "./mi-espacio/espacio";
 import { PantallaPreviaContexto } from "./contexto";
 import Indice from "./Indice";
 import { INDICE, pantallaPorRuta, pantallas, type PantallaPrevia, type PropsPantalla } from "./registro";
@@ -65,6 +66,7 @@ function Marco({ pantalla, children }: { pantalla?: PantallaPrevia; children: Re
           activo={pantalla?.activo}
           novedades={pantalla?.novedades}
           contadores={panel ? CONTADORES_EJEMPLO : undefined}
+          avisos={marco === "mi-espacio" ? AVISOS_PREVIA : undefined}
           sinNavegacion={marco === "ingreso"}
           banda={
             pantalla?.banda === "sin-conexion" ? (
@@ -94,6 +96,8 @@ function Marco({ pantalla, children }: { pantalla?: PantallaPrevia; children: Re
 
 // Contadores del panel (5.2: ahí sí son números), calculados con los datos de ejemplo.
 const CONTADORES_EJEMPLO = contadores();
+// Campana de Mis avisos con los avisos de ejemplo sin leer.
+const AVISOS_PREVIA = { href: RUTAS_MI_ESPACIO.avisos, sinLeer: AVISOS_EJEMPLO.filter((a) => !a.leidoEn).length };
 
 // Foco al h1 cuando la pantalla aparece tras navegar (plataforma 2.1). App.tsx ya lo intenta al
 // cambiar de ruta, pero una pantalla perezosa que aún no carga todavía no tiene h1: este

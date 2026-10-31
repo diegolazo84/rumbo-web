@@ -1354,6 +1354,180 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 .ml-hoja__lista { display: grid; gap: var(--e-3); list-style: none; margin: 0 0 var(--e-4); padding: 0; font-size: var(--t-s); line-height: 1.45; }
 .ml-metas { margin-block-start: var(--e-3); }
 
+/* ========================================================================
+   Mis avisos (maqueta de ChatGPT, 30-oct-2026)
+   ======================================================================== */
+.av { display: grid; gap: var(--e-5); }
+@media (min-width: 1360px) {
+  .app__contenido:has(.av) { max-inline-size: calc(var(--ancho-sitio) + 8rem + 2 * var(--gutter)); }
+}
+
+/* Portada (mismo paisaje que Mis logros) */
+.av-portada {
+  position: relative;
+  display: grid;
+  align-content: end;
+  min-block-size: 220px;
+  margin-inline: calc(-1 * var(--gutter));
+  margin-block-start: calc(-1 * var(--e-5));
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--crema);
+}
+.av-portada__fondo { position: absolute; inset: 0 0 auto; z-index: -2; inline-size: 100%; block-size: 130px; }
+.av-portada__texto { display: grid; gap: var(--e-2); padding: 140px var(--gutter) var(--e-4); }
+.av-portada__fila { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-3); }
+.av-portada__h1 { margin: 0; font: 600 var(--t-titulo)/1.05 var(--serif); letter-spacing: -0.015em; color: var(--bosque); }
+.av-portada__bajada { max-inline-size: 40ch; font-size: var(--t-base); line-height: 1.45; color: var(--tinta); }
+@media (min-width: 1024px) {
+  .av-portada { min-block-size: 200px; margin: 0; border-radius: var(--r-l); box-shadow: var(--sombra-1); }
+  .av-portada__fondo { inset: 0 0 0 40%; inline-size: 60%; block-size: 100%; }
+  .av-portada::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 40%;
+    z-index: -1;
+    inline-size: 20%;
+    background: linear-gradient(90deg, var(--crema), transparent);
+  }
+  .av-portada__texto { align-self: center; max-inline-size: 55%; padding: var(--e-6) var(--e-7); }
+  .av-portada__bajada { font-size: var(--t-lead); }
+}
+
+/* Cuerpo: lista + lateral */
+.av-cuerpo { display: grid; gap: var(--e-5); }
+.av-principal { display: grid; align-content: start; gap: var(--e-5); min-inline-size: 0; }
+@media (min-width: 1024px) {
+  .av-cuerpo { grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); align-items: start; }
+}
+
+/* Filtros y búsqueda */
+.av-herramientas { display: grid; gap: var(--e-3); }
+.av-filtros { display: flex; flex-wrap: wrap; gap: var(--e-2); }
+.av-filtro {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-2);
+  min-block-size: 44px;
+  padding: 0 var(--e-3) 0 var(--e-4);
+  border: 1.5px solid var(--linea-fuerte);
+  border-radius: var(--r-full);
+  background: var(--superficie);
+  color: var(--tinta);
+  font: 500 var(--t-xs)/1.2 var(--sans);
+  cursor: pointer;
+}
+.av-filtro[aria-pressed="true"] { border-color: var(--bosque); background: var(--bosque); color: var(--sobre-oscuro); font-weight: 600; }
+@media (hover: hover) { .av-filtro:not([aria-pressed="true"]):hover { background: var(--niebla); } }
+.av-filtro__n {
+  min-inline-size: 22px;
+  padding: 3px 6px;
+  border-radius: var(--r-full);
+  background: var(--niebla);
+  color: var(--tinta-suave);
+  font: 600 var(--t-micro)/1 var(--sans);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.av-filtro__n--hay { background: var(--terracota-texto); color: var(--papel); }
+.av-buscar {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  min-block-size: 44px;
+  padding-inline: var(--e-3);
+  border: 1.5px solid var(--linea-fuerte);
+  border-radius: var(--r-full);
+  background: var(--superficie);
+  color: var(--tinta-suave);
+}
+.av-buscar input { flex: 1; min-inline-size: 0; border: 0; background: transparent; color: var(--tinta); font: var(--t-s)/1.3 var(--sans); }
+.av-buscar input:focus { outline: none; }
+.av-buscar:focus-within { outline: 3px solid var(--terracota); outline-offset: 2px; }
+@media (min-width: 1200px) {
+  .av-herramientas { grid-template-columns: minmax(0, 1fr) 240px; align-items: start; }
+}
+
+/* Grupos y avisos */
+.av-grupo { display: grid; gap: var(--e-2); }
+.av-grupo__h2 { margin: 0; font: 600 var(--t-lead)/1.2 var(--sans); color: var(--tinta); }
+.av-lista { display: grid; list-style: none; margin: 0; padding: 0; border-radius: var(--r-l); background: var(--superficie); box-shadow: var(--sombra-1); }
+.av-lista > li + li { border-block-start: 1px solid var(--linea); }
+.av-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--e-3);
+  inline-size: 100%;
+  padding: var(--e-4);
+  border: 0;
+  border-radius: var(--r-l);
+  background: transparent;
+  color: var(--tinta);
+  text-align: start;
+  cursor: pointer;
+}
+@media (hover: hover) { .av-item:hover { background: var(--crema); } }
+.av-item__texto { display: grid; gap: 2px; min-inline-size: 0; }
+.av-item__titulo { font: 500 var(--t-s)/1.35 var(--sans); overflow-wrap: anywhere; }
+.av-item--nuevo .av-item__titulo { font-weight: 650; }
+.av-item__descripcion { font-size: var(--t-xs); line-height: 1.4; color: var(--tinta-suave); }
+.av-item__lado { display: grid; justify-items: end; gap: var(--e-2); align-self: start; }
+.av-item__hora { font-size: var(--t-xs); color: var(--tinta-suave); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.av-item__punto { inline-size: 10px; block-size: 10px; border-radius: 50%; background: var(--orden); }
+.av-item__flecha { color: var(--tinta-suave); }
+@media (max-width: 479.98px) {
+  .av-item { grid-template-columns: auto minmax(0, 1fr) auto; padding: var(--e-3); }
+  .av-item__flecha { display: none; }
+}
+
+/* Iconos por tipo */
+.av-icono { display: grid; place-items: center; flex: none; inline-size: 44px; block-size: 44px; border-radius: 50%; }
+.av-icono--recordatorios { background: var(--terracota-suave); color: var(--terracota-texto); }
+.av-icono--mensajes { background: var(--orden-fondo); color: var(--orden-texto); }
+.av-icono--comunidad { background: var(--meta-4-fondo); color: var(--meta-4-texto); }
+.av-icono--logros { background: var(--bienestar-fondo); color: var(--bienestar-texto); }
+.av-icono--sistema { background: var(--niebla); color: var(--tinta-suave); }
+
+/* Vacío y error */
+.av-vacio { display: grid; justify-items: center; gap: var(--e-2); padding: var(--e-6) var(--e-4); border-radius: var(--r-l); background: var(--superficie); color: var(--tinta-suave); text-align: center; box-shadow: var(--sombra-1); }
+.av-vacio__titulo { margin: 0; font: 600 var(--t-lead)/1.25 var(--serif); color: var(--bosque); }
+
+/* Lateral */
+.av-lateral { display: grid; gap: var(--e-4); align-content: start; }
+.av-tarjeta { display: grid; gap: var(--e-3); padding: var(--e-5); border-radius: var(--r-l); background: var(--superficie); box-shadow: var(--sombra-1); }
+.av-tarjeta__h2 { margin: 0; font: 600 var(--t-lead)/1.25 var(--sans); color: var(--tinta); }
+.av-tarjeta p { font-size: var(--t-xs); line-height: 1.45; color: var(--tinta-suave); }
+.av-nuevos { grid-template-columns: auto minmax(0, 1fr); align-items: start; background: var(--salvia-suave); }
+.av-nuevos .av-icono { background: var(--superficie); }
+.av-nuevos__texto { display: grid; gap: var(--e-2); }
+.av-nuevos p { color: var(--tinta); }
+.av-nuevos__boton { justify-self: start; margin-block-start: var(--e-1); }
+.av-mensaje:empty { display: none; }
+.av-mensaje--error { color: var(--error); }
+.av-tipos { display: grid; list-style: none; margin: 0; padding: 0; }
+.av-tipos > li + li { border-block-start: 1px solid var(--linea); }
+.av-tipo {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--e-3);
+  inline-size: 100%;
+  padding: var(--e-3) 0;
+  border: 0;
+  background: transparent;
+  color: var(--tinta-suave);
+  text-align: start;
+  cursor: pointer;
+}
+.av-tipo .av-icono { inline-size: 36px; block-size: 36px; }
+.av-tipo__texto { display: grid; gap: 2px; }
+.av-tipo__nombre { font: 600 var(--t-s)/1.3 var(--sans); color: var(--tinta); }
+.av-tipo__bajada { font-size: var(--t-xs); line-height: 1.35; }
+.av-tipo[aria-pressed="true"] .av-tipo__nombre { color: var(--bosque); text-decoration: underline; text-underline-offset: 3px; }
+.av-ayuda { background: var(--crema); }
+.av-ayuda__boton { justify-self: stretch; justify-content: center; gap: var(--e-2); }
+
 /* ---------------------------------------------------------------------------
    Informe de cierre de ciclo (maqueta de ChatGPT, 30-oct-2026). Reutiliza .ml-portada y
    .ml-tarjeta de Mis logros; aquí solo lo propio. */

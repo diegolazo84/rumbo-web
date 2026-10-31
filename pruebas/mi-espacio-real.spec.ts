@@ -750,7 +750,7 @@ test("Mis logros real (C17): todo de la base; recompensas y ranking solo con su 
   await expect(page.locator(".ml-nivel__nombre")).toHaveText("Inicio");
   // Módulos sin habilitar y beneficio apagado: ni reconocimientos, ni recompensas, ni ranking.
   await expect(page.locator(".ml-cifra")).toBeVisible();
-  await expect.poll(() => llamadas.filter((l) => l.nombre === "modulo_visible" && l.cuerpo.p_clave !== "fotos").length).toBe(2);
+  await expect.poll(() => llamadas.filter((l) => l.nombre === "modulo_visible" && !["fotos", "comunidad"].includes(String(l.cuerpo.p_clave))).length).toBe(2);
   await expect(page.getByRole("heading", { name: "Mis reconocimientos" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Mis recompensas" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /Ranking/ })).toHaveCount(0);
@@ -1314,6 +1314,110 @@ test("Fotos en todo equipo (escritorio, móvil, iPhone y 320 px): sube o, si el 
 });
 
 // ---------------------------------------------------------------------------
+// Mis avisos (maqueta de ChatGPT, 30-oct-2026)
+
+const avisosBase = (): Fila[] => [
+  { id: "av1", destinatario: UID, participante_id: "p1", tipo: "revision_publicada", titulo: "Tu coach publicó la revisión de la semana 1", enlace: "/mi-espacio/acompanamiento/", creado_en: "2026-10-13T12:00:00Z", leido_en: null },
+  { id: "av2", destinatario: UID, participante_id: "p1", tipo: "comunidad_respuesta", titulo: "Sol respondió tu publicación", enlace: "/mi-espacio/comunidad/", creado_en: "2026-10-13T11:00:00Z", leido_en: null },
+  { id: "av3", destinatario: UID, participante_id: "p1", tipo: "reconocimiento", titulo: "Nuevo reconocimiento: Primer paso", enlace: "/mi-espacio/", creado_en: "2026-10-12T15:00:00Z", leido_en: "2026-10-12T16:00:00Z" },
+];
+
+test("Mis avisos real: lee los avisos, la campana cuenta los sin leer y abrir uno lo marca en la base", async ({ page, isMobile }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.avisos = avisosBase();
+  const llamadas = await simular(page, base, {
+    modulo_visible: () => false,
+    marcar_avisos_leidos: (c) => {
+      const ids = c.p_ids as string[] | null;
+      for (const a of base.avisos) if (!a.leido_en && (ids === null || ids.includes(String(a.id)))) a.leido_en = new Date().toISOString();
+      return 1;
+    },
+  });
+  await page.goto("mi-espacio/avisos/");
+  await hidratar(page);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mis avisos");
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  // Solo avisos de Mi espacio, los más nuevos primero.
+  const lectura = llamadas.find((l) => l.tipo === "tabla" && l.nombre === "avisos")!;
+  expect(decodeURIComponent(lectura.url)).toContain("enlace=like./mi-espacio/%");
+  expect(decodeURIComponent(lectura.url)).toContain("order=creado_en.desc");
+  // Comunidad apagada: su aviso y su filtro no aparecen, y no cuenta en la campana.
+  await expect(page.locator(".av-item")).toHaveCount(2);
+  await expect(page.getByText("Sol respondió tu publicación")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Comunidad,/ })).toHaveCount(0);
+  const campana = page.locator(".cabecera-app__avisos");
+  await expect(campana).toHaveAccessibleName("Mis avisos, 1 sin leer");
+  await expect(page.getByRole("button", { name: "Todos, 1 sin leer" })).toBeVisible();
+  if (!isMobile) await expect(page.locator("nav.lateral").getByRole("link", { name: "Mis avisos, 1 sin leer" })).toHaveAttribute("aria-current", "page");
+  await sinViolaciones(page);
+
+  await page.locator(".av-item", { hasText: "revisión de la semana 1" }).click();
+  await page.waitForURL("**/mi-espacio/acompanamiento/");
+  const m = llamadas.filter((l) => l.nombre === "marcar_avisos_leidos");
+  expect(m.map((l) => l.cuerpo)).toEqual([{ p_ids: ["av1"] }]);
+  await expect(campana).toHaveAccessibleName("Mis avisos");
+
+  // Volver atrás y recargar: lo leído sigue leído (viene de la base) y los tres contadores coinciden.
+  await page.goBack();
+  await page.waitForURL("**/mi-espacio/avisos/");
+  await hidratar(page);
+  for (const paso of ["volver", "recargar"]) {
+    if (paso === "recargar") {
+      await page.reload();
+      await hidratar(page);
+    }
+    await expect(campana).toHaveAccessibleName("Mis avisos");
+    await expect(page.getByRole("button", { name: "Todos, 0 sin leer" })).toBeVisible();
+    await expect(page.locator(".av-item--nuevo")).toHaveCount(0);
+    if (!isMobile) await expect(page.locator("nav.lateral").getByRole("link", { name: "Mis avisos", exact: true })).toBeVisible();
+  }
+  // Sin avisos sin leer, «No leídos» queda vacío con su mensaje y «Todos» sigue mostrando la lista.
+  await page.getByRole("button", { name: "No leídos, 0 sin leer" }).click();
+  await expect(page.locator(".av-item")).toHaveCount(0);
+  await expect(page.getByText("No hay avisos aquí")).toBeVisible();
+  await page.getByRole("button", { name: "Todos, 0 sin leer" }).click();
+  await expect(page.locator(".av-item")).toHaveCount(2);
+});
+
+test("Mis avisos real: con la Comunidad visible aparece su filtro; «Marcar todo» marca todo en la base", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.avisos = avisosBase();
+  const llamadas = await simular(page, base, {
+    modulo_visible: (c) => c.p_clave === "comunidad",
+    marcar_avisos_leidos: () => {
+      for (const a of base.avisos) if (!a.leido_en) a.leido_en = new Date().toISOString();
+      return 2;
+    },
+  });
+  await page.goto("mi-espacio/avisos/");
+  await hidratar(page);
+  await expect(page.locator(".av-item")).toHaveCount(3);
+  await expect(page.getByRole("button", { name: "Comunidad, 1 sin leer" })).toBeVisible();
+  await expect(page.locator(".av-item", { hasText: "Sol respondió" })).toContainText("Entra a la Comunidad para leer la respuesta.");
+  await page.getByRole("button", { name: "Marcar todo como leído" }).click();
+  await expect(page.locator(".av-item--nuevo")).toHaveCount(0);
+  expect(llamadas.filter((l) => l.nombre === "marcar_avisos_leidos").map((l) => l.cuerpo)).toEqual([{ p_ids: null }]);
+  await expect(page.locator(".cabecera-app__avisos")).toHaveAccessibleName("Mis avisos");
+  // Al recargar sigue todo leído: lo guardó la base.
+  await page.reload();
+  await hidratar(page);
+  await expect(page.locator(".av-item")).toHaveCount(3);
+  await expect(page.locator(".av-item--nuevo")).toHaveCount(0);
+  await expect(page.locator(".cabecera-app__avisos")).toHaveAccessibleName("Mis avisos");
+});
+
+test("Mis avisos real: si no se pueden leer, lo dice sin romper Mi espacio", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial());
+  await page.route(`${SUPABASE_URL}/rest/v1/avisos**`, (rt) => rt.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ message: "falla" }) }));
+  await page.goto("mi-espacio/avisos/");
+  await hidratar(page);
+  await expect(page.getByRole("alert")).toContainText("No pudimos cargar tus avisos");
+  await expect(page.locator(".cabecera-app__avisos")).toHaveAccessibleName("Mis avisos");
+});
+
 // Registrar acción medible (maqueta de ChatGPT, 30-oct-2026)
 
 function rpcMedibles(base: Base, orden: string[]) {

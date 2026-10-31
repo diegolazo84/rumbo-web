@@ -28,7 +28,7 @@ autorización de Diego.
 | Acompañamiento | Perfil del coach y «Tu coach» real (`actualizar_mi_perfil`) | sin pantalla | Mi perfil en el panel (bloque 2) |
 | Acompañamiento | Videollamada del plan cercano (`programar_videollamada`, `anotar_videollamada`) | sin pantalla (Mi acompañamiento ya la muestra) | Sección en la ficha (bloque 2) |
 | Acompañamiento | Ver postulación con motivo (`ver_postulacion`) | sin pantalla | Botón en la ficha (bloque 2) |
-| Avisos | Centro de avisos (`marcar_avisos_leidos`) | sin pantalla | Maqueta |
+| Avisos | Mis avisos: campana, filtros, búsqueda y marcar como leído (`marcar_avisos_leidos`) | en PR (#73), 1 migración sin aplicar (20261124, avisos de la Comunidad) | Autorización |
 | Avisos | Recordatorios en la app y por correo (`guardar_recordatorios`) | sin pantalla; correo sin clave de Brevo | Sección en Preferencias (maqueta) |
 | Comunidad | Comunidad, crear publicación, grupos, panel de moderación | apagada (módulo «comunidad») | Revisión legal |
 | Comunidad | Interior de grupo, desafíos, foto por desafío | en PR (#61, #62, #63), con 3 migraciones sin aplicar | Autorización |
