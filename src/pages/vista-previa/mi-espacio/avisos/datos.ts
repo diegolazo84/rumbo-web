@@ -25,6 +25,7 @@ const POR_TIPO: Record<string, Categoria> = {
   programa_publicado: "mensajes",
   videollamada_programada: "mensajes",
   ia_respondida: "mensajes",
+  ia_no_compartida: "mensajes",
   mensaje_especialista: "mensajes",
   recomendacion_especialista: "mensajes",
   reserva_respondida: "mensajes",
@@ -80,7 +81,7 @@ export function grupoDe(dia: Iso, hoy: Iso): Grupo {
 export function destinoDe(aviso: Pick<Aviso, "tipo" | "enlace">, R: RutasEspacio, comunidad: boolean): string | null {
   const ruta = aviso.enlace.split(/[?#]/)[0];
   if (categoriaDe(aviso.tipo) === "logros") return R.progreso; // la base enlaza a la portada
-  if (aviso.tipo === "ia_respondida") return R.asistente; // la base enlaza a la portada
+  if (aviso.tipo === "ia_respondida" || aviso.tipo === "ia_no_compartida") return R.asistente; // ia_respondida enlaza a la portada
   if (ruta.startsWith("/mi-espacio/comunidad/")) return comunidad ? R.comunidad : null;
   if (ruta.startsWith("/mi-espacio/acompanamiento/")) return R.semana;
   if (ruta.startsWith("/mi-espacio/plan/ajuste/")) return R.ajusteLista;
