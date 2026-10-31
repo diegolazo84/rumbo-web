@@ -134,8 +134,16 @@ export default function Asistente({ estado }: PropsPantalla) {
   else principal = <Chat datos={a} puedePreguntar={puedePreguntar} enCurso={enCurso} irA={irA} />;
 
   const conLateral = !!a?.disponible && autorizado && !cambiando;
+  // Quien ya conversó vuelve a una portada compacta (en móvil): la conversación y el campo primero,
+  // con accesos directos a la privacidad, la supervisión del coach y la ayuda inmediata.
+  const compacta = conLateral && vista === "chat" && (a?.consultas.length ?? 0) > 0;
+  const irAEscribir = () => {
+    const campo = document.getElementById("as-pregunta");
+    campo?.scrollIntoView({ block: "center" });
+    campo?.focus({ preventScroll: true });
+  };
   return (
-    <div className="me-pantalla as">
+    <div className={compacta ? "me-pantalla as as--compacta" : "me-pantalla as"}>
       <header className="rc-portada as-portada">
         {/* Ilustraciones definitivas de ChatGPT (31-oct-2026): panorámica en escritorio, recorte propio en móvil. */}
         <picture>
@@ -162,6 +170,25 @@ export default function Asistente({ estado }: PropsPantalla) {
           <p className="rc-portada__bajada">{T.bajada}</p>
         </div>
       </header>
+
+      {compacta && (
+        <nav className="as-atajos" aria-label={T.atajos.titulo}>
+          {puedePreguntar && (
+            <button type="button" className="as-chip as-atajo--escribir" onClick={irAEscribir}>
+              <Icono nombre="pencil" tamaño={16} />
+              {T.atajos.escribir}
+            </button>
+          )}
+          <a href="#as-info" className="as-chip">
+            <Icono nombre="shield-check" tamaño={16} />
+            {T.atajos.privacidad}
+          </a>
+          <a href="#as-crisis" className="as-chip">
+            <Icono nombre="phone" tamaño={16} />
+            {T.atajos.ayuda}
+          </a>
+        </nav>
+      )}
 
       <ul className="as-claves" aria-label={T.titulo}>
         {T.claves.map((c, i) => (
@@ -1000,7 +1027,7 @@ function Configuracion({ datos, alVolver, alCambiar, alVerConversaciones }: { da
 
 function Crisis() {
   return (
-    <section className="rc-tarjeta as-crisis" aria-labelledby="as-crisis-t">
+    <section className="rc-tarjeta as-crisis" id="as-crisis" aria-labelledby="as-crisis-t" tabIndex={-1}>
       <h2 id="as-crisis-t" className="rc-h2 as-h2">
         <Icono nombre="phone" tamaño={20} />
         {T.crisis.titulo}
