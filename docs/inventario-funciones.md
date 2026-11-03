@@ -39,7 +39,7 @@ autorización de Diego.
 | Fotos | Borrado a los 30 días y Mantención | en PR (#68), con 1 migración sin aplicar | Etapas 3 a 8 de la guía de despliegue |
 | IA | Asistente con consentimiento y aprobación del coach (`ia_*`, `mis_consultas_ia`, `guardar_ia_config`) | pantalla del participante con la maqueta definitiva (#75): 8 estados, acceso desde Apoyo, «Crear plan» como pregunta revisada, ilustraciones definitivas, móvil compacto; bandeja de revisión del coach (#76) y administración del dueño: interruptor, topes y gasto (#77); «Me sirvió»/«No me sirvió» (`ia_valoraciones`, `ia_valorar`, 20261127) y aviso «no compartida» en Mis avisos (20261128) aplicados en producción el 31-oct; apagado | Cargar la clave y prueba real con tope de USD 10 |
 | Administración | Módulos | operativa | — |
-| Administración | Indicadores de negocio (`indicadores`) | sin pantalla | Pantalla Negocio |
+| Administración | Indicadores de negocio (`indicadores`) | en PR | Pantalla Negocio del dueño (con ingresos de Pagos) |
 | Administración | Pagos y devoluciones (`registrar_pago`, `registrar_devolucion`, `devolucion_sugerida`) | sin pantalla | Pantalla Pagos (transferencia y PayPal) |
 | Administración | Auditoría de cambios y accesos | sin pantalla | Pantalla Auditoría |
 | Perfil | Preferencias, tus datos, eliminar cuenta | operativa | — |
