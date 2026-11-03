@@ -11,8 +11,9 @@ import { FilaAccion, Icono, TEXTOS_CARGA, type NombreIconoApp } from "../../../c
 import { calcularProgreso, cuentaComoHecha, type EstadoRegistro, type Ocurrencia } from "../../../data/ejemplo-app";
 import { diaCorto, type Iso } from "../../../lib/fechas";
 import { ICONO_CATEGORIA, colorDeMeta } from "../../../lib/mi-rumbo";
+import { ErrorBase } from "../../../lib/supabase";
 import { useEspacio, type Progreso } from "./espacio";
-import { T_CALENDARIO, T_COMUN } from "./textos";
+import { T_CALENDARIO, T_COMUN, T_HOY } from "./textos";
 // Estilos propios de este grupo (solo tokens de :root). Lo importan todas sus pantallas.
 import "../../../styles/vista-mi-espacio.css";
 
@@ -107,8 +108,17 @@ export function usePrograma({ hoy: hoyDado, cambios, base: baseDada }: OpcionesP
 
   // Registra (o borra, con null) y llama a `listo` con el progreso que devuelve el servidor.
   const registrar = useCallback(
-    (id: string, estado: EstadoRegistro | null, listo?: (p: Progreso) => void, fallo?: () => void) => {
-      const anterior = ultima.current.find((o) => o.id === id)?.registro ?? null;
+    (id: string, estado: EstadoRegistro | null, listo?: (p: Progreso) => void, fallo?: (e: unknown) => void) => {
+      const actual = ultima.current.find((o) => o.id === id);
+      // Una acción con foto obligatoria nunca se marca como hecha: va por la foto o la explicación
+      // (registrar_evidencia). La base lo rechaza igual (409 accion:requiere_foto); así no se envía.
+      if (actual?.conFoto && (estado === "hecha" || estado === "corta")) {
+        fallo?.(new ErrorBase(409, "accion", "requiere_foto"));
+        return;
+      }
+      // El mismo registro ya va en camino (doble toque): no se repite.
+      if (servidor && id in pendientes.current && pendientes.current[id] === estado) return;
+      const anterior = actual?.registro ?? null;
       const nueva = ultima.current.map((o) => (o.id === id ? { ...o, registro: estado } : o));
       ultima.current = nueva;
       setLista(nueva);
@@ -121,14 +131,14 @@ export function usePrograma({ hoy: hoyDado, cambios, base: baseDada }: OpcionesP
             pendientes.current = resto;
             listo?.(p);
           })
-          .catch(() => {
+          .catch((e: unknown) => {
             const { [id]: _, ...resto } = pendientes.current;
             pendientes.current = resto;
             // Vuelve atrás solo esta acción.
             const revertida = ultima.current.map((o) => (o.id === id ? { ...o, registro: anterior } : o));
             ultima.current = revertida;
             setLista(revertida);
-            fallo?.();
+            fallo?.(e);
           });
         return;
       }
@@ -141,6 +151,57 @@ export function usePrograma({ hoy: hoyDado, cambios, base: baseDada }: OpcionesP
   );
 
   return { lista, progreso, registrar, hoy };
+}
+
+// ---------------------------------------------------------------------------
+// Mensaje cuando no se pudo guardar un registro: el motivo real que da la base. Solo un corte de
+// red (o un error sin código) ofrece «Reintentar»; si la acción pide foto, se ofrece abrirla.
+
+export type FalloRegistro = { mensaje: string; reintentar: boolean; abrir: boolean };
+
+export function mensajeRegistro(e: unknown, titulo: string): FalloRegistro {
+  const T = T_HOY.marcar.errores;
+  const con = (mensaje: string, reintentar = false, abrir = false) => ({ mensaje, reintentar, abrir });
+  if (!(e instanceof ErrorBase) || e.esDeRed) return con(T_HOY.marcar.error(titulo), true);
+  if (e.estado === 401 || e.estado === 403) return con(T.sesion);
+  switch (e.codigo) {
+    case "requiere_foto":
+    case "requiere_evidencia":
+      return con(T.requiere_foto(titulo), false, true);
+    case "futura":
+      return con(T.futura(titulo));
+    case "fuera_de_plazo":
+      return con(T.fuera_de_plazo(titulo));
+    case "no_vigente":
+      return con(T.no_vigente(titulo));
+    case "cerrado":
+      return con(T.cerrado);
+    case "no_encontrada":
+      return con(T.no_encontrada);
+    case "es_de_hoy":
+      return con(T.es_de_hoy);
+    case "invalida":
+      return e.campo === "version" ? con(T.version) : con(T.otro(titulo), true);
+    case "largo":
+      return con(T.explicacion);
+    default:
+      return con(T.otro(titulo), true);
+  }
+}
+
+// Tostada de error de Hoy, Calendario y Detalle: misma forma en las tres pantallas.
+export function useFalloRegistro(setTostada: (a: Aviso) => void, abrir?: (o: Ocurrencia) => void) {
+  return (o: Ocurrencia, reintentar: () => void) => (e: unknown) => {
+    const f = mensajeRegistro(e, o.titulo);
+    setTostada({
+      mensaje: f.mensaje,
+      accion: f.reintentar
+        ? { texto: T_HOY.marcar.reintentar, onClick: reintentar }
+        : f.abrir && abrir
+          ? { texto: T_HOY.marcar.abrir, onClick: () => abrir(o) }
+          : undefined,
+    });
+  };
 }
 
 // Con dos metas de la misma categoría, la fila muestra el nombre corto de la meta (4.4.5).

@@ -32,6 +32,7 @@ import {
   RegionViva,
   useAvisos,
   useEspacio,
+  useFalloRegistro,
   usePrograma,
   type Cambios,
   type Progreso,
@@ -126,12 +127,17 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
   const detalle = abierta ? lista.find((o) => o.id === abierta) : undefined;
 
   const anunciar = (p: Progreso) => setVivo(T_HOY.marcar.vivo(p.creditos, p.nivel.nivel, p.nivel.nombre));
-  // Error al guardar (4.5): el check ya volvió atrás; la tostada ofrece reintentar.
-  const fallo = (o: Ocurrencia, reintentar: () => void) => () =>
-    setTostada({ mensaje: T_HOY.marcar.error(o.titulo), accion: { texto: T_HOY.marcar.reintentar, onClick: reintentar } });
+  // Error al guardar (4.5): el check ya volvió atrás; la tostada dice el motivo real y ofrece
+  // reintentar solo si fue la conexión (o abrir la acción, si pide foto).
+  const fallo = useFalloRegistro(setTostada, (o) => setAbierta(o.id));
 
   // Marcar o desmarcar desde la fila, la hoja o «Ya la hice» (se registra en su día original).
+  // Una acción con foto obligatoria no se marca: se abre su detalle (foto o explicación breve).
   const marcar = (o: Ocurrencia, marcada: boolean, desdeAnteriores = false): void => {
+    if (marcada && o.conFoto) {
+      setAbierta(o.id);
+      return;
+    }
     registrar(o.id, marcada ? "hecha" : null, (p) => {
       anunciar(p);
       if (!marcada) {
@@ -241,7 +247,7 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
             carga={conCarga}
             plegada={!variante.anterioresAbiertas && !conCarga}
             sinConexion={sinConexion}
-            onYaLaHice={(o) => sacarDeAnteriores(() => marcar(o, true, true))}
+            onYaLaHice={(o) => (o.conFoto ? setAbierta(o.id) : sacarDeAnteriores(() => marcar(o, true, true)))}
             onRetomar={(o) => sacarDeAnteriores(() => retomar(o))}
             onDejar={(o) => sacarDeAnteriores(() => dejar(o))}
             onAbrir={setAbierta}

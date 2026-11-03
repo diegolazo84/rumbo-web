@@ -22,7 +22,7 @@ import {
 } from "../../../data/ejemplo-app";
 import type { PropsPantalla } from "../registro";
 import Detalle, { type FotoInicial } from "./Detalle";
-import { Cabeza, RegionViva, useAvisos, useEspacio, usePrograma, type Progreso } from "./comun";
+import { Cabeza, RegionViva, useAvisos, useEspacio, useFalloRegistro, usePrograma, type Progreso } from "./comun";
 import { T_COMUN, T_DETALLE, T_HOY } from "./textos";
 
 // Una ocurrencia del ejemplo por estado (src/data/ejemplo-app.ts).
@@ -73,6 +73,7 @@ function DetalleReal() {
   useEffect(() => setId(new URLSearchParams(search).get("id") ?? ""), [search]);
   const { lista, registrar, hoy } = usePrograma();
   const { tostada, setTostada, vivo, setVivo, cerrar } = useAvisos();
+  const fallo = useFalloRegistro(setTostada);
   const o = id ? lista.find((x) => x.id === id) : undefined;
 
   if (id === null) {
@@ -92,10 +93,7 @@ function DetalleReal() {
     );
   }
   const anunciar = (p: Progreso) => setVivo(T_HOY.marcar.vivo(p.creditos, p.nivel.nivel, p.nivel.nombre));
-  const guardar = (estado: EstadoRegistro | null): void =>
-    registrar(o.id, estado, anunciar, () =>
-      setTostada({ mensaje: T_HOY.marcar.error(o.titulo), accion: { texto: T_HOY.marcar.reintentar, onClick: () => guardar(estado) } }),
-    );
+  const guardar = (estado: EstadoRegistro | null): void => registrar(o.id, estado, anunciar, fallo(o, () => guardar(estado)));
   return (
     <div className="me-pantalla me-pantalla--detalle">
       <Detalle o={o} hoy={hoy} onRegistrar={guardar} />

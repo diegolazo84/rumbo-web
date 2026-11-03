@@ -308,6 +308,113 @@ test("si marcar falla, el check vuelve atrás y se ofrece reintentar", async ({ 
   await expect(casilla).not.toBeChecked();
 });
 
+// Registro de acciones con foto obligatoria (error real: marcar_accion → 409 accion:requiere_foto
+// mostrado como «Revisa tu conexión»). Base: solo queda pendiente la acción con foto del 11.
+function baseAnteriorConFoto() {
+  const base = baseInicial();
+  const foto = base.ocurrencias.find((o) => o.id === "o-2026-10-11")!;
+  Object.assign(foto, { titulo: "Ordenar el escritorio", instrucciones: "Ordena tu escritorio.", version_corta: null, requiere_foto: true });
+  for (const f of ["2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09", "2026-10-10"])
+    base.registros.push({ ocurrencia_id: `o-${f}`, participante_id: "p1", estado: "hecha", version: "completa", explicacion: null, nota_revision: null, revisado_en: null });
+  return base;
+}
+const abrirAnteriores = async (page: Page) => {
+  // En Mi Rumbo el bloque parte plegado.
+  await page.locator(".me-anteriores").getByRole("button", { name: "Ver las acciones" }).click();
+};
+
+test("«Ya la hice» en una acción anterior con foto obligatoria abre su registro y no llama a marcar_accion", async ({ page }) => {
+  await conSesion(page);
+  const base = baseAnteriorConFoto();
+  const llamadas = await simular(page, base, {
+    marcar_accion: () => ({ __error: "accion:requiere_foto", __estado: 409 }),
+    registrar_evidencia: (c) => {
+      base.registros.push({ ocurrencia_id: c.p_ocurrencia, participante_id: "p1", estado: "revision", version: "completa", explicacion: c.p_explicacion, nota_revision: null, revisado_en: null });
+      return { creditos: 3, nivel: 1, racha: 1, bono_siguiente: 2 };
+    },
+  });
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  await abrirAnteriores(page);
+  const fila = page.locator(".me-anteriores li").filter({ hasText: "Ordenar el escritorio" });
+  await fila.getByRole("button", { name: "Ya la hice" }).click();
+  const hoja = page.getByRole("dialog");
+  await expect(hoja.getByRole("button", { name: "No puedo subir una foto" })).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "marcar_accion")).toBe(false);
+  await expect(page.getByText("Revisa tu conexión", { exact: false })).toHaveCount(0);
+
+  // La alternativa escrita llega a registrar_evidencia y queda en revisión; los créditos no cambian.
+  await hoja.getByRole("button", { name: "No puedo subir una foto" }).click();
+  await hoja.getByRole("textbox").fill("Lo ordené, pero no tenía el teléfono a mano.");
+  await hoja.locator(".me-foto__explicar button[type=submit]").click();
+  await expect(hoja.locator(".me-foto").getByText("En revisión", { exact: true })).toBeVisible();
+  const ev = llamadas.filter((l) => l.nombre === "registrar_evidencia");
+  expect(ev).toHaveLength(1);
+  expect(ev[0].cuerpo).toEqual({ p_ocurrencia: "o-2026-10-11", p_foto_ruta: null, p_explicacion: "Lo ordené, pero no tenía el teléfono a mano." });
+  expect(llamadas.some((l) => l.nombre === "marcar_accion")).toBe(false);
+  await expect(page.locator(".me-hoy .me-resumen__creditos")).toHaveText("3 créditos");
+});
+
+test("si la base rechaza un registro, se dice el motivo real; solo la conexión ofrece «Reintentar»", async ({ page }) => {
+  await conSesion(page);
+  let respuesta: Record<string, unknown> | null = { __error: "accion:requiere_foto", __estado: 409 };
+  const base = baseInicial();
+  const llamadas = await simular(page, base, {
+    marcar_accion: (c) => {
+      if (respuesta) return respuesta;
+      base.registros.push({ ocurrencia_id: c.p_ocurrencia, participante_id: "p1", estado: "hecha", version: c.p_version, explicacion: null, nota_revision: null, revisado_en: null });
+      base.progreso[0].creditos = Number(base.progreso[0].creditos) + 1;
+      return { creditos: base.progreso[0].creditos, nivel: 1, racha: 1, bono_siguiente: 2 };
+    },
+  });
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  const casilla = page.getByRole("checkbox", { name: "Marcar “Escribir 30 minutos” como hecha" });
+  const tostada = page.locator(".tostada");
+
+  // La base pide foto (la acción cambió mientras la pantalla estaba abierta).
+  await casilla.click();
+  await expect(tostada).toContainText("“Escribir 30 minutos” se registra con una foto o con una explicación breve.");
+  await expect(tostada).not.toContainText("conexión");
+  await expect(tostada.getByRole("button", { name: "Reintentar" })).toHaveCount(0);
+  await expect(casilla).not.toBeChecked();
+  await tostada.getByRole("button", { name: "Abrir" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // Fuera de plazo y ciclo cerrado: mensaje propio, sin reintentar.
+  respuesta = { __error: "accion:fuera_de_plazo", __estado: 409 };
+  await casilla.click();
+  await expect(tostada).toContainText("Ya pasó el plazo para registrar “Escribir 30 minutos”.");
+  await expect(tostada.getByRole("button", { name: "Reintentar" })).toHaveCount(0);
+  respuesta = { __error: "ciclo:cerrado", __estado: 409 };
+  await casilla.click();
+  await expect(tostada).toContainText("Este ciclo ya terminó");
+
+  // Un error sin motivo conocido no culpa a la conexión, pero deja reintentar; al reintentar, se guarda una sola vez.
+  respuesta = { __error: "algo:raro", __estado: 500 };
+  await casilla.click();
+  await expect(tostada).toContainText("Inténtalo de nuevo en un momento.");
+  await expect(tostada).not.toContainText("conexión");
+  expect(llamadas.filter((l) => l.nombre === "marcar_accion")).toHaveLength(4);
+  respuesta = null;
+  await tostada.getByRole("button", { name: "Reintentar" }).click();
+  await expect(casilla).toBeChecked();
+  await expect(page.locator(".me-hoy .me-resumen__creditos")).toHaveText("4 créditos");
+  expect(llamadas.filter((l) => l.nombre === "marcar_accion")).toHaveLength(5);
+});
+
+test("Calendario y Detalle: una acción con foto obligatoria nunca se marca como hecha", async ({ page }) => {
+  await conSesion(page);
+  const base = baseAnteriorConFoto();
+  const llamadas = await simular(page, base);
+  await page.goto("mi-espacio/plan/accion/?id=o-2026-10-11");
+  await hidratar(page);
+  await expect(page.getByRole("button", { name: "No puedo subir una foto" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Marcar como hecha", exact: true })).toHaveCount(0);
+  expect(llamadas.some((l) => l.nombre === "marcar_accion")).toBe(false);
+});
+
 test("programa en preparación: el borrador no se ve", async ({ page }) => {
   await conSesion(page);
   await simular(page, baseInicial({ conPrograma: false }));
