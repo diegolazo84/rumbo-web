@@ -891,6 +891,37 @@ test("ficha de participante: programa publicado y semana en solo lectura", async
   await sinViolaciones(page);
 });
 
+// Evolución del ciclo en la ficha: lo que calcula evolucion_semanal (20261103000000, aplicada).
+test("ficha: evolución semanal del ciclo actual, sin porcentaje si no hubo acciones", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const llamadas = await simular(page, baseInicial(), { factores: VERIFICADO });
+  const semana = (n: number, desde: string, hasta: string, x: Record<string, unknown>) => ({
+    ciclo_id: "c1", ciclo_numero: 1, semana: n, desde, hasta, programadas: 0, hechas: 0, en_revision: 0, cumplimiento: null,
+    dias_completos: 0, creditos: 0, carga: null, revision_publicada: false, ...x,
+  });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/evolucion_semanal`, async (rt) => {
+    llamadas.push({ tipo: "rpc", metodo: "POST", nombre: "evolucion_semanal", url: rt.request().url(), cuerpo: rt.request().postDataJSON(), aal: "aal2" });
+    return rt.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([
+        { ...semana(1, "2026-09-07", "2026-09-13", { programadas: 7, hechas: 7, cumplimiento: 100 }), ciclo_id: "c0" },
+        semana(1, "2026-10-05", "2026-10-11", { programadas: 10, hechas: 7, cumplimiento: 70, dias_completos: 3, carga: "justa", revision_publicada: true }),
+        semana(2, "2026-10-12", "2026-10-18", {}),
+      ]),
+    });
+  });
+  await page.goto("equipo/participante/?id=p1");
+  await hidratar(page);
+  await page.getByRole("tab", { name: "Semana" }).click();
+  const evo = page.locator("section[aria-labelledby=evolucion-titulo]");
+  await expect(evo.locator("li")).toHaveCount(2); // solo el ciclo actual
+  await expect(evo.locator("li").nth(0)).toContainText("7 de 10 acciones hechas (70 %) · 3 días completos · carga justa · revisión publicada");
+  await expect(evo.locator("li").nth(1)).toContainText("Sin acciones programadas · 0 días completos · sin revisión publicada");
+  expect(llamadas.find((l) => l.nombre === "evolucion_semanal")!.cuerpo).toEqual({ p_participante: "p1" });
+  await sinViolaciones(page);
+});
+
 test("Más: postulaciones y cuenta con sus factores", async ({ page }) => {
   await preparar(page, "aal2", VERIFICADO);
   const base = baseInicial();

@@ -423,3 +423,12 @@ a.pa-coach__texto:hover { text-decoration: underline; }
 .pa-vl-proxima__texto { display: grid; gap: 2px; min-width: 0; }
 .pa-vl-proxima__texto p { margin: 0; color: var(--tinta); font-weight: 600; }
 .pa-vl-proxima .acciones { grid-column: 1 / -1; }
+
+/* Ficha: evolución del ciclo, una fila por semana (evolucion_semanal). */
+.pa-evolucion { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.pa-evolucion__fila { display: grid; gap: 6px; }
+.pa-evolucion__cabeza { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.pa-evolucion__semana { font-weight: 600; }
+.pa-evolucion__barra { display: block; inline-size: 100%; block-size: 8px; border-radius: var(--r-full); background: var(--niebla); overflow: hidden; }
+.pa-evolucion__barra > span { display: block; block-size: 100%; border-radius: inherit; background: var(--proyecto); }
+.pa-evolucion__texto { margin: 0; color: var(--tinta-suave); font-size: var(--t-micro); }

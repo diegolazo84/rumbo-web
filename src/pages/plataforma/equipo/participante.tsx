@@ -223,7 +223,12 @@ function ContenidoFicha({ p, c, inicial }: { p: FilaParticipantePanel; c: FilaCi
         ) : (
           <>
             {pestana === "programa" && <ProgramaReal p={p} c={c} det={detalle} />}
-            {pestana === "semana" && <SemanaReal c={c} det={detalle} />}
+            {pestana === "semana" && (
+              <>
+                <SemanaReal c={c} det={detalle} />
+                <EvolucionFicha p={p} c={c} />
+              </>
+            )}
             {pestana === "revisiones" && (
               <>
                 {c?.plan_id === "cercano" && <VideollamadasFicha c={c} zona={p.zona_horaria} lista={detalle.videollamadas} alCambiar={leer} />}
@@ -361,6 +366,82 @@ function SemanaReal({ c, det }: { c: FilaCicloPanel | null; det: Detalle }) {
       hechas={s.hechas}
       deHoy={s.deHoy}
     />
+  );
+}
+
+// Evolución (C3): una fila por semana del ciclo actual, con lo que ya calcula la base
+// (evolucion_semanal, aplicada). No estima ni compara con otras personas; sin acciones
+// programadas no hay porcentaje.
+type FilaEvolucion = {
+  ciclo_id: string;
+  semana: number;
+  desde: Iso;
+  hasta: Iso;
+  programadas: number;
+  hechas: number;
+  cumplimiento: number | null;
+  dias_completos: number;
+  carga: "liviana" | "justa" | "pesada" | null;
+  revision_publicada: boolean;
+};
+
+function EvolucionFicha({ p, c }: { p: FilaParticipantePanel; c: FilaCicloPanel | null }) {
+  const { sb } = useDatosPanel();
+  const [filas, setFilas] = useState<FilaEvolucion[] | null>(null);
+  const [error, setError] = useState(false);
+  const leer = useCallback(() => {
+    let vivo = true;
+    setError(false);
+    sb.rpc("evolucion_semanal", { p_participante: p.id })
+      .then((r) => vivo && setFilas(datos(r) as FilaEvolucion[]))
+      .then(undefined, () => vivo && setError(true));
+    return () => {
+      vivo = false;
+    };
+  }, [sb, p.id]);
+  useEffect(leer, [leer]);
+  if (!c) return null;
+  const E = F.evolucion;
+  const delCiclo = (filas ?? []).filter((f) => f.ciclo_id === c.id);
+  return (
+    <Seccion titulo={E.titulo} id="evolucion">
+      {error ? (
+        <p className="pa-vacio">
+          {E.error}{" "}
+          <button type="button" className="boton boton--terciario" onClick={leer}>
+            {E.reintentar}
+          </button>
+        </p>
+      ) : !filas ? (
+        <p className="microcopia" role="status">
+          {E.cargando}
+        </p>
+      ) : !delCiclo.length ? (
+        <p className="pa-vacio">{E.vacio}</p>
+      ) : (
+        <ol className="pa-evolucion">
+          {delCiclo.map((f) => (
+            <li key={f.semana} className="pa-evolucion__fila">
+              <div className="pa-evolucion__cabeza">
+                <span className="pa-evolucion__semana">{E.semana(f.semana)}</span>
+                <span className="microcopia">{E.rango(diaCorto(f.desde), diaCorto(f.hasta))}</span>
+              </div>
+              <div className="pa-evolucion__barra" aria-hidden="true">
+                <span style={{ inlineSize: `${f.cumplimiento ?? 0}%` }} />
+              </div>
+              <p className="pa-evolucion__texto">
+                {f.programadas ? E.hechas(f.hechas, f.programadas, f.cumplimiento ?? 0) : E.sinAcciones}
+                {" · "}
+                {E.dias(f.dias_completos)}
+                {f.carga ? ` · ${E.carga(E.cargas[f.carga])}` : ""}
+                {" · "}
+                {f.revision_publicada ? E.conRevision : E.sinRevision}
+              </p>
+            </li>
+          ))}
+        </ol>
+      )}
+    </Seccion>
   );
 }
 

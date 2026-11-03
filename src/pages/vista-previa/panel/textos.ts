@@ -306,6 +306,22 @@ export const FICHA_PARTICIPANTE = {
     noEmpieza: "Esta semana aún no empieza.", // 4.11
     pie: (hechas: number, de: number) => `Esta semana registró ${hechas} de ${de} acciones programadas hasta hoy.`, // (vista previa) 4.7.3 en tercera persona
   },
+  evolucion: {
+    titulo: "Evolución del ciclo",
+    cargando: "Cargando la evolución…",
+    error: "No pudimos cargar la evolución.",
+    reintentar: "Reintentar",
+    vacio: "Todavía no hay semanas con datos en este ciclo.",
+    semana: (n: number) => `Semana ${n}`,
+    rango: (desde: string, hasta: string) => `${desde} al ${hasta}`,
+    hechas: (h: number, de: number, pct: number) => `${h} de ${de} acciones hechas (${pct} %)`,
+    sinAcciones: "Sin acciones programadas",
+    dias: (n: number) => (n === 1 ? "1 día completo" : `${n} días completos`),
+    carga: (c: string) => `carga ${c}`,
+    cargas: { liviana: "liviana", justa: "justa", pesada: "pesada" },
+    conRevision: "revisión publicada",
+    sinRevision: "sin revisión publicada",
+  },
   revisiones: {
     semana: (n: number) => `Semana ${n}`,
     registro: "Registro de la persona", // (vista previa)
