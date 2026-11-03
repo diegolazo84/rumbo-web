@@ -23,6 +23,7 @@ autorización de Diego.
 | Planificación | Acciones medibles (`anotar_cantidad`, `mis_medibles`) | sin pantalla | Campos en el constructor; anotar en el detalle (maqueta) |
 | Planificación | Plantillas del equipo (`guardar_plantilla`) | sin pantalla | Catálogo dentro del constructor |
 | Planificación | Informe de cierre de ciclo (`informe_ciclo`) | sin pantalla | Pantalla de la persona (maqueta) y ficha |
+| Planificación | Evolución semanal en la ficha del coach (`evolucion_semanal`) | en PR | — |
 | Acompañamiento | Revisión semanal, Mi acompañamiento, bandeja del coach | operativa | — |
 | Acompañamiento | Equipo: invitar, aceptar, revocar, asignar y reasignar coaches | sin pantalla | Pantalla Equipo (bloque 2) |
 | Acompañamiento | Perfil del coach y «Tu coach» real (`actualizar_mi_perfil`) | sin pantalla | Mi perfil en el panel (bloque 2) |
