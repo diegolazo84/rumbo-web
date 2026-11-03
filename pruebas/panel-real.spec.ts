@@ -1584,3 +1584,130 @@ test("Asistente (dueño): un coach no ve la administración", async ({ page }) =
   await expect(page.getByText("Solo el dueño puede administrar el asistente.")).toBeVisible();
   expect(llamadas.filter((l) => l.nombre === "ia_config" || l.nombre === "ia_gasto")).toHaveLength(0);
 });
+
+// ---------------------------------------------------------------------------
+// Pagos (dueño): registro manual con las funciones de la base (20261029000000_pagos, aplicada).
+
+function rpcPagos(base: Base) {
+  return {
+    registrar_pago: (c: Record<string, unknown>) => {
+      if (base.pagos.some((p) => p.ciclo_id === c.p_ciclo)) return { __error: "pago:ya_registrado", __estado: 409 };
+      const ciclo = base.ciclos.find((x) => x.id === c.p_ciclo)!;
+      const id = `pago-${base.pagos.length + 1}`;
+      base.pagos.push({ id, participante_id: ciclo.participante_id, ciclo_id: c.p_ciclo, monto: c.p_monto, moneda: c.p_moneda, medio: c.p_medio, pagado_en: c.p_pagado_en, referencia: c.p_referencia, devuelto: 0, devuelto_en: null, devolucion_motivo: null });
+      return id;
+    },
+    // Ana: semana 2 de 4 empezada el 13 de octubre → quedan 2 semanas sin empezar (la mitad).
+    devolucion_sugerida: (c: Record<string, unknown>) => {
+      const g = base.pagos.find((p) => p.id === c.p_pago)!;
+      return Number(g.monto) / 2 - Number(g.devuelto);
+    },
+    registrar_devolucion: (c: Record<string, unknown>) => {
+      const g = base.pagos.find((p) => p.id === c.p_pago)!;
+      Object.assign(g, { devuelto: Number(g.devuelto) + Number(c.p_monto), devuelto_en: c.p_devuelto_en, devolucion_motivo: c.p_motivo });
+      return null;
+    },
+  };
+}
+
+test("Pagos: el dueño registra un pago y una devolución con las reglas de la base", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  for (const c of base.ciclos) c.precio_acordado_clp = 64000;
+  base.pagos = [];
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/*`, async (rt) => {
+    const nombre = new URL(rt.request().url()).pathname.split("/").pop()!;
+    const f = (rpcPagos(base) as Record<string, (c: Record<string, unknown>) => unknown>)[nombre];
+    if (!f) return rt.fallback();
+    const cuerpo = (rt.request().postDataJSON() ?? {}) as Record<string, unknown>;
+    llamadas.push({ tipo: "rpc", metodo: "POST", nombre, url: rt.request().url(), cuerpo, aal: "aal2" });
+    const r = f(cuerpo) as { __error?: string; __estado?: number } | null;
+    if (r && typeof r === "object" && "__error" in r) return rt.fulfill({ status: r.__estado, contentType: "application/json", body: JSON.stringify({ code: "P0001", message: r.__error }) });
+    return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(r) });
+  });
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  await page.getByRole("link", { name: "Pagos y devoluciones" }).click();
+  await expect(page.locator("h1")).toHaveText("Pagos.");
+  const porRegistrar = page.locator("section[aria-labelledby=por-registrar-titulo]");
+  await expect(porRegistrar.locator("li")).toHaveCount(2);
+  await sinViolaciones(page);
+
+  // Ana: el monto viene con el precio acordado; una fecha futura no se acepta.
+  const ana = porRegistrar.locator("li", { hasText: "Ana" });
+  await ana.getByRole("button", { name: "Registrar pago" }).click();
+  await expect(ana.getByLabel("Monto en pesos")).toHaveValue("64000");
+  await ana.getByLabel("Fecha del pago").fill("2026-10-20");
+  await ana.getByRole("button", { name: "Guardar pago" }).click();
+  await expect(ana.getByText("Elige una fecha de hoy o anterior.")).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "registrar_pago")).toBe(false);
+  await ana.getByLabel("Fecha del pago").fill("2026-10-10");
+  await ana.getByLabel("Referencia").fill("OP-123");
+  await sinViolaciones(page);
+  await ana.getByRole("button", { name: "Guardar pago" }).click();
+  await expect(page.getByText("Pago de Ana registrado.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "registrar_pago")!.cuerpo).toEqual({
+    p_ciclo: "c1",
+    p_medio: "transferencia",
+    p_pagado_en: "2026-10-10",
+    p_monto: 64000,
+    p_moneda: "CLP",
+    p_referencia: "OP-123",
+  });
+  await expect(porRegistrar.locator("li")).toHaveCount(1);
+  const pagada = page.locator("section[aria-labelledby=registrados-titulo] li", { hasText: "Ana" });
+  await expect(pagada).toContainText("$64.000");
+  await expect(pagada).toContainText("Pagado");
+
+  // Devolución: la base calcula lo que corresponde; hay que confirmar que ya se hizo.
+  await pagada.getByRole("button", { name: "Registrar devolución" }).click();
+  await expect(pagada.getByText("Según las condiciones, hoy corresponde devolver $32.000.", { exact: false })).toBeVisible();
+  await expect(pagada.getByLabel("Monto devuelto en pesos")).toHaveValue("32000");
+  await pagada.getByRole("button", { name: "Guardar devolución" }).click();
+  await expect(pagada.getByText("Marca la casilla para confirmar que la devolución ya está hecha.")).toBeVisible();
+  await pagada.getByLabel("Monto devuelto en pesos").fill("70000");
+  await pagada.getByRole("checkbox").check();
+  await pagada.getByRole("button", { name: "Guardar devolución" }).click();
+  await expect(pagada.getByText("Escribe un monto mayor que cero y hasta $64.000.")).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "registrar_devolucion")).toBe(false);
+  await pagada.getByLabel("Monto devuelto en pesos").fill("32000");
+  await pagada.getByRole("button", { name: "Guardar devolución" }).click();
+  await expect(page.getByText("Devolución de Ana registrada.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "registrar_devolucion")!.cuerpo).toEqual({
+    p_pago: "pago-1",
+    p_monto: 32000,
+    p_motivo: "semanas_no_empezadas",
+    p_devuelto_en: "2026-10-13",
+  });
+  await expect(pagada).toContainText("Devolución parcial");
+  await expect(pagada).toContainText("$32.000");
+});
+
+test("Pagos: si la base rechaza, se explica; PayPal pasa a dólares sin monto; un coach no los ve", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  for (const c of base.ciclos) c.precio_acordado_clp = 64000;
+  // Otro dispositivo ya anotó el pago de Bruno (la pantalla aún no lo sabe).
+  base.pagos = [];
+  await simular(page, base, { factores: VERIFICADO });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/registrar_pago`, (rt) =>
+    rt.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ code: "P0001", message: "pago:ya_registrado" }) }),
+  );
+  await page.goto("equipo/pagos/");
+  await hidratar(page);
+  const bruno = page.locator("section[aria-labelledby=por-registrar-titulo] li", { hasText: "Bruno" });
+  await bruno.getByRole("button", { name: "Registrar pago" }).click();
+  await bruno.getByLabel("Medio de pago").selectOption("paypal");
+  await expect(bruno.getByLabel("Moneda")).toHaveValue("USD");
+  await expect(bruno.getByLabel("Monto en dólares")).toHaveValue("");
+  await bruno.getByLabel("Monto en dólares").fill("72");
+  await bruno.getByRole("button", { name: "Guardar pago" }).click();
+  await expect(bruno.getByText("Este ciclo ya tiene un pago anotado. Vuelve a cargar la página para verlo.")).toBeVisible();
+
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/mi_rol_equipo`, (rt) => rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ rol: "coach", puede_moderar: false }) }));
+  await page.goto("equipo/pagos/");
+  await hidratar(page);
+  await expect(page.getByText("Solo el dueño puede ver y registrar pagos.")).toBeVisible();
+  await expect(page.locator("section[aria-labelledby=por-registrar-titulo]")).toHaveCount(0);
+});
