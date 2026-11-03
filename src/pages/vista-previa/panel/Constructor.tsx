@@ -55,8 +55,22 @@ export type ProgramaLectura = {
 export type RevisionBase = { cruces: number; carga: { fecha: Iso; minutos: number } | null };
 
 // Panel real: escrituras en la base. Sin servidor (vista previa), nada se guarda.
+// Plantilla de acción del equipo (plantillas_accion, C4): se usa para llenar una acción nueva.
+export type PlantillaAccion = {
+  id: string;
+  titulo: string;
+  instrucciones: string;
+  versionCorta: string;
+  duracion: number;
+  conFoto: boolean;
+  medible: { objetivo: number; unidad: string } | null;
+};
+
 export type ServidorConstructor = {
   guardar: (metas: MetaB[], acciones: AccionB[]) => Promise<void>;
+  // Plantillas del equipo (opcional): leer las vigentes y guardar una acción como plantilla.
+  plantillas?: () => Promise<PlantillaAccion[]>;
+  guardarPlantilla?: (a: AccionB) => Promise<void>;
   revisar: () => Promise<RevisionBase>; // solapamientos() y carga_prevista() del borrador guardado
   publicar: (p: { vigencia: Iso; aceptar: boolean; nota: string; foco: string }) => Promise<number>;
 };
@@ -264,6 +278,7 @@ function Editor({ d }: { d: DatosConstructor }) {
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState("");
   const [mostrarErrores, setMostrarErrores] = useState(false);
+  const [plantillasVersion, setPlantillasVersion] = useState(0);
   const enCurso = useRef<Promise<void> | null>(null);
   const cambios = useRef(0); // sube con cada cambio: lo editado mientras se guarda sigue pendiente
   const mapa = useMemo(() => cruces(acciones), [acciones]);
@@ -639,6 +654,9 @@ function Editor({ d }: { d: DatosConstructor }) {
             </h2>
             {accion ? (
               <>
+                {d.servidor?.plantillas && (
+                  <UsarPlantilla key={`p-${accion.id}`} leer={d.servidor.plantillas} version={plantillasVersion} onUsar={(t) => cambiarAccion(desdePlantilla(t))} />
+                )}
                 <FormAccion
                   key={accion.id}
                   accion={accion}
@@ -649,6 +667,14 @@ function Editor({ d }: { d: DatosConstructor }) {
                   mostrarErrores={mostrarErrores}
                   onCambio={cambiarAccion}
                 />
+                {d.servidor?.guardarPlantilla && (
+                  <GuardarPlantilla
+                    key={`g-${accion.id}`}
+                    accion={accion}
+                    guardar={d.servidor.guardarPlantilla}
+                    alGuardar={() => setPlantillasVersion((n) => n + 1)}
+                  />
+                )}
                 {real && (
                   <button type="button" className="boton boton--terciario pa-boton-izq" onClick={() => quitarAccion(accion.id)}>
                     <Icono nombre="trash-2" tamaño={20} />
@@ -748,6 +774,96 @@ function FormMeta({ meta, real, onCambio, onQuitar }: { meta: MetaB; real: boole
 
 // ---------------------------------------------------------------------------
 // Formulario de la acción
+
+// Lo que una plantilla trae a la acción: textos, duración, foto y medición. La meta, el horario,
+// los días y las semanas quedan como estaban (son de cada persona).
+const desdePlantilla = (t: PlantillaAccion): Partial<AccionB> => ({
+  titulo: t.titulo,
+  instrucciones: t.instrucciones,
+  versionCorta: t.versionCorta,
+  duracion: t.duracion,
+  conFoto: t.conFoto,
+  medible: t.medible,
+});
+
+function UsarPlantilla({ leer, version, onUsar }: { leer: () => Promise<PlantillaAccion[]>; version: number; onUsar: (t: PlantillaAccion) => void }) {
+  const [lista, setLista] = useState<PlantillaAccion[] | null>(null);
+  const [elegida, setElegida] = useState("");
+  const [aviso, setAviso] = useState("");
+  useEffect(() => {
+    let vivo = true;
+    leer().then(
+      (l) => vivo && setLista(l),
+      () => vivo && setLista([]),
+    );
+    return () => {
+      vivo = false;
+    };
+  }, [leer, version]);
+  if (!lista?.length) return null;
+  const t = lista.find((x) => x.id === elegida);
+  return (
+    <div className="pa-plantilla">
+      <CampoSelect id="accion-plantilla" etiqueta={C.plantillas.usar} ayuda={C.plantillas.usarAyuda} value={elegida} onChange={(ev) => setElegida(ev.target.value)}>
+        <option value="">{C.plantillas.ninguna}</option>
+        {lista.map((x) => (
+          <option key={x.id} value={x.id}>
+            {x.titulo}
+          </option>
+        ))}
+      </CampoSelect>
+      <button
+        type="button"
+        className="boton boton--secundario"
+        disabled={!t}
+        onClick={() => {
+          if (!t) return;
+          onUsar(t);
+          setAviso(C.plantillas.usada(t.titulo));
+        }}
+      >
+        {C.plantillas.aplicar}
+      </button>
+      <p className="microcopia" role="status">
+        {aviso}
+      </p>
+    </div>
+  );
+}
+
+function GuardarPlantilla({ accion, guardar, alGuardar }: { accion: AccionB; guardar: (a: AccionB) => Promise<void>; alGuardar: () => void }) {
+  const [estado, setEstado] = useState<"" | "guardando" | "listo" | "error">("");
+  const e = errorDe(accion);
+  const lista = !e.titulo && !e.instrucciones && !e.duracion && !e.objetivo && !e.unidad;
+  // Guardada una vez, el botón espera a que la acción cambie (así no se duplica sin querer).
+  const huella = JSON.stringify([accion.titulo, accion.instrucciones, accion.versionCorta, accion.duracion, accion.conFoto, accion.medible]);
+  useEffect(() => setEstado(""), [huella]);
+  return (
+    <div className="pa-plantilla">
+      <button
+        type="button"
+        className="boton boton--terciario pa-boton-izq"
+        disabled={!lista || estado === "guardando" || estado === "listo"}
+        onClick={async () => {
+          setEstado("guardando");
+          try {
+            await guardar(accion);
+            setEstado("listo");
+            alGuardar();
+          } catch {
+            setEstado("error");
+          }
+        }}
+      >
+        <Icono nombre="copy" tamaño={20} />
+        {C.plantillas.guardar}
+      </button>
+      <p className="microcopia" role="status">
+        {!lista ? C.plantillas.faltan : estado === "listo" ? C.plantillas.guardada : estado === "error" ? C.plantillas.error : ""}
+      </p>
+    </div>
+  );
+}
 
 function FormAccion({
   accion: a,

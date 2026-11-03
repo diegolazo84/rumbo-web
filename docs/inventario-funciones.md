@@ -21,7 +21,7 @@ autorización de Diego.
 | Ingreso | Postular, acuerdo, crear espacio, ingreso por código | operativa | Recorrido completo con cuenta de prueba (bloque 9) |
 | Planificación | Mi Rumbo, Mi plan, detalle de acción, ajustes, constructor | operativa | — |
 | Planificación | Acciones medibles (`anotar_cantidad`, `mis_medibles`) | sin pantalla | Campos en el constructor; anotar en el detalle (maqueta) |
-| Planificación | Plantillas del equipo (`guardar_plantilla`) | sin pantalla | Catálogo dentro del constructor |
+| Planificación | Plantillas del equipo (`guardar_plantilla`) | en PR | Archivar y editar plantillas |
 | Planificación | Informe de cierre de ciclo (`informe_ciclo`) | sin pantalla | Pantalla de la persona (maqueta) y ficha |
 | Planificación | Evolución semanal en la ficha del coach (`evolucion_semanal`) | en PR | — |
 | Acompañamiento | Revisión semanal, Mi acompañamiento, bandeja del coach | operativa | — |

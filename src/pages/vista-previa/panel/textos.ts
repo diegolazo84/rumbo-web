@@ -395,6 +395,17 @@ export const CONSTRUCTOR = {
     seMarcaDesde: (dia: string) => `Se marca desde el ${dia}.`, // 4.7.2
     semanaN: (n: number) => `Semana ${n}`,
   },
+  plantillas: {
+    usar: "Empezar desde una plantilla",
+    usarAyuda: "Trae el título, las instrucciones, la duración, la foto y la medición. La meta, el horario y los días no cambian.",
+    ninguna: "Elige una plantilla",
+    aplicar: "Usar plantilla",
+    usada: (t: string) => `Se usó la plantilla «${t}». Revisa y ajusta lo que necesites.`,
+    guardar: "Guardar como plantilla",
+    guardada: "Plantilla guardada. El equipo ya puede usarla.",
+    faltan: "Para guardarla como plantilla, completa el título, las instrucciones y la duración.",
+    error: "No pudimos guardar la plantilla. Inténtalo de nuevo.",
+  },
   accion: {
     titulo: "Acción", // (vista previa)
     nueva: "Nueva acción", // (vista previa)
