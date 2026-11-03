@@ -31,7 +31,7 @@ import {
   flexibles,
   useAvisos,
   useEspacio,
-  tonoDe,
+  avisoDeLogro,
   useCelebrar,
   useFalloRegistro,
   usePrograma,
@@ -124,7 +124,7 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
       anunciar(p);
       if (!marcada) return setTostada({ mensaje: T_HOY.marcar.desmarcaste(o.titulo, p.creditos) });
       const logro = celebrar(o, "hecha", p);
-      setTostada({ mensaje: logro.mensaje, tono: tonoDe(logro), accion: { texto: T_HOY.marcar.deshacer, onClick: () => marcar(o, false) } });
+      setTostada(avisoDeLogro(logro, () => marcar(o, false)));
     }, fallo(o, () => marcar(o, marcada)));
 
   const paso = (n: number) => setFecha((f) => (vista === "dia" ? sumarDias(f, n) : vista === "semana" ? sumarDias(f, 7 * n) : sumarMeses(f, n)));
@@ -249,7 +249,7 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
         )}
       </Hoja>
       <AjustePlan />
-      <Tostada mensaje={tostada?.mensaje ?? null} tono={tostada?.tono} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
+      <Tostada mensaje={tostada?.mensaje ?? null} titulo={tostada?.titulo} detalle={tostada?.detalle} tono={tostada?.tono} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
       <RegionViva texto={vivo} />
     </div>
   );

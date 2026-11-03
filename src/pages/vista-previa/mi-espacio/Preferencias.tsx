@@ -205,7 +205,7 @@ function PantallaPreferencias() {
                 const v = e.target.checked;
                 setSonido(v);
                 guardarSonido(v);
-                if (v) sonar("accion", { forzar: true }); // así se escucha cómo suena
+                if (v) sonar("suave", { forzar: true }); // así se escucha cómo suena
               }}
             />
           </label>

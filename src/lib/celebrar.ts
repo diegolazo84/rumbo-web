@@ -9,8 +9,17 @@
 
 import type { DiaProgreso } from "../data/ejemplo-app";
 
-export type TipoLogro = "accion" | "primera" | "ultima" | "corta" | "anterior" | "dia" | "racha";
-export type Logro = { tipo: TipoLogro; mensaje: string };
+export type TipoLogro = "accion" | "primera" | "ultima" | "corta" | "anterior" | "dia" | "racha" | "hito";
+// Intensidad de la celebración: lo cotidiano es suave; el día completo, la racha y los hitos, más.
+export type Intensidad = "suave" | "dia" | "racha" | "hito";
+export type Logro = {
+  tipo: TipoLogro;
+  intensidad: Intensidad;
+  titulo?: string; // solo en día completo, racha e hito: «¡Lo lograste!»
+  texto: string; // el reconocimiento
+  creditos?: string; // «+4 créditos», aparte y en segundo plano (no aparece si se ocultaron)
+  mensaje: string; // todo junto, para leerlo en una línea
+};
 
 export type ContextoLogro = {
   titulo: string;
@@ -21,27 +30,42 @@ export type ContextoLogro = {
   conCreditos: boolean; // false si la persona ocultó créditos y niveles
 };
 
-const credito = (n: number, con: boolean) => (con ? ` · +${n} ${n === 1 ? "crédito" : "créditos"}` : "");
+// Rachas que se celebran como hito (semanas seguidas de días completos dentro del ciclo).
+const HITOS: Record<number, string> = { 7: "¡Una semana seguida!", 14: "¡Dos semanas seguidas!", 21: "¡Tres semanas seguidas!", 28: "¡Cuatro semanas seguidas!" };
+const NUMEROS = ["", "Un", "Dos", "Tres", "Cuatro", "Cinco", "Seis", "Siete", "Ocho", "Nueve", "Diez"];
+const diasSeguidos = (n: number) => `${NUMEROS[n] ?? n} ${n === 1 ? "día seguido" : "días seguidos"}`;
+const creditosTexto = (n: number) => `+${n} ${n === 1 ? "crédito" : "créditos"}`;
+
+function armar(tipo: TipoLogro, intensidad: Intensidad, texto: string, n: number, con: boolean, titulo?: string): Logro {
+  const creditos = con ? creditosTexto(n) : undefined;
+  return { tipo, intensidad, titulo, texto, creditos, mensaje: [titulo, texto, creditos].filter(Boolean).join(" ") };
+}
 
 // PROPUESTO: textos a confirmar con el fundador (y ChatGPT para el tono). Sin culpa, sin presión.
+// Lo cotidiano se reconoce con calma; el día completo, la racha y los hitos, con más fuerza.
 export function logroDeRegistro(c: ContextoLogro): Logro {
   const d = c.dia;
   const porAccion = 1;
+  const con = c.conCreditos;
   if (d?.estado === "completo") {
     const total = porAccion + d.bono;
-    if (d.racha >= 3) return { tipo: "racha", mensaje: `Día completo, ${d.racha} días seguidos${credito(total, c.conCreditos)}` };
-    return { tipo: "dia", mensaje: `Completaste el día${credito(total, c.conCreditos)}` };
+    if (HITOS[d.racha])
+      return armar("hito", "hito", `Completaste tu día. ${diasSeguidos(d.racha)} avanzando a tu ritmo.`, total, con, HITOS[d.racha]);
+    if (d.racha >= 3) return armar("racha", "racha", `Completaste tu día. ${diasSeguidos(d.racha)} avanzando a tu ritmo.`, total, con, "¡Lo lograste!");
+    return armar("dia", "dia", "Completaste tu día.", total, con, "¡Lo lograste!");
   }
-  if (c.desdeAnteriores && c.diaAnterior)
-    return { tipo: "anterior", mensaje: `Registrada en el ${c.diaAnterior}${credito(porAccion, c.conCreditos)}. Tu avance se actualizó.` };
-  if (c.corta) return { tipo: "corta", mensaje: `Hiciste la versión corta: también cuenta${credito(porAccion, c.conCreditos)}` };
+  if (c.desdeAnteriores && c.diaAnterior) return armar("anterior", "suave", `Registrada en el ${c.diaAnterior}. Tu avance se actualizó.`, porAccion, con);
+  if (c.corta) return armar("corta", "suave", "Hiciste la versión corta: también cuenta.", porAccion, con);
   if (d && d.programadas > 1) {
     const quedan = d.programadas - d.hechas - d.enRevision - d.dejadas;
-    if (quedan === 1) return { tipo: "ultima", mensaje: `Listo “${c.titulo}”. Te queda una para completar el día${credito(porAccion, c.conCreditos)}` };
-    if (d.hechas === 1) return { tipo: "primera", mensaje: `Primer paso del día: “${c.titulo}”${credito(porAccion, c.conCreditos)}` };
+    if (quedan === 1) return armar("ultima", "suave", "Te queda una para completar el día.", porAccion, con);
+    if (d.hechas === 1) return armar("primera", "suave", `Primer paso del día: “${c.titulo}”.`, porAccion, con);
   }
-  return { tipo: "accion", mensaje: `Marcaste “${c.titulo}”${credito(porAccion, c.conCreditos)}` };
+  return armar("accion", "suave", `Marcaste “${c.titulo}”.`, porAccion, con);
 }
+
+// Cuánto se queda la confirmación a la vista (se pausa con el puntero o el foco encima).
+export const DURACION_LOGRO: Record<Intensidad, number> = { suave: 4000, dia: 6000, racha: 6000, hito: 7000 };
 
 // ---------------------------------------------------------------------------
 // Sonido opcional
@@ -69,17 +93,22 @@ export function guardarSonido(activo: boolean) {
 let memoria: boolean | null = null;
 let audio: AudioContext | null = null;
 
-// Notas cortas y suaves: dos para una acción, tres para un día completo.
-const NOTAS: Record<"accion" | "dia", number[]> = { accion: [659.25, 987.77], dia: [523.25, 659.25, 783.99] };
+// Notas cortas y suaves: dos para una acción, tres para un día completo, cuatro para un hito.
+const NOTAS: Record<Intensidad, number[]> = {
+  suave: [659.25, 987.77],
+  dia: [523.25, 659.25, 783.99],
+  racha: [523.25, 659.25, 783.99],
+  hito: [523.25, 659.25, 783.99, 1046.5],
+};
 
-export function sonar(tipo: TipoLogro, { forzar = false } = {}) {
+export function sonar(intensidad: Intensidad, { forzar = false } = {}) {
   if (!forzar && !(memoria ?? sonidoActivo())) return;
   try {
     const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctx) return;
     audio ??= new Ctx();
     if (audio.state === "suspended") void audio.resume();
-    const notas = tipo === "dia" || tipo === "racha" ? NOTAS.dia : NOTAS.accion;
+    const notas = NOTAS[intensidad];
     const t0 = audio.currentTime + 0.01;
     notas.forEach((f, i) => {
       const osc = audio!.createOscillator();

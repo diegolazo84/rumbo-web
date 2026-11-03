@@ -11,7 +11,7 @@ import { FilaAccion, Icono, TEXTOS_CARGA, type NombreIconoApp } from "../../../c
 import { calcularProgreso, cuentaComoHecha, type EstadoRegistro, type Ocurrencia } from "../../../data/ejemplo-app";
 import { diaCorto, type Iso } from "../../../lib/fechas";
 import { ICONO_CATEGORIA, colorDeMeta } from "../../../lib/mi-rumbo";
-import { logroDeRegistro, sonar, type Logro } from "../../../lib/celebrar";
+import { logroDeRegistro, sonar, type Intensidad, type Logro } from "../../../lib/celebrar";
 import { ErrorBase } from "../../../lib/supabase";
 import { useEspacio, type Progreso } from "./espacio";
 import { T_CALENDARIO, T_COMUN, T_HOY } from "./textos";
@@ -206,8 +206,14 @@ export function useFalloRegistro(setTostada: (a: Aviso) => void, abrir?: (o: Ocu
 }
 
 // ---------------------------------------------------------------------------
-// Tono de la tostada para un logro: el día completo (o la racha) se distingue de una acción.
-export const tonoDe = (l: Logro): "logro" | "dia" => (l.tipo === "dia" || l.tipo === "racha" ? "dia" : "logro");
+// Tostada de un logro: título y créditos aparte, intensidad según el logro y cierre automático.
+export const avisoDeLogro = (l: Logro, deshacer: () => void): Aviso => ({
+  mensaje: l.texto,
+  titulo: l.titulo,
+  detalle: l.creditos,
+  tono: l.intensidad,
+  accion: { texto: T_HOY.marcar.deshacer, onClick: deshacer },
+});
 
 // Completar una acción (paquete 2): mensaje según el contexto del día y sonido opcional. Usa solo
 // el progreso que devolvió el servidor (lib/celebrar.ts); no cambia créditos ni reglas.
@@ -224,7 +230,7 @@ export function useCelebrar(ocultarCreditos?: boolean) {
       dia: p.dias.find((d) => d.fecha === o.fecha),
       conCreditos,
     });
-    sonar(logro.tipo);
+    sonar(logro.intensidad);
     return logro;
   };
 }
@@ -298,7 +304,7 @@ export const flexibles = (l: Ocurrencia[]) => l.filter((o) => !o.hora);
 // ---------------------------------------------------------------------------
 // Tostada y región viva
 
-export type Aviso = { mensaje: string; tono?: "logro" | "dia"; accion?: { texto: string; onClick: () => void } } | null;
+export type Aviso = { mensaje: string; titulo?: string; detalle?: string; tono?: Intensidad; accion?: { texto: string; onClick: () => void } } | null;
 
 export function useAvisos() {
   const [tostada, setTostada] = useState<Aviso>(null);

@@ -102,7 +102,7 @@ function DetalleReal() {
   return (
     <div className="me-pantalla me-pantalla--detalle">
       <Detalle o={o} hoy={hoy} onRegistrar={guardar} />
-      <Tostada mensaje={tostada?.mensaje ?? null} tono={tostada?.tono} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
+      <Tostada mensaje={tostada?.mensaje ?? null} titulo={tostada?.titulo} detalle={tostada?.detalle} tono={tostada?.tono} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
       <RegionViva texto={vivo} />
     </div>
   );

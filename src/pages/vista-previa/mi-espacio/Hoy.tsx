@@ -32,7 +32,7 @@ import {
   RegionViva,
   useAvisos,
   useEspacio,
-  tonoDe,
+  avisoDeLogro,
   useCelebrar,
   useFalloRegistro,
   usePrograma,
@@ -153,7 +153,7 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
         return;
       }
       const logro = celebrarLogro(o, "hecha", p, desdeAnteriores);
-      setTostada({ mensaje: logro.mensaje, tono: tonoDe(logro), accion: { texto: T_HOY.marcar.deshacer, onClick: () => marcar(o, false) } });
+      setTostada(avisoDeLogro(logro, () => marcar(o, false)));
     }, fallo(o, () => marcar(o, marcada, desdeAnteriores)));
   };
 
@@ -312,7 +312,7 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
       />
       <Celebracion abierta={celebrar} progreso={progreso} onCerrar={() => setCelebrar(false)} />
       <HojaAyuda abierta={ayuda} onCerrar={() => setAyuda(false)} />
-      <Tostada mensaje={tostada?.mensaje ?? null} tono={tostada?.tono} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
+      <Tostada mensaje={tostada?.mensaje ?? null} titulo={tostada?.titulo} detalle={tostada?.detalle} tono={tostada?.tono} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
       <RegionViva texto={vivo} />
     </div>
   );
