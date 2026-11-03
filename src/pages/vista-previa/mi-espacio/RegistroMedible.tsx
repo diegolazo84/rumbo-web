@@ -9,7 +9,7 @@ import { Link } from "react-router-dom";
 import { Icono, TEXTOS_CARGA } from "../../../components/app";
 import { Campo, CampoArea, Formulario } from "../../../components/form";
 import { cuentaComoHecha, type EstadoRegistro, type Ocurrencia } from "../../../data/ejemplo-app";
-import { useEspacio } from "./comun";
+import { mensajeRegistro, useEspacio } from "./comun";
 import { T_DETALLE, T_REGISTRAR, cantidadTexto } from "./textos";
 
 const MAX_NOTA = 200;
@@ -59,6 +59,7 @@ export default function RegistroMedible({ o, ventana, anterior, enHoja, sinConex
   const [invalido, setInvalido] = useState(false);
   const [estado, setEstado] = useState<"listo" | "guardando" | "error" | "error-despues">("listo");
   const [recien, setRecien] = useState(false);
+  const [motivo, setMotivo] = useState<string | null>(null); // motivo de la base, si no fue la conexión
   const zona = useRef<HTMLDivElement>(null);
   const moverFoco = useRef(false);
 
@@ -114,7 +115,9 @@ export default function RegistroMedible({ o, ventana, anterior, enHoja, sinConex
       }
       await servidor.anotar(o.id, { cantidad: n, ...(conNota ? { nota: notaNueva } : {}) });
       listo();
-    } catch {
+    } catch (e) {
+      const f = mensajeRegistro(e, o.titulo);
+      setMotivo(f.reintentar ? null : f.mensaje);
       setEstado(marcada && !hecha ? "error-despues" : "error");
     }
   };
@@ -228,7 +231,7 @@ export default function RegistroMedible({ o, ventana, anterior, enHoja, sinConex
           {(estado === "error" || estado === "error-despues") && (
             <p className="campo__error">
               <Icono nombre="circle-alert" tamaño={16} />
-              {estado === "error" ? T_REGISTRAR.error : T_REGISTRAR.errorDespues}
+              {estado === "error" ? (motivo ?? T_REGISTRAR.error) : T_REGISTRAR.errorDespues}
             </p>
           )}
         </div>

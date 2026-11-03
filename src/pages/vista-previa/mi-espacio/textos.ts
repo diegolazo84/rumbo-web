@@ -218,6 +218,21 @@ export const T_HOY = {
     desmarcaste: (t: string, c: number) => `Desmarcaste “${t}”. Tus créditos se actualizaron: ahora tienes ${c}.`,
     error: (t: string) => `No pudimos guardar “${t}”. Revisa tu conexión e inténtalo de nuevo.`,
     reintentar: "Reintentar",
+    // Motivos que da la base (privado.error «campo:codigo»). Solo el corte de red habla de la conexión.
+    errores: {
+      requiere_foto: (t: string) => `“${t}” se registra con una foto o con una explicación breve.`,
+      futura: (t: string) => `“${t}” es de un día que aún no llega. Podrás marcarla ese día.`,
+      fuera_de_plazo: (t: string) => `Ya pasó el plazo para registrar “${t}”.`,
+      no_vigente: (t: string) => `“${t}” ya no está en tu plan: se ajustó o quedó en pausa.`,
+      cerrado: "Este ciclo ya terminó: sus acciones ya no se pueden cambiar.",
+      no_encontrada: "No encontramos esta acción. Vuelve a cargar la página.",
+      es_de_hoy: "Las acciones de hoy no se pueden dejar pasar. Puedes hacerlas hasta el final del día.",
+      version: "Esta acción no tiene versión corta.",
+      explicacion: "La explicación debe tener entre 10 y 280 caracteres.",
+      sesion: "Tu sesión terminó. Vuelve a entrar para guardar.",
+      otro: (t: string) => `No pudimos guardar “${t}”. Inténtalo de nuevo en un momento.`,
+    },
+    abrir: "Abrir",
   },
 } as const;
 

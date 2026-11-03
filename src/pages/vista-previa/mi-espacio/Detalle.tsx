@@ -21,7 +21,7 @@ import { FOTO } from "../../../data/formularios";
 import { FotoRechazada, prepararFotoPrivada } from "../../../lib/foto-privada";
 import { reglasCreditos } from "../../../data/rumbo";
 import { diaCorto, diaMes, duracionTexto, fechaLarga, mayuscula, sumarMinutos, type Iso } from "../../../lib/fechas";
-import { EtiquetaEjemplo, useEspacio } from "./comun";
+import { EtiquetaEjemplo, mensajeRegistro, useEspacio } from "./comun";
 import RegistroMedible from "./RegistroMedible";
 import { T_CALENDARIO, T_COMUN, T_DETALLE, T_REGISTRAR, cantidadTexto } from "./textos";
 
@@ -343,9 +343,15 @@ const fotoInicialDe = (o: Ocurrencia, r: EstadoRegistro | null): FotoInicial =>
   r === "aprobada" && o.fotoDepurada ? "depurada" : fotoDelRegistro(r);
 
 // Mensaje para la persona según el motivo del rechazo o el fallo.
-function mensajeFoto(e: unknown): string {
+function mensajeFoto(e: unknown, titulo: string): string {
   if (e instanceof FotoRechazada) return T_DETALLE.foto.errores[e.motivo];
-  return FOTO.errores.red;
+  return conMotivo(e, titulo) ?? FOTO.errores.red;
+}
+
+// Si la base dio un motivo (plazo, acción ajustada, largo…), ese; si fue la conexión, null.
+function conMotivo(e: unknown, titulo: string): string | null {
+  const f = mensajeRegistro(e, titulo);
+  return f.reintentar ? null : f.mensaje;
 }
 
 // Botón que abre la cámara o la galería y entrega la foto ya preparada (o el error).
@@ -372,7 +378,7 @@ function BotonFoto({
     try {
       onFoto(await prepararFotoPrivada(f));
     } catch (x) {
-      onError(mensajeFoto(x));
+      onError(mensajeFoto(x, ""));
     } finally {
       setPreparando(false);
     }
@@ -424,7 +430,7 @@ function BloqueFoto({ o, inicial, sinConexion }: { o: Ocurrencia; inicial: FotoI
       })
       .catch((x) => {
         setEstado(antes);
-        setError(mensajeFoto(x));
+        setError(mensajeFoto(x, o.titulo));
       });
   };
 
@@ -438,7 +444,7 @@ function BloqueFoto({ o, inicial, sinConexion }: { o: Ocurrencia; inicial: FotoI
         setEstado("sin");
         moverFoco();
       })
-      .catch(() => setError(T_DETALLE.foto.errorGuardar));
+      .catch((x) => setError(conMotivo(x, o.titulo) ?? T_DETALLE.foto.errorGuardar));
   };
 
   const enviarExplicacion = () => {
@@ -455,7 +461,7 @@ function BloqueFoto({ o, inicial, sinConexion }: { o: Ocurrencia; inicial: FotoI
           setEstado("revision");
           moverFoco();
         })
-        .catch(() => setErrorTexto(T_DETALLE.foto.errorGuardar));
+        .catch((x) => setErrorTexto(conMotivo(x, o.titulo) ?? T_DETALLE.foto.errorGuardar));
       return;
     }
     setExplicacion(v);
@@ -624,7 +630,7 @@ function FotoOpcional({ o, sinConexion }: { o: Ocurrencia; sinConexion?: boolean
     setOcupado("subiendo");
     servidor
       .subirFoto(o.id, foto, "opcional")
-      .catch((x) => setError(mensajeFoto(x)))
+      .catch((x) => setError(mensajeFoto(x, o.titulo)))
       .finally(() => setOcupado(null));
   };
   const quitar = () => {
@@ -632,7 +638,7 @@ function FotoOpcional({ o, sinConexion }: { o: Ocurrencia; sinConexion?: boolean
     setOcupado("quitando");
     servidor
       .quitarFoto(o.id)
-      .catch(() => setError(T_DETALLE.foto.errorGuardar))
+      .catch((x) => setError(conMotivo(x, o.titulo) ?? T_DETALLE.foto.errorGuardar))
       .finally(() => setOcupado(null));
   };
   return (

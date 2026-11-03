@@ -31,6 +31,7 @@ import {
   flexibles,
   useAvisos,
   useEspacio,
+  useFalloRegistro,
   usePrograma,
   type Progreso,
 } from "./comun";
@@ -107,10 +108,12 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
   }, [vista, fecha]);
 
   const anunciar = (p: Progreso) => setVivo(T_HOY.marcar.vivo(p.creditos, p.nivel.nivel, p.nivel.nombre));
-  const fallo = (o: Ocurrencia, reintentar: () => void) => () =>
-    setTostada({ mensaje: T_HOY.marcar.error(o.titulo), accion: { texto: T_HOY.marcar.reintentar, onClick: reintentar } });
+  const fallo = useFalloRegistro(setTostada, (o) => setAbierta(o.id));
+  // Una acción con foto obligatoria no se marca: se abre su detalle (foto o explicación breve).
   const marcar = (o: Ocurrencia, marcada: boolean): void =>
-    registrar(o.id, marcada ? "hecha" : null, (p) => {
+    marcada && o.conFoto
+      ? setAbierta(o.id)
+      : registrar(o.id, marcada ? "hecha" : null, (p) => {
       anunciar(p);
       if (!marcada) return setTostada({ mensaje: T_HOY.marcar.desmarcaste(o.titulo, p.creditos) });
       const dia = p.dias.find((d) => d.fecha === o.fecha);
