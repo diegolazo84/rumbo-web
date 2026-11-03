@@ -7,7 +7,7 @@ import { useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { BarraProgreso, FranjaSemana, Hoja, Icono, LeyendaMetas, Segmentado, Tostada, type DiaFranja } from "../../../components/app";
 import Etiqueta from "../../../components/Etiqueta";
-import { cuentaComoHecha, ocurrenciasDel, type Meta, type Ocurrencia } from "../../../data/ejemplo-app";
+import { cuentaComoHecha, ocurrenciasDel, type EstadoRegistro, type Meta, type Ocurrencia } from "../../../data/ejemplo-app";
 import type { CategoriaId } from "../../../data/rumbo";
 import {
   anioDe,
@@ -31,6 +31,8 @@ import {
   flexibles,
   useAvisos,
   useEspacio,
+  avisoDeLogro,
+  useCelebrar,
   useFalloRegistro,
   usePrograma,
   type Progreso,
@@ -109,6 +111,11 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
 
   const anunciar = (p: Progreso) => setVivo(T_HOY.marcar.vivo(p.creditos, p.nivel.nivel, p.nivel.nombre));
   const fallo = useFalloRegistro(setTostada, (o) => setAbierta(o.id));
+  const celebrar = useCelebrar();
+  const alRegistrar = (o: Ocurrencia, e: EstadoRegistro | null) => (p: Progreso) => {
+    anunciar(p);
+    if (e === "hecha" || e === "corta") celebrar(o, e, p);
+  };
   // Una acción con foto obligatoria no se marca: se abre su detalle (foto o explicación breve).
   const marcar = (o: Ocurrencia, marcada: boolean): void =>
     marcada && o.conFoto
@@ -116,11 +123,8 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
       : registrar(o.id, marcada ? "hecha" : null, (p) => {
       anunciar(p);
       if (!marcada) return setTostada({ mensaje: T_HOY.marcar.desmarcaste(o.titulo, p.creditos) });
-      const dia = p.dias.find((d) => d.fecha === o.fecha);
-      setTostada({
-        mensaje: dia?.estado === "completo" ? T_HOY.marcar.completaste(1 + dia.bono) : T_HOY.marcar.marcaste(o.titulo),
-        accion: { texto: T_HOY.marcar.deshacer, onClick: () => marcar(o, false) },
-      });
+      const logro = celebrar(o, "hecha", p);
+      setTostada(avisoDeLogro(logro, () => marcar(o, false)));
     }, fallo(o, () => marcar(o, marcada)));
 
   const paso = (n: number) => setFecha((f) => (vista === "dia" ? sumarDias(f, n) : vista === "semana" ? sumarDias(f, 7 * n) : sumarMeses(f, n)));
@@ -241,11 +245,11 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
       </Hoja>
       <Hoja abierta={!!detalle} onCerrar={() => setAbierta(null)} titulo={detalle?.titulo ?? ""} className="hoja--detalle">
         {detalle && (
-          <Detalle o={detalle} hoy={hoy} enHoja onRegistrar={(e) => registrar(detalle.id, e, anunciar, fallo(detalle, () => registrar(detalle.id, e, anunciar)))} />
+          <Detalle o={detalle} hoy={hoy} enHoja onRegistrar={(e) => registrar(detalle.id, e, alRegistrar(detalle, e), fallo(detalle, () => registrar(detalle.id, e, alRegistrar(detalle, e))))} />
         )}
       </Hoja>
       <AjustePlan />
-      <Tostada mensaje={tostada?.mensaje ?? null} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
+      <Tostada mensaje={tostada?.mensaje ?? null} titulo={tostada?.titulo} detalle={tostada?.detalle} tono={tostada?.tono} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
       <RegionViva texto={vivo} />
     </div>
   );

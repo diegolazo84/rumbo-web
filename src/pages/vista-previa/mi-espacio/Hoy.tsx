@@ -21,7 +21,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Etiqueta from "../../../components/Etiqueta";
 import { AnilloDia, BarraProgreso, ErrorBloque, Hoja, HojaAyuda, Icono, Ilustracion, Tostada } from "../../../components/app";
-import { ESCENARIO_CERCANO, HOY, cuentaComoHecha, ocurrenciasDel, type Escenario, type Meta, type Ocurrencia } from "../../../data/ejemplo-app";
+import { ESCENARIO_CERCANO, HOY, cuentaComoHecha, ocurrenciasDel, type Escenario, type EstadoRegistro, type Meta, type Ocurrencia } from "../../../data/ejemplo-app";
 import { niveles } from "../../../data/rumbo";
 import { diaCorto, mayuscula, type Iso } from "../../../lib/fechas";
 import { ICONO_CATEGORIA, MOMENTOS, colorDeMeta, estadoBienvenida, fraseDelDia, incluyeCoach, metaPrincipal, momentoDe, type Momento } from "../../../lib/mi-rumbo";
@@ -32,6 +32,8 @@ import {
   RegionViva,
   useAvisos,
   useEspacio,
+  avisoDeLogro,
+  useCelebrar,
   useFalloRegistro,
   usePrograma,
   type Cambios,
@@ -130,6 +132,12 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
   // Error al guardar (4.5): el check ya volvió atrás; la tostada dice el motivo real y ofrece
   // reintentar solo si fue la conexión (o abrir la acción, si pide foto).
   const fallo = useFalloRegistro(setTostada, (o) => setAbierta(o.id));
+  const celebrarLogro = useCelebrar(variante.ocultarCreditos);
+  // Desde la hoja de detalle: el detalle ya muestra «Hecha»; suma el sonido (si está activo).
+  const alRegistrar = (o: Ocurrencia, e: EstadoRegistro | null) => (p: Progreso) => {
+    anunciar(p);
+    if (e === "hecha" || e === "corta") celebrarLogro(o, e, p);
+  };
 
   // Marcar o desmarcar desde la fila, la hoja o «Ya la hice» (se registra en su día original).
   // Una acción con foto obligatoria no se marca: se abre su detalle (foto o explicación breve).
@@ -144,13 +152,8 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
         setTostada({ mensaje: T_HOY.marcar.desmarcaste(o.titulo, p.creditos) });
         return;
       }
-      const dia = p.dias.find((d) => d.fecha === o.fecha);
-      const mensaje = desdeAnteriores
-        ? T_ANTERIORES.registrada(diaCorto(o.fecha))
-        : dia?.estado === "completo"
-          ? T_HOY.marcar.completaste(1 + dia.bono)
-          : T_HOY.marcar.marcaste(o.titulo);
-      setTostada({ mensaje, accion: { texto: T_HOY.marcar.deshacer, onClick: () => marcar(o, false) } });
+      const logro = celebrarLogro(o, "hecha", p, desdeAnteriores);
+      setTostada(avisoDeLogro(logro, () => marcar(o, false)));
     }, fallo(o, () => marcar(o, marcada, desdeAnteriores)));
   };
 
@@ -276,7 +279,7 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
               hoy={hoy}
               enHoja
               sinConexion={sinConexion}
-              onRegistrar={(e) => registrar(detalle.id, e, anunciar, fallo(detalle, () => registrar(detalle.id, e, anunciar)))}
+              onRegistrar={(e) => registrar(detalle.id, e, alRegistrar(detalle, e), fallo(detalle, () => registrar(detalle.id, e, alRegistrar(detalle, e))))}
             />
             <p className="me-hoy__costando-accion">
               <button
@@ -309,7 +312,7 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
       />
       <Celebracion abierta={celebrar} progreso={progreso} onCerrar={() => setCelebrar(false)} />
       <HojaAyuda abierta={ayuda} onCerrar={() => setAyuda(false)} />
-      <Tostada mensaje={tostada?.mensaje ?? null} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
+      <Tostada mensaje={tostada?.mensaje ?? null} titulo={tostada?.titulo} detalle={tostada?.detalle} tono={tostada?.tono} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
       <RegionViva texto={vivo} />
     </div>
   );
