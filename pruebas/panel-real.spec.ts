@@ -1711,3 +1711,67 @@ test("Pagos: si la base rechaza, se explica; PayPal pasa a dólares sin monto; u
   await expect(page.getByText("Solo el dueño puede ver y registrar pagos.")).toBeVisible();
   await expect(page.locator("section[aria-labelledby=por-registrar-titulo]")).toHaveCount(0);
 });
+
+// Negocio (dueño): indicadores agregados de la base (20261027000000_indicadores, aplicada) e ingresos de pagos.
+const INDICADORES = {
+  periodo: { desde: "2026-09-16", hasta: "2026-10-13" },
+  conversion: { postulaciones: 8, interes: 3, respondidas_a_tiempo: 6, acordadas: 2, revisadas: 4, acuerdos_aceptados: 2, ciclos_por_plan: { coach: 1, cercano: 1 } },
+  activacion: { empezaron: 2, primera_accion_3_dias: 2, registro_semana_1: 1 },
+  cumplimiento: { acciones_programadas: 40, acciones_hechas: 30, dias_con_acciones: 0, dias_completos: 0, registros_semanales_enviados: 3, revisiones_publicadas: 3, ajustes_pedidos: 1 },
+  retencion: { en_ciclo_activo: 2, con_actividad: 2, pausados: 0, cerrados: 0, cerrados_antes_del_fin: 0, renovaciones: 0 },
+  equipo: { acompanantes_activos: 1, participantes_con_coach: 2, participantes_sin_coach: 0 },
+  no_disponible: [
+    { indicador: "visitas y tasa de postulación", falta: "analítica sin cookies (no activa)" },
+    { indicador: "conversión a pago, devoluciones, ingreso y margen", falta: "registro de pagos (B4)" },
+  ],
+};
+
+test("Negocio: el dueño ve los indicadores del período, sin porcentajes inventados; un coach no los ve", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  base.pagos = [
+    { id: "g1", participante_id: "p1", ciclo_id: "c1", monto: 64000, moneda: "CLP", medio: "transferencia", pagado_en: "2026-10-01", referencia: null, devuelto: 32000, devuelto_en: "2026-10-10", devolucion_motivo: "semanas_no_empezadas" },
+    { id: "g2", participante_id: "p2", ciclo_id: "c2", monto: 72, moneda: "USD", medio: "paypal", pagado_en: "2026-10-05", referencia: null, devuelto: 0, devuelto_en: null, devolucion_motivo: null },
+    { id: "g3", participante_id: "p2", ciclo_id: "c9", monto: 100000, moneda: "CLP", medio: "transferencia", pagado_en: "2026-01-05", referencia: null, devuelto: 0, devuelto_en: null, devolucion_motivo: null },
+  ];
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/indicadores`, async (rt) => {
+    const cuerpo = (rt.request().postDataJSON() ?? {}) as Record<string, unknown>;
+    llamadas.push({ tipo: "rpc", metodo: "POST", nombre: "indicadores", url: rt.request().url(), cuerpo, aal: "aal2" });
+    return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...INDICADORES, periodo: { desde: cuerpo.p_desde, hasta: cuerpo.p_hasta } }) });
+  });
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  await page.getByRole("link", { name: "Negocio" }).click();
+  await expect(page.locator("h1")).toHaveText("Negocio.");
+  const conv = page.locator("section[aria-labelledby=ng-conversion-titulo]");
+  await expect(conv).toContainText("Respondidas dentro de 2 días hábiles6 de 8 (75 %)");
+  await expect(conv).toContainText("Ciclos que empezaron · Acompañamiento cercano1");
+  // Sin días con acciones no hay porcentaje: se dice, no se inventa.
+  await expect(page.locator("section[aria-labelledby=ng-cumplimiento-titulo]")).toContainText("Acciones hechas (de las programadas)30 de 40 (75 %)");
+  await expect(page.locator("section[aria-labelledby=ng-cumplimiento-titulo]")).toContainText("0 (sin datos para calcular el porcentaje)");
+  // Ingresos del período desde los pagos anotados (el pago de enero queda fuera de las 4 semanas).
+  const ing = page.locator("section[aria-labelledby=ng-ingresos-titulo]");
+  await expect(ing).toContainText("Pagos recibidos$64.000 · USD 72");
+  await expect(ing).toContainText("Devoluciones hechas$32.000");
+  // Lo que ya tiene registro (pagos) no aparece como faltante.
+  const faltan = page.locator("section[aria-labelledby=ng-faltan-titulo]");
+  await expect(faltan).toContainText("Visitas y tasa de postulación");
+  await expect(faltan).not.toContainText("ingreso y margen");
+  await sinViolaciones(page);
+  const primera = llamadas.filter((l) => l.nombre === "indicadores")[0].cuerpo as { p_desde: string; p_hasta: string };
+  expect((Date.parse(primera.p_hasta) - Date.parse(primera.p_desde)) / 86_400_000).toBe(27);
+
+  // Otro período: vuelve a consultar con lo que va del año.
+  await page.getByLabel("Período").selectOption("anio");
+  await expect(ing).toContainText("Pagos recibidos$164.000 · USD 72");
+  const ultima = llamadas.filter((l) => l.nombre === "indicadores").at(-1)!.cuerpo as { p_desde: string; p_hasta: string };
+  expect(ultima.p_desde).toBe(`${primera.p_hasta.slice(0, 4)}-01-01`);
+
+  const antes = llamadas.filter((l) => l.nombre === "indicadores").length;
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/mi_rol_equipo`, (rt) => rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ rol: "coach", puede_moderar: false }) }));
+  await page.goto("equipo/negocio/");
+  await hidratar(page);
+  await expect(page.getByText("Solo el dueño puede ver los indicadores del negocio.")).toBeVisible();
+  expect(llamadas.filter((l) => l.nombre === "indicadores")).toHaveLength(antes);
+});
