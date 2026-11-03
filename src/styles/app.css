@@ -632,6 +632,41 @@ a.accion__abrir, button.accion__abrir { cursor: pointer; }
   .accion--hoy .accion__control input:checked { animation: check-pulso var(--dur-3) var(--curva); }
 }
 @keyframes check-pulso { 40% { scale: 1.18; } }
+/* Recién marcada (paquete 2): un anillo del color de la meta sale del check y se desvanece. */
+.accion__control { position: relative; }
+@media (prefers-reduced-motion: no-preference) {
+  .accion--app .accion__control input:checked { animation: check-pulso var(--dur-3) var(--curva); }
+  .accion--recien .accion__control::after {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border: 2px solid var(--cat);
+    border-radius: var(--r-full);
+    pointer-events: none;
+    animation: check-anillo 700ms var(--curva) forwards;
+  }
+}
+@keyframes check-anillo { from { opacity: 0.7; scale: 0.7; } to { opacity: 0; scale: 1.55; } }
+
+/* Tostada de logro: icono en un círculo y entrada suave desde abajo. */
+.tostada--logro { padding-inline-start: 8px; }
+.tostada__logro {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: 32px;
+  block-size: 32px;
+  border-radius: var(--r-full);
+  background: rgb(245 239 228 / 0.16);
+  color: var(--papel);
+}
+.tostada--dia .tostada__logro { background: var(--ambar); color: var(--bosque); }
+@media (prefers-reduced-motion: no-preference) {
+  .tostada--logro { animation: tostada-entrar var(--dur-3) var(--curva); }
+  .tostada--dia .tostada__logro { animation: logro-brillo 900ms var(--curva); }
+}
+@keyframes tostada-entrar { from { opacity: 0; translate: 0 12px; } }
+@keyframes logro-brillo { 0% { scale: 0.6; rotate: -20deg; } 60% { scale: 1.15; rotate: 6deg; } 100% { scale: 1; rotate: 0deg; } }
 @media (max-width: 359.98px) {
   .accion--hoy .accion__abrir { grid-template-columns: minmax(0, 1fr); }
   .accion--hoy .accion-icono { display: none; }
@@ -718,3 +753,17 @@ a.accion__abrir, button.accion__abrir { cursor: pointer; }
 .anillo--chico { inline-size: 40px; block-size: 40px; }
 .anillo--chico .anillo__texto { font-size: var(--t-micro); }
 @media (prefers-reduced-motion: no-preference) { .anillo__arco { transition: stroke-dasharray var(--dur-3) var(--curva); } }
+/* Día completo con la pantalla abierta (paquete 2): un halo ámbar sale del anillo una vez. */
+@media (prefers-reduced-motion: no-preference) {
+  .anillo.es-recien { animation: anillo-latido 700ms var(--curva) 1; }
+  .anillo.es-recien::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 3px solid var(--ambar);
+    border-radius: var(--r-full);
+    pointer-events: none;
+    animation: check-anillo 1s var(--curva) 200ms both;
+  }
+}
+@keyframes anillo-latido { 40% { scale: 1.08; } }

@@ -22,7 +22,7 @@ import {
 } from "../../../data/ejemplo-app";
 import type { PropsPantalla } from "../registro";
 import Detalle, { type FotoInicial } from "./Detalle";
-import { Cabeza, RegionViva, useAvisos, useEspacio, useFalloRegistro, usePrograma, type Progreso } from "./comun";
+import { Cabeza, RegionViva, useAvisos, useCelebrar, useEspacio, useFalloRegistro, usePrograma, type Progreso } from "./comun";
 import { T_COMUN, T_DETALLE, T_HOY } from "./textos";
 
 // Una ocurrencia del ejemplo por estado (src/data/ejemplo-app.ts).
@@ -74,6 +74,7 @@ function DetalleReal() {
   const { lista, registrar, hoy } = usePrograma();
   const { tostada, setTostada, vivo, setVivo, cerrar } = useAvisos();
   const fallo = useFalloRegistro(setTostada);
+  const celebrar = useCelebrar();
   const o = id ? lista.find((x) => x.id === id) : undefined;
 
   if (id === null) {
@@ -93,11 +94,15 @@ function DetalleReal() {
     );
   }
   const anunciar = (p: Progreso) => setVivo(T_HOY.marcar.vivo(p.creditos, p.nivel.nivel, p.nivel.nombre));
-  const guardar = (estado: EstadoRegistro | null): void => registrar(o.id, estado, anunciar, fallo(o, () => guardar(estado)));
+  const listo = (estado: EstadoRegistro | null) => (p: Progreso) => {
+    anunciar(p);
+    if (estado === "hecha" || estado === "corta") celebrar(o, estado, p);
+  };
+  const guardar = (estado: EstadoRegistro | null): void => registrar(o.id, estado, listo(estado), fallo(o, () => guardar(estado)));
   return (
     <div className="me-pantalla me-pantalla--detalle">
       <Detalle o={o} hoy={hoy} onRegistrar={guardar} />
-      <Tostada mensaje={tostada?.mensaje ?? null} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
+      <Tostada mensaje={tostada?.mensaje ?? null} tono={tostada?.tono} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
       <RegionViva texto={vivo} />
     </div>
   );

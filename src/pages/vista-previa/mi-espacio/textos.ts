@@ -738,6 +738,11 @@ export const T_PREFERENCIAS = {
     zonaAyuda:
       "Tus horarios se muestran en esta zona. Las videollamadas siempre se acuerdan en hora de Chile. Si cambiaste de país, avísanos en una solicitud de ajuste.",
   },
+  // PROPUESTO (paquete 2): sonido opcional al completar una acción.
+  sonido: {
+    etiqueta: "Sonido al completar una acción",
+    ayuda: "Un sonido corto y suave. Viene apagado y se guarda solo en este dispositivo.",
+  },
   avance: { titulo: "Avance" },
   datos: {
     titulo: "Mis datos",

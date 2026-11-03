@@ -11,6 +11,7 @@ import { FilaAccion, Icono, TEXTOS_CARGA, type NombreIconoApp } from "../../../c
 import { calcularProgreso, cuentaComoHecha, type EstadoRegistro, type Ocurrencia } from "../../../data/ejemplo-app";
 import { diaCorto, type Iso } from "../../../lib/fechas";
 import { ICONO_CATEGORIA, colorDeMeta } from "../../../lib/mi-rumbo";
+import { logroDeRegistro, sonar, type Logro } from "../../../lib/celebrar";
 import { ErrorBase } from "../../../lib/supabase";
 import { useEspacio, type Progreso } from "./espacio";
 import { T_CALENDARIO, T_COMUN, T_HOY } from "./textos";
@@ -204,6 +205,30 @@ export function useFalloRegistro(setTostada: (a: Aviso) => void, abrir?: (o: Ocu
   };
 }
 
+// ---------------------------------------------------------------------------
+// Tono de la tostada para un logro: el día completo (o la racha) se distingue de una acción.
+export const tonoDe = (l: Logro): "logro" | "dia" => (l.tipo === "dia" || l.tipo === "racha" ? "dia" : "logro");
+
+// Completar una acción (paquete 2): mensaje según el contexto del día y sonido opcional. Usa solo
+// el progreso que devolvió el servidor (lib/celebrar.ts); no cambia créditos ni reglas.
+
+export function useCelebrar(ocultarCreditos?: boolean) {
+  const { participante } = useEspacio();
+  const conCreditos = ocultarCreditos === undefined ? participante.mostrarCreditosEnHoy !== false : !ocultarCreditos;
+  return (o: Ocurrencia, estado: EstadoRegistro, p: Progreso, desdeAnteriores = false): Logro => {
+    const logro = logroDeRegistro({
+      titulo: o.titulo,
+      corta: estado === "corta",
+      desdeAnteriores,
+      diaAnterior: desdeAnteriores ? diaCorto(o.fecha) : undefined,
+      dia: p.dias.find((d) => d.fecha === o.fecha),
+      conCreditos,
+    });
+    sonar(logro.tipo);
+    return logro;
+  };
+}
+
 // Con dos metas de la misma categoría, la fila muestra el nombre corto de la meta (4.4.5).
 export function useEtiquetaMeta() {
   const { metasDeLaPersona, metaPorId } = useEspacio();
@@ -273,7 +298,7 @@ export const flexibles = (l: Ocurrencia[]) => l.filter((o) => !o.hora);
 // ---------------------------------------------------------------------------
 // Tostada y región viva
 
-export type Aviso = { mensaje: string; accion?: { texto: string; onClick: () => void } } | null;
+export type Aviso = { mensaje: string; tono?: "logro" | "dia"; accion?: { texto: string; onClick: () => void } } | null;
 
 export function useAvisos() {
   const [tostada, setTostada] = useState<Aviso>(null);

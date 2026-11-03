@@ -1,7 +1,7 @@
 // Vista previa · Preferencias y Mis datos (plataforma 4.14). Estados: preferencias y eliminar
 // (página de confirmación para pedir que eliminemos los datos). «Descargar mis datos» baja un
 // .json con los datos de ejemplo de esta vista previa (descargarDatos, en comun.tsx).
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Aviso } from "../../../components/Bloques";
 import { HojaAyuda, Icono } from "../../../components/app";
@@ -9,6 +9,7 @@ import { CampoArea, CampoTexto, Casilla, Formulario, GrupoOpciones, Opcion } fro
 import { HOY } from "../../../data/ejemplo-app";
 import { NOMBRE, PREFERENCIAS } from "../../../data/formularios";
 import { fechaLarga, sumarDias, type Iso } from "../../../lib/fechas";
+import { guardarSonido, sonar, sonidoActivo } from "../../../lib/celebrar";
 import type { PropsPantalla } from "../registro";
 import { AlertaGuardar, Cabeza, useDescargarDatos, useEspacio } from "./comun";
 import { T_PREFERENCIAS, T_RECORDATORIOS } from "./textos";
@@ -65,6 +66,10 @@ function PantallaPreferencias() {
   const [errorNombre, setErrorNombre] = useState<string | null>(null);
   const [guardado, setGuardado] = useState("");
   const [mostrar, setMostrar] = useState(participante.mostrarCreditosEnHoy);
+  // Sonido al completar (paquete 2): apagado por defecto, guardado en este dispositivo. Se lee
+  // después de hidratar para que la página prerenderizada coincida.
+  const [sonido, setSonido] = useState(false);
+  useEffect(() => setSonido(sonidoActivo()), []);
   const [errorGuardar, setErrorGuardar] = useState<string | null>(null);
   const [descargando, setDescargando] = useState(false);
   const [otro, setOtro] = useState(false);
@@ -184,6 +189,28 @@ function PantallaPreferencias() {
           </label>
           <p id="pref-creditos-ayuda" className="microcopia">
             {PREFERENCIAS.mostrarCreditos.ayuda}
+          </p>
+        </div>
+        <div className="interruptor">
+          <label className="interruptor__fila" htmlFor="pref-sonido">
+            <span className="interruptor__texto">{T_PREFERENCIAS.sonido.etiqueta}</span>
+            <input
+              id="pref-sonido"
+              type="checkbox"
+              role="switch"
+              className="interruptor__control"
+              checked={sonido}
+              aria-describedby="pref-sonido-ayuda"
+              onChange={(e) => {
+                const v = e.target.checked;
+                setSonido(v);
+                guardarSonido(v);
+                if (v) sonar("accion", { forzar: true }); // así se escucha cómo suena
+              }}
+            />
+          </label>
+          <p id="pref-sonido-ayuda" className="microcopia">
+            {T_PREFERENCIAS.sonido.ayuda}
           </p>
         </div>
       </section>

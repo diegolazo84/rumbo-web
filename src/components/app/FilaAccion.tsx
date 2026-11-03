@@ -9,7 +9,7 @@
 // Variante de Mi Rumbo (etapa 2A, con `icono`): mosaico con el icono de la acción en el color de
 // su meta, el título, la meta a la que aporta y «08:30 · 30 min». La hora pasa al detalle porque
 // las acciones ya van agrupadas por momento del día. Mismo control y mismos estados.
-import { useId, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { categorias, type CategoriaId } from "../../data/rumbo";
 import { duracionTexto } from "../../lib/fechas";
@@ -71,7 +71,24 @@ export default function FilaAccion({
   const idNota = useId();
   const hecha = estado === "hecha";
   const conIcono = !!icono;
-  const clases = ["accion", "accion--app", conIcono && "accion--hoy", hecha && "accion--hecha", compacta && "accion--compacta", sinControl && "accion--sin-control"].filter(Boolean).join(" ");
+  // Recién marcada: un anillo breve sale del check (solo CSS; nada con movimiento reducido).
+  const [recien, setRecien] = useState(false);
+  useEffect(() => {
+    if (!recien) return;
+    const t = window.setTimeout(() => setRecien(false), 900);
+    return () => window.clearTimeout(t);
+  }, [recien]);
+  const clases = [
+    "accion",
+    "accion--app",
+    conIcono && "accion--hoy",
+    hecha && "accion--hecha",
+    hecha && recien && "accion--recien",
+    compacta && "accion--compacta",
+    sinControl && "accion--sin-control",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const estadoTexto = (
     <>
@@ -167,6 +184,7 @@ export default function FilaAccion({
           aria-describedby={desactivada ? idNota : undefined}
           onChange={(e) => {
             if (desactivada || estado === "revision") return;
+            setRecien(e.target.checked);
             onMarcar?.(e.target.checked);
           }}
         />
