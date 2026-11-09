@@ -1210,6 +1210,71 @@ test("constructor: una acción medible guarda su cantidad propuesta y su unidad 
   await sinViolaciones(page);
 });
 
+// Plantillas del equipo (C4, plantillas_accion y guardar_plantilla, aplicadas): guardar una acción
+// como plantilla y usarla para llenar otra. La meta y los días de la acción no cambian.
+test("constructor: guardar una acción como plantilla y usarla en otra", async ({ page }, info) => {
+  test.skip(info.project.name !== "escritorio", "el constructor es de escritorio (5.6)");
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial() as ReturnType<typeof baseInicial> & { plantillas_accion: Record<string, unknown>[] };
+  base.plantillas_accion = [
+    { id: "pl0", titulo: "Archivada", instrucciones: "No debe verse.", version_corta: null, duracion_min: 10, requiere_foto: false, cantidad_objetivo: null, unidad: null, archivada: true },
+  ];
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/guardar_plantilla`, async (rt) => {
+    const cuerpo = rt.request().postDataJSON() as { p_id: null; p: Record<string, unknown> };
+    llamadas.push({ tipo: "rpc", metodo: "POST", nombre: "guardar_plantilla", url: rt.request().url(), cuerpo, aal: "aal2" });
+    base.plantillas_accion.push({ id: "pl1", ...cuerpo.p, version_corta: cuerpo.p.version_corta || null, archivada: false });
+    return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify("pl1") });
+  });
+  await page.goto("equipo/constructor/?id=p2");
+  await hidratar(page);
+  await page.getByRole("button", { name: "Crear el borrador" }).click();
+  await page.getByRole("button", { name: "Nueva meta" }).click();
+  await page.locator("#meta-titulo").fill("Moverme más");
+  await page.getByRole("button", { name: "Nueva acción" }).click();
+  // Sin plantillas vigentes no aparece el selector; incompleta, no se puede guardar como plantilla.
+  await expect(page.locator("#accion-plantilla")).toHaveCount(0);
+  const guardar = page.getByRole("button", { name: "Guardar como plantilla" });
+  await expect(guardar).toBeDisabled();
+  await page.locator("#accion-titulo").fill("Tomar agua");
+  await page.locator('input[name="accion-dias"][value="1"]').check();
+  await page.locator("#accion-instrucciones").fill("Ten una botella a mano.");
+  await page.getByLabel("Se mide con una cantidad").check();
+  await page.locator("#accion-objetivo").fill("8");
+  await page.locator("#accion-unidad").selectOption("vasos");
+  await guardar.click();
+  await expect(page.getByText("Plantilla guardada. El equipo ya puede usarla.")).toBeVisible();
+  await expect(guardar).toBeDisabled(); // no se duplica con un segundo clic
+  expect(llamadas.find((l) => l.nombre === "guardar_plantilla")!.cuerpo).toEqual({
+    p_id: null,
+    p: { titulo: "Tomar agua", instrucciones: "Ten una botella a mano.", version_corta: "", duracion_min: 10, requiere_foto: false, cantidad_objetivo: 8, unidad: "vasos" },
+  });
+
+  // Otra acción: la plantilla llena título, instrucciones y medición; los días siguen vacíos.
+  const registrosAntes = JSON.stringify(base.registros);
+  await page.getByRole("button", { name: "Nueva acción" }).click();
+  const metaAntes = await page.locator("#accion-meta").inputValue();
+  const elegir = page.locator("#accion-plantilla");
+  await expect(elegir.locator("option")).toHaveText(["Elige una plantilla", "Tomar agua"]);
+  await elegir.selectOption({ label: "Tomar agua" });
+  await page.getByRole("button", { name: "Usar plantilla" }).click();
+  await expect(page.locator("#accion-titulo")).toHaveValue("Tomar agua");
+  await expect(page.locator("#accion-instrucciones")).toHaveValue("Ten una botella a mano.");
+  await expect(page.locator("#accion-objetivo")).toHaveValue("8");
+  await expect(page.locator('input[name="accion-dias"]:checked')).toHaveCount(0);
+  await expect(page.getByText("Se usó la plantilla «Tomar agua». Revisa y ajusta lo que necesites.")).toBeVisible();
+  await expect(page.locator("#accion-meta")).toHaveValue(metaAntes);
+  // Lo que trae la plantilla se puede ajustar antes de guardar; los registros no se tocan.
+  await page.locator("#accion-titulo").fill("Tomar agua en la tarde");
+  await page.locator("#accion-objetivo").fill("4");
+  await page.locator('input[name="accion-dias"][value="3"]').check();
+  await page.getByRole("button", { name: "Guardar borrador" }).click();
+  await expect.poll(() => base.acciones.find((a) => a.titulo === "Tomar agua en la tarde")).toMatchObject({ cantidad_objetivo: 4, dias: [3] });
+  expect(base.acciones.find((a) => a.titulo === "Tomar agua")).toMatchObject({ cantidad_objetivo: 8, dias: [1] });
+  expect(JSON.stringify(base.registros)).toBe(registrosAntes);
+  await sinViolaciones(page);
+});
+
 // Informe de cierre (30-oct-2026): el coach escribe el mensaje de cierre en la ficha.
 test("ficha: mensaje de cierre al final del ciclo, con su autor; oculto sin la migración", async ({ page }) => {
   await preparar(page, "aal2", VERIFICADO);
