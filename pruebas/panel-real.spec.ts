@@ -1871,3 +1871,56 @@ test("Negocio: el dueño ve los indicadores del período, sin porcentajes invent
   await expect(page.getByText("Solo el dueño puede ver los indicadores del negocio.")).toBeVisible();
   expect(llamadas.filter((l) => l.nombre === "indicadores")).toHaveLength(antes);
 });
+
+// Auditoría (dueño): lee la tabla auditoria (solo nombres de campos, nunca contenido).
+test("Auditoría: el dueño ve quién cambió qué, con motivo y por páginas; un coach no la ve", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  await simular(page, base, { factores: VERIFICADO });
+  const filas = Array.from({ length: 60 }, (_, i) => ({
+    id: 100 - i,
+    en: "2026-10-13T15:00:00Z",
+    actor: null,
+    accion: "update",
+    tabla: "ciclos",
+    fila: null,
+    detalle: { campos: ["fin"] },
+  }));
+  filas[0] = { id: 200, en: "2026-10-13T16:30:00Z", actor: "otro-usuario", accion: "ver_con_motivo", tabla: "solicitudes", fila: "p1", detalle: { motivo: "Preparar la revisión de la semana 2" } as never };
+  filas[1] = { id: 199, en: "2026-10-13T16:00:00Z", actor: null, accion: "update", tabla: "participantes", fila: "p1", detalle: { campos: ["coach_id", "zona_horaria"] } };
+  const pedidos: string[] = [];
+  await page.route(`${SUPABASE_URL}/rest/v1/auditoria*`, (rt) => {
+    const u = new URL(rt.request().url());
+    pedidos.push(u.search);
+    const tabla = u.searchParams.get("tabla")?.replace(/^eq\./, "");
+    const offset = Number(u.searchParams.get("offset") ?? 0);
+    const limit = Number(u.searchParams.get("limit") ?? 1000);
+    const lista = filas.filter((f) => !tabla || f.tabla === tabla).slice(offset, offset + limit);
+    return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(lista) });
+  });
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  await page.getByRole("link", { name: "Auditoría" }).click();
+  await expect(page.locator("h1")).toHaveText("Auditoría.");
+  const lista = page.locator("section[aria-labelledby=auditoria-titulo] li");
+  await expect(lista).toHaveCount(50);
+  await expect(lista.nth(0)).toContainText("Otra cuenta · abrió la postulación de · Ana");
+  await expect(lista.nth(0)).toContainText("Motivo: «Preparar la revisión de la semana 2»");
+  await expect(lista.nth(1)).toContainText("Sistema · cambió · Ana");
+  await expect(lista.nth(1)).toContainText("Campos: coach_id, zona_horaria");
+  await sinViolaciones(page);
+  await page.getByRole("button", { name: "Ver más" }).click();
+  await expect(lista).toHaveCount(60);
+  await expect(page.getByRole("button", { name: "Ver más" })).toHaveCount(0);
+
+  await page.getByLabel("Mostrar").selectOption("participantes");
+  await expect(lista).toHaveCount(1);
+  expect(pedidos.at(-1)).toContain("tabla=eq.participantes");
+
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/mi_rol_equipo`, (rt) => rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ rol: "coach", puede_moderar: false }) }));
+  const antes = pedidos.length;
+  await page.goto("equipo/auditoria/");
+  await hidratar(page);
+  await expect(page.getByText("Solo el dueño puede ver la auditoría.")).toBeVisible();
+  expect(pedidos.length).toBe(antes);
+});
