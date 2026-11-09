@@ -1251,7 +1251,9 @@ test("constructor: guardar una acción como plantilla y usarla en otra", async (
   });
 
   // Otra acción: la plantilla llena título, instrucciones y medición; los días siguen vacíos.
+  const registrosAntes = JSON.stringify(base.registros);
   await page.getByRole("button", { name: "Nueva acción" }).click();
+  const metaAntes = await page.locator("#accion-meta").inputValue();
   const elegir = page.locator("#accion-plantilla");
   await expect(elegir.locator("option")).toHaveText(["Elige una plantilla", "Tomar agua"]);
   await elegir.selectOption({ label: "Tomar agua" });
@@ -1261,6 +1263,15 @@ test("constructor: guardar una acción como plantilla y usarla en otra", async (
   await expect(page.locator("#accion-objetivo")).toHaveValue("8");
   await expect(page.locator('input[name="accion-dias"]:checked')).toHaveCount(0);
   await expect(page.getByText("Se usó la plantilla «Tomar agua». Revisa y ajusta lo que necesites.")).toBeVisible();
+  await expect(page.locator("#accion-meta")).toHaveValue(metaAntes);
+  // Lo que trae la plantilla se puede ajustar antes de guardar; los registros no se tocan.
+  await page.locator("#accion-titulo").fill("Tomar agua en la tarde");
+  await page.locator("#accion-objetivo").fill("4");
+  await page.locator('input[name="accion-dias"][value="3"]').check();
+  await page.getByRole("button", { name: "Guardar borrador" }).click();
+  await expect.poll(() => base.acciones.find((a) => a.titulo === "Tomar agua en la tarde")).toMatchObject({ cantidad_objetivo: 4, dias: [3] });
+  expect(base.acciones.find((a) => a.titulo === "Tomar agua")).toMatchObject({ cantidad_objetivo: 8, dias: [1] });
+  expect(JSON.stringify(base.registros)).toBe(registrosAntes);
   await sinViolaciones(page);
 });
 
