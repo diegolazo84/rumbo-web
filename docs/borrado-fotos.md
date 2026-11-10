@@ -53,7 +53,12 @@ Pruebas:
    select vault.create_secret('https://jhukwxeeytedkjtwqowq.supabase.co/functions/v1/depurar-fotos',
      'depurar_fotos_url', 'Dirección de la Edge Function depurar-fotos');
    ```
-5. **Comprobar.** En el panel, abrir Más → Mantención: debe decir «Esperando la primera ejecución». Pulsar «Revisar ahora» y, pasado un minuto, «Actualizar». La última ejecución debe decir «Sin problemas». Después de la primera ejecución programada (a las 04:30 o 03:30, hora de Chile), debe decir «Activo».
+5. **Encender la tarea** (se crea desactivada; solo después de publicar la política de privacidad de fotos y probar en un iPhone real):
+
+   ```sql
+   select cron.alter_job((select jobid from cron.job where jobname = 'fotos-depurar'), active := true);
+   ```
+6. **Comprobar.** En el panel, abrir Más → Mantención: debe decir «Esperando la primera ejecución». Pulsar «Revisar ahora» y, pasado un minuto, «Actualizar». La última ejecución debe decir «Sin problemas». Después de la primera ejecución programada (a las 04:30 o 03:30, hora de Chile), debe decir «Activo».
 
 ## Desactivar
 

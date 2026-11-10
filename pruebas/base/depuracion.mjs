@@ -298,6 +298,11 @@ paso("foto cambiada o reenviada a revisión durante el borrado: no se toca ni qu
 // 11. Estado real y vigilancia.
 sql("select vault.create_secret('http://127.0.0.1:9/no-existe', 'depurar_fotos_url')");
 sql("delete from privado.depuracion_fotos");
+// La migración deja la tarea desactivada: aun con la dirección, nada se lanza.
+assert.equal(sql("select active from cron.job where jobname = 'fotos-depurar'"), "f", "la tarea se crea desactivada");
+assert.equal(sql("select privado.estado_borrado_fotos()"), "desactivada");
+assert.equal(sql("select privado.lanzar_depuracion_fotos('manual') is null"), "t", "con la tarea desactivada no se lanza nada");
+sql("select cron.alter_job((select jobid from cron.job where jobname = 'fotos-depurar'), active := true)");
 assert.equal(sql("select privado.estado_borrado_fotos()"), "esperando", "recién activado");
 // Tres días después, sin ninguna ejecución:
 assert.equal(sql("select privado.estado_borrado_fotos(now() + interval '3 days')"), "detenida", "activado hace 3 días y sin ejecuciones");
