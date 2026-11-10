@@ -39,7 +39,7 @@ Pruebas:
 ## Activación (la hace Diego, solo con su autorización)
 
 1. **Respaldo** de la base, como siempre (`docs/respaldo-y-restauracion.md`).
-2. **Aplicar la migración:** `npx supabase db push`, desde la carpeta del repositorio.
+2. **Aplicar la migración** sola, sin `db push` (hay migraciones anteriores sin aplicar, como 20261120 y 20261126, que `db push` también aplicaría): pegar `supabase/migrations/20261202000000_depurar_fotos.sql` en el SQL Editor y registrarla con `npx supabase migration repair --status applied 20261202000000`.
 3. **Desplegar la función** desde la carpeta del repositorio, con la sesión de la CLI ya iniciada:
 
    ```
