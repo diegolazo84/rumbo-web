@@ -322,6 +322,8 @@ const cabeceras = sql(`select coalesce((select headers::text from net.http_reque
 assert.doesNotMatch(cabeceras, new RegExp(llave), "la llave no viaja");
 sql("delete from vault.secrets where name = 'depurar_fotos_url'");
 assert.equal(sql("select privado.estado_borrado_fotos()"), "sin_activar");
+// Se deja como la crea la migración (desactivada): la prueba corre dos veces seguidas.
+sql("select cron.alter_job((select jobid from cron.job where jobname = 'fotos-depurar'), active := false)");
 paso("estado real (sin activar, esperando, activa, detenida, con problemas, desactivada) y vigilancia que avisa si se detiene");
 
 // Limpieza de lo que esta prueba agregó (la matriz vuelve a correr después en CI).
