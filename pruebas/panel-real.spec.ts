@@ -163,8 +163,9 @@ function baseInicial(): Base {
     ],
     grupos_comunidad: [{ id: "gr1", nombre: "Estudio", descripcion: "Para quienes estudian.", ilustracion: "brote", activo: true, categoria: null, destacado: false }],
     propuestas_grupo: [{ id: "pg1", nombre: "Lectura", descripcion: "Para leer un poco cada día.", alias: "Brote Sereno", estado: "pendiente", creada_en: "2026-10-21T12:00:00Z" }],
+    propuestas_desafio: [{ id: "pd1", titulo: "Semana sin pantallas", descripcion: "Desconectarse una hora antes de dormir.", alias: "Río Claro", estado: "pendiente", creada_en: "2026-10-28T12:00:00Z" }],
     miembros_grupo: [{ grupo_id: "gr1" }, { grupo_id: "gr1" }],
-    desafios: [{ id: "de1", titulo: "Semana de constancia", descripcion: null, reglas: "Haz todas tus acciones programadas cada día.", dias: 7, inicio: "2026-10-19", ilustracion: null, activo: true }],
+    desafios: [{ id: "de1", titulo: "Semana de constancia", descripcion: null, reglas: "Haz todas tus acciones programadas cada día.", dias: 7, inicio: "2026-10-19", ilustracion: null, activo: true, foto_ruta: null }],
     participaciones_desafio: [{ desafio_id: "de1" }],
     // Equipo (bloque 2): el dueño (sesión de las pruebas), un coach que acompaña a Ana y una invitación.
     equipo: [
@@ -233,7 +234,7 @@ function sesion(aal: "aal1" | "aal2", factores: Factor[]) {
 
 type Llamada = { tipo: "rpc" | "tabla" | "auth"; metodo: string; nombre: string; url: string; cuerpo: unknown; aal: string };
 
-const ADMIN = new Set(["invitar_coach", "revocar_invitacion", "cambiar_coach", "asignar_coach", "actualizar_mi_perfil", "programar_videollamada", "anotar_videollamada", "ver_postulacion", "cambiar_modulo", "propuestas_grupo_equipo", "responder_propuesta_grupo", "moderar_publicacion", "guardar_grupo_comunidad", "guardar_desafio", "crear_espacio", "nuevo_enlace_solicitud", "nuevo_borrador", "solapamientos", "carga_prevista", "publicar_programa", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "eliminar_participante", "ia_bandeja", "ia_revisar", "ia_gasto"]);
+const ADMIN = new Set(["invitar_coach", "revocar_invitacion", "cambiar_coach", "asignar_coach", "actualizar_mi_perfil", "programar_videollamada", "anotar_videollamada", "ver_postulacion", "cambiar_modulo", "propuestas_grupo_equipo", "responder_propuesta_grupo", "moderar_publicacion", "guardar_grupo_comunidad", "guardar_desafio", "crear_espacio", "nuevo_enlace_solicitud", "nuevo_borrador", "solapamientos", "carga_prevista", "publicar_programa", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "eliminar_participante", "ia_bandeja", "ia_revisar", "ia_gasto", "propuestas_desafio_equipo", "responder_propuesta_desafio", "poner_foto_desafio"]);
 
 async function simular(page: Page, base: Base, { equipo = true, factores = [] as Factor[] } = {}) {
   const llamadas: Llamada[] = [];
@@ -324,11 +325,27 @@ async function simular(page: Page, base: Base, { equipo = true, factores = [] as
       x.estado = c.p_estado;
       return null;
     },
+    propuestas_desafio_equipo: () => base.propuestas_desafio,
+    responder_propuesta_desafio: (c) => {
+      const x = base.propuestas_desafio.find((y) => y.id === c.p_id && y.estado === "pendiente");
+      if (!x) return { __error: "propuesta:no_encontrada", __estado: 404 };
+      x.estado = c.p_estado;
+      return null;
+    },
     guardar_desafio: (c) => {
       const p = c.p as Fila;
       const x = p.id ? base.desafios.find((y) => y.id === p.id)! : (base.desafios[base.desafios.push({ id: `de${base.desafios.length + 1}` }) - 1] as Fila);
       Object.assign(x, { titulo: p.titulo, descripcion: p.descripcion, reglas: p.reglas, dias: p.dias, inicio: p.inicio, ilustracion: p.ilustracion, activo: p.activo });
       return x.id;
+    },
+    // C16: la ruta tiene que estar en la carpeta del desafío; devuelve la anterior.
+    poner_foto_desafio: (c) => {
+      const x = base.desafios.find((y) => y.id === c.p_desafio);
+      if (!x) return { __error: "desafio:no_encontrado", __estado: 404 };
+      if (c.p_ruta !== null && !String(c.p_ruta).startsWith(`${x.id}/`)) return { __error: "foto:invalida", __estado: 400 };
+      const antes = x.foto_ruta ?? null;
+      x.foto_ruta = c.p_ruta;
+      return antes;
     },
     crear_espacio: (c) => {
       const s = base.solicitudes.find((x) => x.id === c.p_solicitud)!;
@@ -1146,6 +1163,12 @@ test("Comunidad: ocultar un reporte con motivo, volver a mostrar, crear grupo y 
   await propuesta.getByRole("button", { name: "Marcar como creada" }).click();
   await expect.poll(() => base.propuestas_grupo[0].estado).toBe("creada");
   expect(llamadas.find((l) => l.nombre === "responder_propuesta_grupo")!.cuerpo).toEqual({ p_id: "pg1", p_estado: "creada" });
+  // Propuestas de desafíos (C15): también con alias; descartar.
+  const propDesafio = page.locator("li", { has: page.getByRole("heading", { name: "Semana sin pantallas" }) });
+  await expect(propDesafio.getByText("Río Claro", { exact: false })).toBeVisible();
+  await propDesafio.getByRole("button", { name: "Descartar" }).click();
+  await expect.poll(() => base.propuestas_desafio[0].estado).toBe("descartada");
+  await propDesafio.getByRole("button", { name: "Descartar" }).waitFor({ state: "detached" });
   // Desafío con participantes: duración e inicio bloqueados al editar.
   await expect(page.getByText("1 participante", { exact: true })).toBeVisible();
   await page.locator("li", { hasText: "Semana de constancia" }).getByRole("button", { name: "Editar" }).click();
@@ -1161,6 +1184,93 @@ test("Comunidad: ocultar un reporte con motivo, volver a mostrar, crear grupo y 
   await page.getByRole("button", { name: "Guardar desafío" }).click();
   await expect(page.getByText("Desafío guardado.")).toBeVisible();
   expect(base.desafios.find((x) => x.titulo === "28 días de constancia")).toMatchObject({ dias: 28, inicio: "2026-10-26", activo: true });
+  await sinViolaciones(page);
+});
+
+// Una imagen de verdad (el lienzo del navegador), con un bloque EXIF que dice «GPS» si es JPEG.
+async function imagen(page: Page, tipo: "image/png" | "image/jpeg", ancho: number, alto: number) {
+  const b64 = await page.evaluate(
+    async ([t, w, h]) => {
+      const c = document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      const g = c.getContext("2d")!;
+      g.fillStyle = "#2f5d50";
+      g.fillRect(0, 0, w, h);
+      g.fillStyle = "#e9dfc9";
+      g.fillRect(0, h / 2, w, h / 2);
+      return c.toDataURL(t).split(",")[1];
+    },
+    [tipo, ancho, alto] as const,
+  );
+  let buf = Buffer.from(b64, "base64");
+  if (tipo === "image/jpeg") {
+    const exif = Buffer.concat([Buffer.from("Exif\0\0MM\0*\0\0\0\x08\0\0GPSLatitude-33.43", "binary")]);
+    const largo = Buffer.alloc(2);
+    largo.writeUInt16BE(exif.length + 2);
+    buf = Buffer.concat([buf.subarray(0, 2), Buffer.from([0xff, 0xe1]), largo, exif, buf.subarray(2)]);
+  }
+  return { name: tipo === "image/png" ? "portada.png" : "portada.jpg", mimeType: tipo, buffer: buf };
+}
+
+test("Comunidad: foto de un desafío: se sube en WebP sin ubicación, se cambia borrando la anterior y se quita", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  const subidas: { ruta: string; cuerpo: Buffer; tipo: string }[] = [];
+  const borradas: string[] = [];
+  const png = await imagen(page, "image/png", 8, 8);
+  await page.route(`${SUPABASE_URL}/storage/v1/object/**`, async (rt) => {
+    const req = rt.request();
+    const ruta = new URL(req.url()).pathname.replace(/^.*\/storage\/v1\/object\//, "");
+    if (req.method() === "DELETE") {
+      borradas.push(...((req.postDataJSON() as { prefixes: string[] }).prefixes ?? []));
+      return rt.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+    }
+    if (ruta.startsWith("sign/") && req.method() === "POST") return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ signedURL: `/object/${ruta}?token=t` }) });
+    if (ruta.startsWith("desafios/") && req.method() === "POST") {
+      subidas.push({ ruta: ruta.replace(/^desafios\//, ""), cuerpo: req.postDataBuffer() ?? Buffer.alloc(0), tipo: req.headers()["content-type"] ?? "" });
+      return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ Key: ruta }) });
+    }
+    return rt.fulfill({ status: 200, contentType: "image/png", body: png.buffer });
+  });
+  await page.goto("equipo/comunidad/");
+  await hidratar(page);
+  const item = page.locator("li", { has: page.getByRole("heading", { name: "Semana de constancia" }) });
+  const foto = item.getByRole("group", { name: "Foto de portada (opcional)" });
+  await expect(foto).toContainText("Sin foto: se muestra la ilustración.");
+  // Formato no aceptado: no sube nada.
+  await foto.locator('input[type="file"]').setInputFiles({ name: "x.gif", mimeType: "image/gif", buffer: Buffer.from("GIF89a") });
+  await expect(foto.getByRole("alert")).toContainText("Elige una foto JPG, PNG o WebP.");
+  expect(subidas).toHaveLength(0);
+  // JPEG grande con EXIF: se reduce a 1600 px, sale en WebP y sin el bloque EXIF.
+  await foto.locator('input[type="file"]').setInputFiles(await imagen(page, "image/jpeg", 2400, 1200));
+  await expect(foto.getByRole("status")).toHaveText("Foto guardada. Ya se ve en el desafío.");
+  expect(subidas).toHaveLength(1);
+  expect(subidas[0].ruta).toMatch(/^de1\/[0-9a-f-]{36}\.webp$/);
+  const cuerpo = subidas[0].cuerpo.toString("binary");
+  expect(cuerpo).toMatch(/RIFF[\s\S]{4}WEBP/);
+  expect(cuerpo).not.toContain("Exif");
+  expect(cuerpo).not.toContain("GPSLatitude");
+  expect(subidas[0].cuerpo.length).toBeLessThan(2 * 1024 * 1024);
+  expect(base.desafios[0].foto_ruta).toBe(subidas[0].ruta);
+  expect(llamadas.find((l) => l.nombre === "poner_foto_desafio")!.aal).toBe("aal2");
+  const vista = foto.getByRole("img", { name: "Foto de portada de «Semana de constancia»" });
+  await expect(vista).toBeVisible();
+  await expect.poll(() => vista.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth)).toBeGreaterThan(0);
+  // Cambiar: la nueva queda y la anterior se borra del bucket. Una chica avisa que se verá poco nítida.
+  const primera = subidas[0].ruta;
+  await foto.locator('input[type="file"]').setInputFiles(await imagen(page, "image/png", 800, 400));
+  await expect(foto).toContainText("La foto quedó de 800 × 400 px.");
+  expect(subidas).toHaveLength(2);
+  expect(base.desafios[0].foto_ruta).toBe(subidas[1].ruta);
+  expect(borradas).toEqual([primera]);
+  // Quitar: vuelve a la ilustración y se borra el archivo.
+  await foto.getByRole("button", { name: "Quitar foto" }).click();
+  await expect(foto.getByRole("status")).toHaveText("Foto quitada. El desafío vuelve a mostrar su ilustración.");
+  expect(base.desafios[0].foto_ruta).toBeNull();
+  expect(borradas).toEqual([primera, subidas[1].ruta]);
+  await expect(foto).toContainText("Sin foto: se muestra la ilustración.");
   await sinViolaciones(page);
 });
 
@@ -2038,3 +2148,56 @@ test("Auditoría: el dueño ve quién cambió qué, con motivo y por páginas; u
   await expect(page.getByText("Solo el dueño puede ver la auditoría.")).toBeVisible();
   expect(pedidos.length).toBe(antes);
 });
+
+// ---------------------------------------------------------------------------
+// Móvil: cada pantalla del panel a 320 px y al ancho del teléfono, sin desborde,
+// con objetivos táctiles de 44 px y sin violaciones de axe.
+
+const objetivosChicosPanel = (page: Page) =>
+  page.evaluate(() => {
+    const fuera: string[] = [];
+    for (const el of document.querySelectorAll<HTMLElement>("a, button, summary, label.accion, label.opcion, label.casilla")) {
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      if (r.width < 2 || r.height < 2 || cs.visibility === "hidden" || el.closest("[hidden], .sr-only, .saltar, dialog:not([open])")) continue;
+      if (el.tagName === "A" && cs.display === "inline") {
+        let bloque = el.parentElement;
+        while (bloque && getComputedStyle(bloque).display === "inline") bloque = bloque.parentElement;
+        if (bloque && (bloque.textContent ?? "").trim() !== (el.textContent ?? "").trim()) continue;
+      }
+      if (r.height < 43.5) fuera.push(`${el.tagName.toLowerCase()} «${(el.textContent ?? "").trim().slice(0, 40)}»: ${r.height.toFixed(1)} px`);
+    }
+    return fuera;
+  });
+
+const desbordes = (page: Page) =>
+  page.evaluate(() => {
+    const ancho = document.documentElement.clientWidth;
+    const fuera = [...document.querySelectorAll<HTMLElement>("main *")]
+      .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.right > ancho + 1 && !el.closest("[hidden], .sr-only, .saltar"); })
+      .slice(0, 5)
+      .map((el) => `${el.tagName.toLowerCase()}.${el.className}`);
+    return { extra: document.documentElement.scrollWidth - ancho, fuera };
+  });
+
+for (const ruta of [
+  "equipo/", "equipo/participantes/", "equipo/solicitudes/", "equipo/solicitud/?id=s1", "equipo/participante/?id=p1",
+  "equipo/participante/?id=p1&pestana=revisiones", "equipo/participante/?id=p1&pestana=datos", "equipo/constructor/?id=p2",
+  "equipo/revision/?id=p1&n=2", "equipo/revisar/", "equipo/ajustes/", "equipo/contacto/", "equipo/mas/", "equipo/comunidad/",
+  "equipo/modulos/", "equipo/equipo/", "equipo/pagos/", "equipo/negocio/", "equipo/auditoria/", "equipo/asistente/",
+]) {
+  test(`móvil: ${ruta} sin desborde a 320 px, objetivos de 44 px y axe`, async ({ page, isMobile }) => {
+    test.skip(!isMobile, "solo en el proyecto móvil");
+    await preparar(page, "aal2", VERIFICADO);
+    await simular(page, baseInicial(), { factores: VERIFICADO });
+    await page.goto(ruta);
+    await hidratar(page);
+    await expect(page.locator("main h1")).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    expect(await desbordes(page)).toEqual({ extra: 0, fuera: [] });
+    expect(await objetivosChicosPanel(page)).toEqual([]);
+    await sinViolaciones(page);
+    await page.setViewportSize({ width: 320, height: 640 });
+    expect(await desbordes(page)).toEqual({ extra: 0, fuera: [] });
+  });
+}

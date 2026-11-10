@@ -172,6 +172,12 @@ test("estado: aceptar el acuerdo pide marcar la casilla", async ({ page }) => {
   await page.locator("#acepto").check();
   await page.getByRole("button", { name: ACEPTAR_ACUERDO.boton }).click();
   await expect(page.locator("main h1")).toHaveText("Aceptaste tu acuerdo.");
+  // Siguiente paso a la vista: cuánto pagar, antes de cuándo y cómo llegan los datos.
+  await expect(page.getByText(/^Siguiente paso: el pago de \$\d{2,3}\.000, antes de que empiece tu ciclo el \d+ de \w+\.$/)).toBeVisible();
+  await expect(page.getByText(/los datos para transferir\. Si estás fuera de Chile, te mandamos el enlace de PayPal en dólares\.$/)).toBeVisible();
+  await expect(page.locator(".vf-estado__pasos li")).toHaveCount(6);
+  await expect(page.locator(".vf-estado__pasos li").nth(4)).toContainText("Pagas tu ciclo");
+  await sinViolaciones(page);
 });
 
 test("contacto: ?motivo=datos preselecciona y muestra su ayuda; enviar lleva a la confirmación", async ({ page }) => {

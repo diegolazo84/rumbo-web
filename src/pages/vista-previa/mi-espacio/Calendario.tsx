@@ -39,7 +39,7 @@ import {
 } from "./comun";
 import Detalle from "./Detalle";
 import { AjustePlan, PestanasPlan, TituloSeccion } from "./Seccion";
-import { T_CALENDARIO, T_COMUN, T_HOY, T_PLAN, T_SECCIONES } from "./textos";
+import { T_CALENDARIO, T_COMUN, T_ESTADOS, T_HOY, T_PLAN, T_SECCIONES } from "./textos";
 
 type Vista = "dia" | "semana" | "mes";
 
@@ -85,7 +85,9 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
     if (v === "dia" || v === "semana" || v === "mes") setVista(v);
     const f = q.get("fecha");
     if (f && /^\d{4}-\d{2}-\d{2}$/.test(f)) setFecha(f);
-  }, [real, search]);
+    // Antes de que empiece el ciclo, el calendario abre en la primera semana del programa.
+    else if (ciclo?.inicio && ciclo.inicio > hoy) setFecha(ciclo.inicio);
+  }, [real, search, ciclo?.inicio, hoy]);
   useEffect(() => {
     if (!real) return;
     try {
@@ -166,6 +168,7 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
           hoy={hoy}
           lista={lista}
           enPrograma={enPrograma(hoy)}
+          empieza={real && ciclo?.inicio && ciclo.inicio > hoy ? ciclo.inicio : null}
           onVer={() => {
             moverFoco.current = true;
             setFecha(hoy);
@@ -259,7 +262,7 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
 // Tu día de hoy: las acciones vigentes de hoy y cuántas cuentan como hechas (mismos registros
 // que Hoy y el calendario). Sin acciones, un estado amable sin progreso inventado.
 
-function TuDiaDeHoy({ hoy, lista, enPrograma, onVer }: { hoy: Iso; lista: Ocurrencia[]; enPrograma: boolean; onVer: () => void }) {
+function TuDiaDeHoy({ hoy, lista, enPrograma, empieza, onVer }: { hoy: Iso; lista: Ocurrencia[]; enPrograma: boolean; empieza: Iso | null; onVer: () => void }) {
   const del = ocurrenciasDel(hoy, lista);
   const hechas = del.filter((o) => cuentaComoHecha(o.registro)).length;
   const T = T_PLAN.hoy;
@@ -283,7 +286,7 @@ function TuDiaDeHoy({ hoy, lista, enPrograma, onVer }: { hoy: Iso; lista: Ocurre
           </button>
         </>
       ) : (
-        <p className="me-plan-hoy__vacio">{enPrograma ? T.vacio : T.fuera}</p>
+        <p className="me-plan-hoy__vacio">{empieza ? T_ESTADOS.inicioFuturo.titulo(diaCorto(empieza)) : enPrograma ? T.vacio : T.fuera}</p>
       )}
     </section>
   );

@@ -128,7 +128,7 @@ export const ESTADO = {
   // «No pudimos cargar tu solicitud. Revisa tu conexión e inténtalo de nuevo.»: la primera frase es el H1.
   errorRed: { titulo: "No pudimos cargar tu solicitud.", texto: "Revisa tu conexión e inténtalo de nuevo.", boton: "Intentar de nuevo" },
   pasoActual: "(paso actual)",
-  pasos: ["Enviaste tu solicitud", "La leemos", "Te escribimos", "Aceptas tu acuerdo", "Entras a Mi espacio"],
+  pasos: ["Enviaste tu solicitud", "La leemos", "Te escribimos", "Aceptas tu acuerdo", "Pagas tu ciclo", "Entras a Mi espacio"],
   pasoCerrada: "Cerramos tu solicitud",
   pasoRetirada: "La retiraste",
   tarjeta: {
@@ -166,6 +166,12 @@ export const ESTADO = {
     titulo: "Aceptaste tu acuerdo.",
     texto: (fecha: string, version: string) =>
       `El ${fecha} aceptaste las Condiciones del piloto (versión ${version}). Estamos preparando tu espacio; te escribiremos cuando puedas entrar.`,
+    // Siguiente paso: el pago, antes de que empiece el ciclo (condiciones aprobadas el 10-oct-2026).
+    pago: (precio: string, inicio: string) => `Siguiente paso: el pago de ${precio}, antes de que empiece tu ciclo el ${inicio}.`,
+    pagoCorreo: (correo: string) =>
+      `Te enviaremos a ${correo} los datos para transferir. Si estás fuera de Chile, te mandamos el enlace de PayPal en dólares.`,
+    pagoDatos: "Datos para transferir:",
+    pagoFuera: "Si estás fuera de Chile, escríbenos y te mandamos el enlace de PayPal en dólares.",
   },
   conEspacio: {
     etiqueta: "Tu espacio está listo",

@@ -5,7 +5,7 @@ import type { FuenteComunidad, TipoPublicacion } from "./fuente";
 export type Vista = "todas" | "grupos" | "desafios" | "logros" | "actividad";
 export const VISTAS: Vista[] = ["todas", "grupos", "desafios", "logros", "actividad"];
 
-export type PresetCrear = { tipo?: TipoPublicacion; grupo?: string | null; texto?: string; foto?: boolean };
+export type PresetCrear = { tipo?: TipoPublicacion; grupo?: string | null; texto?: string; foto?: boolean; emoji?: boolean };
 
 export type Comunidad = {
   fuente: FuenteComunidad;
