@@ -4,6 +4,7 @@
 // probar). Supabase nunca se toca: page.route responde Auth y PostgREST con una base en memoria
 // que aplica las mismas reglas de visibilidad (RLS) que importan aquí: solo lo de la persona y
 // nunca un borrador. La base local de CI prueba las políticas de verdad (pruebas/base/).
+import { readFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type Route } from "@playwright/test";
@@ -687,6 +688,146 @@ test("Grupos real: cerrada sin pedir grupos; abierta con destacado, sugeridos, u
   await hoja.getByRole("button", { name: "Enviar propuesta" }).click();
   await expect(page.locator(".tostada__texto")).toHaveText("Enviamos tu propuesta al equipo de Rumbo.");
   expect(llamadas.filter((l) => l.nombre === "proponer_grupo").at(-1)!.cuerpo).toEqual({ p_nombre: "Lectura", p_descripcion: null });
+});
+
+test("Desafíos real (C15): cerrada sin pedir datos; desafíos, actividad y propuestas de la base, sin ejemplo", async ({ page }) => {
+  await conSesion(page);
+  let llamadas = await simular(page, baseInicial(), { mi_impacto_comunidad: () => ({ __error: "comunidad:no_disponible", __estado: 409 }) });
+  await page.goto("mi-espacio/comunidad/desafios/");
+  await hidratar(page);
+  await expect(page.getByText("Para ver los desafíos, primero entra a Comunidad.")).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "comunidad_desafios")).toBe(false);
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+  await conSesion(page);
+  const hoy = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Santiago" });
+  const dia = (n: number) => {
+    const d = new Date(`${hoy}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+  const desafios = [
+    { id: "de1", titulo: "Semana de constancia", descripcion: "Todas tus acciones", reglas: "Haz todas tus acciones programadas cada día.", dias: 7, inicio: dia(-2), fin: dia(4), ilustracion: "sendero", activo: true, participantes: 3, participo: true, dias_cumplidos: 2, dias_transcurridos: 3, completado: false },
+    { id: "de2", titulo: "Pausa activa", descripcion: null, reglas: "Haz todas tus acciones programadas cada día.", dias: 14, inicio: dia(3), fin: dia(16), ilustracion: null, activo: true, participantes: 0, participo: false, dias_cumplidos: 0, dias_transcurridos: 0, completado: false },
+  ];
+  llamadas = await simular(page, baseInicial(), {
+    mi_impacto_comunidad: () => [{ publicaciones: 0, comentarios: 0, reacciones_recibidas: 0 }],
+    comunidad_desafios: () => desafios,
+    mi_actividad_desafios: () => [{ tipo: "dia", desafio_id: "de1", titulo: "Semana de constancia", fecha: dia(-1), dia: 2 }],
+    unirme_a_desafio: (c) => {
+      const d = desafios.find((x) => x.id === c.p_desafio)!;
+      Object.assign(d, { participo: true, participantes: d.participantes + 1 });
+      return null;
+    },
+    mis_propuestas_desafio: () => [],
+    proponer_desafio: () => "pd1",
+  });
+  await page.goto("mi-espacio/comunidad/desafios/");
+  await hidratar(page);
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".de-portada")).toContainText("Semana de constancia");
+  await expect(page.locator(".de-portada")).toContainText("3 participantes");
+  await expect(page.locator(".de-actividad")).toContainText("Cumpliste el día 2 de «Semana de constancia»");
+  await expect(page.locator(".de-actividad")).toContainText("Ayer");
+  await page.getByRole("button", { name: "Inscribirme: Pausa activa" }).click();
+  await expect.poll(() => llamadas.find((l) => l.nombre === "unirme_a_desafio")?.cuerpo).toEqual({ p_desafio: "de2" });
+  await expect(page.locator("li.de-tarjeta", { hasText: "Pausa activa" })).toContainText("1 participante");
+  await page.locator(".de-idea").getByRole("button", { name: "Proponer un desafío" }).click();
+  const hoja = page.getByRole("dialog", { name: "Proponer un desafío" });
+  await hoja.getByLabel("Nombre del desafío").fill("Leer cada noche");
+  await hoja.getByRole("button", { name: "Enviar propuesta" }).click();
+  await expect(page.locator(".tostada__texto")).toHaveText("Enviamos tu propuesta al equipo de Rumbo.");
+  expect(llamadas.filter((l) => l.nombre === "proponer_desafio").at(-1)!.cuerpo).toEqual({ p_titulo: "Leer cada noche", p_descripcion: null });
+});
+
+test("Desafíos real (C16): la foto que subió el equipo se ve en portada, tarjeta, participación y detalle; sin foto o si falla, la ilustración", async ({ page }) => {
+  await conSesion(page);
+  const hoy = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Santiago" });
+  const dia = (n: number) => {
+    const d = new Date(`${hoy}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+  const fila = (id: string, titulo: string, inicio: number, foto: string | null, participo = false) => ({
+    id, titulo, descripcion: null, reglas: "Haz todas tus acciones programadas cada día.", dias: 7, inicio: dia(inicio), fin: dia(inicio + 6),
+    ilustracion: "sendero", activo: true, participantes: 2, participo, dias_cumplidos: participo ? 1 : 0, dias_transcurridos: inicio <= 0 ? 1 - inicio : 0, completado: false, foto_ruta: foto,
+  });
+  const F1 = "de1/00000000-0000-0000-0000-00000000f010.webp";
+  const ROTA = "de3/00000000-0000-0000-0000-00000000f030.webp";
+  await simular(page, baseInicial(), {
+    mi_impacto_comunidad: () => [{ publicaciones: 0, comentarios: 0, reacciones_recibidas: 0 }],
+    comunidad_desafios: () => [fila("de1", "Semana de constancia", -1, F1, true), fila("de2", "Pausa activa", 3, null), fila("de3", "Leer cada noche", 5, ROTA)],
+    mi_actividad_desafios: () => [],
+  });
+  const firmadas: string[] = [];
+  const png = readFileSync("public/favicon-32.png");
+  await page.route(`${SUPABASE_URL}/storage/v1/object/**`, async (rt) => {
+    const ruta = new URL(rt.request().url()).pathname.replace(/^.*\/storage\/v1\/object\//, "");
+    if (ruta.startsWith("sign/") && rt.request().method() === "POST") {
+      firmadas.push(ruta.replace(/^sign\//, ""));
+      return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ signedURL: `/object/${ruta}?token=t` }) });
+    }
+    // La de «Leer cada noche» no carga: debe volver a la ilustración.
+    if (ruta.includes("f030")) return rt.fulfill({ status: 404, body: "" });
+    return rt.fulfill({ status: 200, contentType: "image/png", body: png });
+  });
+  await page.goto("mi-espacio/comunidad/desafios/");
+  await hidratar(page);
+  await expect(page.locator(".de-portada img.de-portada__fondo.de-foto")).toHaveAttribute("src", /desafios\/de1\/.*token=t/);
+  const tarjeta = (t: string) => page.locator("li.de-tarjeta", { hasText: t }).locator(".de-tarjeta__img");
+  await expect(tarjeta("Semana de constancia").locator("img.de-foto")).toBeVisible();
+  await expect(tarjeta("Pausa activa").locator("img")).toHaveCount(0);
+  await expect(tarjeta("Pausa activa").locator("svg")).toHaveCount(1);
+  await expect(tarjeta("Leer cada noche").locator("svg")).toHaveCount(1);
+  await expect(tarjeta("Leer cada noche").locator("img")).toHaveCount(0);
+  await expect(page.locator(".de-mia", { hasText: "Semana de constancia" }).locator("img.de-mia__img.de-foto")).toBeVisible();
+  // La foto de verdad se cargó (no quedó un recuadro roto).
+  await expect.poll(() => page.locator(".de-portada img.de-foto").evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth)).toBeGreaterThan(0);
+  expect(firmadas.every((r) => r.startsWith("desafios/"))).toBe(true);
+  expect(firmadas).not.toContain(expect.stringContaining("de2/"));
+  await page.locator("li.de-tarjeta", { hasText: "Semana de constancia" }).getByRole("button", { name: /Ver detalles/ }).first().click();
+  await expect(page.getByRole("dialog").locator(".de-detalle__img img.de-foto")).toBeVisible();
+  // La foto es decorativa: no agrega texto alternativo que repita el título.
+  await expect(page.locator("img.de-foto").first()).toHaveAttribute("alt", "");
+});
+
+test("Interior de un grupo real (C14): datos, publicaciones y miembros de la base; quien no es miembro no los pide", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.alias = [{ participante_id: "p1", alias: "Ana C" }];
+  const grupos = [
+    { id: "gr1", nombre: "Actividad física", descripcion: "Moverse", miembros: 2, soy_miembro: true, ilustracion: "montana", publicaciones: 1, destacado: false, categoria: "bienestar", creado_en: "2026-10-01T00:00:00Z", sugerido: false },
+    { id: "gr2", nombre: "Orden", descripcion: "Semana ordenada", miembros: 3, soy_miembro: false, ilustracion: null, publicaciones: 4, destacado: false, categoria: "orden", creado_en: "2026-10-02T00:00:00Z", sugerido: false },
+  ];
+  const llamadas = await simular(page, base, {
+    mi_impacto_comunidad: () => [{ publicaciones: 0, comentarios: 0, reacciones_recibidas: 0 }],
+    comunidad_grupos: () => grupos,
+    comunidad_publicaciones: (c) => (c.p_grupo === "gr1" ? [PUB("x1")] : []),
+    comunidad_miembros_grupo: (c) =>
+      c.p_grupo === "gr1"
+        ? [
+            { alias: "Ana C", unido_en: "2026-10-03T00:00:00Z", soy_yo: true },
+            { alias: "Caminante", unido_en: "2026-10-02T00:00:00Z", soy_yo: false },
+          ]
+        : { __error: "grupo:no_miembro", __estado: 403 },
+  });
+  await page.goto("mi-espacio/comunidad/?vista=grupos&grupo=gr1");
+  await hidratar(page);
+  await expect(page.locator(".gi-portada h1")).toHaveText("Actividad física");
+  await expect(page.locator(".gi-portada")).toContainText("1 publicación");
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  await expect(page.locator("article.co-pub .co-pub__alias")).toHaveText("Caminante");
+  expect(llamadas.find((l) => l.nombre === "comunidad_publicaciones")?.cuerpo).toMatchObject({ p_grupo: "gr1" });
+  await expect.poll(() => llamadas.find((l) => l.nombre === "comunidad_miembros_grupo")?.cuerpo).toEqual({ p_grupo: "gr1" });
+  await page.goto("mi-espacio/comunidad/?vista=grupos&grupo=gr1&seccion=miembros");
+  await hidratar(page);
+  await expect(page.locator(".gi-lista .gi-miembro")).toHaveCount(2);
+  await expect(page.locator(".gi-lista")).toContainText("Tú");
+  const antes = llamadas.length;
+  await page.goto("mi-espacio/comunidad/?vista=grupos&grupo=gr2&seccion=miembros");
+  await hidratar(page);
+  await expect(page.locator(".gi-portada").getByRole("button", { name: "Unirse" })).toBeVisible();
+  await expect(page.locator(".gi-lista")).toHaveCount(0);
+  expect(llamadas.slice(antes).some((l) => l.nombre === "comunidad_miembros_grupo")).toBe(false);
 });
 
 test("Comunidad real: alias y reglas antes de participar", async ({ page }) => {

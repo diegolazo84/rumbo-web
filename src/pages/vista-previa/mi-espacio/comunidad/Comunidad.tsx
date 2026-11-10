@@ -10,7 +10,7 @@
 // Antes de participar: módulo habilitado por el dueño, alias y reglas aceptadas (lo dice la base).
 // Mi espacio real: todo sale de la base (C6 a C9). Vista previa: datos rotulados «Ejemplo».
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Icono, Tostada } from "../../../../components/app";
 import { ErrorBase } from "../../../../lib/supabase";
 import { EtiquetaEjemplo, useEspacio } from "../comun";
@@ -19,9 +19,10 @@ import { Compositor } from "./Crear";
 import { fuenteEjemploCompartida, fuenteReal, type Acceso, type FuenteComunidad } from "./fuente";
 import { DesafioDestacado, TarjetaGrupos, TarjetaImpacto, TarjetaTemas, useDato } from "./Laterales";
 import { FOTO_PORTADA, PaisajePortada } from "./Paisaje";
+import GrupoInterior from "./GrupoInterior";
 import { Feed } from "./Publicaciones";
 import { T_COMU as T } from "./textos";
-import { VistaActividad, VistaDesafios, VistaGrupos, VistaLogros } from "./Vistas";
+import { VistaActividad, VistaGrupos, VistaLogros } from "./Vistas";
 import "../../../../styles/vista-comunidad.css";
 
 export function Portada() {
@@ -46,6 +47,8 @@ export default function Comunidad() {
   const [params] = useSearchParams();
   const { pathname } = useLocation();
   // Vista previa: ?acceso= muestra cada estado de ingreso (cerrada, sin alias, sin reglas).
+  // Interior de un grupo (C14): su propia portada en lugar de la de Comunidad.
+  const interior = params.get("vista") === "grupos" && !!params.get("grupo");
   const accesoPrevia = (ACCESOS_PREVIA as string[]).includes(params.get("acceso") ?? "") ? (params.get("acceso") as Acceso) : "abierta";
   const fuente = useMemo<FuenteComunidad>(() => (esp.real ? fuenteReal() : fuenteEjemploCompartida(accesoPrevia)), [esp.real, accesoPrevia]);
   const [acceso, setAcceso] = useState<{ estado: Acceso; alias: string | null } | null>(null);
@@ -65,8 +68,8 @@ export default function Comunidad() {
   }, [fuente, intento]);
 
   return (
-    <div className="me-pantalla co-comunidad">
-      <Portada />
+    <div className={`me-pantalla co-comunidad${interior ? " co-comunidad--grupo" : ""}`}>
+      {!(interior && acceso?.estado === "abierta") && <Portada />}
       {fuente.ejemplo && (
         <p className="co-ejemplo">
           <EtiquetaEjemplo />
@@ -133,6 +136,7 @@ function Abierta({ fuente, alias, ruta }: { fuente: FuenteComunidad; alias: stri
         if (p?.tipo) q.set("tipo", p.tipo);
         if (p?.grupo) q.set("grupo", p.grupo);
         if (p?.foto) q.set("foto", "1");
+        if (p?.emoji) q.set("emoji", "1");
         const s = q.toString();
         navegar(s ? `${R.comunidadCrear}?${s}` : R.comunidadCrear, { state: p?.texto ? { texto: p.texto } : null });
       },
@@ -150,6 +154,17 @@ function Abierta({ fuente, alias, ruta }: { fuente: FuenteComunidad; alias: stri
     setMensaje(null);
   }, [vista, grupo, tema]);
 
+  // Desafíos es su propia pantalla (C15); los enlaces viejos (?vista=desafios&desafio=…) llevan a ella.
+  if (vista === "desafios") return <Navigate to={desafio ? `${R.comunidadDesafios}?desafio=${encodeURIComponent(desafio)}` : R.comunidadDesafios} replace />;
+
+  if (vista === "grupos" && grupo)
+    return (
+      <ComunidadCtx.Provider value={ctx}>
+        <GrupoInterior grupo={grupo} />
+        <Tostada mensaje={mensaje} onCerrar={() => setMensaje(null)} />
+      </ComunidadCtx.Provider>
+    );
+
   return (
     <ComunidadCtx.Provider value={ctx}>
       <Pestanas vista={vista} />
@@ -160,8 +175,7 @@ function Abierta({ fuente, alias, ruta }: { fuente: FuenteComunidad; alias: stri
         </aside>
         <div className="co-col co-col--centro">
           {vista === "todas" && <VistaTodas tema={tema} />}
-          {vista === "grupos" && <VistaGrupos grupo={grupo} />}
-          {vista === "desafios" && <VistaDesafios desafio={desafio} />}
+          {vista === "grupos" && <VistaGrupos />}
           {vista === "logros" && <VistaLogros />}
           {vista === "actividad" && <VistaActividad />}
         </div>
@@ -177,6 +191,7 @@ function Abierta({ fuente, alias, ruta }: { fuente: FuenteComunidad; alias: stri
 
 function Pestanas({ vista }: { vista: Vista }) {
   const { enlace, abrirCrear } = useComunidad();
+  const { R } = useEspacio();
   const pestañas: { v: Vista; texto: string; corta?: string }[] = [
     { v: "todas", texto: T.pestanas.todas, corta: T.pestanas.todasCorta },
     { v: "grupos", texto: T.pestanas.grupos },
@@ -190,7 +205,7 @@ function Pestanas({ vista }: { vista: Vista }) {
         <ul>
           {pestañas.map((p) => (
             <li key={p.v} className={p.v === "actividad" ? "co-pestanas__item co-pestanas__item--movil" : "co-pestanas__item"}>
-              <Link to={enlace({ vista: p.v })} className="co-pestana" aria-current={vista === p.v ? "page" : undefined}>
+              <Link to={p.v === "desafios" ? R.comunidadDesafios : enlace({ vista: p.v })} className="co-pestana" aria-current={vista === p.v ? "page" : undefined}>
                 {p.corta ? (
                   <>
                     <span className="co-pestana__larga">{p.texto}</span>

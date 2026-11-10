@@ -142,6 +142,7 @@ function Formulario({ fuente, alias }: { fuente: FuenteComunidad; alias: string 
       tipo: tipo && TIPOS_VALIDOS.includes(tipo) ? tipo : null,
       grupo: q.get("grupo"),
       foto: q.get("foto") === "1",
+      emoji: q.get("emoji") === "1",
       texto: typeof (state as { texto?: unknown } | null)?.texto === "string" ? (state as { texto: string }).texto : "",
     };
   }, [search, state]);
@@ -156,7 +157,7 @@ function Formulario({ fuente, alias }: { fuente: FuenteComunidad; alias: string 
   const [errorFotos, setErrorFotos] = useState<string[]>([]);
   const [enviando, setEnviando] = useState(false);
   const [arrastrando, setArrastrando] = useState(false);
-  const [emojis, setEmojis] = useState(false);
+  const [emojis, setEmojis] = useState(preset.emoji);
   const [descartar, setDescartar] = useState<string | null>(null); // a dónde ir si se confirma
   const clienteId = useRef(crypto.randomUUID());
   const enviado = useRef(false);
