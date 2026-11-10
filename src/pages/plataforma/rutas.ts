@@ -76,6 +76,7 @@ export const RUTAS_PLATAFORMA: RutaPlataforma[] = [
   panel("modulos/", "Módulos", "mas"),
   panel("pagos/", "Pagos", "mas"),
   panel("negocio/", "Negocio", "mas"),
+  panel("auditoria/", "Auditoría", "mas"),
   panel("equipo/", "Equipo", "mas"),
   panel("asistente/", "Asistente", "mas"),
   panel("asistente/administracion/", "Asistente", "mas"),
