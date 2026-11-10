@@ -675,7 +675,7 @@ paso("pagos: solo el dueño registra; un pago por ciclo, con el precio acordado;
   const ver = como(ROLES.A, `${sinPagar}; select (p->>'ciclo_id' = '${cicloA}' and not (p->>'pagado')::boolean
     and p->'datos' = '["Banco CI","Cuenta 123"]'::jsonb and (p->>'vence')::date = (p->>'inicio')::date - 1)::int from public.mi_pago() p`);
   exigir(ver.ok && ultima(ver) === "1", `mi_pago no muestra el pago pendiente de A con los datos de Vault: ${ver.error ?? ultima(ver)}`);
-  const pagado = como(ROLES.A, "select (p->>'pagado')::boolean::int || (p->'datos' = 'null'::jsonb)::int from public.mi_pago() p");
+  const pagado = como(ROLES.A, "select (p->>'pagado')::boolean::int::text || (p->'datos' = 'null'::jsonb)::int::text from public.mi_pago() p");
   exigir(pagado.ok && ultima(pagado) === "11", `con el pago registrado, mi_pago debe decir pagado y no mostrar datos: ${pagado.error ?? ultima(pagado)}`);
   const aviso = como(ROLES.A, `${sinPagar}; select public.avisar_pago('Transferencia 42') is not null;
     select (select count(*) from public.avisos_pago where ciclo_id = '${cicloA}')::text || (select count(*) from public.pagos where ciclo_id = '${cicloA}')::text
