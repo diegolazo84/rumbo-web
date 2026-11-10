@@ -6,7 +6,9 @@ drop policy desafios_subir on storage.objects;
 drop policy desafios_ver on storage.objects;
 drop policy desafios_borrar on storage.objects;
 drop function privado.foto_desafio_permitida(text, text);
-delete from storage.buckets where id = 'desafios';
+set storage.allow_delete_query = 'true';
+delete from storage.buckets where id = 'desafios' and not exists (select 1 from storage.objects o where o.bucket_id = 'desafios');
+reset storage.allow_delete_query;
 drop function public.comunidad_desafios();
 create function public.comunidad_desafios()
 returns table (id uuid, titulo text, descripcion text, reglas text, dias int, inicio date, fin date, ilustracion text,
