@@ -126,9 +126,6 @@ export const operacion = {
   canalRespuestas: null as string | null,
   plazoRespuestas: null as string | null,
   formaDePago: "Por transferencia bancaria, una vez aceptado el acuerdo y antes de que empiece tu ciclo; desde fuera de Chile, por PayPal" as string | null, // aprobado por Diego el 10 de octubre de 2026. Formato: «Por transferencia, una vez aceptadas las condiciones»
-  // Datos para transferir que se muestran tras aceptar el acuerdo (líneas: banco, tipo y número de
-  // cuenta, RUT, nombre, correo). null = no se publican en la web y se envían por correo.
-  datosTransferencia: null as string[] | null,
   documentoTributario: null as string | null, // formato: «una boleta de honorarios»
   preciosConImpuestos: false, // true cuando el contador confirme que $64.000 y $100.000 son el total con impuestos
   topePrecio: true, // compromiso: en Chile, el precio final con impuestos no supera el publicado

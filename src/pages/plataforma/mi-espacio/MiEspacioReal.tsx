@@ -34,6 +34,7 @@ import GruposComunidad from "../../vista-previa/mi-espacio/GruposComunidad";
 import LoQueViene from "../../vista-previa/mi-espacio/LoQueViene";
 import MisMetas from "../../vista-previa/mi-espacio/MisMetas";
 import { T_SIN_FICHA } from "../../vista-previa/mi-espacio/textos";
+import Pago, { TarjetaPago } from "./Pago";
 import { armarAusencia, armarDatos, armarNovedades, hoyEn, type Contexto, type Filas } from "./datos";
 
 const LENTO = 8000; // ms: «Sigue cargando…» con «Reintentar» (4.1.4)
@@ -722,12 +723,24 @@ function PantallaReal({ ruta, espacio }: { ruta: RutaPlataforma; espacio: Espaci
       return <Preferencias estado="eliminar" />;
     case "/mi-espacio/ayuda/":
       return <AyudaInmediata />;
+    case "/mi-espacio/pago/":
+      return <Pago />;
     default:
       return <Inicio espacio={espacio} />;
   }
 }
 
+// Mientras falta pagar el ciclo, Mi Rumbo muestra la tarjeta «Tu pago» después del título.
 function Inicio({ espacio }: { espacio: Espacio }) {
+  return (
+    <>
+      <InicioSegunCiclo espacio={espacio} />
+      {espacio.ciclo.estado !== "cerrado" && <TarjetaPago />}
+    </>
+  );
+}
+
+function InicioSegunCiclo({ espacio }: { espacio: Espacio }) {
   const { ciclo, hoy } = espacio;
   if (ciclo.estado === "cerrado") return <EstadoPrograma estado="cerrado" />;
   if (ciclo.estado === "pausa") return <EstadoPrograma estado={ciclo.pausa?.motivo === "cuidado" ? "pausa-cuidado" : "pausa-pedida"} />;

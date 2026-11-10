@@ -168,10 +168,9 @@ export const ESTADO = {
       `El ${fecha} aceptaste las Condiciones del piloto (versión ${version}). Estamos preparando tu espacio; te escribiremos cuando puedas entrar.`,
     // Siguiente paso: el pago, antes de que empiece el ciclo (condiciones aprobadas el 10-oct-2026).
     pago: (precio: string, inicio: string) => `Siguiente paso: el pago de ${precio}, antes de que empiece tu ciclo el ${inicio}.`,
+    // Los datos bancarios nunca van en una página pública: se ven dentro de Mi espacio, con sesión.
     pagoCorreo: (correo: string) =>
-      `Te enviaremos a ${correo} los datos para transferir. Si estás fuera de Chile, te mandamos el enlace de PayPal en dólares.`,
-    pagoDatos: "Datos para transferir:",
-    pagoFuera: "Si estás fuera de Chile, escríbenos y te mandamos el enlace de PayPal en dólares.",
+      `Cuando tu espacio esté listo, verás ahí los datos para transferir y te llegará un correo a ${correo}. Si estás fuera de Chile, te mandamos el enlace de PayPal en dólares.`,
   },
   conEspacio: {
     etiqueta: "Tu espacio está listo",

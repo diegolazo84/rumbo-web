@@ -934,6 +934,10 @@ export const PAGOS_PANEL = {
   registrados: { titulo: "Registrados", vacio: "Todavía no hay pagos anotados." },
   pie: "Condiciones: transferencia en Chile y PayPal fuera de Chile. Antes del inicio se devuelve el 100 %; después, las semanas que aún no empiezan.",
   ciclo: (n: number, plan: string) => `Ciclo ${n} · ${plan}`,
+  // La persona avisó desde Mi espacio: no confirma nada; el pago se registra al verificarlo.
+  avisoEtiqueta: "Avisó que transfirió",
+  avisoFila: "Aviso de la persona",
+  avisoTexto: (fecha: string, referencia: string | null) => (referencia ? `${fecha} · operación ${referencia}` : fecha),
   planes: { coach: "Con acompañamiento", cercano: "Acompañamiento cercano" } as Record<string, string>,
   estados: { pendiente: "Por registrar", pagado: "Pagado", parcial: "Devolución parcial", devuelto: "Devuelto" },
   inicio: "Inicio",
