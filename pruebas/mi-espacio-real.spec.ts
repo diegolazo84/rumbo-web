@@ -2052,6 +2052,8 @@ test("Tu pago: sin datos configurados lo dice y no inventa una cuenta", async ({
   await hidratar(page);
   await expect(page.getByText("Los datos para transferir aún no están en tu espacio.", { exact: false })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Copiar / })).toHaveCount(0);
+});
+
 // ---------------------------------------------------------------------------
 // Móvil: cada pantalla real de Mi espacio a 320 px y al ancho del teléfono, sin desborde,
 // con objetivos táctiles de 44 px y sin violaciones de axe.
