@@ -1991,3 +1991,56 @@ test("Asistente real: Mis conversaciones muestra solo lo que entrega mis_consult
   // La pantalla nunca lee la tabla de consultas (tendría borradores sin revisar).
   expect(llamadas.filter((l) => l.tipo === "tabla" && l.nombre === "ia_consultas")).toHaveLength(0);
 });
+
+// ---------------------------------------------------------------------------
+// Móvil: cada pantalla real de Mi espacio a 320 px y al ancho del teléfono, sin desborde,
+// con objetivos táctiles de 44 px y sin violaciones de axe.
+
+const objetivosChicosME = (page: Page) =>
+  page.evaluate(() => {
+    const fuera: string[] = [];
+    for (const el of document.querySelectorAll<HTMLElement>("a, button, summary, label.accion, label.opcion, label.casilla")) {
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      if (r.width < 2 || r.height < 2 || cs.visibility === "hidden" || el.closest("[hidden], .sr-only, .saltar, dialog:not([open])")) continue;
+      if (el.tagName === "A" && cs.display === "inline") {
+        let bloque = el.parentElement;
+        while (bloque && getComputedStyle(bloque).display === "inline") bloque = bloque.parentElement;
+        if (bloque && (bloque.textContent ?? "").trim() !== (el.textContent ?? "").trim()) continue;
+      }
+      if (r.height < 43.5) fuera.push(`${el.tagName.toLowerCase()} «${(el.textContent ?? "").trim().slice(0, 40)}»: ${r.height.toFixed(1)} px`);
+    }
+    return fuera;
+  });
+
+const desbordesME = (page: Page) =>
+  page.evaluate(() => {
+    const ancho = document.documentElement.clientWidth;
+    // Las formas dentro de una ilustración SVG se recortan con su contenedor: se mide la caja del SVG.
+    const fuera = [...document.querySelectorAll<HTMLElement>("main *")]
+      .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.right > ancho + 1 && !el.closest("[hidden], .sr-only, .saltar") && !el.parentElement?.closest("svg"); })
+      .slice(0, 5)
+      .map((el) => `${el.tagName.toLowerCase()}.${el.getAttribute("class")}`);
+    return { extra: document.documentElement.scrollWidth - ancho, fuera };
+  });
+
+for (const ruta of [
+  "mi-espacio/", "mi-espacio/plan/", `mi-espacio/plan/accion/?id=o-${HOY}`, "mi-espacio/plan/ajuste/", "mi-espacio/acompanamiento/",
+  "mi-espacio/logros/", "mi-espacio/avisos/", "mi-espacio/preferencias/", RUTA_RECORDATORIOS, "mi-espacio/lo-que-viene/",
+  "mi-espacio/comunidad/", RUTA_ASISTENTE,
+]) {
+  test(`móvil: ${ruta} sin desborde a 320 px, objetivos de 44 px y axe`, async ({ page, isMobile }) => {
+    test.skip(!isMobile, "solo en el proyecto móvil");
+    await conSesion(page);
+    await simular(page, baseInicial());
+    await page.goto(ruta);
+    await hidratar(page);
+    await expect(page.locator("main h1")).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    expect(await desbordesME(page)).toEqual({ extra: 0, fuera: [] });
+    expect(await objetivosChicosME(page)).toEqual([]);
+    await sinViolaciones(page);
+    await page.setViewportSize({ width: 320, height: 640 });
+    expect(await desbordesME(page)).toEqual({ extra: 0, fuera: [] });
+  });
+}

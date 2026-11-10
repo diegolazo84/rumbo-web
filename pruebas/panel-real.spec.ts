@@ -1924,3 +1924,56 @@ test("Auditoría: el dueño ve quién cambió qué, con motivo y por páginas; u
   await expect(page.getByText("Solo el dueño puede ver la auditoría.")).toBeVisible();
   expect(pedidos.length).toBe(antes);
 });
+
+// ---------------------------------------------------------------------------
+// Móvil: cada pantalla del panel a 320 px y al ancho del teléfono, sin desborde,
+// con objetivos táctiles de 44 px y sin violaciones de axe.
+
+const objetivosChicosPanel = (page: Page) =>
+  page.evaluate(() => {
+    const fuera: string[] = [];
+    for (const el of document.querySelectorAll<HTMLElement>("a, button, summary, label.accion, label.opcion, label.casilla")) {
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      if (r.width < 2 || r.height < 2 || cs.visibility === "hidden" || el.closest("[hidden], .sr-only, .saltar, dialog:not([open])")) continue;
+      if (el.tagName === "A" && cs.display === "inline") {
+        let bloque = el.parentElement;
+        while (bloque && getComputedStyle(bloque).display === "inline") bloque = bloque.parentElement;
+        if (bloque && (bloque.textContent ?? "").trim() !== (el.textContent ?? "").trim()) continue;
+      }
+      if (r.height < 43.5) fuera.push(`${el.tagName.toLowerCase()} «${(el.textContent ?? "").trim().slice(0, 40)}»: ${r.height.toFixed(1)} px`);
+    }
+    return fuera;
+  });
+
+const desbordes = (page: Page) =>
+  page.evaluate(() => {
+    const ancho = document.documentElement.clientWidth;
+    const fuera = [...document.querySelectorAll<HTMLElement>("main *")]
+      .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.right > ancho + 1 && !el.closest("[hidden], .sr-only, .saltar"); })
+      .slice(0, 5)
+      .map((el) => `${el.tagName.toLowerCase()}.${el.className}`);
+    return { extra: document.documentElement.scrollWidth - ancho, fuera };
+  });
+
+for (const ruta of [
+  "equipo/", "equipo/participantes/", "equipo/solicitudes/", "equipo/solicitud/?id=s1", "equipo/participante/?id=p1",
+  "equipo/participante/?id=p1&pestana=revisiones", "equipo/participante/?id=p1&pestana=datos", "equipo/constructor/?id=p2",
+  "equipo/revision/?id=p1&n=2", "equipo/revisar/", "equipo/ajustes/", "equipo/contacto/", "equipo/mas/", "equipo/comunidad/",
+  "equipo/modulos/", "equipo/equipo/", "equipo/pagos/", "equipo/negocio/", "equipo/auditoria/", "equipo/asistente/",
+]) {
+  test(`móvil: ${ruta} sin desborde a 320 px, objetivos de 44 px y axe`, async ({ page, isMobile }) => {
+    test.skip(!isMobile, "solo en el proyecto móvil");
+    await preparar(page, "aal2", VERIFICADO);
+    await simular(page, baseInicial(), { factores: VERIFICADO });
+    await page.goto(ruta);
+    await hidratar(page);
+    await expect(page.locator("main h1")).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    expect(await desbordes(page)).toEqual({ extra: 0, fuera: [] });
+    expect(await objetivosChicosPanel(page)).toEqual([]);
+    await sinViolaciones(page);
+    await page.setViewportSize({ width: 320, height: 640 });
+    expect(await desbordes(page)).toEqual({ extra: 0, fuera: [] });
+  });
+}
