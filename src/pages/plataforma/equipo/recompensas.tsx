@@ -252,7 +252,7 @@ function ItemBeneficio({ b, usos, alGuardar }: { b: Beneficio; usos: Otorgado[];
               <Icono nombre="pencil" tamaño={20} />
               {T.editar}
             </button>
-            <button type="button" className={b.activo ? "boton boton--secundario" : "boton boton--primario"} onClick={() => setModo(b.activo ? "apagar" : "activar")}>
+            <button type="button" className="boton boton--secundario" onClick={() => setModo(b.activo ? "apagar" : "activar")}>
               {b.activo ? T.apagar : T.activar}
             </button>
           </div>
