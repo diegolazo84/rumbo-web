@@ -685,8 +685,26 @@ paso("pagos: solo el dueño registra; un pago por ciclo, con el precio acordado;
   exigir(!yaPagado.ok && /ya_registrado/.test(yaPagado.error), "se pudo avisar un pago ya registrado");
   const anon = como(ROLES.anon, "select public.mi_pago()");
   exigir(!anon.ok, "anon pudo leer mi_pago");
+  // Los datos bancarios solo salen por mi_pago: nadie lee Vault directo.
+  for (const rol of [ROLES.anon, ROLES.A, ROLES.aal2]) {
+    for (const tabla of ["vault.decrypted_secrets", "vault.secrets"]) {
+      const r = como(rol, `select count(*) from ${tabla}`);
+      exigir(!r.ok, `${rol.nombre ?? "un rol"} pudo leer ${tabla}`);
+    }
+  }
+  const equipo = como(ROLES.aal2, `${sinPagar}; select coalesce(public.mi_pago()::text, 'nulo')`);
+  exigir(equipo.ok && ultima(equipo) === "nulo", `mi_pago devolvió datos a una cuenta del equipo sin ficha: ${equipo.error ?? ultima(equipo)}`);
+  const definidor = sql("select string_agg(p.proname || ':' || p.prosecdef || ':' || array_to_string(p.proconfig, ','), ' ') from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('mi_pago', 'avisar_pago')");
+  exigir(/mi_pago:true:search_path=""/.test(definidor) && /avisar_pago:true:search_path=""/.test(definidor), `mi_pago y avisar_pago deben ser security definer con search_path vacío: ${definidor}`);
+  // La copia de mis datos incluye los avisos de pago propios y ningún ajeno.
+  const exportA = como(ROLES.A, `${sinPagar}; select public.avisar_pago('op CI') is not null;
+    select (public.exportar_mis_datos()->'avisos_pago'->0->>'referencia') = 'op CI' and not ((public.exportar_mis_datos()->'avisos_pago'->0) ? 'participante_id')`);
+  exigir(exportA.ok && ultima(exportA) === "t", `la copia de mis datos no incluye el aviso de pago de A: ${exportA.error ?? ultima(exportA)}`);
+  const exportB = como(ROLES.B, `select count(*) from jsonb_array_elements(coalesce(public.exportar_mis_datos()->'avisos_pago', '[]')) e
+    where e->>'ciclo_id' = '${cicloA}'`);
+  exigir(exportB.ok && exportB.salida === "0", "la copia de datos de B incluye un aviso de pago de A");
 }
-paso("pago en Mi espacio: cada persona ve su pago; datos solo mientras falta pagar; el aviso no confirma nada");
+paso("pago en Mi espacio: cada persona ve su pago; datos solo mientras falta pagar y nunca leyendo Vault directo; el aviso no confirma nada y sale en la copia de mis datos");
 
 // B5 · Coaches: el dueño invita; la persona invitada acepta con su sesión; nadie más entra al equipo.
 const correoNuevo = `coach-nuevo-${Date.now()}@example.com`;

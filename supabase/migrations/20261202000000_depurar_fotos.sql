@@ -336,6 +336,9 @@ language plpgsql security definer set search_path = '' as $$
 declare v_url text; v_origen text := case when p_origen = 'manual' then 'manual' else 'programada' end;
         v_ts bigint := floor(extract(epoch from now()))::bigint; v_firma text;
 begin
+  -- Apagado por completo mientras la tarea «fotos-depurar» esté inactiva (así se crea): ni la
+  -- tarea ni «Revisar ahora» llaman a la función hasta que Diego la active.
+  if not exists (select 1 from cron.job where jobname = 'fotos-depurar' and active) then return null; end if;
   select decrypted_secret into v_url from vault.decrypted_secrets where name = 'depurar_fotos_url';
   v_firma := privado.depuracion_firma(v_ts, v_origen);
   if v_url is null or v_firma is null then return null; end if;
@@ -351,6 +354,9 @@ revoke execute on function privado.lanzar_depuracion_fotos(text) from public, an
 -- Chile todo el año: 04:30 en horario de verano (UTC−3) y 03:30 en horario de invierno (UTC−4).
 -- El cambio de hora no salta ni repite la ejecución, y los plazos se cuentan en horas exactas.
 select cron.schedule('fotos-depurar', '30 7 * * *', $$select privado.lanzar_depuracion_fotos('programada')$$);
+-- Se crea DESACTIVADA (Diego, 10-nov-2026): se activa solo después de publicar la política de
+-- privacidad de fotos y probar en un iPhone real (docs/borrado-fotos.md, «Activación»).
+select cron.alter_job((select jobid from cron.job where jobname = 'fotos-depurar'), active := false);
 
 -- Estado real del borrado automático, el mismo para el panel y para la vigilancia.
 -- sin_activar: falta la dirección de la función. desactivada: la tarea diaria no existe o está
