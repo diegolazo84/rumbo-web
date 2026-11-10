@@ -15,6 +15,8 @@ export default defineConfig({
     __FORMULARIO_PROPIO__: JSON.stringify(process.env.FORMULARIO_PROPIO === "1"),
     // MI_ESPACIO_PROPIO=1 enciende operacion.miEspacioPropio (Mi espacio y panel, etapa 3).
     __MI_ESPACIO_PROPIO__: JSON.stringify(process.env.MI_ESPACIO_PROPIO === "1"),
+    // LEGAL_13=1 muestra Privacidad y Condiciones 1.3 en esta compilación (pruebas; no publicar así).
+    __LEGAL_13__: JSON.stringify(process.env.LEGAL_13 === "1"),
   },
   // postbuild.mjs lee el manifiesto para enlazar en <head> el CSS de las páginas perezosas
   // (postular, estado y contacto) y lo borra después: no se publica.

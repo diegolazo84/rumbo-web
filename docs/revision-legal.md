@@ -54,3 +54,23 @@ de difundir la web. Los textos vigentes están en `src/pages/Privacidad.tsx` (ve
 Seguir `docs/publicar-versiones-legales.md`: cierra postulaciones un momento, publica la web y
 cambia las versiones en Supabase en una sola transacción, para que la versión registrada y el
 texto visible coincidan siempre. La web no cambia las versiones de la base por sí sola.
+
+## Versión 1.3 (Rumbo 1.0, preparada el 10-nov-2026, sin publicar)
+
+Texto en `Privacidad.tsx` y `Condiciones.tsx` tras `operacion.legal13` (apagado). Para leerla:
+`LEGAL_13=1 MI_ESPACIO_PROPIO=1 npm run build`. Cambios:
+
+- Privacidad: secciones nuevas Comunidad, Ranking, Fotografías de tus acciones (texto definitivo de
+  fotos-privadas), Reconocimientos y descuento, Pago dentro de Mi espacio, y Asistente con IA
+  (sigue inactivo). Plazo de fotos en «Cuánto tiempo guardamos tus datos».
+- Condiciones: reglas de fotos, reconocimientos, descuento por renovación, y sección «Comunidad y
+  ranking» con las mismas reglas que se aceptan al entrar. Precios, pago, pausa y término no cambian.
+
+Puntos para la revisión:
+
+- Comunidad: al borrar una publicación deja de verse y sus fotos se eliminan, pero el texto queda
+  guardado (estado «borrada») para atender reportes, hasta eliminar la cuenta. ¿Plazo menor?
+- Fotos de acciones: los mismos puntos de `politica-privacidad-fotos-definitiva.md`.
+- Base de licitud del ranking y la comunidad (consentimiento al entrar) y del descuento (contrato).
+- Fotos de la Comunidad al eliminar una cuenta: hoy hay que borrarlas a mano en Storage
+  (bucket `comunidad`, carpeta del participante).

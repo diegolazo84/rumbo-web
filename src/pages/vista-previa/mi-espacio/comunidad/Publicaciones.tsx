@@ -152,7 +152,7 @@ export function useAccionesPublicacion() {
     try {
       if (hoja.tipo === "reportar") await fuente.reportar(hoja.p.id, motivo!, detalle.trim() || null);
       if (hoja.tipo === "bloquear") await fuente.bloquear(hoja.p.id);
-      if (hoja.tipo === "borrar") await fuente.borrar(hoja.p.id);
+      if (hoja.tipo === "borrar") await fuente.borrar(hoja.p.id, hoja.p.fotos);
       aviso(hoja.tipo === "reportar" ? T.reporte.listo : hoja.tipo === "bloquear" ? T.bloqueo.listo(hoja.p.alias) : T.borrar.listo);
       cerrar();
       cambio();

@@ -38,6 +38,11 @@ const MI_ESPACIO_FORZADO =
     ? __MI_ESPACIO_PROPIO__ === true
     : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.MI_ESPACIO_PROPIO === "1";
 const ESPACIO_PROPIO = MI_ESPACIO_PROPIO || MI_ESPACIO_FORZADO;
+const LEGAL_13 = false; // Privacidad y Condiciones 1.3: se enciende solo al publicarlas (docs/publicar-versiones-legales.md)
+const LEGAL_13_FORZADO =
+  typeof __LEGAL_13__ !== "undefined"
+    ? __LEGAL_13__ === true
+    : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.LEGAL_13 === "1";
 
 // Rutas de la web y, mientras existan, de la plataforma original. scripts/postbuild.mjs además
 // genera reenvíos con las mismas rutas en este dominio, para enlaces escritos a mano.
@@ -114,6 +119,10 @@ export type EstadoId = keyof typeof estados;
 export const operacion = {
   formularioPropio: PROPIO, // D8: postular, estado y contacto en la web propia (arriba, FORMULARIO_PROPIO)
   miEspacioPropio: ESPACIO_PROPIO, // D8: Mi espacio y el panel en la web propia (arriba, MI_ESPACIO_PROPIO)
+  // Rumbo 1.0: Privacidad y Condiciones 1.3 (comunidad, ranking, fotos, reconocimientos y pago en Mi
+  // espacio). APAGADO hasta la revisión legal y la autorización escrita de Diego para publicar;
+  // se enciende siguiendo docs/publicar-versiones-legales.md (mismo commit: fecha de VERSION_PUBLICADA).
+  legal13: LEGAL_13 || LEGAL_13_FORZADO,
   responsable: { nombre: "Diego Alfonso Muñoz Abeleida", comuna: "Providencia" } as null | { nombre: string; rut?: string; comuna: string }, // bloquea el lanzamiento público
   correo: "rumbo.acompana@gmail.com" as string | null, // creado y aprobado por Diego el 8 de octubre de 2026
   acompanante: null as null | { nombre: string; rol: string; bio: string; foto?: string }, // foto: archivo en public/, p. ej. «acompanante.jpg» (la portada le antepone la base)

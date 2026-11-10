@@ -29,13 +29,88 @@ import {
 // funciones que todavía no existen. ajustes_operacion.version_privacidad NO se cambia sola:
 // Diego la pasa a '1.2' el día que se publica. Los puntos «REVISIÓN LEGAL» están en
 // docs/revision-legal.md.
+// Versión 1.3 (Rumbo 1.0, operacion.legal13, apagada): describe comunidad, ranking, fotografías de
+// acciones, reconocimientos y beneficio, y el pago en Mi espacio. El asistente con IA sigue
+// descrito como inactivo. Cada afirmación está contrastada con las migraciones en
+// docs/revision-legal.md (sección «Versión 1.3»).
 const A = op.formularioPropio;
 const B = A && op.miEspacioPropio;
-const VERSION_PRIVACIDAD = { numero: B ? "1.2" : A ? "1.1" : "1.0", fecha: VERSION_PUBLICADA.texto };
+const C = B && op.legal13;
+const VERSION_PRIVACIDAD = { numero: C ? "1.3" : B ? "1.2" : A ? "1.1" : "1.0", fecha: VERSION_PUBLICADA.texto };
 
 const RETIRAR = "Si retiras tu solicitud con tu enlace privado, la borramos de inmediato.";
+const FOTOS_PLAZO =
+  "Fotografías de tus acciones: se eliminan 30 días después de su revisión o, si son opcionales, 30 días después de adjuntarlas. Las que esperan revisión se guardan hasta que se revisen";
 const ELIMINAR =
   "Puedes pedirnos que los eliminemos en cualquier momento, y lo haremos, salvo lo que la ley nos obligue a conservar, como los documentos tributarios.";
+
+// Versión 1.3: las funciones opcionales de Rumbo 1.0, cada una en su sección.
+const FUNCIONES_13: Paso[] = [
+  {
+    titulo: "Comunidad (opcional)",
+    contenido: (
+      <>
+        <p>
+          Participar en la comunidad es voluntario. Para entrar eliges un alias y aceptas sus reglas. Publicas siempre
+          con tu alias, nunca con tu nombre ni tu correo.
+        </p>
+        <ListaLectura
+          items={[
+            "Qué guardamos: tu alias, lo que publicas y respondes (con su tipo, temas y fecha), hasta 5 fotos por publicación si decides agregarlas, tus apoyos («me gusta»), lo que guardas, los grupos y desafíos en que participas, las personas que bloqueas y los reportes que haces.",
+            "Quién lo ve: las demás personas que participan en la comunidad. Lo que publicas en un grupo lo ven solo sus miembros. De los apoyos solo se ve cuántos hay, nunca quién los dio. De un desafío se ve cuántas personas participan, nunca quiénes; tu avance lo ves solo tú.",
+            "Moderación: la persona responsable de Rumbo y los coaches con permiso de moderar pueden ver quién escribió cada publicación, para atender reportes y cuidar las reglas. Ocultar una publicación no la borra: queda guardada para revisión.",
+            "Si bloqueas a alguien, desde ese momento ninguna de las dos personas ve lo que publica la otra. La otra persona no recibe aviso.",
+            "Las fotos de la comunidad se guardan en un almacenamiento privado de Supabase y solo las ven quienes participan, mientras la publicación esté visible. Antes de subir una foto, revisa que no muestre a otras personas, documentos ni datos de salud.",
+            "Puedes borrar lo que publicaste cuando quieras. Deja de verse de inmediato y sus fotos se eliminan. Guardamos un registro interno del texto, que nadie más ve, para atender reportes; se elimina cuando eliminas tu cuenta.",
+          ]}
+        />
+      </>
+    ),
+  },
+  {
+    titulo: "Ranking semanal (opcional)",
+    contenido:
+      "Entrar al ranking es voluntario y puedes salir cuando quieras. Compara el porcentaje de tus acciones programadas de la semana que marcaste como hechas, no la cantidad. Se muestra con tu alias, sin tu nombre ni el número de tus acciones, y solo lo ven quienes participan en él y el equipo de Rumbo. Si en una semana participan menos de 3 personas, no se muestra, para que nadie pueda saber quién es quién.",
+  },
+  {
+    titulo: "Fotografías de tus acciones",
+    contenido: (
+      <>
+        <p>
+          Algunas acciones piden una foto que muestre lo que hiciste; en las demás, adjuntarla es opcional. Las usamos
+          solo para que quien te acompaña revise tu avance. No las mostramos en la comunidad ni en el ranking, y no las
+          enviamos a servicios de inteligencia artificial. Si no puedes subir una foto, elige «No puedo subir una foto»
+          y cuéntanos con tus palabras lo que hiciste.
+        </p>
+        <ListaLectura
+          items={[
+            "Qué no debes subir: fotos de tu cuerpo, fotos íntimas, documentos de identidad o de salud, ni fotos donde aparezcan otras personas. Si llega una foto así, no la aprobamos y se elimina 30 días después de esa revisión, o antes si nos lo pides.",
+            "Quién puede verlas: tú, la persona del equipo que te acompaña (entra con un segundo factor de verificación) y el responsable de Rumbo. Ninguna otra persona participante. Si cambias de coach, el anterior deja de tener acceso.",
+            "Cómo las guardamos: tu navegador achica la foto a un máximo de 1600 píxeles y le quita los datos que vienen en el archivo, como la ubicación GPS, la fecha y el modelo del teléfono; si no puede hacerlo, la foto no se sube. Eso no la hace anónima: revisa qué se ve antes de subirla. Se guarda en un almacenamiento privado de Supabase, en Brasil, y se muestra con enlaces que dejan de funcionar a los 5 minutos.",
+            "Cuánto tiempo: una foto que pedía tu acción se elimina 30 días después de revisarla; una opcional, 30 días después de adjuntarla; una que espera revisión, se guarda hasta que se revise. Un proceso automático las elimina cada día, así que puede tardar hasta un día más. Puedes eliminarla antes desde la acción mientras esté abierta, o escribiéndonos.",
+            "Qué queda: el registro de la acción (que la hiciste, el resultado de la revisión, las notas y la fecha en que se eliminó la foto), para que tu progreso no cambie. Nuestros proveedores pueden conservar copias técnicas de seguridad por un tiempo limitado.",
+            "La descarga de «Tus datos» en Mi espacio incluye el registro de tus acciones, pero no los archivos de las fotos. Si quieres una copia de las fotos que sigan guardadas, escríbenos.",
+          ]}
+        />
+      </>
+    ),
+  },
+  {
+    titulo: "Reconocimientos y descuento por renovación",
+    contenido:
+      "Los reconocimientos (por ejemplo, «Primer paso» o «Ciclo completado») se otorgan solos a partir de tus acciones. Los ves tú y el equipo que te acompaña; no se muestran a otras personas participantes. Si Rumbo ofrece un descuento por renovación, revisamos si completaste todas las acciones programadas de tu ciclo para aplicarlo en tu siguiente pago. No usamos estos datos para nada más.",
+  },
+  {
+    titulo: "Pago dentro de Mi espacio",
+    contenido:
+      "Después de aceptar tu acuerdo, Mi espacio te muestra el monto, la fecha de vencimiento y los datos para transferir. Esos datos solo se muestran con tu sesión iniciada y nunca van en un correo. Si avisas «Ya transferí», guardamos tu aviso, la fecha y la referencia que escribas. El pago queda registrado solo cuando una persona del equipo lo confirma. No guardamos datos de tu cuenta bancaria ni de tarjetas.",
+  },
+  {
+    titulo: "Asistente con inteligencia artificial",
+    contenido:
+      "El asistente con inteligencia artificial todavía no está activo y hoy no trata ningún dato. Antes de activarlo, esta política dirá qué datos usa, con qué proveedor y para qué, y te pediremos tu autorización. Será opcional y nunca reemplazará a quien te acompaña.",
+  },
+];
 
 const secciones: Paso[] = [
   {
@@ -110,6 +185,8 @@ const secciones: Paso[] = [
               tu programa (metas, acciones, horarios e instrucciones); lo que registras como hecho y lo que escribes sobre
               tus acciones; créditos, niveles y rachas; tus registros semanales y las respuestas de quien te acompaña, y tus
               solicitudes de ajuste.
+              {C &&
+                " También tus preferencias de recordatorios, las videollamadas agendadas y su asistencia, los reconocimientos que consigues, el aviso «Ya transferí» con la referencia que escribas y los pagos que registramos."}
             </>,
             <>
               <strong>En la conversación inicial y en las revisiones:</strong> Tomamos notas breves para ajustar tu
@@ -150,6 +227,12 @@ const secciones: Paso[] = [
               : []),
             "Acordar contigo el plan, el precio y las condiciones: porque tú lo solicitas, antes de un acuerdo.",
             "Preparar, publicar y ajustar tu programa, hacer las revisiones y calcular créditos y niveles: para cumplir lo que acordamos contigo.",
+            ...(C
+              ? [
+                  "Mostrarte los datos para transferir y registrar tus pagos: para cumplir lo que acordamos contigo.",
+                  "Mostrar lo que publicas en la comunidad y tu lugar en el ranking: solo si decides participar.",
+                ]
+              : []),
             "Emitir documentos tributarios cuando haya pagos: por obligación legal.",
           ]}
         />
@@ -174,6 +257,13 @@ const secciones: Paso[] = [
           registras. Son informativos: no deciden si te aceptamos, cuánto pagas ni si continúas, y no evalúan tu valor
           como persona.
         </p>
+        {C && (
+          <p>
+            Con las mismas reglas se otorgan los reconocimientos, se calcula el ranking y se revisa si cumpliste las
+            condiciones del descuento por renovación: todo sale de las acciones programadas que marcaste como hechas.
+            Una persona revisa cada pago antes de aplicar un descuento.
+          </p>
+        )}
       </>
     ) : (
       "Los créditos, niveles y rachas se calculan automáticamente, con reglas públicas, a partir de lo que registras. Son informativos: no deciden si te aceptamos, cuánto pagas ni si continúas, y no evalúan tu valor como persona. La aceptación al piloto siempre la decide una persona."
@@ -237,13 +327,14 @@ const secciones: Paso[] = [
           items={[
             ...op.conservacion.map((c) => `${c.tipo}: ${c.plazo}`),
             ...(A && !op.conservacion.some((c) => /IP/.test(c.tipo)) ? ["Código derivado de tu dirección IP: 48 horas"] : []),
+            ...(C ? [FOTOS_PLAZO] : []),
           ]}
         />
         {A && <p>{RETIRAR}</p>}
         <p>{ELIMINAR}</p>
       </>
     ) : A ? (
-      `Los guardamos solo mientras son necesarios para la finalidad por la que nos los entregaste: revisar tu solicitud, acompañarte durante el piloto o cumplir una obligación legal. El código derivado de tu dirección IP se borra a las 48 horas. ${RETIRAR} ${ELIMINAR}`
+      `Los guardamos solo mientras son necesarios para la finalidad por la que nos los entregaste: revisar tu solicitud, acompañarte durante el piloto o cumplir una obligación legal. El código derivado de tu dirección IP se borra a las 48 horas.${C ? ` ${FOTOS_PLAZO}: el detalle está en «Fotografías de tus acciones».` : ""} ${RETIRAR} ${ELIMINAR}`
     ) : (
       `Los guardamos solo mientras son necesarios para la finalidad por la que nos los entregaste: revisar tu solicitud, acompañarte durante el piloto o cumplir una obligación legal. ${ELIMINAR}`
     ),
@@ -271,11 +362,15 @@ const secciones: Paso[] = [
       </>
     ),
   },
-  {
-    titulo: "Funciones que todavía no existen",
-    contenido:
-      "La comunidad, el ranking semanal, las fotografías de acciones y el asistente con inteligencia artificial todavía no existen y hoy no tratan ningún dato. Antes de activar cualquiera de ellos, que serán opcionales, esta política dirá qué datos usan, para qué y con qué proveedores.",
-  },
+  ...(C
+    ? FUNCIONES_13
+    : [
+        {
+          titulo: "Funciones que todavía no existen",
+          contenido:
+            "La comunidad, el ranking semanal, las fotografías de acciones y el asistente con inteligencia artificial todavía no existen y hoy no tratan ningún dato. Antes de activar cualquiera de ellos, que serán opcionales, esta política dirá qué datos usan, para qué y con qué proveedores.",
+        },
+      ]),
   {
     titulo: "Tus derechos",
     contenido: (
@@ -345,7 +440,11 @@ export default function Privacidad() {
           <li>Pedimos solo lo necesario para revisar tu solicitud y acompañarte.</li>
           <li>No vendemos tus datos ni los usamos para publicidad.</li>
           <li>No necesitas contarnos diagnósticos ni enviarnos documentos de salud.</li>
-          <li>Tu calendario y tu progreso son privados.</li>
+          <li>
+            {C
+              ? "Tu calendario, tu progreso y tus fotos son privados. En la comunidad y el ranking, que son opcionales, solo se ve tu alias."
+              : "Tu calendario y tu progreso son privados."}
+          </li>
           <li>Puedes pedir ver, corregir, llevarte o eliminar tus datos, y retirar tu autorización.</li>
         </ul>
       </Aviso>
