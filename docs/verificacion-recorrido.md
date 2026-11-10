@@ -1,26 +1,37 @@
-# Verificación del recorrido completo del participante
+# Verificación del recorrido completo (Rumbo 1.0)
 
-Prueba manual en producción, con un correo de prueba propio (no el de Diego ni el de Rumbo). Se
-hace después de publicar la Etapa 0 y de pasar las versiones legales a 1.2. Anotar en cada paso
-OK o la falla, con captura. El repo es público: las capturas no se suben aquí.
+Prueba en producción con una **cuenta de prueba controlada** (autorizada por Diego el 10-nov-2026):
+sin pagos reales, sin correos a terceros y sin tocar participantes existentes. El repo es público:
+las capturas no se suben aquí.
 
-| # | Paso | Qué revisar |
-|---|---|---|
-| 1 | Postular en /postular/ | Llega a la pantalla final con enlace privado de seguimiento |
-| 2 | Aviso de postulación | ¿Llegó correo o notificación? (depende de las claves de aviso) |
-| 3 | Panel /equipo/ → Solicitudes → abrirla → «Registrar acuerdo» | Plan, precio vigente sin cambios, inicio y día de revisión |
-| 4 | Enviar el enlace privado al correo de prueba | Llega y abre /estado/ |
-| 5 | Como participante: leer Condiciones 1.2 y «Aceptar» | El panel muestra la aceptación con versión 1.2 |
-| 6 | Panel → «Crear su espacio» → programa de 1 semana → publicar | Sin errores |
-| 7 | /mi-espacio/ → pedir código | El correo de Brevo llega en menos de 1 minuto y no a spam |
-| 8 | Entrar con el código | Se ve el programa de la semana |
-| 9 | Marcar acciones 2 o 3 días; dejar pasar una | Créditos y racha según las reglas públicas |
-| 10 | Registro semanal | Se guarda y aparece en el panel |
-| 11 | Panel → revisión semanal | La participante la ve en Mi espacio |
-| 12 | Pedir un ajuste | Aparece en el panel |
-| 13 | «Ayuda inmediata» en Mi espacio | Números verificados y visibles |
-| 14 | Exportar mis datos | Descarga con los datos de la cuenta de prueba |
-| 15 | Panel → eliminar participante de prueba | Desaparece del panel; anotar que la cuenta de acceso sigue (ver `docs/eliminacion-cuentas.md`) |
-| 16 | Repetir 7 a 9 en celular | Se lee bien y los botones responden |
+## Cómo se identifica
 
-Cuando los 16 pasos estén en OK, el bloqueo D7 de la auditoría queda resuelto.
+- Nombre: `Prueba Rumbo 1.0`. Correo: `rumbo.acompana+prueba@gmail.com` (llega a la bandeja de
+  Rumbo; ningún tercero recibe correos).
+- Para ubicarla: `select id, estado from public.participantes p join public.solicitudes s on s.participante_id = p.id where s.correo = 'rumbo.acompana+prueba@gmail.com';`
+- Comunidad, ranking y fotos siguen apagados: la cuenta no aparece ante otras personas.
+
+## Pasos
+
+| # | Quién | Paso | Qué revisar |
+|---|---|---|---|
+| 1 | Participante | Postular en /postular/ con el correo de prueba | Pantalla final con enlace privado |
+| 2 | Dueño (TOTP) | Solicitudes → «Registrar acuerdo» (plan Con acompañamiento, precio vigente) | Precio sin cambios |
+| 3 | Participante | Abrir /estado/, leer Condiciones y «Aceptar» | Versión vigente registrada |
+| 4 | Dueño | «Crear su espacio», asignar coach, programa de 1 semana, publicar | Sin errores |
+| 5 | Participante | /mi-espacio/ → código por correo → entrar (teléfono) | Correo en menos de 1 minuto |
+| 6 | Participante | Mi Rumbo, Mi plan, detalle de una acción, marcar 2 acciones | Créditos y racha según reglas |
+| 7 | Participante | Pago: ver monto y vencimiento; «Ya transferí» con referencia «PRUEBA» | Aviso al equipo; sin datos bancarios si el Vault no los tiene |
+| 8 | Participante | Instalar la app (PR #92), recordatorios, Mis logros, Ayuda inmediata, Tus datos | Todo responde; descarga con datos de prueba |
+| 9 | Participante | Registro semanal y pedir un ajuste | Llegan al panel |
+| 10 | Coach / dueño | Bandeja, revisión semanal, responder ajuste, agendar videollamada | La persona lo ve en Mi espacio |
+| 11 | Dueño | Pagos: ver el aviso. Negocio y Módulos | Cifras coherentes; no registrar pagos |
+| 12 | Dueño | Participante → Eliminar | Desaparece del panel |
+| 13 | Dueño | Supabase → Authentication → Users → borrar `rumbo.acompana+prueba@gmail.com` | La cuenta de acceso ya no existe |
+
+## Qué queda después de eliminarla
+
+`eliminar_participante` borra en cascada ciclos, programas, registros, avisos, avisos de pago,
+alias y lo de la comunidad. Quedan, sin datos personales: la solicitud anonimizada (estado
+«retirada») y una fila de auditoría. Fuera de Supabase quedan los correos en la bandeja de Rumbo y
+el registro de envíos de Brevo. Si se llegara a subir una foto, la base exige borrarla antes.
