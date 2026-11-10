@@ -35,6 +35,7 @@ type Pago = {
   devuelto_en: Iso | null;
   devolucion_motivo: Motivo | null;
 };
+type AvisoPago = { ciclo_id: string; referencia: string | null; creado_en: string };
 type CicloPago = { id: string; participante_id: string; numero: number; plan_id: string; inicio: Iso; semanas: number; estado: string; precio_acordado_clp: number | null };
 
 // Motivos que da la base (privado.error «campo:codigo») con su texto para esta pantalla.
@@ -51,6 +52,7 @@ export function PagosReal() {
   const [dueno, setDueno] = useState<boolean | null>(null);
   const [ciclos, setCiclos] = useState<CicloPago[] | null>(null);
   const [pagos, setPagos] = useState<Pago[]>([]);
+  const [avisos, setAvisos] = useState<AvisoPago[]>([]);
   const [error, setError] = useState(false);
   const [aviso, setAviso] = useState("");
 
@@ -65,6 +67,9 @@ export function PagosReal() {
       sb.from("ciclos").select("id,participante_id,numero,plan_id,inicio,semanas,estado,precio_acordado_clp").order("inicio", { ascending: true }),
       sb.from("pagos").select("id,participante_id,ciclo_id,monto,moneda,medio,pagado_en,referencia,devuelto,devuelto_en,devolucion_motivo"),
     ]);
+    // Avisos de «ya transferí» (migración 20261203000000); sin la tabla, ninguno.
+    const a = await sb.from("avisos_pago").select("ciclo_id,referencia,creado_en");
+    setAvisos(a.error ? [] : ((a.data ?? []) as AvisoPago[]));
     setPagos(datos(p) as Pago[]);
     setCiclos(datos(c) as CicloPago[]);
   }, [sb]);
@@ -117,7 +122,7 @@ export function PagosReal() {
         {pendientes.length ? (
           <ul className="pa-filas">
             {pendientes.map((c) => (
-              <FilaPendiente key={c.id} c={c} nombre={nombre(c.participante_id)} hoy={d.hoy} alGuardar={alGuardar} />
+              <FilaPendiente key={c.id} c={c} nombre={nombre(c.participante_id)} hoy={d.hoy} aviso={avisos.find((a) => a.ciclo_id === c.id)} alGuardar={alGuardar} />
             ))}
           </ul>
         ) : (
@@ -153,17 +158,19 @@ function Encabezado({ id, c, nombre, etiqueta }: { id: string; c: CicloPago; nom
   );
 }
 
-function FilaPendiente({ c, nombre, hoy, alGuardar }: { c: CicloPago; nombre: string; hoy: Iso; alGuardar: (t: string) => void }) {
+function FilaPendiente({ c, nombre, hoy, aviso, alGuardar }: { c: CicloPago; nombre: string; hoy: Iso; aviso?: AvisoPago; alGuardar: (t: string) => void }) {
   const [abierto, setAbierto] = useState(false);
   const id = `pago-${c.id}`;
+  const diaAviso = aviso && (new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date(aviso.creado_en)) as Iso);
   return (
     <li className="tarjeta pa-fila" aria-labelledby={`${id}-titulo`}>
-      <Encabezado id={id} c={c} nombre={nombre} etiqueta={<Etiqueta variante="nota">{T.estados.pendiente}</Etiqueta>} />
+      <Encabezado id={id} c={c} nombre={nombre} etiqueta={<Etiqueta variante="nota">{aviso ? T.avisoEtiqueta : T.estados.pendiente}</Etiqueta>} />
       <Datos
         className="pa-datos--apilada"
         filas={[
           [T.inicio, fecha(c.inicio)],
           [T.acordado, c.precio_acordado_clp ? montoTexto(c.precio_acordado_clp, "CLP") : T.sinPrecio],
+          ...(aviso && diaAviso ? [[T.avisoFila, T.avisoTexto(fecha(diaAviso), aviso.referencia)] as [string, string]] : []),
         ]}
       />
       {abierto ? (

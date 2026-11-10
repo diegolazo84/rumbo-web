@@ -2149,6 +2149,23 @@ test("Auditoría: el dueño ve quién cambió qué, con motivo y por páginas; u
   expect(pedidos.length).toBe(antes);
 });
 
+test("Pagos: el aviso «ya transferí» de la persona se ve en Por registrar y no registra el pago", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  for (const c of base.ciclos) c.precio_acordado_clp = 64000;
+  base.pagos = [];
+  const cicloId = String(base.ciclos[0].id);
+  base.avisos_pago = [{ ciclo_id: cicloId, referencia: "op 42", creado_en: "2026-10-13T15:00:00Z" }];
+  await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/pagos/");
+  await hidratar(page);
+  const fila = page.locator("section[aria-labelledby=por-registrar-titulo] li").filter({ hasText: "Avisó que transfirió" });
+  await expect(fila).toHaveCount(1);
+  await expect(fila).toContainText("Martes 13 de octubre · operación op 42");
+  await expect(fila.getByRole("button", { name: "Registrar pago" })).toBeVisible();
+  expect(base.pagos).toEqual([]);
+  await sinViolaciones(page);
+});
 // ---------------------------------------------------------------------------
 // Móvil: cada pantalla del panel a 320 px y al ancho del teléfono, sin desborde,
 // con objetivos táctiles de 44 px y sin violaciones de axe.

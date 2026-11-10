@@ -224,14 +224,10 @@ function pasosDe(e: Estado): PasoLinea[] {
   }));
 }
 
-// Tras aceptar: cuánto y antes de cuándo pagar, y cómo (datos en la web solo si Diego los publica).
+// Tras aceptar: cuánto y antes de cuándo pagar. Los datos para transferir solo se ven en Mi espacio.
 function textoPago(a: AcuerdoVista, correo: string): string[] {
   const t = ESTADO.aceptada;
-  const datos = operacion.datosTransferencia;
-  return [
-    t.pago(a.precio, diaMes(a.inicio)),
-    ...(datos?.length ? [`${t.pagoDatos} ${datos.join(" · ")}.`, t.pagoFuera] : [t.pagoCorreo(correo)]),
-  ];
+  return [t.pago(a.precio, diaMes(a.inicio)), t.pagoCorreo(correo)];
 }
 
 // «martes y jueves» · «lunes, martes y jueves»

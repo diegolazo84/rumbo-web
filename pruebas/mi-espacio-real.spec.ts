@@ -2133,6 +2133,68 @@ test("Asistente real: Mis conversaciones muestra solo lo que entrega mis_consult
   expect(llamadas.filter((l) => l.tipo === "tabla" && l.nombre === "ia_consultas")).toHaveLength(0);
 });
 
+// Tu pago: monto, vencimiento y datos para transferir solo con sesión; «Avisar que transferí»
+// deja un aviso y no registra el pago ni toca el ciclo.
+const PAGO = { ciclo_id: "c2", numero: 1, monto_clp: 64000, inicio: "2026-10-19", vence: "2026-10-18", pagado: false, aviso_en: null, datos: ["Banco de Prueba", "Cuenta corriente 000123"] };
+
+test("Tu pago: monto, vencimiento, copiar datos y avisar sin confirmar el pago", async ({ page, context, browserName }) => {
+  if (browserName === "chromium") await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await conSesion(page);
+  const llamadas = await simular(page, baseInicial(), {
+    mi_pago: () => PAGO,
+    avisar_pago: () => "2026-10-13T15:00:00Z",
+  });
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  const tarjeta = page.locator(".me-pago__inicio");
+  await expect(tarjeta).toContainText("Tu pago de $64.000 vence el 18 de octubre.");
+  await tarjeta.getByRole("link", { name: "Ver cómo pagar" }).click();
+  await expect(page.locator("main h1")).toHaveText("Tu pago");
+  await expect(page.locator(".me-pago__monto")).toHaveText("$64.000");
+  await expect(page.getByText("El domingo 18 de octubre, antes de que empiece tu ciclo el lunes 19 de octubre.")).toBeVisible();
+  await page.getByRole("button", { name: "Copiar Cuenta corriente 000123" }).click();
+  if (browserName === "chromium") expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("Cuenta corriente 000123");
+  await expect(page.getByRole("button", { name: "Copiar Cuenta corriente 000123" })).toContainText("Copiado.");
+  await sinViolaciones(page);
+  await page.getByLabel("Número de operación (opcional)").fill("  op 42  ");
+  await page.getByRole("button", { name: "Avisar que transferí" }).click();
+  await expect(page.getByText("Recibimos tu aviso el martes 13 de octubre. Te confirmaremos el pago cuando lo verifiquemos.")).toBeVisible();
+  const rpc = llamadas.filter((l) => l.tipo === "rpc").map((l) => l.nombre);
+  expect(rpc.filter((n) => n === "avisar_pago")).toHaveLength(1);
+  expect(llamadas.find((l) => l.nombre === "avisar_pago")!.cuerpo).toEqual({ p_referencia: "op 42" });
+  // Avisar no registra pagos ni cambia el ciclo.
+  expect(rpc.filter((n) => /registrar_pago|reanudar|activar/.test(n))).toEqual([]);
+  await expect(page.getByText("Tu pago está confirmado.")).toHaveCount(0);
+});
+
+test("Tu pago: confirmado, sin datos para transferir ni tarjeta en Mi Rumbo; sin la migración, no disponible", async ({ page }) => {
+  await conSesion(page);
+  let pago: unknown = { ...PAGO, pagado: true, datos: null };
+  await simular(page, baseInicial(), { mi_pago: () => pago });
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  await expect(page.locator("main h1")).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  await expect(page.locator(".me-pago__inicio")).toHaveCount(0);
+  await page.goto("mi-espacio/pago/");
+  await hidratar(page);
+  await expect(page.getByText("Tu pago está confirmado.")).toBeVisible();
+  await expect(page.getByText("Datos para transferir")).toHaveCount(0);
+  pago = { __error: "x:y", __estado: 404 };
+  await page.reload();
+  await hidratar(page);
+  await expect(page.getByText("Esta sección todavía no está disponible.", { exact: false })).toBeVisible();
+});
+
+test("Tu pago: sin datos configurados lo dice y no inventa una cuenta", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial(), { mi_pago: () => ({ ...PAGO, datos: null }) });
+  await page.goto("mi-espacio/pago/");
+  await hidratar(page);
+  await expect(page.getByText("Los datos para transferir aún no están en tu espacio.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Copiar / })).toHaveCount(0);
+});
+
 // ---------------------------------------------------------------------------
 // Móvil: cada pantalla real de Mi espacio a 320 px y al ancho del teléfono, sin desborde,
 // con objetivos táctiles de 44 px y sin violaciones de axe.
@@ -2168,7 +2230,7 @@ const desbordesME = (page: Page) =>
 for (const ruta of [
   "mi-espacio/", "mi-espacio/plan/", `mi-espacio/plan/accion/?id=o-${HOY}`, "mi-espacio/plan/ajuste/", "mi-espacio/acompanamiento/",
   "mi-espacio/logros/", "mi-espacio/avisos/", "mi-espacio/preferencias/", RUTA_RECORDATORIOS, "mi-espacio/lo-que-viene/",
-  "mi-espacio/comunidad/", RUTA_ASISTENTE,
+  "mi-espacio/comunidad/", RUTA_ASISTENTE, "mi-espacio/pago/",
 ]) {
   test(`móvil: ${ruta} sin desborde a 320 px, objetivos de 44 px y axe`, async ({ page, isMobile }) => {
     test.skip(!isMobile, "solo en el proyecto móvil");
