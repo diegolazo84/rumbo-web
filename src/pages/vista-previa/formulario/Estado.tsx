@@ -206,7 +206,7 @@ function pasosDe(e: Estado): PasoLinea[] {
     ];
   if (e.startsWith("cerrada"))
     return [...ESTADO.pasos.slice(0, 3), ESTADO.pasoCerrada].map((titulo) => ({ titulo, estado: "completo" as const }));
-  // Índice del paso actual (0 a 4).
+  // Índice del paso actual (0 a 5).
   const actual: Partial<Record<Estado, number>> = {
     recibida: 1,
     "en-revision": 1,
@@ -215,13 +215,23 @@ function pasosDe(e: Estado): PasoLinea[] {
     acordada: 3,
     "acordada-sin-detalles": 3,
     "acuerdo-aceptado": 4,
-    "con-espacio": 4,
+    "con-espacio": 5,
   };
   const i = actual[e] ?? 1;
   return ESTADO.pasos.map((titulo, n) => ({
     titulo,
     estado: (n < i ? "completo" : n === i ? "actual" : "pendiente") as EstadoPaso,
   }));
+}
+
+// Tras aceptar: cuánto y antes de cuándo pagar, y cómo (datos en la web solo si Diego los publica).
+function textoPago(a: AcuerdoVista, correo: string): string[] {
+  const t = ESTADO.aceptada;
+  const datos = operacion.datosTransferencia;
+  return [
+    t.pago(a.precio, diaMes(a.inicio)),
+    ...(datos?.length ? [`${t.pagoDatos} ${datos.join(" · ")}.`, t.pagoFuera] : [t.pagoCorreo(correo)]),
+  ];
 }
 
 // «martes y jueves» · «lunes, martes y jueves»
@@ -664,7 +674,10 @@ export default function Estado({ estado = "recibida" }: PropsPantalla) {
       etiqueta: ESTADO.aceptada.etiqueta,
       variante: "activo",
       titulo: ESTADO.aceptada.titulo,
-      texto: vista.aceptada ? [ESTADO.aceptada.texto(fechaLarga(vista.aceptada), vista.version)] : [],
+      texto: [
+        ...(vista.aceptada ? [ESTADO.aceptada.texto(fechaLarga(vista.aceptada), vista.version)] : []),
+        ...(vista.acuerdo ? textoPago(vista.acuerdo, vista.correo) : []),
+      ],
     },
     "con-espacio": {
       etiqueta: ESTADO.conEspacio.etiqueta,
