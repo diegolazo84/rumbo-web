@@ -53,8 +53,9 @@ function UnaFoto({ ruta, alt }: { ruta: string; alt: string }) {
 }
 
 // Hasta 5 fotos (C11): una grande, o una cuadrícula con todas.
-function Foto({ p }: { p: Publicacion }) {
-  if (p.ilustracionEjemplo)
+// Dentro de un grupo solo se muestran fotos reales: sin fotos, la tarjeta queda solo con texto.
+function Foto({ p, soloFotos = false }: { p: Publicacion; soloFotos?: boolean }) {
+  if (p.ilustracionEjemplo && !soloFotos)
     return (
       <figure className="co-pub__foto co-pub__foto--ilustracion">
         {p.ilustracionEjemplo === "atardecer" ? <Ilustracion nombre="atardecer" /> : <PaisajeMini nombre={p.ilustracionEjemplo} />}
@@ -218,7 +219,8 @@ export function useAccionesPublicacion() {
 
 type Acciones = ReturnType<typeof useAccionesPublicacion>["abrir"];
 
-export function Tarjeta({ p, acciones }: { p: Publicacion; acciones: Acciones }) {
+// enGrupo (C14, interior del grupo): sin «en <grupo>» y con «Me gusta» y «Comentar» escritos.
+export function Tarjeta({ p, acciones, enGrupo = false }: { p: Publicacion; acciones: Acciones; enGrupo?: boolean }) {
   const { fuente, aviso, enlace } = useComunidad();
   const [estado, setEstado] = useState({ reacciones: p.reacciones, mia: p.miReaccion, guardada: p.guardada, respuestas: p.respuestas });
   const [abierto, setAbierto] = useState(false);
@@ -259,7 +261,7 @@ export function Tarjeta({ p, acciones }: { p: Publicacion; acciones: Acciones })
           <p className="co-pub__alias">{p.alias}</p>
           <p className="co-pub__meta">
             {fechaRelativa(p.creadaEn)}
-            {p.grupo && p.grupoId && (
+            {!enGrupo && p.grupo && p.grupoId && (
               <>
                 {" · "}
                 {T.publicacion.en}{" "}
@@ -283,17 +285,27 @@ export function Tarjeta({ p, acciones }: { p: Publicacion; acciones: Acciones })
           </button>
         )}
       </div>
-      <Foto p={p} />
-      <footer className="co-pub__pie">
+      <Foto p={p} soloFotos={enGrupo} />
+      <footer className={`co-pub__pie${enGrupo ? " co-pub__pie--grupo" : ""}`}>
         <button type="button" className="co-pub__accion co-pub__accion--apoyo" aria-pressed={estado.mia} onClick={() => void reaccionar()}>
           <Icono nombre="heart" />
-          <span aria-hidden="true">{estado.reacciones}</span>
-          <span className="sr-only">{T.publicacion.reacciones(estado.reacciones, estado.mia)}</span>
+          {enGrupo && <span aria-hidden="true">{T.publicacion.meGusta}</span>}
+          {(!enGrupo || estado.reacciones > 0) && (
+            <span aria-hidden="true" className={enGrupo ? "co-pub__cuenta" : undefined}>
+              {estado.reacciones}
+            </span>
+          )}
+          <span className="sr-only">{enGrupo ? T.publicacion.meGustaSr(estado.reacciones, estado.mia) : T.publicacion.reacciones(estado.reacciones, estado.mia)}</span>
         </button>
         <button type="button" className="co-pub__accion" aria-expanded={abierto} aria-controls={idHilo} onClick={() => setAbierto(!abierto)}>
           <Icono nombre="message-circle" />
-          <span aria-hidden="true">{estado.respuestas}</span>
-          <span className="sr-only">{T.publicacion.comentarios(estado.respuestas)}</span>
+          {enGrupo && <span aria-hidden="true">{T.publicacion.comentar}</span>}
+          {(!enGrupo || estado.respuestas > 0) && (
+            <span aria-hidden="true" className={enGrupo ? "co-pub__cuenta" : undefined}>
+              {estado.respuestas}
+            </span>
+          )}
+          <span className="sr-only">{enGrupo ? T.publicacion.comentarSr(estado.respuestas) : T.publicacion.comentarios(estado.respuestas)}</span>
         </button>
         <button type="button" className="co-pub__accion co-pub__accion--guardar" aria-pressed={estado.guardada} onClick={() => void guardar()}>
           <Icono nombre="bookmark" />
@@ -414,7 +426,7 @@ function Hilo({ p, acciones, onRespuestas }: { p: Publicacion; acciones: Accione
 }
 
 // Lista de publicaciones con su filtro, «Ver publicaciones anteriores» y estados.
-export function Feed({ filtro, vacio, antes }: { filtro: Filtro; vacio?: string; antes?: ReactNode }) {
+export function Feed({ filtro, vacio, antes, enGrupo = false }: { filtro: Filtro; vacio?: string; antes?: ReactNode; enGrupo?: boolean }) {
   const { fuente, version } = useComunidad();
   const [lista, setLista] = useState<Publicacion[] | null>(null);
   const [error, setError] = useState(false);
@@ -470,7 +482,7 @@ export function Feed({ filtro, vacio, antes }: { filtro: Filtro; vacio?: string;
         </p>
       )}
       {lista && lista.length === 0 && !error && <p className="co-tarjeta co-estado co-estado--vacio">{vacio ?? T.feed.vacio}</p>}
-      {lista?.map((p) => <Tarjeta key={p.id} p={p} acciones={abrir} />)}
+      {lista?.map((p) => <Tarjeta key={p.id} p={p} acciones={abrir} enGrupo={enGrupo} />)}
       {hayMas && (
         <button type="button" className="boton boton--secundario co-feed__mas" disabled={cargandoMas} onClick={() => void mas()}>
           {T.feed.masAntiguas}
