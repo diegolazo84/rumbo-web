@@ -20,7 +20,7 @@ import { ContenidoSolicitud, type AcuerdoSolicitud, type ServidorSolicitud } fro
 import { ListaEvidencias } from "../../vista-previa/panel/Fotos";
 import { ColaHoy } from "../../vista-previa/panel/Hoy";
 import { ListaSolicitudes } from "../../vista-previa/panel/Solicitudes";
-import { ASISTENTE_ADMIN, ASISTENTE_PANEL, COMUNIDAD_PANEL, EQUIPO_PANEL, MODULOS_PANEL, NEGOCIO_PANEL, PAGOS_PANEL, CONTACTO_PANEL, MAS, PANEL_REAL, T_PANEL } from "../../vista-previa/panel/textos";
+import { ASISTENTE_ADMIN, ASISTENTE_PANEL, COMUNIDAD_PANEL, EQUIPO_PANEL, MODULOS_PANEL, AUDITORIA_PANEL, NEGOCIO_PANEL, PAGOS_PANEL, CONTACTO_PANEL, MAS, PANEL_REAL, T_PANEL } from "../../vista-previa/panel/textos";
 import { ConstructorReal } from "./constructor";
 import { aAjuste, aSolicitud, colaReal, nombreDe, reordenesDe, reordenesUsados, type FilaMensaje, type FilaPeticion } from "./datos";
 import { RegistrarFactor, factoresTotp } from "./Mfa";
@@ -30,6 +30,7 @@ import { MantencionFotos } from "./mantencion";
 import { ModulosReal, R_MODULOS } from "./modulos";
 import { PagosReal, R_PAGOS } from "./pagos";
 import { NegocioReal, R_NEGOCIO } from "./negocio";
+import { AuditoriaReal, R_AUDITORIA } from "./auditoria";
 import { EquipoReal, R_EQUIPO } from "./equipo";
 import { PerfilEquipo } from "./perfil";
 import { AsistenteReal, R_ASISTENTE } from "./asistente";
@@ -67,6 +68,8 @@ export default function Pantallas({ ruta }: { ruta: RutaPlataforma }) {
       return <PagosReal />;
     case "/equipo/negocio/":
       return <NegocioReal />;
+    case "/equipo/auditoria/":
+      return <AuditoriaReal />;
     case "/equipo/equipo/":
       return <EquipoReal />;
     case "/equipo/asistente/":
@@ -568,6 +571,11 @@ function MasReal() {
       <Link to={R_PAGOS} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
         <Icono nombre="wallet" tamaño={20} />
         <span>{PAGOS_PANEL.enlace}</span>
+        <Icono nombre="arrow-right" tamaño={20} />
+      </Link>
+      <Link to={R_AUDITORIA} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
+        <Icono nombre="shield" tamaño={20} />
+        <span>{AUDITORIA_PANEL.enlace}</span>
         <Icono nombre="arrow-right" tamaño={20} />
       </Link>
       <Link to={R_EQUIPO} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
