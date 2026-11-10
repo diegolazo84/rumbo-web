@@ -2303,6 +2303,8 @@ test("Mi plan antes de que empiece el ciclo: dice cuándo empieza y abre en la p
   await sinViolaciones(page);
 });
 
+test.describe("service worker", () => {
+test.use({ serviceWorkers: "allow" });
 test("Mi espacio se instala como app: manifiesto propio, service worker solo en /mi-espacio/ y aviso sin conexión", async ({ page, context }) => {
   await simular(page, baseInicial());
   await page.goto("mi-espacio/entrar/");
@@ -2324,4 +2326,5 @@ test("Mi espacio se instala como app: manifiesto propio, service worker solo en 
   // La portada no queda bajo el service worker.
   await page.goto("./");
   expect(await page.evaluate(() => navigator.serviceWorker.controller)).toBeNull();
+});
 });
