@@ -29,7 +29,7 @@ Las fotos de las acciones (bucket privado `evidencias`) se borran solas cuando v
 Mientras no exista el secreto `depurar_fotos_url`, la tarea no hace nada.
 
 Código:
-- `supabase/migrations/20261121000000_depurar_fotos.sql`
+- `supabase/migrations/20261202000000_depurar_fotos.sql`
 - `supabase/functions/depurar-fotos/`
 
 Pruebas:
@@ -59,7 +59,7 @@ Pruebas:
 
 Hay dos formas:
 - Borrar la dirección: `delete from vault.secrets where name = 'depurar_fotos_url';`. La tarea sigue programada, pero no hace nada.
-- Deshacer todo con `supabase/deshacer/20261121000000_depurar_fotos.sql`.
+- Deshacer todo con `supabase/deshacer/20261202000000_depurar_fotos.sql`.
 
 ## Procedimientos del equipo
 

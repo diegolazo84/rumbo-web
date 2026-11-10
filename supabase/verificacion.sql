@@ -73,7 +73,7 @@ select 'C21: tareas programadas del borrado de fotos',
                               where n.nspname = 'privado' and p.proname = 'lanzar_depuracion_fotos')
               or (select string_agg(jobname || ' ' || schedule || ' ' || command, '; ' order by jobname) from cron.job where jobname like 'fotos-%')
                  = 'fotos-depurar 30 7 * * * select privado.lanzar_depuracion_fotos(''programada''); fotos-vigilar 0 13 * * * select privado.vigilar_depuracion_fotos()'
-            then 'ok' else 'FALLA: las tareas fotos-depurar y fotos-vigilar no coinciden con supabase/migrations/20261121000000_depurar_fotos.sql' end
+            then 'ok' else 'FALLA: las tareas fotos-depurar y fotos-vigilar no coinciden con supabase/migrations/20261202000000_depurar_fotos.sql' end
 union all
 select 'etapa 1: políticas de archivos exactas (evidencias y, desde C7, comunidad)',
        case when (select count(*) from pg_policies where schemaname = 'storage') = 6

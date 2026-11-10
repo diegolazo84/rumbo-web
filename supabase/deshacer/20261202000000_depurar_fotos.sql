@@ -1,4 +1,4 @@
--- Deshace 20261121000000_depurar_fotos.sql: quita las tareas programadas, las funciones, los
+-- Deshace 20261202000000_depurar_fotos.sql: quita las tareas programadas, las funciones, los
 -- registros de ejecuciones, la llave interna y la fecha de subida de las fotos. No toca archivos
 -- ni registros de las personas (las fotos ya borradas no vuelven).
 select cron.unschedule('fotos-depurar') where exists (select 1 from cron.job where jobname = 'fotos-depurar');
