@@ -42,8 +42,9 @@ export function NoEncontrada({ volver }: { volver: string }) {
   );
 }
 
-// Escritura con su error a la vista: [correr, error, ocupado].
-export function useEscritura() {
+// Escritura con su error a la vista: [correr, error, ocupado]. `propio` traduce primero los
+// errores de esa pantalla (si devuelve null, se usa el texto general del panel).
+export function useEscritura(propio?: (e: unknown) => string | null) {
   const [error, setError] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const correr = async (fn: () => Promise<unknown>) => {
@@ -54,7 +55,7 @@ export function useEscritura() {
       await fn();
       return true;
     } catch (e) {
-      setError(textoError(e));
+      setError(propio?.(e) ?? textoError(e));
       return false;
     } finally {
       setOcupado(false);

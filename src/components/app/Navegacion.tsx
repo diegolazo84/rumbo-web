@@ -12,7 +12,8 @@ export type DestinoNav = {
   texto: string;
   icono: NombreIconoApp;
   href?: string; // sin href: botón (p. ej. «Más», que abre la hoja)
-  contador?: number; // solo el panel
+  contador?: number; // panel; en Mi espacio, solo «Mis avisos» (lateral)
+  contadorTexto?: string; // nombre accesible del número («3 sin leer»)
   // Rótulo visible con corte silábico (guion suave) para la barra inferior: a 320 px un rótulo
   // largo pasa a dos líneas en vez de encimarse. El nombre accesible sigue siendo `texto`.
   corte?: string;
@@ -78,7 +79,9 @@ function Item({ destino, activo, novedad, onBoton, expandido }: ItemProps) {
         <span className="nav-app__texto">{destino.texto}</span>
       )}
       {novedad && <span className="sr-only">{TEXTO_NOVEDAD}</span>}
-      {destino.contador ? <span className="nav-app__contador">{destino.contador}</span> : null}
+      {destino.contador ? (
+        <span className="nav-app__contador">{destino.contador > 99 ? "99+" : destino.contador}</span>
+      ) : null}
     </>
   );
   if (!destino.href) {
@@ -89,7 +92,12 @@ function Item({ destino, activo, novedad, onBoton, expandido }: ItemProps) {
     );
   }
   return (
-    <Link to={destino.href} className="nav-app__item" aria-current={activo === destino.id ? "page" : undefined}>
+    <Link
+      to={destino.href}
+      className="nav-app__item"
+      aria-current={activo === destino.id ? "page" : undefined}
+      aria-label={destino.contadorTexto && destino.contador ? `${destino.texto}, ${destino.contadorTexto}` : undefined}
+    >
       {contenido}
     </Link>
   );

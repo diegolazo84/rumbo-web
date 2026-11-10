@@ -68,6 +68,7 @@ comentario. En producción ya está así: **no se pega**, solo se registra.
 | 20261117000000 | `20261117000000_grupo_miembros.sql` | (nuevo, C14: lista de miembros del grupo con alias, solo para sus miembros; **pendiente de aplicar, solo con autorización de Diego**; se deshace con `supabase/deshacer/20261117000000_grupo_miembros.sql`) |
 | 20261118000000 | `20261118000000_desafios_pagina.sql` | (nuevo, C15: propuestas de desafío para revisión del equipo y actividad propia en desafíos; **pendiente de aplicar, solo con autorización de Diego**; se deshace con `supabase/deshacer/20261118000000_desafios_pagina.sql`) |
 | 20261119000000 | `20261119000000_desafios_foto.sql` | (nuevo, C16: foto de portada opcional por desafío en el bucket privado «desafios», 2 MB, que solo moderación con segundo factor sube, pone y borra; se ve solo la vigente de un desafío activo con Comunidad abierta; **pendiente de aplicar, solo con autorización de Diego**; se deshace con `supabase/deshacer/20261119000000_desafios_foto.sql`) |
+| 20261120000000 | `20261120000000_mis_logros.sql` | (nuevo, C17: `mi_beneficio_renovacion()` para que Mis logros muestre el 10 % solo cuando el dueño lo activa; solo lectura; **pendiente de aplicar, solo con autorización de Diego**; se deshace con `supabase/deshacer/20261120000000_mis_logros.sql`) |
 
 Fuera de `migrations/` quedan las herramientas que no cambian la estructura:
 `verificacion.sql`, `historial-migraciones.sql`, `restaurar-antes.sql` y `restaurar-despues.sql`.

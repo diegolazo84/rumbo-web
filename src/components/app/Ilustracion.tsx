@@ -5,9 +5,11 @@
 //   · brote    → celebración de un nuevo nivel y estados vacíos
 //   · atardecer → portada de Mi acompañamiento mientras no llegue la fotografía de la referencia
 //                 de ChatGPT (cordillera al atardecer y una persona sentada mirando el valle)
+//   · cuaderno  → encabezado del detalle de una acción (cuaderno abierto, hojas y una taza;
+//                 referencia de ChatGPT del 29-oct-2026)
 // Los colores vienen de clases (.il-*) con tokens en app.css, sin estilos en línea.
 
-type Nombre = "paisaje" | "colinas" | "brote" | "atardecer";
+type Nombre = "paisaje" | "colinas" | "brote" | "atardecer" | "cuaderno";
 
 type Props = { nombre: Nombre; className?: string };
 
@@ -49,6 +51,27 @@ export default function Ilustracion({ nombre, className }: Props) {
           <path d="M1030 292 L1058 304 C1064 307 1062 316 1055 316 L1024 306 Z" />
           <path d="M1006 258 C996 270 990 282 992 292 L1000 292 C1000 282 1006 272 1012 264 Z" />
         </g>
+      </svg>
+    );
+  if (nombre === "cuaderno")
+    return (
+      <svg className={clases} viewBox="0 0 160 140" aria-hidden="true" focusable="false">
+        <path className="il-fondo" d="M24 92 C14 56 40 22 80 18 C122 14 150 44 146 82 C142 118 110 132 76 130 C46 128 30 116 24 92Z" />
+        <path className="il-hoja-clara" d="M112 74 C104 52 110 32 124 20 C130 40 126 60 112 74Z" />
+        <path className="il-hoja" d="M114 76 C122 56 136 46 150 44 C146 62 132 74 114 76Z" />
+        <path className="il-tallo" d="M114 78 C116 60 120 44 124 24" />
+        <g transform="rotate(-8 66 78)">
+          <rect className="il-tapa" x="34" y="34" width="66" height="84" rx="6" />
+          <rect className="il-pagina" x="40" y="38" width="56" height="76" rx="3" />
+          <path className="il-renglon" d="M52 52 H86 M52 64 H86 M52 76 H80 M52 88 H84 M52 100 H74" />
+          <circle className="il-destello" cx="46" cy="52" r="2.2" />
+          <circle className="il-destello" cx="46" cy="64" r="2.2" />
+          <circle className="il-destello" cx="46" cy="76" r="2.2" />
+        </g>
+        <path className="il-tierra" d="M30 122 C60 114 110 114 140 122 Z" />
+        <path className="il-taza" d="M102 96 H134 V112 C134 120 128 124 118 124 C108 124 102 120 102 112Z" />
+        <path className="il-asa" d="M134 101 C142 101 142 113 134 113" />
+        <ellipse className="il-cafe" cx="118" cy="97" rx="15" ry="3" />
       </svg>
     );
   if (nombre === "brote")

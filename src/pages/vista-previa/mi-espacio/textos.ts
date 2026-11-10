@@ -9,6 +9,8 @@
 // «PROPUESTO» en el comentario: los decide Diego.
 import { ciclo, type PlanParam } from "../../../data/ejemplo-app";
 import { planes } from "../../../data/rumbo";
+import { miles } from "../../../lib/fechas";
+import { FOTO } from "../../../data/formularios";
 
 const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : varios);
 export const acciones = (n: number) => `${n} ${plural(n, "acción", "acciones")}`;
@@ -216,6 +218,21 @@ export const T_HOY = {
     desmarcaste: (t: string, c: number) => `Desmarcaste “${t}”. Tus créditos se actualizaron: ahora tienes ${c}.`,
     error: (t: string) => `No pudimos guardar “${t}”. Revisa tu conexión e inténtalo de nuevo.`,
     reintentar: "Reintentar",
+    // Motivos que da la base (privado.error «campo:codigo»). Solo el corte de red habla de la conexión.
+    errores: {
+      requiere_foto: (t: string) => `“${t}” se registra con una foto o con una explicación breve.`,
+      futura: (t: string) => `“${t}” es de un día que aún no llega. Podrás marcarla ese día.`,
+      fuera_de_plazo: (t: string) => `Ya pasó el plazo para registrar “${t}”.`,
+      no_vigente: (t: string) => `“${t}” ya no está en tu plan: se ajustó o quedó en pausa.`,
+      cerrado: "Este ciclo ya terminó: sus acciones ya no se pueden cambiar.",
+      no_encontrada: "No encontramos esta acción. Vuelve a cargar la página.",
+      es_de_hoy: "Las acciones de hoy no se pueden dejar pasar. Puedes hacerlas hasta el final del día.",
+      version: "Esta acción no tiene versión corta.",
+      explicacion: "La explicación debe tener entre 10 y 280 caracteres.",
+      sesion: "Tu sesión terminó. Vuelve a entrar para guardar.",
+      otro: (t: string) => `No pudimos guardar “${t}”. Inténtalo de nuevo en un momento.`,
+    },
+    abrir: "Abrir",
   },
 } as const;
 
@@ -320,12 +337,30 @@ export const T_DETALLE = {
   paraQue: "Para qué",
   atribucion: "Lo que nos contaste",
   pieAjuste: "¿Esta acción no calza con tu semana? ",
+  // Rediseño con la referencia de ChatGPT (29-oct-2026)
+  migas: {
+    etiqueta: "Dónde estás",
+    volver: "Volver a Mi plan",
+    plan: "Mi plan",
+    semana: (n: number, total: number) => `Semana ${n} de ${total}`,
+    accion: (dia: string) => `Acción del ${dia}`,
+  },
+  marcarSub: (n: number) => `Completa la acción y suma +${n} ${plural(n, "crédito", "créditos")}.`,
+  cortaSub: "Registra solo lo esencial de hoy.",
+  comoSub: (duracion: string, pasos: boolean) => (pasos ? `Sigue estos pasos y dedica ${duracion}.` : `Dedica ${duracion}.`),
+  ajusteCard: {
+    titulo: "¿Esta acción no calza con tu semana?",
+    texto: "Pide un ajuste y lo revisamos contigo. Tu plan se adapta a tu vida, no al revés.",
+    boton: "Pedir un ajuste",
+  },
   noEncontrada: "No encontramos esta acción.", // PROPUESTO (accion/?id= de otra persona o borrada)
   irAlCalendario: "Ir a tu calendario", // PROPUESTO
   ajuste: "Pedir un ajuste",
   foto: {
     aviso:
       "Sube una foto de lo que hiciste, por ejemplo tu escritorio ordenado o la página que escribiste. Solo la ven tú y quien te acompaña. No subas fotos de tu cuerpo, fotos íntimas, documentos ni fotos de otras personas.",
+    porAhora:
+      "Por ahora no puedes subir fotos desde aquí. Usa «No puedo subir una foto» y cuéntanos qué hiciste: queda en revisión igual que una foto.", // PROPUESTO (la subida real aún no funciona)
     subir: "Subir foto",
     noPuedo: "No puedo subir una foto",
     subiendo: "Subiendo foto…",
@@ -339,6 +374,20 @@ export const T_DETALLE = {
     botonOtra: "Subir otra foto",
     depurada: (dias: number) => `La foto se borró a los ${dias} días de revisada, como dice nuestra política. El crédito se mantiene.`,
     miniatura: "Tu foto",
+    preparando: "Preparando foto…", // PROPUESTO (la foto se reduce y se limpia antes de subirla)
+    errores: {
+      tipo: FOTO.errores.tipo,
+      peso: FOTO.errores.peso,
+      // PROPUESTO: el navegador no pudo convertir la foto a WebP sin metadatos.
+      proceso: "No pudimos preparar esta foto de forma segura en este navegador. Prueba con otra foto o usa «No puedo subir una foto».",
+    },
+    // PROPUESTO: foto opcional en una acción que no la exige (decisión del 21-oct-2026).
+    opcional: {
+      titulo: "Foto de esta acción (opcional)",
+      texto: "Solo la ven tú y quien te acompaña. No cambia tus créditos.",
+      agregar: "Agregar una foto",
+      quitar: "Quitar foto",
+    },
     errorGuardar: "No pudimos guardarlo. Revisa tu conexión e inténtalo de nuevo; nada se perdió.", // PROPUESTO (como el de la foto, 4.9)
     dialogo: {
       titulo: "¿Eliminar esta foto?",
@@ -347,6 +396,46 @@ export const T_DETALLE = {
       cancelar: "Cancelar",
     },
   },
+} as const;
+
+// ---------------------------------------------------------------------------
+// Registrar acción medible (maqueta de ChatGPT, 30-oct-2026). PROPUESTO salvo lo que viene de la maqueta.
+
+// Unidades sugeridas en el constructor (la base acepta cualquier texto de 1 a 20 caracteres).
+export const UNIDADES_MEDIBLES = ["minutos", "horas", "páginas", "vasos", "kilómetros", "unidades"] as const;
+const SINGULAR: Record<string, string> = { minutos: "minuto", horas: "hora", páginas: "página", vasos: "vaso", kilómetros: "kilómetro", unidades: "unidad" };
+export const cantidadTexto = (n: number, unidad: string) => `${n} ${n === 1 ? (SINGULAR[unidad] ?? unidad) : unidad}`;
+
+export const T_REGISTRAR = {
+  objetivo: (texto: string) => `Para hoy: ${texto}`,
+  pregunta: (unidad: string) =>
+    unidad === "minutos" || unidad === "horas"
+      ? "¿Cuánto tiempo hiciste hoy?"
+      : unidad === "páginas" || unidad === "unidades"
+        ? `¿Cuántas ${unidad} hiciste hoy?`
+        : unidad === "vasos" || unidad === "kilómetros"
+          ? `¿Cuántos ${unidad} hiciste hoy?`
+          : "¿Cuánto hiciste hoy?",
+  rapidos: "Valores rápidos",
+  rapido: (texto: string) => `Elegir ${texto}`,
+  invalido: (unidad: string) => `Ingresa un valor válido: un número entero de ${unidad}, desde 1.`,
+  nota: "¿Cómo te sentiste hoy?",
+  notaAyuda: "Solo la ven tú y quien te acompaña.",
+  guardar: "Guardar acción",
+  guardando: "Guardando…",
+  guardarCambios: "Guardar cambios",
+  cancelar: "Cancelar",
+  registrada: "¡Acción registrada!",
+  hecha: "Acción hecha",
+  hechaCorta: "Hecha en su versión corta",
+  credito: "+1 crédito",
+  anotaste: (texto: string) => `Anotaste ${texto}.`,
+  sinCantidad: "Todavía no anotas cuánto hiciste.",
+  tuNota: "Tu nota",
+  editar: "Editar lo que anotaste",
+  verPlan: "Ver mi plan",
+  error: "No pudimos guardarlo. Revisa tu conexión e inténtalo de nuevo; nada se perdió.",
+  errorDespues: "Tu acción quedó marcada, pero no pudimos guardar lo que anotaste. Inténtalo de nuevo.",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -378,6 +467,151 @@ export const T_PROGRESO = {
   ] as const,
   nota: "Los créditos muestran tu avance: no son dinero, no se canjean y no miden tu valor.",
   detalle: "Ver el detalle de tus créditos",
+} as const;
+
+// Mis logros (maqueta de ChatGPT, 29-oct-2026). Cifras, fechas y beneficios salen de la base.
+export const T_LOGROS = {
+  portada: {
+    ojo: "Mis logros",
+    titulo: "Cada paso cuenta",
+    bajada: ["Has avanzado más de lo que imaginas.", "Aquí puedes ver tu progreso, reconocer tus logros", "y descubrir todo lo que has conseguido en tu camino."],
+  },
+  nivel: {
+    titulo: "Mi nivel",
+    ver: "Ver los 10 niveles",
+    nivel: (n: number) => `Nivel ${n}`,
+    faltan: (c: number, n: number) => `Te faltan ${c} ${plural(c, "crédito", "créditos")} para el nivel ${n}.`,
+    maximo: "Llegaste al nivel más alto. Tus créditos siguen sumando.",
+    barra: (n: number) => `Créditos hacia el nivel ${n}`,
+    hoja: "Los 10 niveles",
+    desde: (c: number) => `desde ${miles(c)} créditos`,
+    actual: "Tu nivel",
+    reglas: "Cómo se cuentan los créditos",
+  },
+  creditos: {
+    titulo: "Mis créditos",
+    historial: "Ver historial",
+    acumulados: (c: number) => `${plural(c, "crédito acumulado", "créditos acumulados")}`,
+    semana: "Créditos de esta semana, por día",
+    dia: (dia: string, c: number | null) => (c === null ? `${dia}: todavía no llega` : `${dia}: ${c} ${plural(c, "crédito", "créditos")}`),
+    bono: (b: number) => `+${b}`,
+    bonoTexto: "Bono al completar tu próximo día",
+    sube: (b: number, d: number) => `Sube a +${b} con ${d} ${plural(d, "día completo", "días completos")} más`,
+  },
+  constancia: {
+    titulo: "Mi constancia",
+    actual: "Racha actual",
+    mejor: "Mejor racha",
+    mejorTexto: "Tu mejor racha en este ciclo.",
+    dias: (n: number) => `${n} ${plural(n, "día", "días")}`,
+    llamas: (n: number) => `${Math.min(n, 7)} de 7 días seguidos hacia el bono más alto`,
+    ayuda: "Un día cuenta cuando completas todas tus acciones programadas. Un día sin acciones no corta la racha.",
+  },
+  evolucion: {
+    titulo: "Mi evolución",
+    bajada: (n: number) => `Tu progreso en ${n === 4 ? "las últimas 4 semanas" : `las ${n} semanas de tu ciclo`}`,
+    semana: (n: number) => `Semana ${n}`,
+    semanaCorta: (n: number) => `Sem. ${n}`,
+    futura: "Por venir",
+    sinAcciones: "Sin acciones",
+    pct: (p: number) => `${p} %`,
+    etiqueta: (n: number, p: number | null, futura: boolean) =>
+      futura ? `Semana ${n}: todavía no llega` : p === null ? `Semana ${n}: sin acciones programadas` : `Semana ${n}: ${p} % de lo programado hecho`,
+    nota: "Porcentaje de acciones hechas sobre las programadas de cada semana, hasta hoy.",
+  },
+  estaSemana: {
+    titulo: "Esta semana",
+    texto: (h: number, n: number) => `Has completado ${h} de ${n} ${plural(n, "acción", "acciones")} de tu plan esta semana.`,
+    de: (n: number) => `de ${n}`,
+    rotulo: (n: number) => `${plural(n, "acción completada", "acciones completadas")} de las programadas`,
+    sinAcciones: "Esta semana no tienes acciones programadas.",
+    verPlan: "Ver mi plan",
+    hechas: "Ver lo que hiciste",
+  },
+  frase: ["La constancia de hoy", "te acerca a la vida que quieres."],
+  reconocimientos: {
+    titulo: "Mis reconocimientos",
+    bajada: "Insignias que celebran tus avances en Rumbo.",
+    ver: "Ver todos",
+    obtenido: (fecha: string) => `Conseguido el ${fecha}`,
+    porLograr: "Por desbloquear",
+    estado: { conseguido: "Conseguido", progreso: "En progreso", bloqueado: "Por desbloquear" },
+    // Cómo conseguir cada uno, con las mismas reglas de la base (privado.otorgar_reconocimientos).
+    como: {
+      primer_paso: "Marca tu primera acción como hecha.",
+      primera_semana: "Haz al menos una acción en tu primera semana.",
+      constancia: (u: number) => `Completa todas tus acciones ${u} días seguidos.`,
+      mitad_del_camino: (u: number) => `Llega a la mitad del ciclo con el ${u} % de lo programado hecho.`,
+      ciclo_completado: "Llega al final de tu ciclo con acciones hechas.",
+      meta_alcanzada: "Logra todos los hitos de una de tus metas.",
+    },
+    avance: {
+      primera_semana: (d: number) => `Día ${d} de 7`,
+      constancia: (a: number, u: number) => `${a} de ${u} días`,
+      mitad_del_camino: (p: number, u: number) => `Llevas ${p} % · se pide ${u} %`,
+      ciclo_completado: (d: number, t: number) => `Día ${d} de ${t}`,
+      meta_alcanzada: (a: number, t: number) => `${a} de ${t} hitos`,
+    },
+    veces: (n: number) => `${n} ${plural(n, "meta", "metas")}`,
+    progreso: (a: number, b: number) => `${a}/${b}`,
+    corto: {
+      primer_paso: "¡Comenzaste tu camino!",
+      primera_semana: "Tu primera semana con acciones hechas",
+      constancia: (u: number) => `${u} días seguidos completos`,
+      mitad_del_camino: (u: number) => `${u} % de lo programado a mitad del ciclo`,
+      ciclo_completado: "Llega al final de tu ciclo",
+      meta_alcanzada: "Logra todos los hitos de una meta",
+    },
+    hoja: "Tus reconocimientos",
+    hojaNota: "Se otorgan solos con tus registros. No suman créditos ni cambian tu nivel.",
+    resumen: (n: number, t: number) => `${n} de ${t} obtenidos`,
+  },
+  recompensas: {
+    titulo: "Mis recompensas",
+    bajada: "Beneficios que puedes obtener al alcanzar tus objetivos.",
+    detalles: "Ver detalles",
+    descuento: (p: number) => `${p} % de descuento`,
+    renovacion: "en tu próxima renovación",
+    progreso: (h: number, n: number) => `${h}/${n} acciones`,
+    barra: "Acciones hechas del ciclo",
+    condicion: (d: number, p: number) => `Completa todas las acciones de tus ${d} días para obtener tu descuento del ${p} %.`,
+    alFinal: "El beneficio se activa al finalizar el ciclo.",
+    noAlcanza: "En este ciclo quedó alguna acción sin hacer. Puedes lograrlo en el próximo.",
+    obtenido: (p: number | null) => (p ? `Obtuviste ${p} % de descuento` : "Obtuviste un beneficio"),
+    obtenidoTexto: "Se descuenta en tu próxima renovación.",
+    hoja: "Tu descuento por renovación",
+    hojaNota: "Cuentan las acciones programadas y los ajustes autorizados. Lo anulado por un ajuste o una pausa no cuenta. Se usa en una renovación y no se suma a otros descuentos.",
+  },
+  ranking: {
+    titulo: "Ranking (opcional)",
+    ver: "Ver ranking",
+    bajada: "Participa solo si lo deseas.",
+    texto: ["Motívate con otras personas", "que también están en su camino."],
+    participar: "Quiero participar",
+    saberMas: "Saber más",
+    alias: "Elige tu alias",
+    aliasAyuda: "Es el nombre que verán las demás personas. De 3 a 24 caracteres.",
+    entrar: "Entrar al ranking",
+    cancelar: "Cancelar",
+    puesto: (p: number, t: number, c: number) => `La semana pasada quedaste en el puesto ${p} de ${t}, con ${c} % de tus acciones.`,
+    sinPuesto: "El ranking se muestra cuando hay al menos 3 personas participando con acciones la semana pasada.",
+    como: (a: string) => `Participas como «${a}».`,
+    salir: "Salir del ranking",
+    hoja: "Cómo funciona el ranking",
+    reglas: [
+      "Es voluntario: entras y sales cuando quieras.",
+      "Cada semana compara el porcentaje de tus acciones hechas sobre las programadas, no la cantidad.",
+      "Solo se ve tu alias. Nadie ve tu nombre ni tus acciones.",
+      "Con menos de 3 participantes no se muestra.",
+    ],
+    errores: {
+      "alias:invalido": "El alias debe tener de 3 a 24 caracteres: letras, números, espacios, punto, guion o guion bajo.",
+      "alias:en_uso": "Ese alias ya lo usa otra persona. Prueba con otro.",
+    } as Record<string, string>,
+    error: "No se pudo guardar. Inténtalo de nuevo.",
+  },
+  metas: "Tus metas",
+  error: "No pudimos cargar esta parte. Inténtalo de nuevo más tarde.",
 } as const;
 
 export const T_CREDITOS = {
@@ -504,6 +738,11 @@ export const T_PREFERENCIAS = {
     zonaAyuda:
       "Tus horarios se muestran en esta zona. Las videollamadas siempre se acuerdan en hora de Chile. Si cambiaste de país, avísanos en una solicitud de ajuste.",
   },
+  // PROPUESTO (paquete 2): sonido opcional al completar una acción.
+  sonido: {
+    etiqueta: "Sonido al completar una acción",
+    ayuda: "Un sonido corto y suave. Viene apagado y se guarda solo en este dispositivo.",
+  },
   avance: { titulo: "Avance" },
   datos: {
     titulo: "Mis datos",
@@ -601,6 +840,28 @@ export const T_PLAN = {
   metasBajada: "Lo que quieres lograr en este ciclo y para qué. Tu avance está en Mis logros.",
   metasVacio: "Tus metas aparecerán aquí cuando tu programa esté publicado.",
   verAvance: "Ver mi avance",
+  // Encabezado y tarjetas de la mejora visual (textos exactos de Diego, 29-oct-2026).
+  camino: {
+    titulo: "Tu camino, paso a paso",
+    bajada: "Cada pequeña acción te acerca a lo que quieres construir.",
+    semana: (n: number, total: number) => `Semana ${n} de ${total}`,
+  },
+  hoy: {
+    titulo: "Tu día de hoy",
+    cifra: (h: number, n: number) => `${h} de ${n}`,
+    rotulo: (n: number) => `${plural(n, "acción completada de la programada", "acciones completadas de las programadas")} para hoy`,
+    barra: "Acciones de hoy",
+    valor: (h: number, n: number) => `${h} de ${n} ${plural(n, "acción", "acciones")}`,
+    ver: "Ver mis acciones de hoy",
+    vacio: "Hoy no tienes acciones programadas. Aprovecha para descansar o mirar lo que viene en tu semana.",
+    fuera: "Hoy no es parte de tu programa.",
+  },
+  construyendo: {
+    titulo: "Lo que estás construyendo",
+    ver: "Mis metas",
+    vacio: "Tus metas aparecerán aquí cuando tu programa esté publicado.",
+  },
+  diaHoy: "Hoy",
   ajusteTitulo: "¿Tu semana cambió?",
   ajusteTexto: "Pide un ajuste y lo revisamos contigo. Tu plan se adapta a tu vida, no al revés.",
 } as const;
@@ -702,11 +963,6 @@ export const T_COMUNIDAD = {
   verMas: "Ver todo lo que viene en Rumbo",
 } as const;
 
-export const T_LOGROS_PRONTO = {
-  titulo: "Lo que viene en Mis logros",
-  items: ["Gráfico de tu cumplimiento semanal", "Reconocimientos por tu constancia", "Ranking semanal voluntario, en la comunidad"],
-} as const;
-
 // Tarjetas de «Lo que viene en Rumbo» en Mi espacio. Coinciden con loQueViene de data/rumbo.ts
 // (la portada); aquí van con su descripción. Ninguna es un enlace ni tiene fecha.
 export const T_LO_QUE_VIENE = {
@@ -732,4 +988,423 @@ export const T_LO_QUE_VIENE = {
     },
   ],
   nota: "No tienen fecha todavía. No necesitas hacer nada para recibirlas.",
+} as const;
+
+// Mis avisos (maqueta de ChatGPT, 30-oct-2026). El título de cada aviso lo escribe la base con un
+// texto fijo; la línea de abajo es la descripción fija de su tipo (nunca lo que escribió alguien).
+export const T_AVISOS = {
+  titulo: "Mis avisos",
+  bajada: "Toda tu información importante en un solo lugar.",
+  filtros: "Filtrar avisos",
+  filtro: {
+    todos: "Todos",
+    noLeidos: "No leídos",
+    recordatorios: "Recordatorios",
+    mensajes: "Mensajes",
+    comunidad: "Comunidad",
+    logros: "Logros",
+    sistema: "Sistema",
+  },
+  sinLeerChip: (n: number) => (n === 1 ? "1 sin leer" : `${n} sin leer`),
+  buscar: "Buscar avisos",
+  buscarMarcador: "Buscar avisos…",
+  grupos: { hoy: "Hoy", ayer: "Ayer", semana: "Esta semana", anteriores: "Anteriores" },
+  ayer: "Ayer",
+  noLeido: "Sin leer",
+  sinEnlace: "La Comunidad todavía no está abierta.",
+  nuevos: (n: number) => (n === 1 ? "Tienes 1 aviso nuevo" : `Tienes ${n} avisos nuevos`),
+  nuevosBajada: "Mantente al día con tu plan, los mensajes de tu coach y tus recordatorios.",
+  alDia: "Estás al día",
+  alDiaBajada: "No tienes avisos sin leer.",
+  marcarTodos: "Marcar todo como leído",
+  marcando: "Marcando…",
+  marcadosTodos: "Marcamos todos tus avisos como leídos.",
+  errorMarcar: "No pudimos marcarlos como leídos. Inténtalo de nuevo en un momento.",
+  tipos: "Tipos de avisos",
+  verTipo: (t: string) => `Ver solo ${t.toLowerCase()}`,
+  descripcionCategoria: {
+    recordatorios: "Avisos sobre tus acciones y tu revisión semanal",
+    mensajes: "Revisiones, respuestas y videollamadas con tu coach",
+    comunidad: "Respuestas a tus publicaciones y desafíos nuevos",
+    logros: "Reconocimientos de tu progreso",
+    sistema: "Información importante de Rumbo",
+  },
+  noEncuentras: "¿No encuentras un aviso?",
+  noEncuentrasTexto:
+    "Puedes ajustar tus recordatorios en Preferencias o escribirle a tu coach si tienes alguna duda. Los avisos leídos se borran solos después de 90 días.",
+  irPreferencias: "Ir a mis preferencias",
+  vacio: {
+    todos: { titulo: "Todavía no tienes avisos", texto: "Aquí verás las revisiones de tu coach, tus recordatorios y tus logros." },
+    filtro: { titulo: "No hay avisos aquí", texto: "Prueba con otro filtro o vuelve a «Todos»." },
+    busqueda: { titulo: "No encontramos avisos con esa búsqueda", texto: "Prueba con otra palabra." },
+  },
+  error: { titulo: "No pudimos cargar tus avisos", texto: "Tu plan y tus acciones siguen funcionando. Vuelve a intentarlo en un momento.", reintentar: "Reintentar" },
+  sinConexion: "Necesitas conexión para marcar avisos como leídos.",
+  // Descripción fija de cada tipo de aviso (lo que la persona encuentra al abrirlo).
+  descripcion: {
+    recordatorio_acciones: "Revisa tu día en Mi Rumbo y marca lo que vayas haciendo.",
+    recordatorio_registro: "Tu registro semanal ayuda a tu coach a preparar tu revisión.",
+    revision_publicada: "Lee lo que funcionó, lo que ajustan y tu foco para la semana.",
+    ajuste_respondido: "Lee la respuesta en Mi acompañamiento.",
+    programa_publicado: "Revisa las acciones de los próximos días en Mi plan.",
+    videollamada_programada: "Revisa la fecha, la hora y el enlace en Mi acompañamiento.",
+    ia_respondida: "Tu coach la revisó antes de que llegara a ti.",
+    ia_no_compartida: "Puedes reformular tu pregunta o pedir orientación sobre otro tema.",
+    mensaje_especialista: "Léelo en tu espacio.",
+    recomendacion_especialista: "Revísala en tu espacio.",
+    reserva_respondida: "Revisa los detalles de tu sesión.",
+    comunidad_respuesta: "Entra a la Comunidad para leer la respuesta.",
+    desafio_nuevo: "Mira de qué se trata y si quieres inscribirte.",
+    reconocimiento: "Míralo en Mis logros.",
+    beneficio_disponible: "Revisa sus condiciones en Mis logros.",
+  } as Record<string, string>,
+  descripcionOtro: "Información de Rumbo.",
+} as const;
+
+// ---------------------------------------------------------------------------
+// Informe de cierre de ciclo (maqueta de ChatGPT, 30-oct-2026). Todo sale de informe_ciclo, de las
+// metas y de los reconocimientos reales; el mensaje lo escribe el coach (sin él, su último foco).
+
+export const T_CIERRE = {
+  chip: "Ciclo completado",
+  titulo: "Mira todo lo que has avanzado",
+  bajada: ["Cada pequeño paso te trajo hasta aquí.", "Este es el camino que construiste."],
+  cargando: "Preparando tu informe…",
+  objetivo: { uno: "Tu objetivo principal", varios: "Tus objetivos de este ciclo", sinMetas: "Tu plan de este ciclo no tuvo metas cargadas." },
+  progreso: {
+    titulo: "Tu progreso del ciclo",
+    barra: "Acciones hechas de las programadas en el ciclo",
+    deTotal: (h: number, p: number) => `${h} de ${p} ${plural(p, "acción hecha", "acciones hechas")}`,
+    sinAcciones: "Este ciclo no tuvo acciones programadas.",
+    hechas: (n: number) => plural(n, "acción completada", "acciones completadas"),
+    racha: (n: number) => plural(n, "día de racha máxima", "días de racha máxima"),
+    reconocimientos: (n: number) => plural(n, "reconocimiento ganado", "reconocimientos ganados"),
+    completos: (n: number) => plural(n, "día con todo hecho", "días con todo hecho"),
+    creditos: (c: number, nivel: number, nombre: string) => `Sumaste ${c} ${plural(c, "crédito", "créditos")} en este ciclo · Nivel ${nivel}: ${nombre}`,
+  },
+  evolucion: {
+    titulo: "Evolución semanal",
+    hechas: "Acciones hechas",
+    programadas: "Programadas",
+    semana: (n: number) => `S${n}`,
+    resumen: (s: { semana: number; hechas: number; programadas: number }[]) =>
+      `Acciones hechas por semana: ${s.map((x) => `semana ${x.semana}, ${x.hechas} de ${x.programadas}`).join("; ")}.`,
+    columnas: ["Semana", "Hechas", "Programadas"] as const,
+  },
+  areas: { titulo: "Áreas de tu plan", pct: (n: number) => `${n} %`, barra: (m: string) => `Acciones hechas de «${m}»`, valor: (h: number, p: number) => `${h} de ${p} acciones` },
+  logros: { titulo: "Logros más destacados", ninguno: "Los reconocimientos que consigas aparecerán aquí.", ver: "Ver Mis logros" },
+  coach: {
+    mensaje: "Mensaje de tu coach",
+    foco: "El último foco de tu coach",
+    rol: "Tu coach",
+    semana: (n: number) => `Revisión de la semana ${n}`,
+  },
+  sigue: {
+    titulo: "¿Qué sigue ahora?",
+    texto: "Lo que sigue lo conversamos contigo: continuar con un nuevo ciclo, reformular tu plan o cerrar aquí.",
+    nuevo: "Quiero seguir con un nuevo ciclo",
+    descargar: "Descargar mis registros",
+    revision: "Ver mi última revisión",
+  },
+  voz: "Tu valor no se mide en una racha.",
+  nota: "Tus registros siguen aquí mientras no pidas eliminarlos.",
+} as const;
+
+// Recordatorios (maqueta de ChatGPT, 30-oct-2026). «Recordatorios de bienestar» no se muestra: no
+// hay una fuente aprobada de frases o consejos.
+export const T_RECORDATORIOS = {
+  titulo: "Configuración de recordatorios",
+  bajada: "Te ayudamos a mantener el foco con avisos en los momentos que más te sirven.",
+  lema: "Pequeños recordatorios, grandes cambios",
+  lemaTexto: "Mantén tu plan presente, cuida tus hábitos y avanza con más facilidad.",
+  general: {
+    titulo: "Activar recordatorios",
+    texto: "Recibe avisos de tus acciones, mensajes, videollamadas y más.",
+    apagado: "Están apagados. Igual verás en Mis avisos los mensajes de tu coach y tus videollamadas agendadas. Tus elecciones de abajo se guardan para cuando los actives.",
+  },
+  que: "¿Qué quieres recordar?",
+  categorias: {
+    accionesDelDia: { titulo: "Mis acciones", texto: "Un aviso al día si tienes acciones de tu plan por marcar." },
+    registroSemanal: { titulo: "Revisión semanal", texto: "El día antes de tu revisión, si aún no envías tu registro." },
+    videollamadas: { titulo: "Videollamadas", texto: "Un recordatorio dentro de las 24 horas antes de tu videollamada." },
+    mensajesCoach: { titulo: "Mensajes de mi coach", texto: "Siempre llegan a Mis avisos. Aquí eliges si también quieres una copia por correo." },
+    comunidad: { titulo: "Comunidad", texto: "Respuestas a tus publicaciones y desafíos nuevos." },
+    logros: { titulo: "Logros y reconocimientos", texto: "Siempre llegan a Mis avisos. Aquí eliges si también quieres una copia por correo." },
+  },
+  sinVideollamadas: "Tu plan no incluye videollamadas.",
+  comunidadCerrada: "La Comunidad todavía no está abierta.",
+  cuando: "¿Cuándo recibirlos?",
+  horario: {
+    titulo: "Horario de envío",
+    texto: "Recibe avisos solo en el horario que prefieras.",
+    desde: "Desde",
+    hasta: "Hasta",
+    hora: "Recordatorio diario",
+    zona: (z: string) => `En tu zona horaria (${z}).`,
+  },
+  dias: {
+    titulo: "Días de la semana",
+    texto: "Elige qué días quieres recibir avisos.",
+    nombres: ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
+    largos: ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"],
+    alMenosUno: "Elige al menos un día.",
+  },
+  canales: {
+    titulo: "¿Dónde los recibes?",
+    app: "En Mis avisos, dentro de Rumbo",
+    appTexto: "Siempre.",
+    correo: "También por correo",
+    correoActivo: (c: string) => `Llegan a ${c}.`,
+    correoInactivo: "El envío por correo todavía no está activo en Rumbo. Puedes dejarlo elegido y empezará cuando lo esté.",
+    correoDesconocido: "No pudimos revisar si el correo está activo.",
+  },
+  vistaPrevia: {
+    titulo: "Vista previa",
+    texto: "Así se verá un recordatorio. Esta vista previa no envía nada.",
+    remitente: "Rumbo",
+    aviso: "Hoy tienes acciones por marcar",
+    detalle: "Revisa tu día en Mi Rumbo y marca lo que vayas haciendo.",
+  },
+  contigo: {
+    titulo: "Estamos contigo",
+    texto: "Estos recordatorios están pensados para apoyarte, no para presionarte. Puedes ajustarlos cuando quieras.",
+  },
+  guardar: "Guardar cambios",
+  guardando: "Guardando…",
+  guardado: "Guardamos tus recordatorios.",
+  error: "No pudimos guardarlos. Revisa tu conexión e inténtalo de nuevo.",
+  sinConexion: "Necesitas conexión para guardar esto.",
+  noDisponible: {
+    titulo: "Los recordatorios todavía no están disponibles",
+    texto: "Estamos terminando de prepararlos. Mientras, tu coach te acompaña como siempre y tus avisos siguen llegando a Mis avisos.",
+  },
+  errorCargar: { titulo: "No pudimos cargar tus recordatorios", texto: "Vuelve a intentarlo en un momento.", reintentar: "Reintentar" },
+  volver: "Preferencias",
+  enPreferencias: { titulo: "Recordatorios", texto: "Elige qué avisos recibir, en qué horario y qué días.", enlace: "Configurar recordatorios" },
+} as const;
+
+// ---------------------------------------------------------------------------
+// Asistente de Rumbo (maqueta de ChatGPT, 30-oct-2026). Complementa al coach, nunca lo reemplaza:
+// cada respuesta la revisa y aprueba el coach antes de que la persona la vea.
+export const T_ASISTENTE = {
+  titulo: "Asistente de Rumbo",
+  beta: "Beta",
+  supervision: "Con la supervisión de tu coach",
+  bajada: "Un espacio para hacer tus preguntas, reflexionar y recibir orientación, siempre con la supervisión de tu coach.",
+  claves: [
+    { icono: "user-round", texto: "Tu coach revisa y aprueba cada respuesta." },
+    { icono: "shield-check", texto: "Solo usa lo que tú autorizas compartir." },
+    { icono: "sprout", texto: "Te apoya a reflexionar y avanzar en tu proceso." },
+  ],
+  revisaCoach: "Tu coach revisa y aprueba cada respuesta antes de que la veas.",
+  saberMas: "Saber más",
+  // Conversación
+  conversacion: "Tu conversación con el asistente",
+  tu: "Tú",
+  asistente: "Asistente de Rumbo",
+  vacia: {
+    titulo: "Todavía no hay preguntas",
+    texto: "Escribe tu primera pregunta o elige un ejemplo. Tu coach revisará la respuesta antes de que la veas.",
+  },
+  estados: {
+    en_revision: {
+      etiqueta: "Tu pregunta fue enviada",
+      texto: "Tu coach la revisará antes de compartirla contigo.",
+    },
+    aprobada: { etiqueta: "Revisada por tu coach" },
+    descartada: {
+      etiqueta: "Tu coach revisó esta respuesta",
+      texto: "Por ahora no podemos compartir esta respuesta. Puedes reformular tu pregunta o pedir orientación sobre otro tema.",
+    },
+    crisis: {
+      etiqueta: "Busca apoyo ahora",
+      texto: "No enviamos esta pregunta al asistente. Tu coach recibió un aviso. Si estás en peligro o piensas en hacerte daño, llama ahora:",
+    },
+    sin_presupuesto: {
+      etiqueta: "No enviada",
+      texto: "El asistente llegó a su límite de este mes y tu pregunta no se envió. Tu coach sigue disponible en Mi acompañamiento.",
+    },
+    error: {
+      etiqueta: "Sin respuesta",
+      texto: "No pudimos obtener una respuesta y tu pregunta no llegó a tu coach. Puedes intentarlo de nuevo.",
+    },
+  },
+  lista: { titulo: "Tu coach ya revisó la respuesta", texto: "Aquí tienes su orientación." },
+  nuevaPregunta: "Escribir una nueva pregunta",
+  seguir: {
+    titulo: "Seguir con esta respuesta",
+    masIdeas: "Más ideas",
+    crearPlan: "Crear plan",
+    profundizar: "Profundizar",
+    preguntaCrearPlan: (p: string) =>
+      `Sobre «${p}»: ¿me propones un plan simple para esta semana con acciones realistas? Lo conversaré con mi coach antes de cambiar mi plan.`,
+    preguntaMasIdeas: (p: string) => `Sobre «${p}»: ¿me das otras ideas distintas?`,
+    preguntaProfundizar: (p: string) => `Sobre «${p}»: ¿me ayudas a profundizar en la primera idea?`,
+  },
+  // Portada compacta para quien vuelve (móvil): accesos directos.
+  atajos: {
+    titulo: "Accesos rápidos",
+    escribir: "Escribir una pregunta",
+    privacidad: "Privacidad y supervisión",
+    ayuda: "Ayuda inmediata",
+  },
+  // «Me sirvió» / «No me sirvió»: una valoración por respuesta; se puede cambiar o quitar.
+  valorar: {
+    grupo: "¿Te sirvió esta respuesta?",
+    sirvio: "Me sirvió",
+    noSirvio: "No me sirvió",
+    motivo: "¿Qué faltó? (opcional)",
+    motivoAyuda: "Hasta 300 caracteres. Tu coach puede leerlo para orientarte mejor.",
+    guardarMotivo: "Guardar comentario",
+    gracias: "Gracias. Guardamos tu valoración; puedes cambiarla cuando quieras.",
+    quitada: "Quitamos tu valoración.",
+    motivoGuardado: "Guardamos tu comentario.",
+    error: "No pudimos guardar tu valoración. Vuelve a intentarlo.",
+  },
+  // Escribir
+  escribir: "Escribe tu pregunta",
+  placeholder: "Escribe tu pregunta…",
+  enviar: "Enviar pregunta",
+  enviando: "Enviando…",
+  largo: (n: number) => `${n} de 1000 caracteres`,
+  muyCorta: "Escribe al menos 3 caracteres.",
+  pie: "El asistente puede cometer errores. Ante una crisis, busca apoyo inmediato en los números de ayuda.",
+  errores: {
+    demasiadas: "Llegaste al máximo de preguntas por hoy. Puedes volver a preguntar mañana.",
+    ciclo: "Puedes usar el asistente mientras tu ciclo está en curso.",
+    apagado: "El asistente no está disponible en este momento. Tu pregunta no se envió.",
+    conexion: "No pudimos enviar tu pregunta. Revisa tu conexión e inténtalo de nuevo.",
+    sinConexion: "Sin conexión. Tu pregunta queda escrita; envíala cuando vuelva la conexión.",
+  },
+  enviadaAviso: "Tu pregunta fue enviada. Tu coach revisará la respuesta antes de compartirla contigo.",
+  // Ejemplos
+  ejemplos: {
+    titulo: "Ejemplos de preguntas",
+    lista: [
+      "¿Cómo puedo mantener la motivación?",
+      "¿Me puedes ayudar a organizar mi semana?",
+      "¿Qué hábitos me recomiendas para mi meta?",
+      "¿Cómo puedo avanzar en mi objetivo?",
+      "Me desordené estos días, ¿cómo retomo?",
+    ],
+  },
+  // Información
+  info: {
+    titulo: "Información importante",
+    puntos: [
+      { icono: "users", texto: "El asistente es una herramienta de apoyo y no reemplaza el acompañamiento humano." },
+      { icono: "user-round", texto: "Tu coach revisa cada respuesta: puede aprobarla, corregirla o no compartirla." },
+      { icono: "lock", texto: "Lo que preguntas lo ven tú, tu coach y el equipo de Rumbo. La pregunta y lo que autorizas se envían a OpenAI para generar la respuesta." },
+      { icono: "heart", texto: "No es atención de salud ni de urgencias. Ante una crisis, busca ayuda profesional." },
+    ],
+  },
+  crisis: {
+    titulo: "Si te sientes en una crisis",
+    bajada: "Busca apoyo inmediato:",
+  },
+  // Consentimiento
+  consentimiento: {
+    titulo: "Antes de empezar",
+    intro: "Para usar el asistente necesitamos tu autorización. Léelo con calma: puedes cambiarlo o retirarlo cuando quieras.",
+    puntos: [
+      "Qué hace: te propone ideas para reflexionar, organizarte y avanzar en tu plan.",
+      "Cómo funciona: tu pregunta y lo que autorices abajo se envían a OpenAI, un proveedor externo, para generar una respuesta. Nunca se envían tu nombre, tu correo ni tus datos de contacto.",
+      "Revisión humana: la respuesta la lee primero tu coach. Solo verás lo que tu coach apruebe.",
+      "Quién lo ve: tú, tu coach y el equipo de Rumbo. Queda registrado qué se envió y quién revisó.",
+      "Límites: no reemplaza a tu coach ni la atención de salud. Si tu pregunta sugiere riesgo, no se envía al asistente y tu coach recibe un aviso.",
+      "Retirar: si retiras tu autorización, no se envía nada nuevo. Tus preguntas anteriores siguen en esta pantalla y en la copia de tus datos.",
+    ],
+    contexto: "¿Qué puede usar el asistente además de tu pregunta?",
+    contextoAyuda: "Elige solo lo que quieras. Puedes no elegir nada.",
+    opciones: {
+      metas: { titulo: "Mis metas", texto: "El título y el «para qué» de las metas de tu plan." },
+      acciones: { titulo: "Mis acciones de esta semana", texto: "Qué acciones tienes y cuáles marcaste." },
+      registroSemanal: { titulo: "Mi último registro semanal", texto: "Lo que contaste sobre cómo te fue." },
+    },
+    aceptar: "Acepto y quiero usar el asistente",
+    guardar: "Guardar lo que comparto",
+    aceptando: "Guardando…",
+    error: "No pudimos guardar tu autorización. Inténtalo de nuevo.",
+    guardado: "Guardamos lo que compartes con el asistente.",
+  },
+  ajustes: {
+    titulo: "Lo que compartes",
+    autorizadoEl: (f: string) => `Autorizaste el asistente el ${f}.`,
+    nada: "Solo tu pregunta.",
+    con: (l: string) => `Tu pregunta y ${l}.`,
+    cambiar: "Cambiar lo que comparto",
+    retirar: "Retirar mi autorización",
+    retirando: "Retirando…",
+    confirmar: "¿Retirar tu autorización? No se enviará nada nuevo al asistente. Puedes volver a autorizarlo cuando quieras.",
+    confirmarSi: "Sí, retirar",
+    confirmarNo: "Cancelar",
+    error: "No pudimos retirar tu autorización. Inténtalo de nuevo.",
+  },
+  retirado: {
+    titulo: "Retiraste tu autorización",
+    texto: (f: string) => `El ${f} retiraste tu autorización. No se envía nada nuevo al asistente. Tus preguntas anteriores siguen aquí.`,
+    volver: "Volver a autorizar",
+  },
+  // Bienvenida (primera visita)
+  bienvenida: {
+    titulo: "Te damos la bienvenida al Asistente de Rumbo",
+    texto: "Un espacio para hacer tus preguntas, reflexionar y recibir orientación, siempre con la supervisión de tu coach.",
+    puntos: ["Respuestas revisadas por tu coach", "Solo usa lo que tú autorizas compartir", "Te apoya a avanzar en tu proceso"],
+    comenzar: "Comenzar",
+  },
+  privacidad: {
+    titulo: "Tu privacidad es importante",
+    intro: "Para usar el asistente necesitamos tu autorización. Puedes cambiarla o retirarla cuando quieras.",
+    resumen:
+      "Tu pregunta y lo que marques se envían a OpenAI para preparar una respuesta. Nunca se envían tu nombre, tu correo ni tus datos de contacto. Tu coach lee la respuesta antes que tú.",
+    saberMas: "Saber más sobre tu privacidad",
+    aceptar: "Aceptar y continuar",
+  },
+  // Mis conversaciones
+  historial: {
+    titulo: "Mis conversaciones",
+    abrir: "Mis conversaciones",
+    volver: "Volver a la conversación",
+    vacio: "Todavía no tienes conversaciones.",
+    grupos: { hoy: "Hoy", semana: "Esta semana", pasada: "La semana pasada", antes: "Anteriores" },
+    estados: {
+      aprobada: "Respuesta disponible",
+      en_revision: "En revisión",
+      descartada: "No compartida",
+      crisis: "Busca apoyo ahora",
+      sin_presupuesto: "No enviada",
+      error: "Sin respuesta",
+    },
+  },
+  // Configuración
+  configuracion: {
+    titulo: "Configuración del asistente",
+    abrir: "Configuración",
+    activado: "Activado",
+    desactivado: "Desactivado",
+    interruptor: "Asistente de Rumbo",
+    verConversaciones: "Ver mis conversaciones",
+  },
+  desactivado: {
+    titulo: "El asistente está desactivado",
+    texto: "Puedes activarlo cuando quieras para seguir recibiendo orientación con la supervisión de tu coach.",
+    activar: "Activar asistente",
+    saberMas: "Saber más",
+  },
+  // Estados de la pantalla
+  apagado: {
+    titulo: "El asistente no está disponible",
+    texto: "Por ahora el asistente de Rumbo no está activo. Tu coach sigue acompañándote como siempre en Mi acompañamiento.",
+    ir: "Ir a Mi acompañamiento",
+  },
+  sinCiclo: {
+    titulo: "Tu ciclo no está en curso",
+    texto: "Puedes hacer preguntas al asistente mientras tu ciclo está en curso.",
+  },
+  errorCargar: {
+    titulo: "No pudimos cargar el asistente",
+    texto: "Revisa tu conexión e inténtalo de nuevo.",
+    reintentar: "Reintentar",
+  },
+  enPreferencias: { lateral: "Asistente de Rumbo" },
 } as const;

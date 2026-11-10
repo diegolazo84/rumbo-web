@@ -2,6 +2,8 @@
 // Lo usan Mi Rumbo (participante) y la semana de la ficha del panel (coach), para que ambos
 // vean el mismo avance. role="img" con el texto completo; el número visible es «1/3».
 // El arco se dibuja con atributos SVG (sin estilos en línea).
+// Si el día se completa con la pantalla abierta, el anillo hace un pulso de luz una vez (paquete 2).
+import { useEffect, useRef, useState } from "react";
 
 const RADIO = 15.5;
 const LARGO = 2 * Math.PI * RADIO;
@@ -18,7 +20,17 @@ export default function AnilloDia({ hechas, programadas, etiqueta, chico, classN
   const h = Math.max(0, Math.min(hechas, programadas));
   const avance = programadas > 0 ? h / programadas : 0;
   const completo = programadas > 0 && h === programadas;
-  const clases = ["anillo", chico && "anillo--chico", completo && "es-completo", className].filter(Boolean).join(" ");
+  const antes = useRef(completo);
+  const [recien, setRecien] = useState(false);
+  useEffect(() => {
+    const ahora = completo && !antes.current;
+    antes.current = completo;
+    if (!ahora) return;
+    setRecien(true);
+    const t = window.setTimeout(() => setRecien(false), 1200);
+    return () => window.clearTimeout(t);
+  }, [completo]);
+  const clases = ["anillo", chico && "anillo--chico", completo && "es-completo", completo && recien && "es-recien", className].filter(Boolean).join(" ");
   return (
     <div className={clases} role="img" aria-label={etiqueta}>
       <svg viewBox="0 0 36 36" aria-hidden="true" focusable="false">

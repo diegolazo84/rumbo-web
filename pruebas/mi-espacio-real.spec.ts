@@ -5,10 +5,12 @@
 // que aplica las mismas reglas de visibilidad (RLS) que importan aquí: solo lo de la persona y
 // nunca un borrador. La base local de CI prueba las políticas de verdad (pruebas/base/).
 import { readFileSync } from "node:fs";
+import { deflateSync } from "node:zlib";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { operacion } from "../src/data/rumbo";
 import { SUPABASE_URL } from "../src/lib/supabase-config";
+import { T_ASISTENTE, T_AVISOS, T_RECORDATORIOS } from "../src/pages/vista-previa/mi-espacio/textos";
 
 const ETIQUETAS_AXE = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const CLAVE_SESION = "rumbo-sesion";
@@ -220,7 +222,8 @@ const conSesion = (page: Page) =>
 
 test.beforeEach(({}, info) => {
   test.skip(!operacion.miEspacioPropio, "solo con Mi espacio propio (MI_ESPACIO_PROPIO=1)");
-  test.skip(info.project.name === "iphone", "interacción: basta con Chromium y WebKit en humo");
+  // Las fotos también se prueban en iPhone (WebKit): ahí se ve si el navegador sabe escribir WebP.
+  test.skip(info.project.name === "iphone" && !info.title.startsWith("Fotos en todo equipo"), "interacción: basta con Chromium y WebKit en humo");
 });
 
 // ---------------------------------------------------------------------------
@@ -304,6 +307,113 @@ test("si marcar falla, el check vuelve atrás y se ofrece reintentar", async ({ 
   await casilla.click();
   await expect(page.getByRole("button", { name: "Reintentar" })).toBeVisible();
   await expect(casilla).not.toBeChecked();
+});
+
+// Registro de acciones con foto obligatoria (error real: marcar_accion → 409 accion:requiere_foto
+// mostrado como «Revisa tu conexión»). Base: solo queda pendiente la acción con foto del 11.
+function baseAnteriorConFoto() {
+  const base = baseInicial();
+  const foto = base.ocurrencias.find((o) => o.id === "o-2026-10-11")!;
+  Object.assign(foto, { titulo: "Ordenar el escritorio", instrucciones: "Ordena tu escritorio.", version_corta: null, requiere_foto: true });
+  for (const f of ["2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09", "2026-10-10"])
+    base.registros.push({ ocurrencia_id: `o-${f}`, participante_id: "p1", estado: "hecha", version: "completa", explicacion: null, nota_revision: null, revisado_en: null });
+  return base;
+}
+const abrirAnteriores = async (page: Page) => {
+  // En Mi Rumbo el bloque parte plegado.
+  await page.locator(".me-anteriores").getByRole("button", { name: "Ver las acciones" }).click();
+};
+
+test("«Ya la hice» en una acción anterior con foto obligatoria abre su registro y no llama a marcar_accion", async ({ page }) => {
+  await conSesion(page);
+  const base = baseAnteriorConFoto();
+  const llamadas = await simular(page, base, {
+    marcar_accion: () => ({ __error: "accion:requiere_foto", __estado: 409 }),
+    registrar_evidencia: (c) => {
+      base.registros.push({ ocurrencia_id: c.p_ocurrencia, participante_id: "p1", estado: "revision", version: "completa", explicacion: c.p_explicacion, nota_revision: null, revisado_en: null });
+      return { creditos: 3, nivel: 1, racha: 1, bono_siguiente: 2 };
+    },
+  });
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  await abrirAnteriores(page);
+  const fila = page.locator(".me-anteriores li").filter({ hasText: "Ordenar el escritorio" });
+  await fila.getByRole("button", { name: "Ya la hice" }).click();
+  const hoja = page.getByRole("dialog");
+  await expect(hoja.getByRole("button", { name: "No puedo subir una foto" })).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "marcar_accion")).toBe(false);
+  await expect(page.getByText("Revisa tu conexión", { exact: false })).toHaveCount(0);
+
+  // La alternativa escrita llega a registrar_evidencia y queda en revisión; los créditos no cambian.
+  await hoja.getByRole("button", { name: "No puedo subir una foto" }).click();
+  await hoja.getByRole("textbox").fill("Lo ordené, pero no tenía el teléfono a mano.");
+  await hoja.locator(".me-foto__explicar button[type=submit]").click();
+  await expect(hoja.locator(".me-foto").getByText("En revisión", { exact: true })).toBeVisible();
+  const ev = llamadas.filter((l) => l.nombre === "registrar_evidencia");
+  expect(ev).toHaveLength(1);
+  expect(ev[0].cuerpo).toEqual({ p_ocurrencia: "o-2026-10-11", p_foto_ruta: null, p_explicacion: "Lo ordené, pero no tenía el teléfono a mano." });
+  expect(llamadas.some((l) => l.nombre === "marcar_accion")).toBe(false);
+  await expect(page.locator(".me-hoy .me-resumen__creditos")).toHaveText("3 créditos");
+});
+
+test("si la base rechaza un registro, se dice el motivo real; solo la conexión ofrece «Reintentar»", async ({ page }) => {
+  await conSesion(page);
+  let respuesta: Record<string, unknown> | null = { __error: "accion:requiere_foto", __estado: 409 };
+  const base = baseInicial();
+  const llamadas = await simular(page, base, {
+    marcar_accion: (c) => {
+      if (respuesta) return respuesta;
+      base.registros.push({ ocurrencia_id: c.p_ocurrencia, participante_id: "p1", estado: "hecha", version: c.p_version, explicacion: null, nota_revision: null, revisado_en: null });
+      base.progreso[0].creditos = Number(base.progreso[0].creditos) + 1;
+      return { creditos: base.progreso[0].creditos, nivel: 1, racha: 1, bono_siguiente: 2 };
+    },
+  });
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  const casilla = page.getByRole("checkbox", { name: "Marcar “Escribir 30 minutos” como hecha" });
+  const tostada = page.locator(".tostada");
+
+  // La base pide foto (la acción cambió mientras la pantalla estaba abierta).
+  await casilla.click();
+  await expect(tostada).toContainText("“Escribir 30 minutos” se registra con una foto o con una explicación breve.");
+  await expect(tostada).not.toContainText("conexión");
+  await expect(tostada.getByRole("button", { name: "Reintentar" })).toHaveCount(0);
+  await expect(casilla).not.toBeChecked();
+  await tostada.getByRole("button", { name: "Abrir" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // Fuera de plazo y ciclo cerrado: mensaje propio, sin reintentar.
+  respuesta = { __error: "accion:fuera_de_plazo", __estado: 409 };
+  await casilla.click();
+  await expect(tostada).toContainText("Ya pasó el plazo para registrar “Escribir 30 minutos”.");
+  await expect(tostada.getByRole("button", { name: "Reintentar" })).toHaveCount(0);
+  respuesta = { __error: "ciclo:cerrado", __estado: 409 };
+  await casilla.click();
+  await expect(tostada).toContainText("Este ciclo ya terminó");
+
+  // Un error sin motivo conocido no culpa a la conexión, pero deja reintentar; al reintentar, se guarda una sola vez.
+  respuesta = { __error: "algo:raro", __estado: 500 };
+  await casilla.click();
+  await expect(tostada).toContainText("Inténtalo de nuevo en un momento.");
+  await expect(tostada).not.toContainText("conexión");
+  expect(llamadas.filter((l) => l.nombre === "marcar_accion")).toHaveLength(4);
+  respuesta = null;
+  await tostada.getByRole("button", { name: "Reintentar" }).click();
+  await expect(casilla).toBeChecked();
+  await expect(page.locator(".me-hoy .me-resumen__creditos")).toHaveText("4 créditos");
+  expect(llamadas.filter((l) => l.nombre === "marcar_accion")).toHaveLength(5);
+});
+
+test("Calendario y Detalle: una acción con foto obligatoria nunca se marca como hecha", async ({ page }) => {
+  await conSesion(page);
+  const base = baseAnteriorConFoto();
+  const llamadas = await simular(page, base);
+  await page.goto("mi-espacio/plan/accion/?id=o-2026-10-11");
+  await hidratar(page);
+  await expect(page.getByRole("button", { name: "No puedo subir una foto" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Marcar como hecha", exact: true })).toHaveCount(0);
+  expect(llamadas.some((l) => l.nombre === "marcar_accion")).toBe(false);
 });
 
 test("programa en preparación: el borrador no se ve", async ({ page }) => {
@@ -513,6 +623,8 @@ test("las rutas de Mi espacio y del panel son noindex y conectan solo con el pro
     const html = await (await request.get(ruta)).text();
     expect(html, ruta).toContain('<meta name="robots" content="noindex, nofollow" />');
     expect(html, ruta).toContain(`connect-src 'self' ${SUPABASE_URL}`);
+    // Imágenes del proyecto: solo enlaces firmados de su almacenamiento (fotos privadas).
+    expect(html, ruta).toMatch(new RegExp(`img-src 'self' data: blob: ${SUPABASE_URL.replace(/\./g, "\\.")}/storage/v1/object/sign/[;"]`));
     expect(html, ruta).not.toContain('rel="canonical"');
   }
 });
@@ -866,4 +978,1157 @@ test("Crear publicación real: las fotos suben a la carpeta propia, en orden, y 
   await page.getByRole("button", { name: "Publicar" }).click();
   await expect(page.getByRole("alert")).toContainText("No pudimos subir la foto");
   expect(borradas).toEqual(subidas);
+});
+
+test("Mis logros real (C17): todo de la base; recompensas y ranking solo con su función activa", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.reconocimientos = [
+    { clave: "primer_paso", nombre: "Primer paso", descripcion: "Marcaste tu primera acción.", umbral: null, activo: true },
+    { clave: "constancia", nombre: "Constancia", descripcion: "Sostuviste una racha de días seguidos en tu ciclo.", umbral: 5, activo: true },
+    { clave: "meta_alcanzada", nombre: "Meta alcanzada", descripcion: "Lograste todos los hitos de una meta.", umbral: null, activo: true },
+  ];
+  base.alias = [{ participante_id: "p1", alias: "Ana C", en_ranking: false }];
+  const apagado = { modulo_visible: () => false, mis_beneficios: () => [], mi_beneficio_renovacion: () => [] };
+  let llamadas = await simular(page, base, apagado);
+  await page.goto("mi-espacio/logros/");
+  await hidratar(page);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mis logros");
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".ml-cifra")).toHaveText("3 créditos acumulados");
+  await expect(page.locator(".ml-nivel__nombre")).toHaveText("Inicio");
+  // Módulos sin habilitar y beneficio apagado: ni reconocimientos, ni recompensas, ni ranking.
+  await expect(page.locator(".ml-cifra")).toBeVisible();
+  await expect.poll(() => llamadas.filter((l) => l.nombre === "modulo_visible" && !["fotos", "comunidad"].includes(String(l.cuerpo.p_clave))).length).toBe(2);
+  await expect(page.getByRole("heading", { name: "Mis reconocimientos" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Mis recompensas" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /Ranking/ })).toHaveCount(0);
+  expect(llamadas.some((l) => l.nombre === "mis_reconocimientos" || l.nombre === "ranking_semanal")).toBe(false);
+
+  // Habilitados: aparecen solos, con lo que dice la base.
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+  await conSesion(page);
+  const ranking = [
+    { puesto: 1, alias_publico: "Sol", cumplimiento: 100, soy_yo: false },
+    { puesto: 2, alias_publico: "Ana C", cumplimiento: 80, soy_yo: true },
+    { puesto: 3, alias_publico: "Río", cumplimiento: 60, soy_yo: false },
+  ];
+  llamadas = await simular(page, base, {
+    modulo_visible: () => true,
+    mis_reconocimientos: () => [{ clave: "primer_paso", nombre: "Primer paso", descripcion: "x", referencia: "unico", otorgado_en: "2026-10-05T15:00:00Z" }],
+    mi_beneficio_renovacion: () => [{ nombre: "10 % en tu próxima renovación", descripcion: "Por completar todas las acciones programadas de tu ciclo de 28 días.", porcentaje: 10, dias_ciclo: 28 }],
+    mis_beneficios: () => [],
+    participar_en_ranking: (c) => {
+      base.alias[0].en_ranking = c.p_participar;
+      return null;
+    },
+    ranking_semanal: () => ranking,
+  });
+  await page.goto("mi-espacio/logros/");
+  await hidratar(page);
+  const rec = page.locator(".ml-reconocimientos");
+  await expect(rec.locator(".ml-insignia")).toHaveCount(3);
+  await expect(rec.locator('[data-clave="primer_paso"]')).toHaveAttribute("data-estado", "conseguido");
+  await expect(rec.locator('[data-clave="primer_paso"] time')).toHaveText("Conseguido el 5 de octubre");
+  // Umbral de la base (5), no el del ejemplo.
+  await expect(rec.locator('[data-clave="constancia"]')).toContainText("Completa todas tus acciones 5 días seguidos.");
+  // Racha en curso: en progreso, con barra sobre el umbral de la base.
+  await expect(rec.locator('[data-clave="constancia"]')).toHaveAttribute("data-estado", "progreso");
+  await expect(rec.locator('[data-clave="constancia"]').getByRole("progressbar")).toHaveAttribute("aria-valuemax", "5");
+  // Ningún hito logrado: por desbloquear, sin barra y con cómo conseguirlo.
+  const meta = rec.locator('[data-clave="meta_alcanzada"]');
+  await expect(meta).toHaveAttribute("data-estado", "bloqueado");
+  await expect(meta.locator(".ml-insignia__estado")).toHaveText("Por desbloquear");
+  await expect(meta).toContainText("Logra todos los hitos de una de tus metas.");
+  await expect(meta.getByRole("progressbar")).toHaveCount(0);
+  await expect(page.locator(".ml-recompensas")).toContainText("10 % de descuento");
+  await expect(page.locator(".ml-recompensas")).toContainText("1/16 acciones");
+  await expect(page.locator(".ml-recompensas")).toContainText("En este ciclo quedó alguna acción sin hacer.");
+  await page.locator(".ml-ranking").getByRole("button", { name: "Quiero participar" }).click();
+  await expect.poll(() => llamadas.find((l) => l.nombre === "participar_en_ranking")?.cuerpo).toEqual({ p_participar: true });
+  expect(llamadas.some((l) => l.nombre === "guardar_alias")).toBe(false);
+  await expect(page.locator(".ml-ranking")).toContainText("La semana pasada quedaste en el puesto 2 de 3, con 80 % de tus acciones.");
+  await expect(page.locator(".ml-ranking")).toContainText("Participas como «Ana C».");
+});
+
+test("Mis logros real (C17) con datos: 10 niveles, créditos, rachas, 4 semanas, metas y los 6 reconocimientos", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  // Ocho días seguidos con todo hecho (5 al 12 de octubre); hoy es el 13.
+  const dias = Array.from({ length: 8 }, (_, i) => sumar("2026-10-05", i));
+  base.registros = dias.map((f) => ({ ocurrencia_id: `o-${f}`, participante_id: "p1", estado: "hecha", version: "completa", explicacion: null, nota_revision: null, revisado_en: null }));
+  base.progreso_diario = dias.map((f, i) => ({ participante_id: "p1", fecha: f, programadas: 1, hechas: 1, en_revision: 0, creditos_acciones: 1, bono: 2, racha: i + 1, en_suspenso: false }));
+  base.progreso = [{ participante_id: "p1", creditos: 30, nivel: 3, racha: 8, bono_siguiente: 3 }];
+  base.metas[0].hitos = [
+    { texto: "Índice aprobado", logrado: true },
+    { texto: "Primer capítulo", logrado: false },
+  ];
+  base.reconocimientos = [
+    ["primer_paso", "Primer paso", null],
+    ["primera_semana", "Primera semana", null],
+    ["constancia", "Constancia", 7],
+    ["mitad_del_camino", "Mitad del camino", 50],
+    ["ciclo_completado", "Ciclo completado", null],
+    ["meta_alcanzada", "Meta alcanzada", null],
+  ].map(([clave, nombre, umbral]) => ({ clave, nombre, descripcion: "x", umbral, activo: true }));
+  const otorgado = (clave: string, fecha: string) => ({ clave, nombre: clave, descripcion: "x", referencia: "unico", otorgado_en: `${fecha}T15:00:00Z` });
+  // Solo «reconocimientos» habilitado; el 10 % y el ranking siguen apagados.
+  const llamadas = await simular(page, base, {
+    modulo_visible: (c) => c.p_clave === "reconocimientos",
+    mis_reconocimientos: () => [otorgado("primer_paso", "2026-10-05"), otorgado("constancia", "2026-10-11"), otorgado("primera_semana", "2026-10-12")],
+    mis_beneficios: () => [],
+    mi_beneficio_renovacion: () => [],
+  });
+  await page.goto("mi-espacio/logros/");
+  await hidratar(page);
+
+  // Nivel y créditos de la base.
+  await expect(page.locator(".ml-cifra")).toHaveText("30 créditos acumulados");
+  await expect(page.locator(".ml-nivel__nombre")).toHaveText("Ritmo");
+  await expect(page.locator(".ml-nivel__actual")).toContainText("Nivel 3");
+  await page.getByRole("button", { name: "Ver los 10 niveles" }).click();
+  const hoja = page.getByRole("dialog");
+  await expect(hoja.locator("ol li")).toHaveCount(10);
+  await expect(hoja.locator("li[aria-current]")).toContainText("Ritmo");
+  await hoja.getByRole("button", { name: "Cerrar" }).click();
+
+  // Rachas: actual y mejor del ciclo.
+  const cajas = page.locator(".ml-constancia .ml-caja__n, section.ml-tarjeta .ml-caja__n");
+  await expect(cajas.first()).toHaveText("8 días");
+  await expect(cajas.nth(1)).toHaveText("8 días");
+
+  // Evolución: semana 1 completa, semana 2 en curso (cuenta hasta hoy), 3 y 4 por venir; esta semana 1 de 7.
+  const semanas = page.locator(".ml-semanas__lista li");
+  await expect(semanas).toHaveCount(4);
+  await expect(semanas.nth(0)).toContainText("100 %");
+  await expect(semanas.nth(1)).toContainText("50 %"); // 12 hecha; 13 (hoy) todavía no
+  await expect(semanas.nth(2)).toContainText("—");
+  await expect(page.locator(".ml-esta-semana__cifra")).toHaveText("1 de 7");
+
+  // Metas: avance e hitos reales.
+  const meta = page.locator(".ml-metas .me-meta");
+  await expect(meta).toHaveCount(1);
+  await expect(meta).toContainText("Terminar mi tesis");
+  await expect(meta.locator(".me-hitos li")).toHaveCount(2);
+
+  // Los 6 reconocimientos con su estado.
+  const rec = page.locator(".ml-reconocimientos .ml-insignia");
+  await expect(rec).toHaveCount(6);
+  const estado = (c: string) => page.locator(`.ml-insignia[data-clave="${c}"]`);
+  await expect(estado("primer_paso")).toHaveAttribute("data-estado", "conseguido");
+  await expect(estado("primer_paso").locator("time")).toHaveText("Conseguido el 5 de octubre");
+  await expect(estado("constancia").locator("time")).toHaveText("Conseguido el 11 de octubre");
+  await expect(estado("primera_semana").locator("time")).toHaveText("Conseguido el 12 de octubre");
+  await expect(estado("mitad_del_camino")).toHaveAttribute("data-estado", "progreso");
+  await expect(estado("mitad_del_camino")).toContainText("Llevas 89 % · se pide 50 %");
+  await expect(estado("ciclo_completado")).toContainText("Día 9 de 28");
+  await expect(estado("meta_alcanzada")).toContainText("1 de 2 hitos");
+
+  // Recompensas y ranking siguen ocultos.
+  await expect(page.getByRole("heading", { name: "Mis recompensas" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /Ranking/ })).toHaveCount(0);
+  expect(llamadas.some((l) => l.nombre === "ranking_semanal")).toBe(false);
+});
+
+test("Mi plan real: semana del ciclo, día de hoy con sus registros y metas de la base", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial());
+  await page.goto("mi-espacio/plan/");
+  await hidratar(page);
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".me-camino__semana")).toHaveText("Semana 2 de 4");
+  // Hoy (13) tiene una acción programada y todavía no está hecha.
+  await expect(page.locator(".me-plan-hoy__fecha")).toHaveText("Martes 13 de octubre");
+  await expect(page.locator(".me-plan-hoy__n")).toHaveText("0 de 1");
+  await expect(page.locator(".me-plan-hoy").getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
+  // Solo las metas del programa publicado, con su «para qué»; nunca el borrador del coach.
+  await expect(page.locator(".me-construyendo__meta")).toHaveCount(1);
+  await expect(page.locator(".me-construyendo__meta")).toHaveAttribute("data-cat", "proyecto");
+  await expect(page.locator(".me-construyendo")).toContainText("Terminar mi tesis");
+  await expect(page.locator(".me-construyendo")).toContainText("Para titularme este año.");
+  await expect(page.locator(".me-construyendo")).not.toContainText("BORRADOR SECRETO");
+  // El 12 quedó completo; el 14 es futuro.
+  await expect(page.locator("#dia-2026-10-12")).toHaveClass(/me-dia--completo/);
+  await expect(page.locator("#dia-2026-10-14")).toHaveClass(/me-dia--futuro/);
+  await page.getByRole("button", { name: "Ver mis acciones de hoy" }).click();
+  await expect(page.locator(".me-calendario__titulo")).toHaveText("Martes 13 de octubre");
+});
+
+test("Mi plan real sin programa publicado: sin progreso inventado", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial({ conPrograma: false }));
+  await page.goto("mi-espacio/plan/");
+  await hidratar(page);
+  await expect(page.locator(".me-plan-hoy").getByRole("progressbar")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Ver mis acciones de hoy" })).toHaveCount(0);
+  await expect(page.locator(".me-construyendo__meta")).toHaveCount(0);
+});
+
+test("Mi plan real: marcar hoy actualiza «Tu día de hoy»; futuras y fuera de plazo no se marcan", async ({ page }) => {
+  await conSesion(page);
+  const llamadas = await simular(page, baseInicial());
+  await page.goto("mi-espacio/plan/");
+  await hidratar(page);
+  // Resumen semanal: de lunes 12 a hoy hay 2 programadas y 1 hecha (progreso diario del 12).
+  await expect(page.locator(".me-cal-semana__pie")).toHaveText("Esta semana registraste 1 de 2 acciones programadas hasta hoy.");
+  await page.locator("#dia-2026-10-13").getByRole("checkbox").check();
+  await expect(page.locator(".me-plan-hoy__n")).toHaveText("1 de 1");
+  await expect(page.locator(".me-cal-semana__pie")).toHaveText("Esta semana registraste 2 de 2 acciones programadas hasta hoy.");
+  const m = llamadas.filter((l) => l.nombre === "marcar_accion");
+  expect(m).toHaveLength(1);
+  expect(m[0].cuerpo).toEqual({ p_ocurrencia: `o-${HOY}`, p_version: "completa" });
+  // Futura (14): deshabilitada, explica desde cuándo y no llama a la base.
+  const futura = page.locator("#dia-2026-10-14").getByRole("checkbox");
+  await expect(futura).toHaveAttribute("aria-disabled", "true");
+  await futura.click({ force: true });
+  await expect(futura).not.toBeChecked();
+  // Registro tardío (7 días): la semana anterior, el 5 quedó fuera de plazo y el 6 se puede marcar.
+  await page.getByRole("button", { name: "Semana anterior" }).click();
+  await expect(page.locator("#dia-2026-10-05").getByRole("checkbox")).toHaveAttribute("aria-disabled", "true");
+  await expect(page.locator("#dia-2026-10-05")).toContainText("Esta acción ya quedó cerrada en tu registro.");
+  await expect(page.locator("#dia-2026-10-06").getByRole("checkbox")).not.toHaveAttribute("aria-disabled", "true");
+  expect(llamadas.filter((l) => l.nombre === "marcar_accion")).toHaveLength(1);
+});
+
+for (const semanas of [8, 12]) {
+  test(`Mi plan real: ciclo de ${semanas} semanas`, async ({ page }) => {
+    await conSesion(page);
+    const base = baseInicial();
+    base.ciclos[0].semanas = semanas;
+    base.ciclos[0].fin = sumar("2026-10-05", semanas * 7 - 1);
+    await simular(page, base);
+    await page.goto("mi-espacio/plan/");
+    await hidratar(page);
+    await expect(page.locator(".me-camino__semana")).toHaveText(`Semana 2 de ${semanas}`);
+    await expect(page.locator(".me-calendario__titulo")).toContainText(`Semana 2 de ${semanas}`);
+    await expect(page.locator(".me-plan-hoy__n")).toHaveText("0 de 1");
+  });
+}
+
+test("Detalle de acción real (referencia de ChatGPT): ruta, datos de la base, marcar, versión corta, ajuste y foto sin subida", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.ocurrencias.push({ ...base.ocurrencias[8], id: "o-foto", titulo: "Ordenar el escritorio", instrucciones: "Ordena tu escritorio.", version_corta: null, requiere_foto: true, hora: null });
+  const llamadas = await simular(page, base, {
+    registrar_evidencia: (c) => {
+      base.registros.push({ ocurrencia_id: c.p_ocurrencia, participante_id: "p1", estado: "revision", version: "completa", explicacion: c.p_explicacion, nota_revision: null, revisado_en: null });
+      return null;
+    },
+  });
+  await page.goto(`mi-espacio/plan/accion/?id=o-${HOY}`);
+  await hidratar(page);
+  await expect(page.locator("h1")).toHaveText("Escribir 30 minutos");
+  const migas = page.getByRole("navigation", { name: "Dónde estás" });
+  await expect(migas).toContainText("Semana 2 de 4");
+  await expect(migas.locator("[aria-current=page]")).toHaveText("Acción del martes 13");
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".me-pasos > li")).toHaveText(["Abre el documento.", "Escribe sin corregir."]);
+  await expect(page.locator(".me-para-que__cita")).toHaveText("Para titularme este año.");
+  await expect(page.locator(".me-si-no")).toContainText("Versión corta: Escribir 10 minutos. También cuenta como hecha.");
+  await sinViolaciones(page);
+
+  await page.getByRole("button", { name: "Hice la versión corta", exact: true }).click();
+  await expect(page.locator(".me-hecha__texto")).toHaveText("Hecha (versión corta) · +1 crédito");
+  expect(llamadas.filter((l) => l.nombre === "marcar_accion").at(-1)!.cuerpo).toEqual({ p_ocurrencia: `o-${HOY}`, p_version: "corta" });
+  await expect(page.locator(".me-ajuste-tarjeta").getByRole("link", { name: "Pedir un ajuste" })).toHaveAttribute("href", new RegExp(`ajuste/\\?accion=o-${HOY}$`));
+
+  // Fuera del plazo de 7 días: sin botones, con el texto de cerrada. Futura: bloqueada.
+  await page.goto("mi-espacio/plan/accion/?id=o-2026-10-05");
+  await hidratar(page);
+  await expect(page.getByText("Esta acción ya quedó cerrada en tu registro.", { exact: false })).toBeVisible();
+  await expect(page.locator(".me-marcar")).toHaveCount(0);
+  await page.goto("mi-espacio/plan/accion/?id=o-2026-10-14");
+  await hidratar(page);
+  await expect(page.getByRole("button", { name: "Marcar como hecha", exact: true })).toHaveAttribute("aria-disabled", "true");
+
+  // Foto: la subida real aún no existe; solo «No puedo subir una foto», que va a registrar_evidencia.
+  await page.goto("mi-espacio/plan/accion/?id=o-foto");
+  await hidratar(page);
+  await expect(page.getByRole("button", { name: "Subir foto" })).toHaveCount(0);
+  await expect(page.locator("input[type=file]")).toHaveCount(0);
+  await page.getByRole("button", { name: "No puedo subir una foto" }).click();
+  await page.getByRole("textbox").fill("Lo ordené, pero mi teléfono no tiene cámara.");
+  await page.locator(".me-foto__explicar button[type=submit]").click();
+  await expect(page.locator(".me-foto").getByText("En revisión", { exact: true })).toBeVisible();
+  const ev = llamadas.find((l) => l.nombre === "registrar_evidencia")!;
+  expect(ev.cuerpo).toEqual({ p_ocurrencia: "o-foto", p_foto_ruta: null, p_explicacion: "Lo ordené, pero mi teléfono no tiene cámara." });
+});
+
+// ---------------------------------------------------------------------------
+// Fotos privadas de las acciones (opción A, bucket «evidencias»)
+
+// PNG real de ancho×alto, con un bloque eXIf que simula metadatos (ubicación GPS): después de
+// preparar la foto, ese texto no puede viajar.
+function pngConExif(ancho: number, alto: number): Buffer {
+  const crcTabla = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc = (b: Buffer) => {
+    let c = 0xffffffff;
+    for (const x of b) c = crcTabla[(c ^ x) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const bloque = (tipo: string, datos: Buffer) => {
+    const t = Buffer.concat([Buffer.from(tipo, "latin1"), datos]);
+    const largo = Buffer.alloc(4);
+    largo.writeUInt32BE(datos.length);
+    const c = Buffer.alloc(4);
+    c.writeUInt32BE(crc(t));
+    return Buffer.concat([largo, t, c]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(ancho, 0);
+  ihdr.writeUInt32BE(alto, 4);
+  ihdr[8] = 8; // 8 bits
+  ihdr[9] = 2; // RGB
+  const fila = Buffer.alloc(1 + ancho * 3);
+  for (let x = 0; x < ancho; x++) fila.set([40 + (x % 120), 90, 60], 1 + x * 3);
+  const crudo = Buffer.concat(Array.from({ length: alto }, () => fila));
+  return Buffer.concat([
+    Buffer.from("89504e470d0a1a0a", "hex"),
+    bloque("IHDR", ihdr),
+    bloque("eXIf", Buffer.from("MM\0*GPS-SECRETO-33.4489,-70.6693", "latin1")),
+    bloque("IDAT", deflateSync(crudo)),
+    bloque("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+// Medidas de un WebP (VP8, VP8L o VP8X).
+function medidasWebp(b: Buffer): { ancho: number; alto: number } {
+  const tipo = b.toString("latin1", 12, 16);
+  if (tipo === "VP8X") return { ancho: 1 + b.readUIntLE(24, 3), alto: 1 + b.readUIntLE(27, 3) };
+  if (tipo === "VP8L") {
+    const v = b.readUInt32LE(21);
+    return { ancho: 1 + (v & 0x3fff), alto: 1 + ((v >> 14) & 0x3fff) };
+  }
+  return { ancho: b.readUInt16LE(26) & 0x3fff, alto: b.readUInt16LE(28) & 0x3fff };
+}
+
+const PNG_MINI = pngConExif(2, 2);
+
+// supabase-js sube un Blob como multipart/form-data: se saca la parte del archivo y su tipo.
+function archivoSubido(tipoCabecera: string, cuerpo: Buffer): { tipo: string; cuerpo: Buffer } {
+  const limite = /boundary=(.+)$/.exec(tipoCabecera)?.[1];
+  if (!limite) return { tipo: tipoCabecera, cuerpo };
+  for (const parte of cuerpo.toString("latin1").split(`--${limite}`)) {
+    const fin = parte.indexOf("\r\n\r\n");
+    if (fin < 0) continue;
+    const cabeza = parte.slice(0, fin);
+    const tipo = /content-type:\s*([^\r\n]+)/i.exec(cabeza)?.[1];
+    if (!tipo || !/filename=/i.test(cabeza)) continue;
+    return { tipo: tipo.trim(), cuerpo: Buffer.from(parte.slice(fin + 4, parte.length - 2), "latin1") };
+  }
+  return { tipo: "", cuerpo: Buffer.alloc(0) };
+}
+
+// Bucket «evidencias» en memoria: subir, listar, borrar y enlaces firmados (como la API de Storage).
+async function simularEvidencias(page: Page, orden: string[], { fallaSubida = false } = {}) {
+  const archivos = new Map<string, Buffer>();
+  const subidas: { ruta: string; tipo: string; cuerpo: Buffer }[] = [];
+  await page.route(`${SUPABASE_URL}/storage/v1/object/**`, async (rt) => {
+    const req = rt.request();
+    const ruta = new URL(req.url()).pathname.replace(/^.*\/storage\/v1\/object\//, "");
+    if (ruta.startsWith("list/evidencias")) {
+      const { prefix } = req.postDataJSON() as { prefix: string };
+      const lista = [...archivos.keys()].filter((k) => k.startsWith(`${prefix}/`)).map((k) => ({ name: k.slice(prefix.length + 1), id: k }));
+      return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(lista) });
+    }
+    if (ruta.startsWith("sign/evidencias/") && req.method() === "POST") {
+      const archivo = ruta.slice("sign/evidencias/".length);
+      orden.push(`firmar:${archivo}`);
+      const { expiresIn } = req.postDataJSON() as { expiresIn: number };
+      expect(expiresIn).toBeLessThanOrEqual(300); // enlaces de corta duración
+      return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ signedURL: `/object/sign/evidencias/${archivo}?token=firma-corta` }) });
+    }
+    if (ruta.startsWith("sign/evidencias/")) return rt.fulfill({ status: 200, contentType: "image/png", body: PNG_MINI });
+    if (req.method() === "DELETE") {
+      const { prefixes } = req.postDataJSON() as { prefixes: string[] };
+      for (const p of prefixes) {
+        orden.push(`borrar:${p}`);
+        archivos.delete(p);
+      }
+      return rt.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+    }
+    if (ruta.startsWith("evidencias/") && req.method() === "POST") {
+      const archivo = ruta.slice("evidencias/".length);
+      if (fallaSubida) return rt.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ statusCode: "403", error: "Unauthorized", message: "new row violates row-level security policy" }) });
+      const { tipo, cuerpo } = archivoSubido(req.headers()["content-type"] ?? "", req.postDataBuffer() ?? Buffer.alloc(0));
+      subidas.push({ ruta: archivo, tipo, cuerpo });
+      archivos.set(archivo, cuerpo);
+      orden.push(`subir:${archivo}`);
+      return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ Key: `evidencias/${archivo}`, Id: "x" }) });
+    }
+    return rt.fulfill({ status: 404, contentType: "application/json", body: "{}" });
+  });
+  return { archivos, subidas };
+}
+
+// Acción que exige foto (hoy) y RPC de evidencias que guardan la ruta como la base.
+function baseConFoto() {
+  const base = baseInicial();
+  base.ocurrencias.push({ ...base.ocurrencias[8], id: "o-foto", titulo: "Ordenar el escritorio", instrucciones: "Ordena tu escritorio.", version_corta: null, requiere_foto: true, hora: null });
+  return base;
+}
+function rpcFotos(base: Base, orden: string[], { fotos = true, rechazar = false } = {}) {
+  const fila = (id: unknown) => base.registros.find((r) => r.ocurrencia_id === id);
+  return {
+    modulo_visible: (c: Record<string, unknown>) => fotos && c.p_clave === "fotos",
+    registrar_evidencia: (c: Record<string, unknown>) => {
+      orden.push(`registrar:${c.p_foto_ruta ?? "explicacion"}`);
+      if (rechazar) return { __error: "evidencia:ruta_invalida", __estado: 400 };
+      base.registros = base.registros.filter((r) => r.ocurrencia_id !== c.p_ocurrencia);
+      base.registros.push({ ocurrencia_id: c.p_ocurrencia, participante_id: "p1", estado: "en_revision", version: "completa", foto_ruta: c.p_foto_ruta, explicacion: c.p_explicacion, nota_revision: null, revisado_en: null });
+      return null;
+    },
+    eliminar_evidencia: (c: Record<string, unknown>) => {
+      orden.push("eliminar_evidencia");
+      base.registros = base.registros.filter((r) => r.ocurrencia_id !== c.p_ocurrencia);
+      return null;
+    },
+    adjuntar_foto: (c: Record<string, unknown>) => {
+      orden.push(`adjuntar:${c.p_foto_ruta}`);
+      const r = fila(c.p_ocurrencia)!;
+      r.foto_ruta = c.p_foto_ruta;
+      return null;
+    },
+    quitar_foto: (c: Record<string, unknown>) => {
+      orden.push("quitar_foto");
+      const r = fila(c.p_ocurrencia)!;
+      r.foto_ruta = null;
+      return null;
+    },
+  };
+}
+
+test("Fotos (opción A): con el módulo «fotos» apagado no hay subida; se conserva «No puedo subir una foto»", async ({ page }) => {
+  await conSesion(page);
+  const base = baseConFoto();
+  const orden: string[] = [];
+  const llamadas = await simular(page, base, rpcFotos(base, orden, { fotos: false }));
+  await page.goto("mi-espacio/plan/accion/?id=o-foto");
+  await hidratar(page);
+  await expect.poll(() => llamadas.some((l) => l.nombre === "modulo_visible" && l.cuerpo.p_clave === "fotos")).toBe(true);
+  await expect(page.getByRole("button", { name: "No puedo subir una foto" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Subir foto" })).toHaveCount(0);
+  await expect(page.locator("input[type=file]")).toHaveCount(0);
+  // Acción sin foto obligatoria, ya hecha: tampoco ofrece foto opcional.
+  await page.goto("mi-espacio/plan/accion/?id=o-2026-10-12");
+  await hidratar(page);
+  await expect(page.locator(".me-hecha")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Agregar una foto" })).toHaveCount(0);
+});
+
+test("Fotos (opción A): sube en WebP de 1600 px sin metadatos, a su carpeta, y la miniatura usa enlace firmado", async ({ page }) => {
+  await conSesion(page);
+  const base = baseConFoto();
+  const orden: string[] = [];
+  await simular(page, base, rpcFotos(base, orden));
+  const { subidas } = await simularEvidencias(page, orden);
+  await page.goto("mi-espacio/plan/accion/?id=o-foto");
+  await hidratar(page);
+  await expect(page.getByText("Solo la ven tú y quien te acompaña.", { exact: false }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "No puedo subir una foto" })).toBeVisible();
+  await sinViolaciones(page);
+
+  // Un archivo que no es imagen permitida: se rechaza sin subir nada.
+  await page.locator("input[type=file]").setInputFiles({ name: "a.gif", mimeType: "image/gif", buffer: Buffer.from("GIF89a") });
+  await expect(page.getByRole("alert")).toContainText("Ese archivo no es una imagen JPG, PNG o WebP.");
+  expect(subidas).toHaveLength(0);
+
+  await page.locator("input[type=file]").setInputFiles({ name: "foto.png", mimeType: "image/png", buffer: pngConExif(3000, 2000) });
+  await expect(page.locator(".me-foto").getByText("En revisión", { exact: true })).toBeVisible();
+  expect(subidas).toHaveLength(1);
+  const s = subidas[0];
+  expect(s.ruta).toMatch(/^p1\/o-foto\/[0-9a-f-]{36}\.webp$/);
+  expect(s.tipo).toBe("image/webp");
+  expect(s.cuerpo.toString("latin1", 0, 4)).toBe("RIFF");
+  expect(s.cuerpo.toString("latin1", 8, 12)).toBe("WEBP");
+  expect(medidasWebp(s.cuerpo)).toEqual({ ancho: 1600, alto: 1067 });
+  expect(s.cuerpo.includes(Buffer.from("GPS-SECRETO"))).toBe(false);
+  expect(s.cuerpo.includes(Buffer.from("EXIF"))).toBe(false);
+  // Primero el archivo, después el registro con esa ruta.
+  expect(orden.slice(0, 2)).toEqual([`subir:${s.ruta}`, `registrar:${s.ruta}`]);
+  await expect(page.locator("img.me-foto__miniatura")).toHaveAttribute("src", /\/storage\/v1\/object\/sign\/evidencias\/p1\/o-foto\/.+token=firma-corta/);
+  await expect(page.locator("img.me-foto__miniatura")).toHaveAttribute("alt", "Tu foto");
+  await sinViolaciones(page);
+
+  // Eliminar: primero la base, luego el archivo; queda sin foto y sin archivos sueltos.
+  orden.length = 0;
+  await page.getByRole("button", { name: "Eliminar foto" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Eliminar", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Subir foto" })).toBeVisible();
+  expect(orden.indexOf("eliminar_evidencia")).toBe(0);
+  expect(orden).toContain(`borrar:${s.ruta}`);
+});
+
+test("Fotos (opción A): si la base no acepta la foto, el archivo subido se borra y se avisa", async ({ page }) => {
+  await conSesion(page);
+  const base = baseConFoto();
+  const orden: string[] = [];
+  await simular(page, base, rpcFotos(base, orden, { rechazar: true }));
+  const { archivos } = await simularEvidencias(page, orden);
+  await page.goto("mi-espacio/plan/accion/?id=o-foto");
+  await hidratar(page);
+  await page.locator("input[type=file]").setInputFiles({ name: "foto.png", mimeType: "image/png", buffer: pngConExif(800, 600) });
+  await expect(page.getByRole("alert")).toContainText("No pudimos subir la foto.");
+  await expect(page.getByRole("button", { name: "Subir foto" })).toBeVisible();
+  expect(orden[0]).toMatch(/^subir:/);
+  expect(orden[1]).toMatch(/^registrar:/);
+  expect(orden).toContain(`borrar:${orden[0].slice("subir:".length)}`);
+  expect(archivos.size).toBe(0);
+  expect(base.registros.some((r) => r.ocurrencia_id === "o-foto")).toBe(false);
+});
+
+test("Fotos (opción A): si el almacenamiento rechaza la subida, no se registra nada", async ({ page }) => {
+  await conSesion(page);
+  const base = baseConFoto();
+  const orden: string[] = [];
+  await simular(page, base, rpcFotos(base, orden));
+  await simularEvidencias(page, orden, { fallaSubida: true });
+  await page.goto("mi-espacio/plan/accion/?id=o-foto");
+  await hidratar(page);
+  await page.locator("input[type=file]").setInputFiles({ name: "foto.png", mimeType: "image/png", buffer: pngConExif(800, 600) });
+  await expect(page.getByRole("alert")).toContainText("No pudimos subir la foto.");
+  expect(orden.filter((x) => x.startsWith("registrar"))).toHaveLength(0);
+});
+
+test("Fotos (opción A): foto opcional en una acción hecha; agregar y quitar no cambian los créditos", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.registros.push({ ocurrencia_id: `o-${HOY}`, participante_id: "p1", estado: "hecha", version: "completa", explicacion: null, nota_revision: null, revisado_en: null, foto_ruta: null });
+  const orden: string[] = [];
+  const llamadas = await simular(page, base, rpcFotos(base, orden));
+  const { archivos } = await simularEvidencias(page, orden);
+  await page.goto(`mi-espacio/plan/accion/?id=o-${HOY}`);
+  await hidratar(page);
+  await expect(page.locator(".me-hecha")).toBeVisible();
+  await expect(page.getByText("No cambia tus créditos.")).toBeVisible();
+  await page.locator("input[type=file]").setInputFiles({ name: "foto.png", mimeType: "image/png", buffer: pngConExif(1200, 1600) });
+  await expect(page.locator(".me-foto-opcional img.me-foto__miniatura")).toBeVisible();
+  const ruta = orden.find((x) => x.startsWith("adjuntar:"))!.slice("adjuntar:".length);
+  expect(ruta).toMatch(/^p1\/o-2026-10-13\/[0-9a-f-]{36}\.webp$/);
+  expect(llamadas.some((l) => l.nombre === "marcar_accion" || l.nombre === "desmarcar_accion")).toBe(false);
+  await sinViolaciones(page);
+
+  orden.length = 0;
+  await page.getByRole("button", { name: "Quitar foto" }).click();
+  await expect(page.getByRole("button", { name: "Agregar una foto" })).toBeVisible();
+  expect(orden[0]).toBe("quitar_foto");
+  expect(orden).toContain(`borrar:${ruta}`);
+  expect(archivos.size).toBe(0);
+});
+
+test("Fotos en todo equipo (escritorio, móvil, iPhone y 320 px): sube o, si el navegador no puede limpiarla, la rechaza sin subir", async ({ page }, info) => {
+  await conSesion(page);
+  const base = baseConFoto();
+  const orden: string[] = [];
+  await simular(page, base, rpcFotos(base, orden));
+  const { subidas } = await simularEvidencias(page, orden);
+  for (const ancho of [320, 390]) {
+    if (info.project.name !== "escritorio") await page.setViewportSize({ width: ancho, height: 760 });
+    await page.goto("mi-espacio/plan/accion/?id=o-foto");
+    await hidratar(page);
+    await expect(page.getByRole("button", { name: "Subir foto" })).toBeVisible();
+    const desborde = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(desborde, `sin desborde a ${ancho} px`).toBeLessThanOrEqual(0);
+    if (info.project.name === "escritorio") break;
+  }
+  // ¿Este navegador escribe WebP? Safari antiguo devuelve PNG: entonces la foto se rechaza.
+  const escribeWebp = await page.evaluate(
+    () => new Promise<boolean>((ok) => { const c = document.createElement("canvas"); c.width = c.height = 2; c.toBlob((b) => ok(b?.type === "image/webp"), "image/webp"); }),
+  );
+  info.annotations.push({ type: "webp", description: `${info.project.name}: ${escribeWebp ? "escribe WebP" : "NO escribe WebP (la foto se rechaza)"}` });
+  await page.locator("input[type=file]").setInputFiles({ name: "foto.png", mimeType: "image/png", buffer: pngConExif(2400, 1800) });
+  if (escribeWebp) {
+    await expect(page.locator(".me-foto").getByText("En revisión", { exact: true })).toBeVisible();
+    expect(subidas).toHaveLength(1);
+    expect(subidas[0].ruta).toMatch(/^p1\/o-foto\/[0-9a-f-]{36}\.webp$/);
+    // WebKit de Playwright no entrega el cuerpo de un envío con archivo: ahí basta con que se
+    // haya subido (la app solo sube si el navegador entregó image/webp). En Chromium se mide.
+    if (subidas[0].cuerpo.length > 30) {
+      expect(subidas[0].cuerpo.toString("latin1", 8, 12)).toBe("WEBP");
+      expect(medidasWebp(subidas[0].cuerpo)).toEqual({ ancho: 1600, alto: 1200 });
+    } else info.annotations.push({ type: "webp", description: `${info.project.name}: cuerpo de la subida no disponible en este navegador de prueba` });
+    await expect(page.locator("img.me-foto__miniatura")).toBeVisible();
+  } else {
+    await expect(page.getByRole("alert")).toContainText("No pudimos preparar esta foto de forma segura");
+    expect(subidas).toHaveLength(0);
+    await expect(page.getByRole("button", { name: "No puedo subir una foto" })).toBeVisible();
+  }
+  const desborde = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(desborde).toBeLessThanOrEqual(0);
+  await sinViolaciones(page);
+});
+
+// ---------------------------------------------------------------------------
+// Mis avisos (maqueta de ChatGPT, 30-oct-2026)
+
+const avisosBase = (): Fila[] => [
+  { id: "av1", destinatario: UID, participante_id: "p1", tipo: "revision_publicada", titulo: "Tu coach publicó la revisión de la semana 1", enlace: "/mi-espacio/acompanamiento/", creado_en: "2026-10-13T12:00:00Z", leido_en: null },
+  { id: "av2", destinatario: UID, participante_id: "p1", tipo: "comunidad_respuesta", titulo: "Sol respondió tu publicación", enlace: "/mi-espacio/comunidad/", creado_en: "2026-10-13T11:00:00Z", leido_en: null },
+  { id: "av3", destinatario: UID, participante_id: "p1", tipo: "reconocimiento", titulo: "Nuevo reconocimiento: Primer paso", enlace: "/mi-espacio/", creado_en: "2026-10-12T15:00:00Z", leido_en: "2026-10-12T16:00:00Z" },
+];
+
+test("Mis avisos real: lee los avisos, la campana cuenta los sin leer y abrir uno lo marca en la base", async ({ page, isMobile }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.avisos = avisosBase();
+  const llamadas = await simular(page, base, {
+    modulo_visible: () => false,
+    marcar_avisos_leidos: (c) => {
+      const ids = c.p_ids as string[] | null;
+      for (const a of base.avisos) if (!a.leido_en && (ids === null || ids.includes(String(a.id)))) a.leido_en = new Date().toISOString();
+      return 1;
+    },
+  });
+  await page.goto("mi-espacio/avisos/");
+  await hidratar(page);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mis avisos");
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  // Solo avisos de Mi espacio, los más nuevos primero.
+  const lectura = llamadas.find((l) => l.tipo === "tabla" && l.nombre === "avisos")!;
+  expect(decodeURIComponent(lectura.url)).toContain("enlace=like./mi-espacio/%");
+  expect(decodeURIComponent(lectura.url)).toContain("order=creado_en.desc");
+  // Comunidad apagada: su aviso y su filtro no aparecen, y no cuenta en la campana.
+  await expect(page.locator(".av-item")).toHaveCount(2);
+  await expect(page.getByText("Sol respondió tu publicación")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Comunidad,/ })).toHaveCount(0);
+  const campana = page.locator(".cabecera-app__avisos");
+  await expect(campana).toHaveAccessibleName("Mis avisos, 1 sin leer");
+  await expect(page.getByRole("button", { name: "Todos, 1 sin leer" })).toBeVisible();
+  if (!isMobile) await expect(page.locator("nav.lateral").getByRole("link", { name: "Mis avisos, 1 sin leer" })).toHaveAttribute("aria-current", "page");
+  await sinViolaciones(page);
+
+  await page.locator(".av-item", { hasText: "revisión de la semana 1" }).click();
+  await page.waitForURL("**/mi-espacio/acompanamiento/");
+  const m = llamadas.filter((l) => l.nombre === "marcar_avisos_leidos");
+  expect(m.map((l) => l.cuerpo)).toEqual([{ p_ids: ["av1"] }]);
+  await expect(campana).toHaveAccessibleName("Mis avisos");
+
+  // Volver atrás y recargar: lo leído sigue leído (viene de la base) y los tres contadores coinciden.
+  await page.goBack();
+  await page.waitForURL("**/mi-espacio/avisos/");
+  await hidratar(page);
+  for (const paso of ["volver", "recargar"]) {
+    if (paso === "recargar") {
+      await page.reload();
+      await hidratar(page);
+    }
+    await expect(campana).toHaveAccessibleName("Mis avisos");
+    await expect(page.getByRole("button", { name: "Todos, 0 sin leer" })).toBeVisible();
+    await expect(page.locator(".av-item--nuevo")).toHaveCount(0);
+    if (!isMobile) await expect(page.locator("nav.lateral").getByRole("link", { name: "Mis avisos", exact: true })).toBeVisible();
+  }
+  // Sin avisos sin leer, «No leídos» queda vacío con su mensaje y «Todos» sigue mostrando la lista.
+  await page.getByRole("button", { name: "No leídos, 0 sin leer" }).click();
+  await expect(page.locator(".av-item")).toHaveCount(0);
+  await expect(page.getByText("No hay avisos aquí")).toBeVisible();
+  await page.getByRole("button", { name: "Todos, 0 sin leer" }).click();
+  await expect(page.locator(".av-item")).toHaveCount(2);
+});
+
+test("Mis avisos real: con la Comunidad visible aparece su filtro; «Marcar todo» marca todo en la base", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.avisos = avisosBase();
+  const llamadas = await simular(page, base, {
+    modulo_visible: (c) => c.p_clave === "comunidad",
+    marcar_avisos_leidos: () => {
+      for (const a of base.avisos) if (!a.leido_en) a.leido_en = new Date().toISOString();
+      return 2;
+    },
+  });
+  await page.goto("mi-espacio/avisos/");
+  await hidratar(page);
+  await expect(page.locator(".av-item")).toHaveCount(3);
+  await expect(page.getByRole("button", { name: "Comunidad, 1 sin leer" })).toBeVisible();
+  await expect(page.locator(".av-item", { hasText: "Sol respondió" })).toContainText("Entra a la Comunidad para leer la respuesta.");
+  await page.getByRole("button", { name: "Marcar todo como leído" }).click();
+  await expect(page.locator(".av-item--nuevo")).toHaveCount(0);
+  expect(llamadas.filter((l) => l.nombre === "marcar_avisos_leidos").map((l) => l.cuerpo)).toEqual([{ p_ids: null }]);
+  await expect(page.locator(".cabecera-app__avisos")).toHaveAccessibleName("Mis avisos");
+  // Al recargar sigue todo leído: lo guardó la base.
+  await page.reload();
+  await hidratar(page);
+  await expect(page.locator(".av-item")).toHaveCount(3);
+  await expect(page.locator(".av-item--nuevo")).toHaveCount(0);
+  await expect(page.locator(".cabecera-app__avisos")).toHaveAccessibleName("Mis avisos");
+});
+
+test("Mis avisos real: si no se pueden leer, lo dice sin romper Mi espacio", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial());
+  await page.route(`${SUPABASE_URL}/rest/v1/avisos**`, (rt) => rt.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ message: "falla" }) }));
+  await page.goto("mi-espacio/avisos/");
+  await hidratar(page);
+  await expect(page.getByRole("alert")).toContainText("No pudimos cargar tus avisos");
+  await expect(page.locator(".cabecera-app__avisos")).toHaveAccessibleName("Mis avisos");
+});
+
+// Registrar acción medible (maqueta de ChatGPT, 30-oct-2026)
+
+function rpcMedibles(base: Base, orden: string[]) {
+  const fila = (id: unknown) => base.registros.find((r) => r.ocurrencia_id === id);
+  return {
+    mis_medibles: () => [{ ocurrencia_id: `o-${HOY}`, cantidad_objetivo: 30, unidad: "minutos", cantidad: fila(`o-${HOY}`)?.cantidad ?? null }],
+    anotar_cantidad: (c: Record<string, unknown>) => {
+      orden.push(`cantidad:${c.p_cantidad}`);
+      const r = fila(c.p_ocurrencia);
+      if (!r) return { __error: "accion:sin_marcar", __estado: 409 };
+      r.cantidad = c.p_cantidad;
+      return null;
+    },
+    anotar_nota: (c: Record<string, unknown>) => {
+      orden.push(`nota:${c.p_nota}`);
+      const r = fila(c.p_ocurrencia);
+      if (!r) return { __error: "accion:sin_marcar", __estado: 409 };
+      r.nota = c.p_nota || null;
+      return null;
+    },
+  };
+}
+
+test("Registrar acción medible: marca una vez, anota cantidad y nota; editar no vuelve a marcar", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  const orden: string[] = [];
+  const llamadas = await simular(page, base, rpcMedibles(base, orden));
+  await page.goto(`mi-espacio/plan/accion/?id=o-${HOY}`);
+  await hidratar(page);
+  await expect(page.getByText("Para hoy: 30 minutos")).toBeVisible();
+  const cantidad = page.getByLabel("¿Cuánto tiempo hiciste hoy?");
+  await expect(cantidad).toHaveValue("30");
+  await expect(page.getByRole("button", { name: "Elegir 30 minutos" })).toHaveAttribute("aria-pressed", "true");
+  await sinViolaciones(page);
+
+  // Valor inválido: no se llama a la base.
+  await cantidad.fill("abc");
+  await page.getByRole("button", { name: "Guardar acción" }).click();
+  await expect(page.getByText(/Ingresa un valor válido/)).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "marcar_accion")).toBe(false);
+
+  await page.getByRole("button", { name: "Elegir 45 minutos" }).click();
+  await page.getByLabel(/¿Cómo te sentiste hoy\?/).fill("Con más calma.");
+  await page.getByRole("button", { name: "Guardar acción" }).click();
+  await expect(page.locator(".me-registrada").getByText("¡Acción registrada!")).toBeVisible();
+  await expect(page.locator(".me-registrada").getByText("Anotaste 45 minutos.")).toBeVisible();
+  await expect(page.locator(".me-registrada__nota")).toContainText("Con más calma.");
+  const marcas = () => llamadas.filter((l) => l.nombre === "marcar_accion").length;
+  expect(marcas()).toBe(1);
+  expect(orden).toEqual(["cantidad:45", "nota:Con más calma."]);
+  const creditos = (base.progreso[0] as Fila).creditos;
+
+  // Editar: solo anota (sin marcar de nuevo ni sumar créditos).
+  await page.getByRole("button", { name: "Editar lo que anotaste" }).click();
+  await page.getByLabel("¿Cuánto tiempo hiciste hoy?").fill("50");
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.locator(".me-registrada").getByText("Anotaste 50 minutos.")).toBeVisible();
+  expect(marcas()).toBe(1);
+  expect((base.progreso[0] as Fila).creditos).toBe(creditos);
+  await sinViolaciones(page);
+});
+
+test("Registrar acción medible: sin la columna nota no se muestra la nota; si falla lo anotado, la acción queda marcada", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  const orden: string[] = [];
+  const rpc = rpcMedibles(base, orden);
+  let falla = true;
+  await simular(page, base, { ...rpc, anotar_cantidad: (c) => (falla ? { __error: "red:caida", __estado: 500 } : rpc.anotar_cantidad(c)) });
+  // La base todavía no tiene registros.nota (migración 20261123000000 sin aplicar).
+  await page.route(`${SUPABASE_URL}/rest/v1/registros?select=ocurrencia_id%2Cnota*`, (rt) =>
+    rt.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ code: "42703", message: "column registros.nota does not exist" }) }),
+  );
+  await page.goto(`mi-espacio/plan/accion/?id=o-${HOY}`);
+  await hidratar(page);
+  await expect(page.getByLabel("¿Cuánto tiempo hiciste hoy?")).toBeVisible();
+  await expect(page.getByText("¿Cómo te sentiste hoy?")).toHaveCount(0);
+  await page.getByRole("button", { name: "Guardar acción" }).click();
+  await expect(page.getByRole("alert")).toContainText("Tu acción quedó marcada");
+  falla = false;
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.locator(".me-registrada").getByText("Anotaste 30 minutos.")).toBeVisible();
+  expect(orden.some((x) => x.startsWith("nota:"))).toBe(false);
+});
+
+// Informe de cierre de ciclo (maqueta de ChatGPT, 30-oct-2026): todo de informe_ciclo; el mensaje
+// lo escribe el coach (si no, su último foco y, sin focos, ninguna tarjeta); sin reconocimientos
+// mientras el módulo esté apagado.
+const INFORME = {
+  ciclo: { numero: 1, plan: "coach", inicio: "2026-10-05", fin: "2026-11-01", semanas: 4, estado: "cerrado" },
+  cerrado: true,
+  acciones: { programadas: 20, hechas: 15, cumplimiento: 75 },
+  constancia: { dias_con_acciones: 16, dias_con_alguna_hecha: 12, dias_completos: 9, mejor_racha: 6 },
+  creditos: 41,
+  semanas: [1, 2, 3, 4].map((n) => ({ semana: n, desde: "", hasta: "", programadas: 5, hechas: [5, 4, 3, 3][n - 1], en_revision: 0, cumplimiento: null, dias_completos: 0, creditos: 0, carga: null, revision_publicada: n < 3 })),
+  focos: [{ semana: 1, foco: "Escribir antes de revisar el teléfono." }, { semana: 2, foco: "Una página por día es suficiente." }],
+};
+const cerrada = () => {
+  const base = baseInicial();
+  base.ciclos[0].estado = "cerrado";
+  return base;
+};
+
+test("Informe de cierre real: datos de informe_ciclo y el mensaje escrito por el coach", async ({ page }) => {
+  await conSesion(page);
+  const llamadas = await simular(page, cerrada(), {
+    modulo_visible: () => false,
+    informe_ciclo: () => ({ ...INFORME, mensaje_cierre: { texto: "Cerraste este ciclo con mucha constancia.\nSigamos conversando.", autor: "Carla Soto", en: "2026-11-02T12:00:00Z" } }),
+  });
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mira todo lo que has avanzado");
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  await expect.poll(() => llamadas.find((l) => l.nombre === "informe_ciclo")?.cuerpo).toEqual({ p_ciclo: "c1" });
+  await expect(page.locator(".ic-progreso__pct")).toHaveText("75%");
+  await expect(page.locator(".ic-progreso")).toContainText("15 de 20 acciones hechas");
+  await expect(page.locator(".ic-dato--racha")).toContainText("6días de racha máxima");
+  // Reconocimientos apagados: sin tarjeta de logros y, en su lugar, días con todo hecho.
+  await expect(page.locator(".ic-dato--logros")).toContainText("9días con todo hecho");
+  await expect(page.getByRole("heading", { name: "Logros más destacados" })).toHaveCount(0);
+  expect(llamadas.some((l) => l.nombre === "mis_reconocimientos")).toBe(false);
+  await expect(page.locator(".ic-grafico__semanas li")).toHaveCount(4);
+  await expect(page.locator(".ic-evolucion [role=img]")).toHaveAttribute("aria-label", /semana 1, 5 de 5; semana 2, 4 de 5; semana 3, 3 de 5; semana 4, 3 de 5\.$/);
+  const coach = page.locator(".ic-coach");
+  await expect(coach.getByRole("heading")).toHaveText("Mensaje de tu coach");
+  await expect(coach.locator(".ic-coach__texto")).toHaveText("Cerraste este ciclo con mucha constancia.\nSigamos conversando.");
+  await expect(coach.locator(".ic-coach__autor")).toHaveText("Carla Soto");
+  await expect(coach.locator(".me-coach__avatar")).toHaveText("CS");
+  await expect(page.getByRole("link", { name: "Quiero seguir con un nuevo ciclo" })).toHaveAttribute("href", /\/contacto\/\?motivo=solicitud$/);
+  await sinViolaciones(page);
+});
+
+test("Informe de cierre real: sin mensaje, el último foco; sin focos, ninguna tarjeta; error con reintento", async ({ page }) => {
+  await conSesion(page);
+  let falla = true;
+  await simular(page, cerrada(), {
+    modulo_visible: () => true,
+    mis_reconocimientos: () => [],
+    informe_ciclo: () => (falla ? { __error: "sin conexión", __estado: 500 } : { ...INFORME, focos: [] }),
+  });
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  await expect(page.getByText("No pudimos cargar esta parte.")).toBeVisible();
+  falla = false;
+  await page.getByRole("button", { name: "Reintentar" }).click();
+  await expect(page.locator(".ic-progreso__pct")).toHaveText("75%");
+  await expect(page.locator(".ic-coach")).toHaveCount(0);
+  // Módulo habilitado sin reconocimientos conseguidos: tarjeta con su texto, sin inventar logros.
+  await expect(page.locator(".ic-dato--logros")).toContainText("0reconocimientos ganados");
+  await expect(page.locator(".ic-logros")).toContainText("Los reconocimientos que consigas aparecerán aquí.");
+});
+
+test("Informe de cierre real: con mensaje ausente y focos, muestra el último foco de su coach", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, cerrada(), { modulo_visible: () => false, informe_ciclo: () => INFORME, mi_coach: () => [{ nombre: "Carla Soto", presentacion: null }] });
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  const coach = page.locator(".ic-coach");
+  await expect(coach.getByRole("heading")).toHaveText("El último foco de tu coach");
+  await expect(coach.locator(".ic-coach__texto")).toHaveText("Una página por día es suficiente.");
+  await expect(coach).toContainText("Revisión de la semana 2");
+});
+
+// ---------------------------------------------------------------------------
+// Recordatorios (maqueta de ChatGPT, 30-oct-2026)
+
+const RUTA_RECORDATORIOS = "mi-espacio/preferencias/recordatorios/";
+const prefsBase = (): Fila => ({
+  participante_id: "p1", activos: true, acciones_del_dia: true, registro_semanal: false, videollamadas: true, mensajes_coach: true,
+  comunidad: false, logros: true, por_correo: false, desde: 8, hasta: 21, hora: 19, dias: [1, 3, 5],
+});
+
+test("Recordatorios real: lee las preferencias de la base y guarda con guardar_recordatorios", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.recordatorios = [prefsBase()];
+  const llamadas = await simular(page, base, {
+    correo_disponible: () => true,
+    guardar_recordatorios: () => null,
+  });
+  await page.goto(RUTA_RECORDATORIOS);
+  await hidratar(page);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(T_RECORDATORIOS.titulo);
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  const lectura = llamadas.find((l) => l.tipo === "tabla" && l.nombre === "recordatorios")!;
+  expect(decodeURIComponent(lectura.url)).toContain("select=activos,acciones_del_dia");
+  const sw = (n: string) => page.getByRole("switch", { name: n, exact: true });
+  await expect(sw(T_RECORDATORIOS.general.titulo)).toHaveAttribute("aria-checked", "true");
+  await expect(sw(T_RECORDATORIOS.categorias.accionesDelDia.titulo)).toHaveAttribute("aria-checked", "true");
+  await expect(sw(T_RECORDATORIOS.categorias.registroSemanal.titulo)).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByLabel(T_RECORDATORIOS.horario.desde)).toHaveValue("8");
+  await expect(page.getByLabel(T_RECORDATORIOS.horario.hasta)).toHaveValue("21");
+  await expect(page.getByRole("button", { name: "miércoles", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "martes", exact: true })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByText(T_RECORDATORIOS.canales.correoActivo("ana@correo.cl"))).toBeVisible();
+  await sinViolaciones(page);
+
+  await sw(T_RECORDATORIOS.categorias.registroSemanal.titulo).click();
+  await page.getByRole("button", { name: "martes", exact: true }).click();
+  await page.getByRole("button", { name: T_RECORDATORIOS.guardar }).click();
+  await expect(page.getByRole("status").filter({ hasText: T_RECORDATORIOS.guardado })).toBeVisible();
+  const g = llamadas.filter((l) => l.nombre === "guardar_recordatorios");
+  expect(g).toHaveLength(1);
+  expect(g[0].cuerpo).toEqual({
+    p: {
+      activos: true, acciones_del_dia: true, registro_semanal: true, videollamadas: true, mensajes_coach: true,
+      comunidad: false, logros: true, por_correo: false, desde: 8, hasta: 21, hora: 19, dias: [1, 2, 3, 5],
+    },
+  });
+});
+
+test("Recordatorios real: sin fila usa lo de por defecto (apagados) y el correo inactivo se dice tal cual", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial(), { correo_disponible: () => false });
+  await page.goto(RUTA_RECORDATORIOS);
+  await hidratar(page);
+  await expect(page.getByRole("switch", { name: T_RECORDATORIOS.general.titulo, exact: true })).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByText(T_RECORDATORIOS.general.apagado)).toBeVisible();
+  await expect(page.getByText(T_RECORDATORIOS.canales.correoInactivo)).toBeVisible();
+});
+
+test("Recordatorios real: sin la migración aplicada lo explica y no ofrece guardar", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial());
+  await page.route(`${SUPABASE_URL}/rest/v1/recordatorios**`, (rt) =>
+    rt.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ code: "42703", message: "column recordatorios.activos does not exist" }) }));
+  await page.goto(RUTA_RECORDATORIOS);
+  await hidratar(page);
+  await expect(page.getByText(T_RECORDATORIOS.noDisponible.titulo)).toBeVisible();
+  await expect(page.getByRole("button", { name: T_RECORDATORIOS.guardar })).toHaveCount(0);
+});
+
+test("Recordatorios real: si guardar falla, lo dice y no pierde lo elegido", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.recordatorios = [prefsBase()];
+  await simular(page, base, { correo_disponible: () => true, guardar_recordatorios: () => ({ __error: "dias:invalido" }) });
+  await page.goto(RUTA_RECORDATORIOS);
+  await hidratar(page);
+  await page.getByRole("switch", { name: T_RECORDATORIOS.categorias.logros.titulo, exact: true }).click();
+  await page.getByRole("button", { name: T_RECORDATORIOS.guardar }).click();
+  await expect(page.getByRole("status").filter({ hasText: T_RECORDATORIOS.error })).toBeVisible();
+  await expect(page.getByRole("switch", { name: T_RECORDATORIOS.categorias.logros.titulo, exact: true })).toHaveAttribute("aria-checked", "false");
+});
+
+// ---------------------------------------------------------------------------
+// Asistente de Rumbo (maqueta de ChatGPT, 30-oct-2026): solo RPC que ya están en la base (E2).
+
+const RUTA_ASISTENTE = "mi-espacio/asistente/";
+const consentido = (): Fila => ({ participante_id: "p1", metas: true, acciones: false, registro_semanal: false, aceptado_en: "2026-10-06T13:00:00Z", retirado_en: null });
+const consultasBase = (): Fila[] => [
+  { id: "q3", pregunta: "Quiero morir", estado: "crisis", respuesta: null, creada_en: "2026-10-13T15:00:00Z", revisada_en: null },
+  { id: "q2", pregunta: "¿Qué hábitos me recomiendas?", estado: "descartada", respuesta: null, creada_en: "2026-10-13T12:00:00Z", revisada_en: "2026-10-13T13:00:00Z" },
+  { id: "q1", pregunta: "¿Cómo mantengo la motivación?", estado: "aprobada", respuesta: "Texto aprobado por el coach.", creada_en: "2026-10-12T12:00:00Z", revisada_en: "2026-10-12T13:00:00Z" },
+];
+
+test("Asistente real apagado: sin entrada en la navegación, lo explica y la ayuda en crisis sigue visible", async ({ page, isMobile }) => {
+  await conSesion(page);
+  const llamadas = await simular(page, baseInicial(), { ia_disponible: () => false, mis_consultas_ia: () => [] });
+  await page.goto(RUTA_ASISTENTE);
+  await hidratar(page);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(T_ASISTENTE.titulo);
+  await expect(page.getByText(T_ASISTENTE.apagado.titulo)).toBeVisible();
+  await expect(page.getByLabel(T_ASISTENTE.escribir)).toHaveCount(0);
+  await expect(page.locator(".as-crisis")).toContainText("*4141");
+  if (!isMobile) await expect(page.locator("nav.lateral").getByRole("link", { name: T_ASISTENTE.titulo })).toHaveCount(0);
+  expect(llamadas.filter((l) => l.nombre === "ia_preguntar")).toHaveLength(0);
+  // Nunca se lee la tabla de consultas (tiene borradores): solo mis_consultas_ia.
+  expect(llamadas.filter((l) => l.tipo === "tabla" && l.nombre === "ia_consultas")).toHaveLength(0);
+});
+
+test("Asistente real: sin consentimiento no se puede preguntar; aceptar guarda lo elegido", async ({ page, isMobile }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  const llamadas = await simular(page, base, {
+    ia_disponible: () => true,
+    mis_consultas_ia: () => [],
+    ia_guardar_consentimiento: () => null,
+  });
+  await page.goto(RUTA_ASISTENTE);
+  await hidratar(page);
+  if (!isMobile) await expect(page.locator("nav.lateral").getByRole("link", { name: T_ASISTENTE.titulo })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("heading", { name: T_ASISTENTE.bienvenida.titulo })).toBeVisible();
+  await expect(page.getByLabel(T_ASISTENTE.escribir)).toHaveCount(0);
+  await sinViolaciones(page);
+  await page.getByRole("button", { name: T_ASISTENTE.bienvenida.comenzar }).click();
+  await expect(page.getByRole("heading", { name: T_ASISTENTE.privacidad.titulo })).toBeVisible();
+  expect(llamadas.filter((l) => l.nombre === "ia_guardar_consentimiento" || l.nombre === "ia_preguntar")).toHaveLength(0);
+  await sinViolaciones(page);
+  await page.getByRole("checkbox", { name: new RegExp(T_ASISTENTE.consentimiento.opciones.acciones.titulo) }).check();
+  await page.getByRole("button", { name: T_ASISTENTE.privacidad.aceptar }).click();
+  await expect(page.getByLabel(T_ASISTENTE.escribir)).toBeVisible();
+  expect(llamadas.filter((l) => l.nombre === "ia_guardar_consentimiento").map((l) => l.cuerpo)).toEqual([
+    { p_metas: false, p_acciones: true, p_registro_semanal: false },
+  ]);
+  await expect(page.getByText(T_ASISTENTE.vacia.titulo)).toBeVisible();
+});
+
+test("Asistente real: muestra solo lo aprobado, lo no compartido y la crisis; preguntar va a ia_preguntar y relee", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.ia_consentimientos = [consentido()];
+  const consultas = consultasBase();
+  const llamadas = await simular(page, base, {
+    ia_disponible: () => true,
+    mis_consultas_ia: () => consultas,
+    ia_preguntar: (c) => {
+      consultas.unshift({ id: "q4", pregunta: c.p_pregunta, estado: "en_revision", respuesta: null, creada_en: "2026-10-13T16:00:00Z", revisada_en: null });
+      return { id: "q4", estado: "enviada" };
+    },
+  });
+  await page.goto(RUTA_ASISTENTE);
+  await hidratar(page);
+  const pares = page.locator(".as-par");
+  await expect(pares).toHaveCount(3);
+  await expect(pares.nth(0)).toContainText("Texto aprobado por el coach.");
+  await expect(pares.nth(0)).toContainText(T_ASISTENTE.estados.aprobada.etiqueta);
+  await expect(pares.nth(1)).toContainText(T_ASISTENTE.estados.descartada.texto);
+  await expect(pares.nth(2)).toContainText(T_ASISTENTE.estados.crisis.etiqueta);
+  await expect(pares.nth(2).getByRole("link", { name: "131" })).toBeVisible();
+  await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
+  await sinViolaciones(page);
+
+  await page.getByLabel(T_ASISTENTE.escribir).fill("  ¿Cómo organizo mi semana?  ");
+  await page.getByRole("button", { name: T_ASISTENTE.enviar }).click();
+  await expect(page.locator("#as-pregunta-estado")).toHaveText(T_ASISTENTE.enviadaAviso);
+  expect(llamadas.filter((l) => l.nombre === "ia_preguntar").map((l) => l.cuerpo)).toEqual([{ p_pregunta: "¿Cómo organizo mi semana?" }]);
+  await expect(pares).toHaveCount(4);
+  await expect(pares.nth(3)).toContainText(T_ASISTENTE.estados.en_revision.texto);
+});
+
+test("Asistente real: el tope diario se explica sin perder lo escrito", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.ia_consentimientos = [consentido()];
+  await simular(page, base, { ia_disponible: () => true, mis_consultas_ia: () => [], ia_preguntar: () => ({ __error: "ia:demasiadas", __estado: 429 }) });
+  await page.goto(RUTA_ASISTENTE);
+  await hidratar(page);
+  await page.getByLabel(T_ASISTENTE.escribir).fill("¿Cómo sigo mañana?");
+  await page.getByRole("button", { name: T_ASISTENTE.enviar }).click();
+  await expect(page.locator("#as-pregunta-estado")).toHaveText(T_ASISTENTE.errores.demasiadas);
+  await expect(page.getByLabel(T_ASISTENTE.escribir)).toHaveValue("¿Cómo sigo mañana?");
+});
+
+test("Asistente real: retirar la autorización llama a la base y deja de ofrecer preguntar", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.ia_consentimientos = [consentido()];
+  const llamadas = await simular(page, base, { ia_disponible: () => true, mis_consultas_ia: () => consultasBase().slice(2), ia_retirar_consentimiento: () => null });
+  await page.goto(RUTA_ASISTENTE);
+  await hidratar(page);
+  await page.getByRole("button", { name: T_ASISTENTE.ajustes.retirar }).click();
+  await page.getByRole("button", { name: T_ASISTENTE.ajustes.confirmarSi }).click();
+  await expect(page.getByRole("heading", { name: T_ASISTENTE.desactivado.titulo })).toBeVisible();
+  await expect(page.getByLabel(T_ASISTENTE.escribir)).toHaveCount(0);
+  await expect(page.locator(".as-par")).toHaveCount(1); // lo anterior sigue a la vista
+  expect(llamadas.filter((l) => l.nombre === "ia_retirar_consentimiento")).toHaveLength(1);
+  // Volver a activarlo pide autorizar otra vez, con nada marcado; hasta aceptar no se envía nada.
+  await page.getByRole("button", { name: T_ASISTENTE.desactivado.activar }).click();
+  await expect(page.getByRole("heading", { name: T_ASISTENTE.privacidad.titulo })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: new RegExp(T_ASISTENTE.consentimiento.opciones.metas.titulo) })).not.toBeChecked();
+  expect(llamadas.filter((l) => l.nombre === "ia_preguntar" || l.nombre === "ia_guardar_consentimiento")).toHaveLength(0);
+});
+
+test("Asistente real: «Me sirvió» / «No me sirvió» guarda una valoración, se cambia, admite un comentario y se quita", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.ia_consentimientos = [consentido()];
+  base.ia_valoraciones = [];
+  const llamadas = await simular(page, base, { ia_disponible: () => true, mis_consultas_ia: () => consultasBase(), ia_valorar: () => null });
+  await page.goto(RUTA_ASISTENTE);
+  await hidratar(page);
+  const grupos = page.getByRole("group", { name: T_ASISTENTE.valorar.grupo });
+  await expect(grupos).toHaveCount(1); // solo en la respuesta aprobada
+  const sirvio = grupos.getByRole("button", { name: T_ASISTENTE.valorar.sirvio, exact: true });
+  const noSirvio = grupos.getByRole("button", { name: T_ASISTENTE.valorar.noSirvio });
+  await sirvio.click();
+  await expect(sirvio).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText(T_ASISTENTE.valorar.gracias)).toBeVisible();
+  await noSirvio.click();
+  await expect(noSirvio).toHaveAttribute("aria-pressed", "true");
+  await expect(sirvio).toHaveAttribute("aria-pressed", "false");
+  await page.getByLabel(T_ASISTENTE.valorar.motivo).fill("Muy general");
+  await sinViolaciones(page);
+  await page.getByRole("button", { name: T_ASISTENTE.valorar.guardarMotivo }).click();
+  await expect(page.getByText(T_ASISTENTE.valorar.motivoGuardado)).toBeVisible();
+  await noSirvio.click();
+  await expect(noSirvio).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByLabel(T_ASISTENTE.valorar.motivo)).toHaveCount(0);
+  expect(llamadas.filter((l) => l.nombre === "ia_valorar").map((l) => l.cuerpo)).toEqual([
+    { p_consulta: "q1", p_util: true, p_motivo: null },
+    { p_consulta: "q1", p_util: false, p_motivo: null },
+    { p_consulta: "q1", p_util: false, p_motivo: "Muy general" },
+    { p_consulta: "q1", p_util: null, p_motivo: null },
+  ]);
+});
+
+test("Asistente real: sin la tabla de valoraciones (migración sin aplicar) no aparecen los botones", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.ia_consentimientos = [consentido()];
+  await simular(page, base, { ia_disponible: () => true, mis_consultas_ia: () => consultasBase() });
+  await page.route(`${SUPABASE_URL}/rest/v1/ia_valoraciones*`, (rt) =>
+    rt.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ code: "PGRST205", message: "sin tabla" }) }),
+  );
+  await page.goto(RUTA_ASISTENTE);
+  await hidratar(page);
+  await expect(page.locator(".as-par").first()).toContainText("Texto aprobado por el coach.");
+  await expect(page.getByRole("group", { name: T_ASISTENTE.valorar.grupo })).toHaveCount(0);
+});
+
+test("Mis avisos real: «no compartida» no revela la respuesta y lleva al asistente", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.ia_consentimientos = [consentido()];
+  base.avisos = [
+    { id: "av9", destinatario: UID, participante_id: "p1", tipo: "ia_no_compartida", titulo: "Tu coach revisó tu pregunta al asistente", enlace: "/mi-espacio/asistente/", creado_en: "2026-10-13T12:00:00Z", leido_en: null },
+  ];
+  await simular(page, base, { modulo_visible: () => false, marcar_avisos_leidos: () => 1, ia_disponible: () => true, mis_consultas_ia: () => consultasBase() });
+  await page.goto("mi-espacio/avisos/");
+  await hidratar(page);
+  const item = page.locator(".av-item", { hasText: "Tu coach revisó tu pregunta al asistente" });
+  await expect(item).toContainText(T_AVISOS.descripcion.ia_no_compartida);
+  await sinViolaciones(page);
+  await item.click();
+  await page.waitForURL("**/mi-espacio/asistente/");
+});
+
+test("Asistente real: si no se puede leer, lo dice sin romper Mi espacio", async ({ page }) => {
+  await conSesion(page);
+  await simular(page, baseInicial(), { ia_disponible: () => true, mis_consultas_ia: () => ({ __error: "sesion:sin_ficha", __estado: 403 }) });
+  await page.goto(RUTA_ASISTENTE);
+  await hidratar(page);
+  await expect(page.getByRole("alert")).toContainText(T_ASISTENTE.errorCargar.titulo);
+  await expect(page.locator(".as-crisis")).toContainText("*4141");
+});
+
+test("Asistente real: «Apoyo» lleva al asistente solo cuando está disponible", async ({ page }) => {
+  await conSesion(page);
+  let disponible = true;
+  await simular(page, baseInicial(), { ia_disponible: () => disponible, mis_consultas_ia: () => [] });
+  await page.goto("mi-espacio/acompanamiento/");
+  await hidratar(page);
+  await page.locator(".as-acceso").click();
+  await page.waitForURL(`**/${RUTA_ASISTENTE}`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(T_ASISTENTE.titulo);
+  disponible = false;
+  await page.goto("mi-espacio/acompanamiento/");
+  await hidratar(page);
+  await expect(page.locator(".as-acceso")).toHaveCount(0);
+});
+
+test("Asistente real: Mis conversaciones muestra solo lo que entrega mis_consultas_ia, con su estado", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  base.ia_consentimientos = [consentido()];
+  const llamadas = await simular(page, base, { ia_disponible: () => true, mis_consultas_ia: () => consultasBase() });
+  await page.goto(`${RUTA_ASISTENTE}?ver=conversaciones`);
+  await hidratar(page);
+  await expect(page.locator(".as-historial__fila")).toHaveCount(consultasBase().length);
+  await expect(page.locator(".as-historial__fila--descartada")).toContainText(T_ASISTENTE.historial.estados.descartada);
+  // La pantalla nunca lee la tabla de consultas (tendría borradores sin revisar).
+  expect(llamadas.filter((l) => l.tipo === "tabla" && l.nombre === "ia_consultas")).toHaveLength(0);
 });

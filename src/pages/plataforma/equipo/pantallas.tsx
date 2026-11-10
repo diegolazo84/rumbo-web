@@ -2,7 +2,7 @@
 // de la vista previa recibe y le pasa las escrituras; la presentación es la misma.
 // Escrituras (6.4 y 6.7): las tablas de gestión con las políticas admin_todo (aal2) y las RPC
 // de admin (crear_espacio, nuevo_enlace_solicitud, revisar_evidencia, publicar_programa…).
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Etiqueta from "../../../components/Etiqueta";
 import { Icono } from "../../../components/app";
@@ -20,13 +20,19 @@ import { ContenidoSolicitud, type AcuerdoSolicitud, type ServidorSolicitud } fro
 import { ListaEvidencias } from "../../vista-previa/panel/Fotos";
 import { ColaHoy } from "../../vista-previa/panel/Hoy";
 import { ListaSolicitudes } from "../../vista-previa/panel/Solicitudes";
-import { COMUNIDAD_PANEL, MODULOS_PANEL, CONTACTO_PANEL, MAS, PANEL_REAL, T_PANEL } from "../../vista-previa/panel/textos";
+import { ASISTENTE_ADMIN, ASISTENTE_PANEL, COMUNIDAD_PANEL, EQUIPO_PANEL, MODULOS_PANEL, NEGOCIO_PANEL, PAGOS_PANEL, CONTACTO_PANEL, MAS, PANEL_REAL, T_PANEL } from "../../vista-previa/panel/textos";
 import { ConstructorReal } from "./constructor";
 import { aAjuste, aSolicitud, colaReal, nombreDe, reordenesDe, reordenesUsados, type FilaMensaje, type FilaPeticion } from "./datos";
 import { RegistrarFactor, factoresTotp } from "./Mfa";
 import { FichaParticipanteReal, RevisionReal } from "./participante";
 import { ComunidadReal, R_COMUNIDAD } from "./comunidad";
 import { ModulosReal, R_MODULOS } from "./modulos";
+import { PagosReal, R_PAGOS } from "./pagos";
+import { NegocioReal, R_NEGOCIO } from "./negocio";
+import { EquipoReal, R_EQUIPO } from "./equipo";
+import { PerfilEquipo } from "./perfil";
+import { AsistenteReal, R_ASISTENTE } from "./asistente";
+import { AsistenteAdminReal, R_ASISTENTE_ADMIN } from "./asistente-admin";
 import { MisParticipantesReal } from "./participantes";
 import { Alerta, NoEncontrada, useDatosPanel, useEscritura, useInstantanea } from "./comun";
 
@@ -56,6 +62,16 @@ export default function Pantallas({ ruta }: { ruta: RutaPlataforma }) {
       return <ComunidadReal />;
     case "/equipo/modulos/":
       return <ModulosReal />;
+    case "/equipo/pagos/":
+      return <PagosReal />;
+    case "/equipo/negocio/":
+      return <NegocioReal />;
+    case "/equipo/equipo/":
+      return <EquipoReal />;
+    case "/equipo/asistente/":
+      return <AsistenteReal />;
+    case "/equipo/asistente/administracion/":
+      return <AsistenteAdminReal />;
     case "/equipo/mas/":
       return <MasReal />;
     default:
@@ -197,7 +213,7 @@ function AjustesReal() {
 }
 
 // ---------------------------------------------------------------------------
-// Revisar: fotos y explicaciones (5.8). En la etapa 3 no hay fotos (llegan en la 4).
+// Revisar: fotos y explicaciones (5.8). Las fotos se ven con enlace firmado de 5 minutos.
 
 type OcurrenciaEvidencia = { id: string; titulo: string; instrucciones: string; fecha: Iso };
 
@@ -208,6 +224,12 @@ function RevisarReal() {
   const [ocurrencias, setOcurrencias] = useState<OcurrenciaEvidencia[] | null>(null);
   const ids = useMemo(() => [...new Set(filas.map((e) => e.ocurrencia_id))], [filas]);
   const clave = ids.join(",");
+  // Enlace firmado de 5 minutos (la política del bucket deja verla solo a quien acompaña o al dueño).
+  const pedirUrl = useCallback(async (ruta: string) => {
+    const { data, error } = await sb.storage.from("evidencias").createSignedUrl(ruta, 300);
+    if (error || !data?.signedUrl) throw error ?? new Error("sin enlace");
+    return data.signedUrl;
+  }, [sb]);
   useEffect(() => {
     let vivo = true;
     if (!ids.length) {
@@ -237,14 +259,15 @@ function RevisarReal() {
       accion: o?.titulo ?? "—",
       instrucciones: (o?.instrucciones ?? "").split("\n").filter((t) => t.trim()),
       fecha: o?.fecha ?? d.hoy,
-      foto: false,
+      foto: !!e.foto_ruta,
+      fotoRuta: e.foto_ruta,
       explicacion: e.explicacion,
     };
   });
   return (
     <ListaEvidencias
       lista={lista}
-      nota={PANEL_REAL.revisar.sinMiniatura}
+      pedirUrl={pedirUrl}
       onRevisar={async (id, aprobar, nota) => {
         datos(await sb.rpc("revisar_evidencia", { p_registro: id, p_aprobar: aprobar, p_nota: nota || null }));
         await recargar();
@@ -534,6 +557,32 @@ function MasReal() {
       <Link to={R_MODULOS} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
         <Icono nombre="sliders-horizontal" tamaño={20} />
         <span>{MODULOS_PANEL.enlace}</span>
+        <Icono nombre="arrow-right" tamaño={20} />
+      </Link>
+      <Link to={R_NEGOCIO} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
+        <Icono nombre="chart-column-increasing" tamaño={20} />
+        <span>{NEGOCIO_PANEL.enlace}</span>
+        <Icono nombre="arrow-right" tamaño={20} />
+      </Link>
+      <Link to={R_PAGOS} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
+        <Icono nombre="wallet" tamaño={20} />
+        <span>{PAGOS_PANEL.enlace}</span>
+        <Icono nombre="arrow-right" tamaño={20} />
+      </Link>
+      <Link to={R_EQUIPO} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
+        <Icono nombre="user-plus" tamaño={20} />
+        <span>{EQUIPO_PANEL.enlace}</span>
+        <Icono nombre="arrow-right" tamaño={20} />
+      </Link>
+      <PerfilEquipo />
+      <Link to={R_ASISTENTE} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
+        <Icono nombre="sprout" tamaño={20} />
+        <span>{ASISTENTE_PANEL.enlace}</span>
+        <Icono nombre="arrow-right" tamaño={20} />
+      </Link>
+      <Link to={R_ASISTENTE_ADMIN} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
+        <Icono nombre="settings" tamaño={20} />
+        <span>{ASISTENTE_ADMIN.enlace}</span>
         <Icono nombre="arrow-right" tamaño={20} />
       </Link>
 

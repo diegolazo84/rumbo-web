@@ -49,8 +49,11 @@ export const RUTAS_PLATAFORMA: RutaPlataforma[] = [
   me("comunidad/desafios/", "Desafíos", "comunidad", "Desafíos de la comunidad"),
   me("logros/", "Mis logros", "logros"),
   me("logros/creditos/", "Créditos", "logros", "Créditos"),
+  me("avisos/", "Mis avisos", "avisos"),
+  me("asistente/", "Asistente de Rumbo", "asistente"),
   me("lo-que-viene/", "Lo que viene en Rumbo", ""),
   me("preferencias/", "Preferencias", "preferencias"),
+  me("preferencias/recordatorios/", "Recordatorios", "preferencias", "Recordatorios"),
   me("preferencias/eliminar/", "Preferencias", "preferencias", "Eliminar mis datos"),
   me("ayuda/", "Ayuda inmediata", "rumbo"),
   // Rutas anteriores a la etapa 2: redirigen a la sección nueva.
@@ -72,6 +75,11 @@ export const RUTAS_PLATAFORMA: RutaPlataforma[] = [
   panel("contacto/", "Contacto y derechos", "mas"),
   panel("comunidad/", "Comunidad", "mas"),
   panel("modulos/", "Módulos", "mas"),
+  panel("pagos/", "Pagos", "mas"),
+  panel("negocio/", "Negocio", "mas"),
+  panel("equipo/", "Equipo", "mas"),
+  panel("asistente/", "Asistente", "mas"),
+  panel("asistente/administracion/", "Asistente", "mas"),
   panel("mas/", "Más", "mas"),
 ];
 

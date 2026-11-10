@@ -10,6 +10,7 @@ import type { Escenario, EstadoRegistro, Meta, Novedad, Ocurrencia, PlanParam, R
 import { LIMITES } from "../../../data/formularios";
 import { diasEntre, sumarDias, type Iso } from "../../../lib/fechas";
 import { RUTAS_MI_ESPACIO, RUTAS_PUBLICAS, rutaPrevia } from "../rutas";
+import type { Aviso } from "./avisos/datos";
 
 export type Progreso = ReturnType<typeof calcularProgreso>;
 
@@ -47,6 +48,9 @@ export type RutasEspacio = {
   ayuda: string;
   privacidad: string;
   condiciones: string;
+  avisos: string;
+  recordatorios: string;
+  asistente: string;
 };
 
 export const R_PREVIA: RutasEspacio = {
@@ -78,6 +82,9 @@ export const R_PREVIA: RutasEspacio = {
   ayuda: rutaPrevia("mi-espacio/ayuda/"),
   privacidad: "/privacidad/",
   condiciones: "/condiciones/",
+  avisos: rutaPrevia("mi-espacio/avisos/"),
+  recordatorios: rutaPrevia("mi-espacio/preferencias/recordatorios/"),
+  asistente: rutaPrevia("mi-espacio/asistente/"),
 };
 
 // Rutas reales (plataforma 2.1). Los identificadores van en la búsqueda (?id=, ?n=), nunca en la ruta.
@@ -110,6 +117,9 @@ export const R_REAL: RutasEspacio = {
   ayuda: "/mi-espacio/ayuda/",
   privacidad: "/privacidad/",
   condiciones: "/condiciones/",
+  avisos: "/mi-espacio/avisos/",
+  recordatorios: "/mi-espacio/preferencias/recordatorios/",
+  asistente: "/mi-espacio/asistente/",
 };
 
 // ---------------------------------------------------------------------------
@@ -118,6 +128,7 @@ export const R_REAL: RutasEspacio = {
 export type EstadoCiclo = "preparacion" | "en_curso" | "pausa" | "cerrado";
 
 export type CicloEspacio = {
+  id?: string; // solo en Mi espacio real (informe_ciclo)
   numero: number;
   plan: PlanParam;
   semanas: number;
@@ -156,9 +167,17 @@ export type DatosAjuste = { tipo: string; ocurrencias: string[]; desde: Iso; tex
 export type Servidor = {
   // Marcar (hecha o corta), desmarcar (null) o dejar pasar: devuelve el progreso del servidor (D4).
   registrar: (id: string, estado: EstadoRegistro | null) => Promise<Progreso>;
+  // Registrar acción (R1): cantidad de una acción medible y nota «¿Cómo te sentiste hoy?» en una
+  // acción ya marcada. No vuelve a marcar: los créditos no cambian. null borra el dato.
+  anotar: (id: string, d: { cantidad?: number | null; nota?: string | null }) => Promise<void>;
   // «No puedo subir una foto» (4.9): la explicación queda «En revisión».
   registrarEvidencia: (id: string, explicacion: string) => Promise<Progreso>;
   eliminarEvidencia: (id: string) => Promise<Progreso>;
+  // Fotos privadas (módulo «fotos»): sube una foto ya preparada (WebP, sin EXIF). «evidencia» en
+  // acciones que la exigen (queda en revisión); «opcional» en las demás (complemento de «hecha»).
+  subirFoto: (id: string, foto: Blob, modo: "evidencia" | "opcional") => Promise<Progreso>;
+  quitarFoto: (id: string) => Promise<Progreso>; // foto opcional; la acción sigue hecha
+  urlFoto: (ruta: string) => Promise<string>; // enlace firmado de 5 minutos
   guardarRegistroSemanal: (semana: number, datos: DatosRegistroSemanal, enviar: boolean) => Promise<void>;
   pedirAjuste: (datos: DatosAjuste) => Promise<SolicitudAjuste>;
   guardarNombre: (nombre: string) => Promise<void>;
@@ -166,6 +185,17 @@ export type Servidor = {
   pedirDerecho: (tipo: string, detalle: string | null) => Promise<Iso | null>; // fecha límite, si hay
   exportar: () => Promise<unknown>;
   verNovedad: (id: string) => void; // la novedad deja de mostrarse en Hoy
+  // Mis avisos: marca como leídos los indicados (o todos con null); queda igual en todos los equipos.
+  marcarAvisos: (ids: string[] | null) => Promise<void>;
+  // Recordatorios: guarda todas las preferencias de una vez (guardar_recordatorios).
+  guardarRecordatorios: (p: PrefRecordatorios) => Promise<void>;
+  // Asistente de Rumbo (E2, ya en la base): consentimiento, retiro y preguntas. Preguntar devuelve
+  // el estado que dejó la base («en_revision», «crisis» o «sin_presupuesto») y relee las consultas.
+  aceptarAsistente: (c: ContextoAsistente) => Promise<void>;
+  retirarAsistente: () => Promise<void>;
+  preguntarAsistente: (pregunta: string) => Promise<EstadoConsulta>;
+  // Valora una respuesta aprobada; util null quita la valoración. El motivo es solo para «No me sirvió».
+  valorarAsistente: (consulta: string, util: boolean | null, motivo: string | null) => Promise<void>;
   recargar: () => void;
 };
 
@@ -186,10 +216,129 @@ export type Espacio = {
   coach: CoachEspacio | null;
   videollamadas: VideollamadaEspacio[];
   servidor: Servidor | null;
+  fotos: boolean; // módulo «fotos» visible para las personas (solo Mi espacio real)
+  avisos: Aviso[] | null; // Mis avisos (null: no se pudieron leer)
+  comunidad: boolean; // módulo «comunidad» visible: su filtro y sus enlaces existen
+  // Recordatorios: las preferencias guardadas (o las de por defecto); «no-disponible» si la base
+  // todavía no tiene la migración de recordatorios completos; null si no se pudieron leer.
+  recordatorios: PrefRecordatorios | "no-disponible" | null;
+  correoDisponible: boolean | null; // Brevo configurado (correo_disponible); null: no se sabe
+  asistente: Asistente | null; // null: no se pudo leer
+};
+
+// Asistente de Rumbo (E2). La persona nunca lee borradores: mis_consultas_ia() solo trae la
+// respuesta cuando su coach la aprobó.
+export type ContextoAsistente = { metas: boolean; acciones: boolean; registroSemanal: boolean };
+export type ConsentimientoAsistente = ContextoAsistente & { aceptadoEn: string | null; retiradoEn: string | null };
+export type EstadoConsulta = "en_revision" | "aprobada" | "descartada" | "crisis" | "sin_presupuesto" | "error";
+export type ConsultaAsistente = {
+  id: string;
+  pregunta: string;
+  estado: EstadoConsulta;
+  respuesta: string | null; // solo la aprobada por el coach
+  creadaEn: string;
+  revisadaEn: string | null;
+};
+// «Me sirvió» / «No me sirvió»: una valoración vigente por respuesta aprobada (ia_valoraciones).
+export type ValoracionAsistente = { util: boolean; motivo: string | null };
+export type Asistente = {
+  disponible: boolean; // ia_disponible(): encendido por el dueño, con clave y módulo visible
+  consentimiento: ConsentimientoAsistente | null;
+  consultas: ConsultaAsistente[]; // las más nuevas primero (como las entrega la base)
+  // Por id de consulta. null: la base todavía no tiene ia_valoraciones (migración sin aplicar).
+  valoraciones: Record<string, ValoracionAsistente> | null;
+};
+
+// Preferencias de recordatorios (tabla recordatorios). dias: 1 = lunes … 7 = domingo.
+export type PrefRecordatorios = {
+  activos: boolean;
+  accionesDelDia: boolean;
+  registroSemanal: boolean;
+  videollamadas: boolean;
+  mensajesCoach: boolean;
+  comunidad: boolean;
+  logros: boolean;
+  porCorreo: boolean;
+  desde: number;
+  hasta: number;
+  hora: number;
+  dias: number[];
+};
+
+// Como vienen en la base si la persona nunca las guardó: todo apagado salvo lo que se activa al
+// encender el interruptor general.
+export const RECORDATORIOS_POR_DEFECTO: PrefRecordatorios = {
+  activos: false,
+  accionesDelDia: false,
+  registroSemanal: false,
+  videollamadas: true,
+  mensajesCoach: true,
+  comunidad: false,
+  logros: true,
+  porCorreo: false,
+  desde: 7,
+  hasta: 22,
+  hora: 20,
+  dias: [1, 2, 3, 4, 5, 6, 7],
 };
 
 // ---------------------------------------------------------------------------
 // Vista previa (por defecto)
+
+// Mis avisos de ejemplo: los mismos textos fijos que crea la base (sin nombres ni mensajes
+// inventados). Fechas alrededor de E.HOY (13-oct-2026), hora de Chile (UTC−3).
+const aviso = (id: string, tipo: string, titulo: string, enlace: string, creadoEn: string, leido = false): Aviso => ({
+  id, tipo, titulo, enlace, creadoEn, leidoEn: leido ? creadoEn : null,
+});
+export const AVISOS_EJEMPLO: Aviso[] = [
+  aviso("av-1", "recordatorio_acciones", "Hoy tienes acciones por marcar", "/mi-espacio/", "2026-10-13T11:00:00Z"),
+  aviso("av-2", "revision_publicada", "Tu coach publicó la revisión de la semana 2", "/mi-espacio/acompanamiento/", "2026-10-13T12:15:00Z"),
+  aviso("av-3", "reconocimiento", "Nuevo reconocimiento: Primera semana", "/mi-espacio/", "2026-10-12T22:40:00Z"),
+  aviso("av-4", "recordatorio_registro", "Mañana es tu revisión: cuéntale a tu coach cómo te fue esta semana", "/mi-espacio/", "2026-10-12T21:00:00Z", true),
+  aviso("av-5", "ajuste_respondido", "Tu coach respondió tu solicitud de ajuste", "/mi-espacio/acompanamiento/", "2026-10-12T15:30:00Z", true),
+  aviso("av-6", "programa_publicado", "Tu plan tiene cambios", "/mi-espacio/plan/", "2026-10-12T15:25:00Z", true),
+  aviso("av-7", "recordatorio_acciones", "Hoy tienes acciones por marcar", "/mi-espacio/", "2026-10-09T12:00:00Z", true),
+  aviso("av-8", "reconocimiento", "Nuevo reconocimiento: Primer paso", "/mi-espacio/", "2026-10-06T23:10:00Z", true),
+];
+
+// Asistente de ejemplo: una respuesta ya revisada por el coach y una pregunta en revisión. Es
+// texto de ejemplo para mostrar la pantalla, no una respuesta generada.
+export const ASISTENTE_EJEMPLO: Asistente = {
+  disponible: true,
+  consentimiento: { metas: true, acciones: true, registroSemanal: false, aceptadoEn: "2026-10-06T13:00:00Z", retiradoEn: null },
+  consultas: [
+    {
+      id: "ia-2",
+      pregunta: "¿Me puedes ayudar a organizar mi semana?",
+      estado: "en_revision",
+      respuesta: null,
+      creadaEn: "2026-10-13T14:10:00Z",
+      revisadaEn: null,
+    },
+    {
+      id: "ia-1",
+      pregunta: "Me está costando mantener la motivación esta semana. ¿Qué me recomiendas?",
+      estado: "aprobada",
+      respuesta:
+        "Es normal que algunas semanas cuesten más. Algunas ideas:\n1. Vuelve a tu «para qué»: recuerda qué te hizo empezar.\n2. Empieza con la acción más pequeña de tu plan hoy.\n3. Mira lo que ya marcaste esta semana: también cuenta.\nSi quieres cambiar algo del plan, conversémoslo en tu próxima revisión.",
+      creadaEn: "2026-10-12T13:24:00Z",
+      revisadaEn: "2026-10-12T14:05:00Z",
+    },
+  ],
+  valoraciones: {},
+};
+
+// Vista previa de «Mis conversaciones» y de una respuesta no compartida (texto de ejemplo).
+export const ASISTENTE_HISTORIAL: ConsultaAsistente[] = [
+  { id: "ih-1", pregunta: "Me está costando mantener la motivación esta semana. ¿Qué me recomiendas?", estado: "aprobada", respuesta: "Ejemplo.", creadaEn: "2026-10-13T14:05:00Z", revisadaEn: "2026-10-13T15:00:00Z" },
+  { id: "ih-2", pregunta: "¿Me puedes ayudar a organizar mi semana?", estado: "en_revision", respuesta: null, creadaEn: "2026-10-13T12:40:00Z", revisadaEn: null },
+  { id: "ih-3", pregunta: "¿Qué hábitos me recomiendas para mi meta?", estado: "aprobada", respuesta: "Ejemplo.", creadaEn: "2026-10-08T22:10:00Z", revisadaEn: "2026-10-09T12:00:00Z" },
+  { id: "ih-4", pregunta: "Estoy pasando por un momento difícil con el trabajo.", estado: "descartada", respuesta: null, creadaEn: "2026-10-06T23:30:00Z", revisadaEn: "2026-10-07T13:00:00Z" },
+  { id: "ih-5", pregunta: "Me desordené estos días, ¿cómo retomo?", estado: "aprobada", respuesta: "Ejemplo.", creadaEn: "2026-10-03T21:00:00Z", revisadaEn: "2026-10-04T12:30:00Z" },
+];
+export const ASISTENTE_NO_COMPARTIDA: ConsultaAsistente[] = [
+  { id: "in-1", pregunta: "¿Puedo dejar de tomar mis medicamentos si me siento mejor?", estado: "descartada", respuesta: null, creadaEn: "2026-10-13T14:10:00Z", revisadaEn: "2026-10-13T16:00:00Z" },
+];
 
 export const ESPACIO_PREVIA: Espacio = {
   real: false,
@@ -209,6 +358,13 @@ export const ESPACIO_PREVIA: Espacio = {
   coach: null,
   videollamadas: [],
   servidor: null,
+  fotos: false,
+  avisos: AVISOS_EJEMPLO,
+  comunidad: false,
+  // Vista previa: como en la maqueta (interruptor encendido) y el correo sin configurar, como hoy.
+  recordatorios: { ...RECORDATORIOS_POR_DEFECTO, activos: true, accionesDelDia: true, registroSemanal: true, dias: [1, 2, 3, 4, 5] },
+  correoDisponible: false,
+  asistente: ASISTENTE_EJEMPLO,
 };
 
 export const EspacioContexto = createContext<Espacio>(ESPACIO_PREVIA);

@@ -7,12 +7,14 @@
 // En la vista previa se simula esa respuesta con las mismas reglas de rumbo.ts.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Etiqueta from "../../../components/Etiqueta";
-import { FilaAccion, Icono, TEXTOS_CARGA } from "../../../components/app";
+import { FilaAccion, Icono, TEXTOS_CARGA, type NombreIconoApp } from "../../../components/app";
 import { calcularProgreso, cuentaComoHecha, type EstadoRegistro, type Ocurrencia } from "../../../data/ejemplo-app";
 import { diaCorto, type Iso } from "../../../lib/fechas";
 import { ICONO_CATEGORIA, colorDeMeta } from "../../../lib/mi-rumbo";
+import { logroDeRegistro, sonar, type Intensidad, type Logro } from "../../../lib/celebrar";
+import { ErrorBase } from "../../../lib/supabase";
 import { useEspacio, type Progreso } from "./espacio";
-import { T_CALENDARIO, T_COMUN } from "./textos";
+import { T_CALENDARIO, T_COMUN, T_HOY } from "./textos";
 // Estilos propios de este grupo (solo tokens de :root). Lo importan todas sus pantallas.
 import "../../../styles/vista-mi-espacio.css";
 
@@ -107,8 +109,17 @@ export function usePrograma({ hoy: hoyDado, cambios, base: baseDada }: OpcionesP
 
   // Registra (o borra, con null) y llama a `listo` con el progreso que devuelve el servidor.
   const registrar = useCallback(
-    (id: string, estado: EstadoRegistro | null, listo?: (p: Progreso) => void, fallo?: () => void) => {
-      const anterior = ultima.current.find((o) => o.id === id)?.registro ?? null;
+    (id: string, estado: EstadoRegistro | null, listo?: (p: Progreso) => void, fallo?: (e: unknown) => void) => {
+      const actual = ultima.current.find((o) => o.id === id);
+      // Una acción con foto obligatoria nunca se marca como hecha: va por la foto o la explicación
+      // (registrar_evidencia). La base lo rechaza igual (409 accion:requiere_foto); así no se envía.
+      if (actual?.conFoto && (estado === "hecha" || estado === "corta")) {
+        fallo?.(new ErrorBase(409, "accion", "requiere_foto"));
+        return;
+      }
+      // El mismo registro ya va en camino (doble toque): no se repite.
+      if (servidor && id in pendientes.current && pendientes.current[id] === estado) return;
+      const anterior = actual?.registro ?? null;
       const nueva = ultima.current.map((o) => (o.id === id ? { ...o, registro: estado } : o));
       ultima.current = nueva;
       setLista(nueva);
@@ -121,14 +132,14 @@ export function usePrograma({ hoy: hoyDado, cambios, base: baseDada }: OpcionesP
             pendientes.current = resto;
             listo?.(p);
           })
-          .catch(() => {
+          .catch((e: unknown) => {
             const { [id]: _, ...resto } = pendientes.current;
             pendientes.current = resto;
             // Vuelve atrás solo esta acción.
             const revertida = ultima.current.map((o) => (o.id === id ? { ...o, registro: anterior } : o));
             ultima.current = revertida;
             setLista(revertida);
-            fallo?.();
+            fallo?.(e);
           });
         return;
       }
@@ -141,6 +152,87 @@ export function usePrograma({ hoy: hoyDado, cambios, base: baseDada }: OpcionesP
   );
 
   return { lista, progreso, registrar, hoy };
+}
+
+// ---------------------------------------------------------------------------
+// Mensaje cuando no se pudo guardar un registro: el motivo real que da la base. Solo un corte de
+// red (o un error sin código) ofrece «Reintentar»; si la acción pide foto, se ofrece abrirla.
+
+export type FalloRegistro = { mensaje: string; reintentar: boolean; abrir: boolean };
+
+export function mensajeRegistro(e: unknown, titulo: string): FalloRegistro {
+  const T = T_HOY.marcar.errores;
+  const con = (mensaje: string, reintentar = false, abrir = false) => ({ mensaje, reintentar, abrir });
+  if (!(e instanceof ErrorBase) || e.esDeRed) return con(T_HOY.marcar.error(titulo), true);
+  if (e.estado === 401 || e.estado === 403) return con(T.sesion);
+  switch (e.codigo) {
+    case "requiere_foto":
+    case "requiere_evidencia":
+      return con(T.requiere_foto(titulo), false, true);
+    case "futura":
+      return con(T.futura(titulo));
+    case "fuera_de_plazo":
+      return con(T.fuera_de_plazo(titulo));
+    case "no_vigente":
+      return con(T.no_vigente(titulo));
+    case "cerrado":
+      return con(T.cerrado);
+    case "no_encontrada":
+      return con(T.no_encontrada);
+    case "es_de_hoy":
+      return con(T.es_de_hoy);
+    case "invalida":
+      return e.campo === "version" ? con(T.version) : con(T.otro(titulo), true);
+    case "largo":
+      return con(T.explicacion);
+    default:
+      return con(T.otro(titulo), true);
+  }
+}
+
+// Tostada de error de Hoy, Calendario y Detalle: misma forma en las tres pantallas.
+export function useFalloRegistro(setTostada: (a: Aviso) => void, abrir?: (o: Ocurrencia) => void) {
+  return (o: Ocurrencia, reintentar: () => void) => (e: unknown) => {
+    const f = mensajeRegistro(e, o.titulo);
+    setTostada({
+      mensaje: f.mensaje,
+      accion: f.reintentar
+        ? { texto: T_HOY.marcar.reintentar, onClick: reintentar }
+        : f.abrir && abrir
+          ? { texto: T_HOY.marcar.abrir, onClick: () => abrir(o) }
+          : undefined,
+    });
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Tostada de un logro: título y créditos aparte, intensidad según el logro y cierre automático.
+export const avisoDeLogro = (l: Logro, deshacer: () => void): Aviso => ({
+  mensaje: l.texto,
+  titulo: l.titulo,
+  detalle: l.creditos,
+  tono: l.intensidad,
+  accion: { texto: T_HOY.marcar.deshacer, onClick: deshacer },
+});
+
+// Completar una acción (paquete 2): mensaje según el contexto del día y sonido opcional. Usa solo
+// el progreso que devolvió el servidor (lib/celebrar.ts); no cambia créditos ni reglas.
+
+export function useCelebrar(ocultarCreditos?: boolean) {
+  const { participante } = useEspacio();
+  const conCreditos = ocultarCreditos === undefined ? participante.mostrarCreditosEnHoy !== false : !ocultarCreditos;
+  return (o: Ocurrencia, estado: EstadoRegistro, p: Progreso, desdeAnteriores = false): Logro => {
+    const logro = logroDeRegistro({
+      titulo: o.titulo,
+      corta: estado === "corta",
+      desdeAnteriores,
+      diaAnterior: desdeAnteriores ? diaCorto(o.fecha) : undefined,
+      dia: p.dias.find((d) => d.fecha === o.fecha),
+      conCreditos,
+    });
+    sonar(logro.intensidad);
+    return logro;
+  };
 }
 
 // Con dos metas de la misma categoría, la fila muestra el nombre corto de la meta (4.4.5).
@@ -212,7 +304,7 @@ export const flexibles = (l: Ocurrencia[]) => l.filter((o) => !o.hora);
 // ---------------------------------------------------------------------------
 // Tostada y región viva
 
-export type Aviso = { mensaje: string; accion?: { texto: string; onClick: () => void } } | null;
+export type Aviso = { mensaje: string; titulo?: string; detalle?: string; tono?: Intensidad; accion?: { texto: string; onClick: () => void } } | null;
 
 export function useAvisos() {
   const [tostada, setTostada] = useState<Aviso>(null);
@@ -282,6 +374,20 @@ export function AlertaGuardar({ texto }: { texto: string | null }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Mensaje de estado de una pantalla (no disponible, error al cargar…), con una acción opcional.
+export function MensajeAviso({ icono, titulo, texto, rol, accion }: { icono: NombreIconoApp; titulo: string; texto: string; rol?: "alert"; accion?: ReactNode }) {
+  return (
+    <div className="aviso rc-mensaje" role={rol}>
+      <Icono nombre={icono} tamaño={20} className="aviso-icono" />
+      <div className="aviso-cuerpo">
+        <h2 className="aviso-titulo">{titulo}</h2>
+        <p>{texto}</p>
+        {accion && <div className="acciones">{accion}</div>}
+      </div>
     </div>
   );
 }

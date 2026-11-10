@@ -84,6 +84,7 @@ const TABLAS = {
   ia_config: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   ia_consentimientos: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   ia_consultas: { leer: "equipo", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
+  ia_valoraciones: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   especialidades: { leer: "con-sesion", escribir: "funciones", coach: { leer: "con-sesion", escribir: "nada" } },
   especialistas_config: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   especialistas: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
@@ -110,22 +111,22 @@ const FUNCIONES = {
   persona: [
     "soy_equipo", "mi_contexto", "marcar_accion", "desmarcar_accion", "dejar_pasar", "registrar_evidencia", "eliminar_evidencia",
     "guardar_registro_semanal", "pedir_ajuste", "actualizar_preferencias", "pedir_derecho", "exportar_mis_datos", "mi_coach",
-    "adjuntar_foto", "quitar_foto", "guardar_recordatorios",
-    "evolucion_semanal", "informe_ciclo", "mis_medibles", "anotar_cantidad",
+    "adjuntar_foto", "quitar_foto", "guardar_recordatorios", "correo_disponible",
+    "evolucion_semanal", "informe_ciclo", "mis_medibles", "anotar_cantidad", "anotar_nota",
     "guardar_alias", "participar_en_ranking", "ranking_semanal",
     "aceptar_reglas_comunidad", "publicar_en_comunidad", "borrar_mi_publicacion", "reportar_publicacion", "comunidad_publicaciones",
     "reaccionar_publicacion", "unirme_a_grupo", "salir_de_grupo", "comunidad_grupos", "comunidad_miembros_grupo", "proponer_grupo", "mis_propuestas_grupo",
     "guardar_publicacion", "bloquear_autor", "desbloquear_alias", "mis_bloqueos", "comunidad_temas", "mi_impacto_comunidad",
     "unirme_a_desafio", "salir_de_desafio", "comunidad_desafios", "mi_avance_desafio", "proponer_desafio", "mis_propuestas_desafio", "mi_actividad_desafios",
-    "mis_reconocimientos", "mis_beneficios",
-    "ia_guardar_consentimiento", "ia_retirar_consentimiento", "ia_preguntar", "mis_consultas_ia",
+    "mis_reconocimientos", "mis_beneficios", "mi_beneficio_renovacion",
+    "ia_guardar_consentimiento", "ia_retirar_consentimiento", "ia_preguntar", "mis_consultas_ia", "ia_valorar",
     "autorizar_especialista", "retirar_especialista", "pedir_reserva", "cancelar_reserva", "enviar_mensaje_especialista",
   ],
   "equipo-error": [
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
     "nuevo_enlace_solicitud", "eliminar_participante", "asignar_coach", "ver_postulacion", "cambiar_modulo", "indicadores",
     "registrar_pago", "devolucion_sugerida", "registrar_devolucion",
-    "invitar_coach", "revocar_invitacion", "cambiar_coach", "programar_videollamada", "anotar_videollamada",
+    "invitar_coach", "revocar_invitacion", "cambiar_coach", "programar_videollamada", "anotar_videollamada", "guardar_mensaje_cierre",
     "moderar_publicacion", "guardar_grupo_comunidad", "propuestas_grupo_equipo", "responder_propuesta_grupo", "propuestas_desafio_equipo", "responder_propuesta_desafio", "guardar_desafio", "poner_foto_desafio", "guardar_reconocimiento", "guardar_beneficio", "otorgar_beneficio", "aplicar_beneficio",
     "ia_pedir_borrador", "ia_revisar", "guardar_ia_config", "ia_gasto",
     "invitar_especialista", "revisar_credencial", "decidir_especialista", "guardar_config_especialistas", "guardar_especialidad",
@@ -141,7 +142,7 @@ const FUNCIONES = {
 const PRIVADO_EJECUTABLES = ["mi_especialista_id", "es_admin", "es_dueno", "es_coach", "gestiona", "puede_moderar", "foto_permitida", "foto_comunidad_permitida", "foto_desafio_permitida", "mi_participante_id"];
 // Del coach: las usa con sus participantes; con los de otro coach, «sin autorización».
 const DEL_COACH = ["publicar_programa", "nuevo_borrador", "revisar_evidencia", "solapamientos", "carga_prevista", "ver_postulacion",
-  "programar_videollamada", "anotar_videollamada", "ia_pedir_borrador", "ia_revisar"];
+  "programar_videollamada", "anotar_videollamada", "guardar_mensaje_cierre", "ia_pedir_borrador", "ia_revisar"];
 
 // ---------------------------------------------------------------------------
 // SQL
@@ -272,6 +273,13 @@ insert into public.ia_consentimientos (participante_id, metas, acciones, registr
 insert into public.ia_consultas (participante_id, tipo, pedida_por, pregunta, estado, respuesta)
   values ('${ROLES.A.ficha}', 'pregunta', '${ROLES.A.uid}', 'Pregunta de prueba de CI de A.', 'por_revisar', 'Borrador de prueba.'),
          ('${ROLES.B.ficha}', 'pregunta', '${ROLES.B.uid}', 'Pregunta de prueba de CI de B.', 'por_revisar', 'Borrador de prueba.');
+insert into public.ia_consultas (id, participante_id, tipo, pedida_por, pregunta, estado, respuesta, texto_final)
+  values ('00000000-0000-0000-0000-0000000000a1', '${ROLES.A.ficha}', 'pregunta', '${ROLES.A.uid}', 'Pregunta aprobada de CI de A.', 'aprobada', 'Borrador.', 'Respuesta aprobada de CI.'),
+         ('00000000-0000-0000-0000-0000000000b1', '${ROLES.B.ficha}', 'pregunta', '${ROLES.B.uid}', 'Pregunta aprobada de CI de B.', 'aprobada', 'Borrador.', 'Respuesta aprobada de CI.')
+  on conflict do nothing;
+insert into public.ia_valoraciones (consulta_id, participante_id, util)
+  values ('00000000-0000-0000-0000-0000000000a1', '${ROLES.A.ficha}', true), ('00000000-0000-0000-0000-0000000000b1', '${ROLES.B.ficha}', true)
+  on conflict do nothing;
 insert into public.especialistas (id, correo, nombre, estado) values ('00000000-0000-0000-0000-0000000e5e01', 'otro-especialista-ci@example.com', 'Otra especialista', 'en_revision')
   on conflict do nothing;
 insert into public.especialistas_credenciales (especialista_id, tipo, descripcion) values ('00000000-0000-0000-0000-0000000e5e01', 'titulo', 'Título de prueba de CI');
@@ -751,19 +759,21 @@ paso("fotos: opcionales en cualquier acción, solo en las propias; la acción qu
 }
 paso("videollamadas: solo en el plan cercano; las agenda y anota el coach de la persona, con enlace https y aviso");
 
+const JSON_BASE = `'{"activos": true, "acciones_del_dia": true, "registro_semanal": false, "videollamadas": true, "mensajes_coach": true, "comunidad": false, "logros": true, "por_correo": false, "desde": 7, "hasta": 22, "hora": 8, "dias": [1, 2, 3, 4, 5, 6, 7]}'::jsonb`.replace(/::jsonb$/, "");
 // D1 · Recordatorios: cada persona elige los suyos; la base los crea a su hora, sin repetir y nunca en pausa.
 {
-  const guarda = como(ROLES.A, `select public.guardar_recordatorios(true, false, 8) \\g /dev/null
+  const guarda = como(ROLES.A, `select public.guardar_recordatorios('{"activos": true, "acciones_del_dia": true, "registro_semanal": false, "videollamadas": true, "mensajes_coach": true, "comunidad": false, "logros": true, "por_correo": false, "desde": 7, "hasta": 22, "hora": 8, "dias": [1, 2, 3, 4, 5, 6, 7]}'::jsonb) \\g /dev/null
     select acciones_del_dia::int || ' ' || registro_semanal::int || ' ' || hora from public.recordatorios`);
   exigir(guarda.ok && ultima(guarda) === "1 0 8", `A no pudo guardar sus recordatorios: ${guarda.error ?? ultima(guarda)}`);
-  const hora = como(ROLES.A, "select public.guardar_recordatorios(true, true, 3)");
+  const hora = como(ROLES.A, `select public.guardar_recordatorios('{"activos": true, "acciones_del_dia": true, "registro_semanal": false, "videollamadas": true, "mensajes_coach": true, "comunidad": false, "logros": true, "por_correo": false, "desde": 7, "hasta": 22, "hora": 3, "dias": [1, 2, 3, 4, 5, 6, 7]}'::jsonb)`);
   exigir(!hora.ok && /hora/.test(hora.error), "se aceptó un recordatorio a las 3 de la mañana");
   const cicloA = deA.p_ciclo;
   // Escenario: «hoy» es el martes de la semana 1 del ciclo de A, la revisión es el miércoles y A tiene
   // una acción hoy sin marcar y el registro semanal sin enviar.
   const escenario = `set session_replication_role = replica;
     update public.ciclos set estado = 'activo', dia_revision = 3 where id = '${cicloA}';
-    update public.recordatorios set acciones_del_dia = true, registro_semanal = true, hora = 20 where participante_id = '${ROLES.A.ficha}';
+    update public.recordatorios set activos = true, acciones_del_dia = true, registro_semanal = true, hora = 20, desde = 7, hasta = 22,
+      dias = '{1,2,3,4,5,6,7}' where participante_id = '${ROLES.A.ficha}';
     delete from public.avisos where participante_id = '${ROLES.A.ficha}';
     delete from public.registros_semanales where ciclo_id = '${cicloA}' and semana = 1;
     delete from public.registros where ocurrencia_id = (select id from public.ocurrencias where participante_id = '${ROLES.A.ficha}' order by fecha limit 1);
@@ -812,12 +822,96 @@ paso("videollamadas: solo en el plan cercano; las agenda y anota el coach de la 
     select privado.enviar_recordatorios(20, ${hoy}) \\g /dev/null
     select ${cola}; rollback;`);
   exigir(sinElegir.ok && sinElegir.salida === antesCola, `se envió un correo a quien no lo eligió: ${sinElegir.error ?? sinElegir.salida}`);
-  const elige = como(ROLES.A, "select public.guardar_recordatorios(true, true, 9, true) \\g /dev/null\n select por_correo::int from public.recordatorios");
+  const elige = como(ROLES.A, `select public.guardar_recordatorios('{"activos": true, "acciones_del_dia": true, "registro_semanal": true, "videollamadas": true, "mensajes_coach": true, "comunidad": false, "logros": true, "por_correo": true, "desde": 7, "hasta": 22, "hora": 9, "dias": [1, 2, 3, 4, 5, 6, 7]}'::jsonb) \\g /dev/null\n select por_correo::int from public.recordatorios`);
   exigir(elige.ok && ultima(elige) === "1", `A no pudo elegir recibir los recordatorios por correo: ${elige.error ?? ultima(elige)}`);
   const persona = como(ROLES.A, "select privado.enviar_recordatorios()");
   exigir(!persona.ok && persona.codigo === DENEGADO, "una persona puede disparar los recordatorios");
 }
 paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan a su hora, una vez al día y nunca en pausa; por correo solo con claves y a quien lo eligió");
+
+// R1 · Recordatorios completos: interruptor general, días, horario, videollamada 24 h antes,
+// comunidad solo a quien la eligió; logros siempre en Mis avisos; copia por correo de los mensajes del
+// coach y de los logros solo a quien la eligió.
+{
+  const cicloA = deA.p_ciclo;
+  const hoy = `(select inicio + 1 from public.ciclos where id = '${cicloA}')`;
+  const prefs = (extra = "") => `set session_replication_role = replica;
+    update public.ciclos set estado = 'activo' where id = '${cicloA}';
+    set session_replication_role = origin;
+    update public.recordatorios set activos = true, acciones_del_dia = false, registro_semanal = false, videollamadas = true,
+      comunidad = false, logros = true, por_correo = false, hora = 20, desde = 7, hasta = 22, dias = '{1,2,3,4,5,6,7}'
+     where participante_id = '${ROLES.A.ficha}';
+    ${extra ? `update public.recordatorios set ${extra.replace(/^\s*,\s*/, "")} where participante_id = '${ROLES.A.ficha}';` : ""}
+    delete from public.avisos where participante_id = '${ROLES.A.ficha}';`;
+  const tipos = `select coalesce(string_agg(tipo, ',' order by tipo), '-') from public.avisos where participante_id = '${ROLES.A.ficha}'`;
+  const llamada = `delete from public.videollamadas where ciclo_id = '${cicloA}';
+    insert into public.videollamadas (participante_id, ciclo_id, semana, programada_para, enlace)
+      values ('${ROLES.A.ficha}', '${cicloA}', 1, now() + interval '10 hours', 'https://meet.example.com/r1');`;
+  const video = psql(`begin; ${prefs()} ${llamada}
+    select privado.enviar_recordatorios(10, ${hoy}) \\g /dev/null
+    select privado.enviar_recordatorios(11, ${hoy}) \\g /dev/null
+    ${tipos}; rollback;`);
+  exigir(video.ok && video.salida === "recordatorio_videollamada", `el recordatorio de videollamada no llegó una sola vez: ${video.error ?? video.salida}`);
+  const general = psql(`begin; ${prefs(", activos = false")} ${llamada}
+    select privado.enviar_recordatorios(10, ${hoy}) \\g /dev/null
+    ${tipos}; rollback;`);
+  exigir(general.ok && general.salida === "-", `con el interruptor general apagado llegó un recordatorio: ${general.error ?? general.salida}`);
+  const dia = psql(`begin; ${prefs(`, dias = array[(extract(isodow from ${hoy}) % 7 + 1)::smallint]`)} ${llamada}
+    select privado.enviar_recordatorios(10, ${hoy}) \\g /dev/null
+    ${tipos}; rollback;`);
+  exigir(dia.ok && dia.salida === "-", `llegó un recordatorio un día que A no eligió: ${dia.error ?? dia.salida}`);
+  const fuera = psql(`begin; ${prefs(", desde = 12, hora = 12")} ${llamada}
+    select privado.enviar_recordatorios(10, ${hoy}) \\g /dev/null
+    ${tipos}; rollback;`);
+  exigir(fuera.ok && fuera.salida === "-", `llegó un recordatorio fuera del horario de A: ${fuera.error ?? fuera.salida}`);
+  const logro = (extra) => psql(`begin; ${prefs(extra)}
+    select privado.avisar_app('${ROLES.A.ficha}', true, 'reconocimiento', 'Nuevo reconocimiento: Primer paso', '/mi-espacio/') \\g /dev/null
+    select privado.avisar_app('${ROLES.A.ficha}', true, 'revision_publicada', 'Tu coach publicó la revisión de la semana 1', '/mi-espacio/acompanamiento/') \\g /dev/null
+    ${tipos}; rollback;`);
+  // Decisión de Diego (31-oct-2026): los logros llegan siempre a Mis avisos, sin depender de los recordatorios.
+  const conLogros = logro("");
+  exigir(conLogros.ok && conLogros.salida === "reconocimiento,revision_publicada", `faltan avisos con logros elegidos: ${conLogros.error ?? conLogros.salida}`);
+  const sinLogros = logro(", logros = false");
+  exigir(sinLogros.ok && sinLogros.salida === "reconocimiento,revision_publicada", `no llegó el logro a quien apagó su copia por correo: ${sinLogros.error ?? sinLogros.salida}`);
+  const apagado = logro(", activos = false");
+  exigir(apagado.ok && apagado.salida === "reconocimiento,revision_publicada", `con los recordatorios apagados no llegó el logro o el mensaje del coach: ${apagado.error ?? apagado.salida}`);
+  const sinFila = psql(`begin; delete from public.recordatorios where participante_id = '${ROLES.A.ficha}';
+    delete from public.avisos where participante_id = '${ROLES.A.ficha}';
+    select privado.avisar_app('${ROLES.A.ficha}', true, 'reconocimiento', 'Nuevo reconocimiento: Primer paso', '/mi-espacio/') \\g /dev/null
+    ${tipos}; rollback;`);
+  exigir(sinFila.ok && sinFila.salida === "reconocimiento", `quien nunca configuró recordatorios no recibió su logro: ${sinFila.error ?? sinFila.salida}`);
+  const cola = "(select count(*) from net.http_request_queue where url = 'https://api.brevo.com/v3/smtp/email')";
+  const claves = "select vault.create_secret('clave-de-prueba', 'brevo_api_key') \\g /dev/null\n select vault.create_secret('rumbo-ci@example.com', 'correo_remitente') \\g /dev/null\n";
+  const antes = Number(sql(`select ${cola}`));
+  const copia = (extra) => psql(`begin; ${prefs(extra)} ${claves}
+    select privado.avisar_app('${ROLES.A.ficha}', true, 'revision_publicada', 'Tu coach publicó la revisión de la semana 1', '/mi-espacio/acompanamiento/') \\g /dev/null
+    select ${cola}; rollback;`);
+  const conCopia = copia(", por_correo = true");
+  exigir(conCopia.ok && conCopia.salida === String(antes + 1), `no salió la copia por correo del mensaje del coach: ${conCopia.error ?? conCopia.salida}`);
+  const sinCopia = copia(", por_correo = true, mensajes_coach = false");
+  exigir(sinCopia.ok && sinCopia.salida === String(antes), `salió una copia por correo que A no eligió: ${sinCopia.error ?? sinCopia.salida}`);
+  const copiaLogro = (extra) => psql(`begin; ${prefs(extra)} ${claves}
+    select privado.avisar_app('${ROLES.A.ficha}', true, 'reconocimiento', 'Nuevo reconocimiento: Primer paso', '/mi-espacio/') \\g /dev/null
+    select ${cola}; rollback;`);
+  const logroConCopia = copiaLogro(", por_correo = true");
+  exigir(logroConCopia.ok && logroConCopia.salida === String(antes + 1), `no salió la copia por correo del logro: ${logroConCopia.error ?? logroConCopia.salida}`);
+  const logroSinCopia = copiaLogro(", por_correo = true, logros = false");
+  exigir(logroSinCopia.ok && logroSinCopia.salida === String(antes), `salió una copia por correo de un logro que A no eligió: ${logroSinCopia.error ?? logroSinCopia.salida}`);
+  const logroSinCorreo = copiaLogro("");
+  exigir(logroSinCorreo.ok && logroSinCorreo.salida === String(antes), `salió un correo de logro sin elegir el correo: ${logroSinCorreo.error ?? logroSinCorreo.salida}`);
+  const disp = como(ROLES.A, "select public.correo_disponible()::int");
+  exigir(disp.ok && ultima(disp) === "0", `correo_disponible no dice la verdad sin claves: ${disp.error ?? ultima(disp)}`);
+  const dispAnon = como(ROLES.anon, "select public.correo_disponible()");
+  exigir(!dispAnon.ok && dispAnon.codigo === DENEGADO, "anon puede preguntar si hay correo");
+  for (const [malo, que] of [['"dias": [8]', "días"], ['"desde": 20, "hasta": 9', "horario"], ['"activos": "si"', "interruptor"]]) {
+    const r = como(ROLES.A, `select public.guardar_recordatorios(${JSON_BASE}::jsonb || '{${malo}}'::jsonb)`);
+    exigir(!r.ok, `se guardó un recordatorio con ${que} inválido`);
+  }
+  const todo = como(ROLES.A, `select public.guardar_recordatorios(${JSON_BASE}::jsonb || '{"dias": [1, 3, 5], "desde": 8, "hasta": 21, "hora": 19, "comunidad": true}'::jsonb) \\g /dev/null
+    select activos::int || ' ' || array_to_string(dias, ',') || ' ' || desde || '-' || hasta || ' ' || hora || ' ' || comunidad::int from public.recordatorios`);
+  exigir(todo.ok && ultima(todo) === "1 1,3,5 8-21 19 1", `A no pudo guardar días, horario y categorías: ${todo.error ?? ultima(todo)}`);
+}
+paso("recordatorios completos: interruptor general, días, horario, videollamada 24 h antes una vez, logros siempre en Mis avisos, comunidad solo si se elige, copia por correo solo si se elige");
 
 // C3 · Evolución: resume lo que hay en la base; la ve la persona, su coach y el dueño.
 {
@@ -846,6 +940,36 @@ paso("recordatorios: apagados por defecto; cada persona elige los suyos; llegan 
   exigir(informe.ok && informe.salida === `${enBase} ${focos}`, `el informe del ciclo de A no cuadra: ${informe.error ?? informe.salida} (base: ${enBase} ${focos})`);
 }
 paso("evolución: semanas e informe de ciclo cuadran con la base; solo los ven la persona, su coach y el dueño");
+
+// R1 · Mensaje de cierre: lo escribe el coach (o el dueño) al final del ciclo y la persona lo ve en su informe.
+{
+  const cicloA = deA.p_ciclo;
+  const cerrar = `reset role; set session_replication_role = replica;
+    update public.ciclos set estado = 'cerrado' where id = '${cicloA}';
+    set session_replication_role = origin; set local role authenticated;\n`;
+  const abierto = sql(`select (estado <> 'cerrado' and privado.hoy_chile() < fin - 6)::int from public.ciclos where id = '${cicloA}'`);
+  if (abierto === "1") {
+    const antes = como(ROLES.X, `select public.guardar_mensaje_cierre('${cicloA}', 'Un mensaje antes de tiempo.')`);
+    exigir(!antes.ok && /no_termina/.test(antes.error), `se escribió el mensaje de cierre a mitad de ciclo: ${antes.error ?? "funcionó"}`);
+  }
+  const corto = como(ROLES.X, `${cerrar} select public.guardar_mensaje_cierre('${cicloA}', 'Bien')`);
+  exigir(!corto.ok && /mensaje:corto|mensaje.*corto/.test(corto.error), `se aceptó un mensaje de cierre de 4 letras: ${corto.error ?? "funcionó"}`);
+  const texto = "Cerraste tu ciclo con constancia. Sigamos conversando lo que viene.";
+  const nombreX = sql(`select nombre from public.equipo where user_id = '${ROLES.X.uid}'`);
+  const escribe = como(ROLES.X, `${cerrar} select public.guardar_mensaje_cierre('${cicloA}', '${texto}') \\g /dev/null
+    select set_config('request.jwt.claims', '${JSON.stringify({ sub: ROLES.A.uid, role: "authenticated", aal: "aal1" })}', true) \\g /dev/null
+    select (i->'mensaje_cierre'->>'texto') || '|' || (i->'mensaje_cierre'->>'autor') from (select public.informe_ciclo('${cicloA}') i) x`);
+  exigir(escribe.ok && ultima(escribe) === `${texto}|${nombreX}`, `la persona no ve el mensaje de cierre de su coach: ${escribe.error ?? ultima(escribe)}`);
+  const quita = como(ROLES.aal2, `${cerrar} select public.guardar_mensaje_cierre('${cicloA}', '${texto}') \\g /dev/null
+    select public.guardar_mensaje_cierre('${cicloA}', '') \\g /dev/null
+    select coalesce(public.informe_ciclo('${cicloA}')->>'mensaje_cierre', 'sin mensaje')`);
+  exigir(quita.ok && ultima(quita) === "sin mensaje", `el dueño no pudo quitar el mensaje de cierre: ${quita.error ?? ultima(quita)}`);
+  const ajeno = como(ROLES.Y, `${cerrar} select public.guardar_mensaje_cierre('${cicloA}', '${texto}')`);
+  exigir(!ajeno.ok && /no_autorizado/.test(ajeno.error), `otro coach escribió el mensaje de cierre de A: ${ajeno.error ?? "funcionó"}`);
+  const sinMensaje = como(ROLES.A, `select coalesce(public.informe_ciclo('${cicloA}')->>'mensaje_cierre', 'sin mensaje')`);
+  exigir(sinMensaje.ok && ultima(sinMensaje) === "sin mensaje", `el informe trae un mensaje que nadie escribió: ${sinMensaje.error ?? ultima(sinMensaje)}`);
+}
+paso("mensaje de cierre: solo el coach de la persona o el dueño, al final del ciclo; la persona lo ve con el nombre real de quien lo escribió");
 
 // C4 · Acciones medibles y plantillas.
 {
@@ -894,6 +1018,54 @@ paso("evolución: semanas e informe de ciclo cuadran con la base; solo los ven l
   }
 }
 paso("medibles y plantillas: la cantidad se anota en lo propio ya marcado y no cambia créditos; las plantillas son del equipo");
+
+// R1 · Nota «¿Cómo te sentiste hoy?»: solo en lo propio ya marcado; no cambia créditos; la ve su coach.
+{
+  const oc = sql(`select o.id from public.ocurrencias o join public.registros r on r.ocurrencia_id = o.id and r.estado in ('hecha','aprobada')
+    where o.participante_id = '${ROLES.A.ficha}' limit 1`);
+  const ocSin = sql(`select o.id from public.ocurrencias o where o.participante_id = '${ROLES.A.ficha}'
+    and not exists (select 1 from public.registros r where r.ocurrencia_id = o.id) limit 1`);
+  const creditos = `select creditos from public.progreso where participante_id = '${ROLES.A.ficha}'`;
+  const anota = como(ROLES.A, `${creditos}; select public.anotar_nota('${oc}', '  Me sentí con energía.  ') \\g /dev/null
+    ${creditos}; select nota from public.registros where ocurrencia_id = '${oc}'`);
+  const [c0, c1, nota] = (anota.salida ?? "").split("\n");
+  exigir(anota.ok && nota === "Me sentí con energía.", `A no pudo anotar su nota: ${anota.error ?? nota}`);
+  exigir(c0 === c1, `anotar la nota cambió los créditos: ${c0} → ${c1}`);
+  const larga = como(ROLES.A, `select public.anotar_nota('${oc}', '${"x".repeat(201)}')`);
+  exigir(!larga.ok && /nota/.test(larga.error), "se aceptó una nota de 201 caracteres");
+  const sinMarcar = como(ROLES.A, `select public.anotar_nota('${ocSin}', 'Hola')`);
+  exigir(!sinMarcar.ok && /sin_marcar/.test(sinMarcar.error), "se anotó una nota en una acción sin marcar");
+  const ajena = como(ROLES.B, `select public.anotar_nota('${oc}', 'Ajena')`);
+  exigir(!ajena.ok && /no_encontrada/.test(ajena.error), "B anotó una nota en una acción de A");
+  const coach = como(ROLES.X, `reset role; update public.registros set nota = 'Para el coach' where ocurrencia_id = '${oc}';
+    set local role authenticated; select coalesce((select nota from public.registros where ocurrencia_id = '${oc}'), 'no la ve')`);
+  exigir(coach.ok && ultima(coach) === "Para el coach", `el coach de A no ve su nota: ${coach.error ?? ultima(coach)}`);
+  const otro = como(ROLES.Y, `select count(*) from public.registros where ocurrencia_id = '${oc}'`);
+  exigir(otro.ok && ultima(otro) === "0", "otro coach ve la nota de A");
+  const borra = como(ROLES.A, `select public.anotar_nota('${oc}', 'Algo') \\g /dev/null
+    select public.anotar_nota('${oc}', '') \\g /dev/null
+    select coalesce(nota, 'sin nota') from public.registros where ocurrencia_id = '${oc}'`);
+  exigir(borra.ok && ultima(borra) === "sin nota", `A no pudo borrar su nota: ${borra.error ?? ultima(borra)}`);
+}
+paso("nota de la acción: solo lo propio ya marcado, hasta 200 caracteres, sin tocar créditos; la ve su coach y nadie más");
+
+// R1 · Una nueva versión del programa conserva lo medible de cada acción (nuevo_borrador).
+{
+  const prog = sql(`select p.id || ' ' || p.ciclo_id from public.programas p join public.ciclos c on c.id = p.ciclo_id
+    where p.participante_id = '${ROLES.A.ficha}' and p.estado = 'publicado' and c.estado <> 'cerrado' limit 1`);
+  const [pub, ciclo] = prog.split(" ");
+  exigir(Boolean(pub), "A no tiene un programa publicado para probar la nueva versión");
+  const copia = como(ROLES.X, `reset role; set session_replication_role = replica;
+    delete from public.programas where ciclo_id = '${ciclo}' and estado = 'borrador';
+    update public.acciones set cantidad_objetivo = 8, unidad = 'vasos' where programa_id = '${pub}';
+    set session_replication_role = origin; set local role authenticated;
+    select public.nuevo_borrador('${ciclo}') \\g /dev/null
+    reset role; select count(*) filter (where cantidad_objetivo = 8 and unidad = 'vasos') || '/' || count(*)
+      from public.acciones a join public.programas p on p.id = a.programa_id where p.ciclo_id = '${ciclo}' and p.estado = 'borrador'`);
+  const [medibles, total] = (copia.ok ? ultima(copia) : "0/0").split("/").map(Number);
+  exigir(copia.ok && total > 0 && medibles === total, `la nueva versión perdió lo medible: ${copia.error ?? `${medibles} de ${total}`}`);
+}
+paso("nueva versión del programa: las acciones conservan su cantidad objetivo y su unidad");
 
 // C5 · Alias y ranking semanal voluntario.
 {
@@ -1398,6 +1570,8 @@ paso("grupos C13: destacado único y elegido por moderación, sugeridos por las 
   exigir(r1.ok && otraVez === "0", `los reconocimientos se repiten: ${otraVez}`);
   exigir(r1.ok && avisos1 === "0", `hubo avisos de reconocimiento con el módulo sin habilitar: ${avisos1}`);
   const r2 = psql(`${base} update public.modulos set estado = 'habilitado' where clave = 'reconocimientos';
+    insert into public.recordatorios (participante_id, activos, logros) values ('${ROLES.A.ficha}', true, true)
+      on conflict (participante_id) do update set activos = true, logros = true;
     update public.reconocimientos set activo = false where clave = 'primer_paso';
     set session_replication_role = replica;
     update public.metas m set hitos = '[{"texto": "Hito de CI", "logrado": true}]' from public.programas g
@@ -1500,6 +1674,21 @@ paso("grupos C13: destacado único y elegido por moderación, sugeridos por las 
 }
 paso("reconocimientos y beneficios: se otorgan solos y una vez; el 10 % exige todo lo vigente del ciclo, se usa en una renovación y no se acumula; solo el dueño configura");
 
+// C17 · Mis logros: la persona sabe si el 10 % está activo (y nada más del catálogo).
+{
+  const leer = `select coalesce(string_agg(porcentaje || ' ' || dias_ciclo, ','), 'nada') from public.mi_beneficio_renovacion()`;
+  const apagado = como(ROLES.A, leer);
+  exigir(apagado.ok && ultima(apagado) === "nada", `con el beneficio apagado, la persona lo ve: ${apagado.error ?? ultima(apagado)}`);
+  const activo = como(ROLES.A, `reset role; update public.beneficios set activo = true, activado_en = now() where tipo = 'descuento_renovacion';
+    set local role authenticated; ${leer}`);
+  exigir(activo.ok && ultima(activo) === "10 28", `con el beneficio activo, la persona no lo ve: ${activo.error ?? ultima(activo)}`);
+  const sinFicha = como(ROLES.aal1, leer);
+  exigir(!sinFicha.ok && /sin_ficha/.test(sinFicha.error), "una cuenta sin ficha leyó el beneficio");
+  const tabla = como(ROLES.A, `select count(*) from public.beneficios`);
+  exigir(!tabla.ok || ultima(tabla) === "0", `una persona lee la tabla de beneficios: ${ultima(tabla)}`);
+}
+paso("mis logros C17: la persona sabe si el 10 % está activo, sin leer el catálogo de beneficios");
+
 // E2 · Asistente de IA (OpenAI): apagado por defecto, con consentimiento, revisión del coach, crisis y topes de gasto.
 {
   const reclamos = (r) => `select set_config('request.jwt.claims', '${JSON.stringify({ sub: r.uid, role: "authenticated", aal: r.aal ?? "aal1" })}', true) \\g /dev/null\n`;
@@ -1543,7 +1732,7 @@ paso("reconocimientos y beneficios: se otorgan solos y una vez; el 10 % exige to
     select public.ia_revisar(id, true, 'Texto revisado por el coach.') from public.ia_consultas where respuesta like 'Prueba de respuesta%' \\g /dev/null
     reset role; select costo_usd from public.ia_consultas where respuesta like 'Prueba de respuesta%';
     ${reclamos(ROLES.A)} set local role authenticated;
-    select respuesta from public.mis_consultas_ia() where estado = 'aprobada'`);
+    select respuesta from public.mis_consultas_ia() where estado = 'aprobada' and respuesta <> 'Respuesta aprobada de CI.'`);
   const [bandeja, costo, aprobada] = (flujo.salida ?? "").split("\n").slice(-3);
   exigir(flujo.ok && bandeja === "por_revisar", `la respuesta no llegó a la bandeja del coach: ${flujo.error ?? bandeja}`);
   exigir(flujo.ok && Number(costo) === 0.00021, `el costo no se calculó con los tokens: ${costo}`);
@@ -1587,6 +1776,48 @@ paso("reconocimientos y beneficios: se otorgan solos y una vez; el 10 % exige to
   exigir(borrador.ok && ultima(borrador) === "0", `la persona ve los borradores pedidos por su coach: ${borrador.error ?? ultima(borrador)}`);
 }
 paso("asistente de IA: apagado sin clave y sin módulo; con consentimiento y solo el contexto autorizado; la respuesta la aprueba el coach; crisis sin IA y con alerta; topes de gasto");
+
+// R1 · «Me sirvió» / «No me sirvió» y aviso cuando el coach no comparte una respuesta.
+{
+  const RA = "00000000-0000-0000-0000-0000000000a1";
+  const RB = "00000000-0000-0000-0000-0000000000b1";
+  const cambia = como(ROLES.A, `select public.ia_valorar('${RA}', false, '  No era lo que buscaba  ') \\g /dev/null
+    select public.ia_valorar('${RA}', false) \\g /dev/null
+    select public.ia_valorar('${RA}', false, 'Muy general') \\g /dev/null
+    select count(*) || ' ' || bool_and(not util) || ' ' || max(motivo) from public.ia_valoraciones where consulta_id = '${RA}'`);
+  exigir(cambia.ok && ultima(cambia) === "1 true Muy general", `A no pudo cambiar su valoración (una vigente, con motivo): ${cambia.error ?? ultima(cambia)}`);
+  const sirvio = como(ROLES.A, `select public.ia_valorar('${RA}', false, 'Muy general') \\g /dev/null
+    select public.ia_valorar('${RA}', true, 'Se ignora') \\g /dev/null
+    select util || ' ' || coalesce(motivo, '-') from public.ia_valoraciones where consulta_id = '${RA}'`);
+  exigir(sirvio.ok && ultima(sirvio) === "true -", `«Me sirvió» guardó un motivo: ${sirvio.error ?? ultima(sirvio)}`);
+  const quita = como(ROLES.A, `select public.ia_valorar('${RA}', null) \\g /dev/null
+    select count(*) from public.ia_valoraciones where consulta_id = '${RA}'`);
+  exigir(quita.ok && ultima(quita) === "0", `A no pudo quitar su valoración: ${quita.error ?? ultima(quita)}`);
+  const ajena = como(ROLES.A, `select public.ia_valorar('${RB}', false)`);
+  exigir(!ajena.ok && /no_encontrada/.test(ajena.error), `A valoró una respuesta de B: ${ajena.error ?? "funcionó"}`);
+  const porRevisar = sql(`select id from public.ia_consultas where participante_id = '${ROLES.A.ficha}' and estado = 'por_revisar' limit 1`);
+  const pendiente = como(ROLES.A, `select public.ia_valorar('${porRevisar}', true)`);
+  exigir(!pendiente.ok && /no_aprobada/.test(pendiente.error), `A valoró una respuesta que su coach no aprobó: ${pendiente.error ?? "funcionó"}`);
+  const largo = como(ROLES.A, `select public.ia_valorar('${RA}', false, repeat('x', 301))`);
+  exigir(!largo.ok && /motivo/.test(largo.error), "se aceptó un motivo de más de 300 caracteres");
+  const coachX = como(ROLES.X, `select count(*) from public.ia_valoraciones where consulta_id = '${RA}'`);
+  exigir(coachX.ok && ultima(coachX) === "1", `el coach de A no ve su valoración: ${coachX.error ?? ultima(coachX)}`);
+  const coachY = como(ROLES.Y, `select count(*) from public.ia_valoraciones where consulta_id = '${RA}'`);
+  exigir(coachY.ok && ultima(coachY) === "0", `otro coach ve la valoración de A: ${coachY.error ?? ultima(coachY)}`);
+  const copia = como(ROLES.A, `select jsonb_array_length(public.exportar_mis_datos()->'asistente_valoraciones')`);
+  exigir(copia.ok && ultima(copia) === "1", `la copia de datos no trae las valoraciones: ${copia.error ?? ultima(copia)}`);
+
+  // No compartir: un aviso, sin la respuesta ni la nota, y sin duplicados.
+  const descarta = como(ROLES.X, `select public.ia_revisar('${porRevisar}', false, null, 'Nota interna de CI') \\g /dev/null
+    select public.ia_revisar('${porRevisar}', false) \\g /dev/null`);
+  exigir(!descarta.ok && /no_por_revisar/.test(descarta.error), `se pudo descartar dos veces la misma respuesta: ${descarta.error ?? "funcionó"}`);
+  const aviso = como(ROLES.X, `select public.ia_revisar('${porRevisar}', false, null, 'Nota interna de CI') \\g /dev/null
+    ${reclamosDe(ROLES.A)}
+    select count(*) || ' ' || bool_and(titulo not like '%Borrador%' and titulo not like '%Nota interna%' and coalesce(enlace, '') not like '%Borrador%')
+      from public.avisos where tipo = 'ia_no_compartida'`);
+  exigir(aviso.ok && ultima(aviso) === "1 true", `al no compartir, A no recibió un único aviso sin contenido: ${aviso.error ?? ultima(aviso)}`);
+}
+paso("asistente: «Me sirvió» / «No me sirvió» (una vigente, solo lo propio y aprobado) y aviso único al no compartir");
 
 // E3 · Especialistas Rumbo: invitación, perfil, credenciales verificadas, publicación con aprobación, sin acceso al programa.
 {
@@ -1843,6 +2074,47 @@ paso("fotos de desafíos C16: solo moderación con TOTP sube, pone, cambia y bor
 paso("ranking: voluntario, solo con alias, por % de la semana; con menos de 3 no se muestra; quien sale deja de verlo");
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
+
+// R1 · Mis avisos: avisos de la Comunidad (respuesta a tu publicación y desafío nuevo), solo con el
+// módulo visible; con el alias de quien responde y nunca su texto; ni a uno mismo ni de alguien bloqueado.
+{
+  const PA = "00000000-0000-0000-0000-0000000000a7";
+  const base = `reset role; update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    update public.alias set reglas_comunidad_en = now();
+    update public.recordatorios set activos = true, comunidad = true;
+    insert into public.publicaciones (id, autor, texto) values ('${PA}', '${ROLES.A.ficha}', 'Publicación de A para avisos');`;
+  const abrir = `${base} update public.modulos set estado = 'habilitado' where clave = 'comunidad';`;
+  const responde = (autor) => `insert into public.publicaciones (autor, texto, respuesta_a) values ('${autor}', 'TEXTO PRIVADO de la respuesta', '${PA}');`;
+  const verA = "set local role authenticated; select coalesce(string_agg(tipo || '|' || titulo || '|' || enlace, ';'), '-') from public.avisos where tipo like 'comunidad%' or tipo = 'desafio_nuevo'";
+  const cerrada = como(ROLES.A, `${base} ${responde(ROLES.B.ficha)} ${verA}`);
+  exigir(cerrada.ok && ultima(cerrada) === "-", `llegó un aviso de la Comunidad con el módulo cerrado: ${cerrada.error ?? ultima(cerrada)}`);
+  const respuesta = como(ROLES.A, `${abrir} ${responde(ROLES.B.ficha)} ${verA}`);
+  exigir(
+    respuesta.ok && ultima(respuesta) === "comunidad_respuesta|Alias B respondió tu publicación|/mi-espacio/comunidad/",
+    `el aviso de respuesta no es el esperado (alias, sin texto): ${respuesta.error ?? ultima(respuesta)}`,
+  );
+  const otro = como(ROLES.B, `${abrir} ${responde(ROLES.B.ficha)} set local role authenticated; select count(*) from public.avisos where tipo = 'comunidad_respuesta'`);
+  exigir(otro.ok && ultima(otro) === "0", `B ve el aviso de respuesta de A: ${otro.error ?? ultima(otro)}`);
+  const propia = como(ROLES.A, `${abrir} ${responde(ROLES.A.ficha)} ${verA}`);
+  exigir(propia.ok && ultima(propia) === "-", `llegó un aviso por responderse a sí misma: ${propia.error ?? ultima(propia)}`);
+  const bloqueada = como(ROLES.A, `${abrir} insert into public.bloqueos_comunidad (bloqueador, bloqueado) values ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    ${responde(ROLES.B.ficha)} ${verA}`);
+  exigir(bloqueada.ok && ultima(bloqueada) === "-", `llegó un aviso de alguien bloqueado: ${bloqueada.error ?? ultima(bloqueada)}`);
+  const desafio = (activo) => `insert into public.desafios (titulo, reglas, dias, inicio, activo) values ('Siete días de calma', 'Reglas de CI.', 7, current_date, ${activo});`;
+  const nuevo = como(ROLES.A, `${abrir} ${desafio(true)} ${verA}`);
+  exigir(
+    nuevo.ok && ultima(nuevo) === "desafio_nuevo|Nuevo desafío en la Comunidad: «Siete días de calma»|/mi-espacio/comunidad/",
+    `el aviso de desafío nuevo no es el esperado: ${nuevo.error ?? ultima(nuevo)}`,
+  );
+  const sinReglas = como(ROLES.A, `${abrir} update public.alias set reglas_comunidad_en = null where participante_id = '${ROLES.A.ficha}'; ${desafio(true)} ${verA}`);
+  exigir(sinReglas.ok && ultima(sinReglas) === "-", `llegó un desafío nuevo a quien no entró a la Comunidad: ${sinReglas.error ?? ultima(sinReglas)}`);
+  const alActivar = como(ROLES.A, `${abrir} ${desafio(false)} update public.desafios set activo = true where titulo = 'Siete días de calma';
+    update public.desafios set activo = true where titulo = 'Siete días de calma'; ${verA}`);
+  exigir(alActivar.ok && ultima(alActivar).split(";").length === 1, `al activar un desafío el aviso no llega una sola vez: ${alActivar.error ?? ultima(alActivar)}`);
+  const malTipo = como(ROLES.A, `reset role; insert into public.avisos (destinatario, tipo, titulo, enlace) values ('${ROLES.A.uid}', 'inventado', 'x', '/mi-espacio/')`);
+  exigir(!malTipo.ok, "la tabla avisos acepta un tipo que no existe");
+}
+paso("avisos de la Comunidad: solo con el módulo visible, con alias y sin el texto; ni propios ni de bloqueados; desafío nuevo una vez a quien entró");
 
 // 5. Esquema privado --------------------------------------------------------
 for (const t of PRIVADAS)

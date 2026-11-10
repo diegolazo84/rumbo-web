@@ -117,7 +117,7 @@ function baseInicial(): Base {
       },
     ],
     participantes: [
-      { id: "p1", user_id: "u-ana", correo: "ana@correo.cl", nombre: "Ana Pérez", nombre_preferido: "Ana", estado: "activo", zona_horaria: "America/Santiago", solicitud_id: null, creado_en: "2026-10-01T12:00:00Z" },
+      { id: "p1", user_id: "u-ana", correo: "ana@correo.cl", nombre: "Ana Pérez", nombre_preferido: "Ana", estado: "activo", zona_horaria: "America/Santiago", solicitud_id: null, coach_id: "coach-1", creado_en: "2026-10-01T12:00:00Z" },
       { id: "p2", user_id: null, correo: "bruno@correo.cl", nombre: "Bruno Díaz", nombre_preferido: null, estado: "invitado", zona_horaria: "America/Santiago", solicitud_id: null, creado_en: "2026-10-09T12:00:00Z" },
     ],
     ciclos: [
@@ -167,6 +167,15 @@ function baseInicial(): Base {
     miembros_grupo: [{ grupo_id: "gr1" }, { grupo_id: "gr1" }],
     desafios: [{ id: "de1", titulo: "Semana de constancia", descripcion: null, reglas: "Haz todas tus acciones programadas cada día.", dias: 7, inicio: "2026-10-19", ilustracion: null, activo: true, foto_ruta: null }],
     participaciones_desafio: [{ desafio_id: "de1" }],
+    // Equipo (bloque 2): el dueño (sesión de las pruebas), un coach que acompaña a Ana y una invitación.
+    equipo: [
+      { user_id: UID, nombre: "Diego", rol: "dueno", puede_moderar: true, activo: true, presentacion: null, creado_en: "2026-10-01T00:00:00Z" },
+      { user_id: "coach-1", nombre: "Carla", rol: "coach", puede_moderar: false, activo: true, presentacion: "Acompaño a personas que estudian y trabajan.", creado_en: "2026-10-20T00:00:00Z" },
+    ],
+    invitaciones_equipo: [
+      { id: "inv1", correo: "marta@correo.cl", nombre: "Marta", puede_moderar: false, creada_en: "2026-10-12T12:00:00Z", expira_en: "2026-10-19T12:00:00Z", aceptada_en: null, revocada_en: null },
+    ],
+    videollamadas: [],
     modulos: [
       { clave: "comunidad", nombre: "Comunidad con foro moderado", estado: "probado", probado_en: "2026-10-21T12:00:00Z", respaldo: null, que_falta: "Reglas y privacidad", orden: 1, cambiado_en: "2026-10-21T12:00:00Z" },
       { clave: "ranking", nombre: "Ranking semanal voluntario", estado: "planificado", probado_en: null, respaldo: null, que_falta: "Requiere la comunidad", orden: 2, cambiado_en: "2026-10-21T12:00:00Z" },
@@ -225,14 +234,59 @@ function sesion(aal: "aal1" | "aal2", factores: Factor[]) {
 
 type Llamada = { tipo: "rpc" | "tabla" | "auth"; metodo: string; nombre: string; url: string; cuerpo: unknown; aal: string };
 
-const ADMIN = new Set(["cambiar_modulo", "propuestas_grupo_equipo", "responder_propuesta_grupo", "propuestas_desafio_equipo", "responder_propuesta_desafio", "poner_foto_desafio", "moderar_publicacion", "guardar_grupo_comunidad", "guardar_desafio", "crear_espacio", "nuevo_enlace_solicitud", "nuevo_borrador", "solapamientos", "carga_prevista", "publicar_programa", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "eliminar_participante"]);
+const ADMIN = new Set(["invitar_coach", "revocar_invitacion", "cambiar_coach", "asignar_coach", "actualizar_mi_perfil", "programar_videollamada", "anotar_videollamada", "ver_postulacion", "cambiar_modulo", "propuestas_grupo_equipo", "responder_propuesta_grupo", "moderar_publicacion", "guardar_grupo_comunidad", "guardar_desafio", "crear_espacio", "nuevo_enlace_solicitud", "nuevo_borrador", "solapamientos", "carga_prevista", "publicar_programa", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "eliminar_participante", "ia_bandeja", "ia_revisar", "ia_gasto", "propuestas_desafio_equipo", "responder_propuesta_desafio", "poner_foto_desafio"]);
 
 async function simular(page: Page, base: Base, { equipo = true, factores = [] as Factor[] } = {}) {
   const llamadas: Llamada[] = [];
   const auth = { factores: [...factores] };
+  let esEquipo = equipo;
   const rpc: Record<string, (c: Record<string, unknown>) => unknown> = {
-    soy_equipo: () => equipo,
-    mi_rol_equipo: () => (equipo ? { rol: "dueno", puede_moderar: true } : null),
+    soy_equipo: () => esEquipo,
+    mi_rol_equipo: () => (esEquipo ? { rol: "dueno", puede_moderar: true } : null),
+    // Bloque 2: las mismas reglas que la base (B5, A1, A2, A3 y C2), en lo que la pantalla muestra.
+    aceptar_invitacion_equipo: () => {
+      if (!base.invitaciones_equipo.some((i) => i.correo === "diego@correo.cl")) return { __error: "invitacion:no_encontrada", __estado: 404 };
+      esEquipo = true;
+      return { rol: "coach", puede_moderar: false };
+    },
+    invitar_coach: (c) => {
+      if (base.invitaciones_equipo.some((i) => i.correo === c.p_correo && !i.aceptada_en && !i.revocada_en)) return { __error: "invitacion:ya_invitada", __estado: 409 };
+      base.invitaciones_equipo.push({ id: "inv2", correo: c.p_correo, nombre: c.p_nombre, puede_moderar: c.p_puede_moderar, creada_en: AHORA.toISOString(), expira_en: "2026-10-20T15:00:00Z", aceptada_en: null, revocada_en: null });
+      return "inv2";
+    },
+    revocar_invitacion: (c) => {
+      base.invitaciones_equipo.find((i) => i.id === c.p_invitacion)!.revocada_en = AHORA.toISOString();
+      return null;
+    },
+    cambiar_coach: (c) => {
+      if (c.p_activo === false && base.participantes.some((p) => p.coach_id === c.p_coach)) return { __error: "coach:con_participantes", __estado: 409 };
+      const e = base.equipo.find((x) => x.user_id === c.p_coach)!;
+      if (c.p_activo !== null) e.activo = c.p_activo;
+      if (c.p_puede_moderar !== null) e.puede_moderar = c.p_puede_moderar;
+      return null;
+    },
+    asignar_coach: (c) => {
+      base.participantes.find((p) => p.id === c.p_participante)!.coach_id = c.p_coach;
+      return null;
+    },
+    actualizar_mi_perfil: (c) => {
+      Object.assign(base.equipo.find((x) => x.user_id === UID)!, c.p as Fila);
+      return null;
+    },
+    programar_videollamada: (c) => {
+      if (!/^https:\/\/\S+$/.test(String(c.p_enlace))) return { __error: "enlace:invalido", __estado: 400 };
+      base.videollamadas.push({ id: `vl${c.p_semana}`, participante_id: "p1", ciclo_id: c.p_ciclo, semana: c.p_semana, programada_para: c.p_programada_para, enlace: c.p_enlace, estado: "programada" });
+      return `vl${c.p_semana}`;
+    },
+    anotar_videollamada: (c) => {
+      base.videollamadas.find((x) => x.id === c.p_videollamada)!.estado = c.p_estado;
+      return null;
+    },
+    ver_postulacion: (c) => {
+      if (String(c.p_motivo ?? "").trim().length < 10) return { __error: "motivo:corto", __estado: 400 };
+      const s = base.solicitudes.find((x) => x.id === base.participantes.find((p) => p.id === c.p_participante)!.solicitud_id)!;
+      return { creada_en: s.creada_en, area: s.area_id, meta: s.meta, apoyo: s.apoyo, dias: s.dias, franjas: s.franjas, horarios_nota: s.horarios_nota };
+    },
     moderar_publicacion: (c) => {
       const p = base.publicaciones.find((x) => x.id === c.p_id)!;
       p.estado = c.p_ocultar ? "oculta" : "visible";
@@ -313,6 +367,40 @@ async function simular(page: Page, base: Base, { equipo = true, factores = [] as
       g.estado = "publicado";
       g.publicado_en = AHORA.toISOString();
       return 4;
+    },
+    // Como la base (20261122000000): desde la última semana o con el ciclo cerrado; 10 a 800 caracteres.
+    guardar_mensaje_cierre: (c) => {
+      const ciclo = base.ciclos.find((x) => x.id === c.p_ciclo)!;
+      const v = String(c.p_mensaje ?? "").trim();
+      if (v && v.length < 10) return { __error: "mensaje:corto", __estado: 400 };
+      Object.assign(ciclo, { mensaje_cierre: v || null, mensaje_cierre_por: v ? UID : null, mensaje_cierre_en: v ? AHORA.toISOString() : null });
+      return null;
+    },
+    // Asistente (E2): la bandeja muestra lo pendiente; revisar solo lo que está «por revisar».
+    ia_bandeja: () =>
+      (base.ia_consultas ?? [])
+        .filter((q) => ["enviada", "por_revisar", "lista", "crisis", "error"].includes(String(q.estado)))
+        .map((q) => ({ id: q.id, participante_id: q.participante_id, tipo: q.tipo, pregunta: q.pregunta, estado: q.estado, respuesta: q.respuesta, creada_en: q.creada_en })),
+    ia_revisar: (c) => {
+      const q = (base.ia_consultas ?? []).find((x) => x.id === c.p_consulta);
+      if (!q || q.estado !== "por_revisar") return { __error: "consulta:no_por_revisar", __estado: 409 };
+      Object.assign(q, {
+        estado: c.p_aprobar ? "aprobada" : "descartada",
+        texto_final: c.p_aprobar ? (c.p_texto ?? q.respuesta) : null,
+        revisada_por: UID,
+        revisada_en: AHORA.toISOString(),
+        nota_revision: c.p_nota ?? null,
+      });
+      return null;
+    },
+    ia_gasto: () => ({ tope_usd: base.ia_config[0].tope_mensual_usd, gastado_usd: 0.0123, reservado_usd: 0.0005, consultas: 3, crisis: 1, sin_presupuesto: 0, errores: 1 }),
+    guardar_ia_config: (c) => {
+      const p = c.p as Fila;
+      const g = base.ia_config[0];
+      if (p.activo === true && !base.ia_clave) return { __error: "ia:sin_clave", __estado: 409 };
+      if (p.tope_diario_persona !== undefined && (Number(p.tope_diario_persona) < 1 || Number(p.tope_diario_persona) > 50)) return { __error: "ia:config_invalida", __estado: 400 };
+      Object.assign(g, p, p.activo === true ? { activado_en: AHORA.toISOString() } : p.activo === false ? { activado_en: null } : {});
+      return null;
     },
     revisar_evidencia: (c) => {
       const r = base.registros.find((x) => x.id === c.p_registro)!;
@@ -782,6 +870,31 @@ test("fotos y explicaciones: aprobar corre revisar_evidencia", async ({ page }) 
   expect(llamadas.find((l) => l.nombre === "revisar_evidencia")!.cuerpo).toEqual({ p_registro: "r9", p_aprobar: true, p_nota: null });
 });
 
+test("fotos y explicaciones: la foto se ve con enlace firmado de 5 minutos y sin el borrado simulado", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  base.registros.push({ id: "r10", ocurrencia_id: "o-2026-10-09", participante_id: "p1", estado: "en_revision", version: "completa", foto_ruta: "p1/o-2026-10-09/3f0c0f8e-1111-4a4a-9b9b-222233334444.webp", explicacion: null, nota_revision: null, creado_en: "2026-10-09T20:00:00Z" });
+  await simular(page, base, { factores: VERIFICADO });
+  const firmadas: { ruta: string; segundos: number }[] = [];
+  await page.route(`${SUPABASE_URL}/storage/v1/object/sign/evidencias/**`, async (rt) => {
+    const req = rt.request();
+    const ruta = new URL(req.url()).pathname.replace(/^.*\/sign\/evidencias\//, "");
+    if (req.method() === "POST") {
+      firmadas.push({ ruta, segundos: (req.postDataJSON() as { expiresIn: number }).expiresIn });
+      return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ signedURL: `/object/sign/evidencias/${ruta}?token=corto` }) });
+    }
+    // PNG válido de 1×1.
+    return rt.fulfill({ status: 200, contentType: "image/png", body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64") });
+  });
+  await page.goto("equipo/revisar/");
+  await hidratar(page);
+  const img = page.locator("img.pa-miniatura");
+  await expect(img).toHaveAttribute("src", /\/storage\/v1\/object\/sign\/evidencias\/p1\/o-2026-10-09\/.+token=corto/);
+  expect(firmadas).toEqual([{ ruta: "p1/o-2026-10-09/3f0c0f8e-1111-4a4a-9b9b-222233334444.webp", segundos: 300 }]);
+  await expect(page.getByText("Las fotos llegan en la etapa 4", { exact: false })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Eliminar archivo ahora" })).toHaveCount(0);
+});
+
 test("ficha de participante: programa publicado y semana en solo lectura", async ({ page }) => {
   await preparar(page, "aal2", VERIFICADO);
   await simular(page, baseInicial(), { factores: VERIFICADO });
@@ -792,6 +905,37 @@ test("ficha de participante: programa publicado y semana en solo lectura", async
   await expect(page.getByText("Escribir 30 minutos").first()).toBeVisible();
   await page.getByRole("tab", { name: "Semana" }).click();
   await expect(page.getByText("Esta semana registró 1 de 2 acciones programadas hasta hoy.")).toBeVisible();
+  await sinViolaciones(page);
+});
+
+// Evolución del ciclo en la ficha: lo que calcula evolucion_semanal (20261103000000, aplicada).
+test("ficha: evolución semanal del ciclo actual, sin porcentaje si no hubo acciones", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const llamadas = await simular(page, baseInicial(), { factores: VERIFICADO });
+  const semana = (n: number, desde: string, hasta: string, x: Record<string, unknown>) => ({
+    ciclo_id: "c1", ciclo_numero: 1, semana: n, desde, hasta, programadas: 0, hechas: 0, en_revision: 0, cumplimiento: null,
+    dias_completos: 0, creditos: 0, carga: null, revision_publicada: false, ...x,
+  });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/evolucion_semanal`, async (rt) => {
+    llamadas.push({ tipo: "rpc", metodo: "POST", nombre: "evolucion_semanal", url: rt.request().url(), cuerpo: rt.request().postDataJSON(), aal: "aal2" });
+    return rt.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([
+        { ...semana(1, "2026-09-07", "2026-09-13", { programadas: 7, hechas: 7, cumplimiento: 100 }), ciclo_id: "c0" },
+        semana(1, "2026-10-05", "2026-10-11", { programadas: 10, hechas: 7, cumplimiento: 70, dias_completos: 3, carga: "justa", revision_publicada: true }),
+        semana(2, "2026-10-12", "2026-10-18", {}),
+      ]),
+    });
+  });
+  await page.goto("equipo/participante/?id=p1");
+  await hidratar(page);
+  await page.getByRole("tab", { name: "Semana" }).click();
+  const evo = page.locator("section[aria-labelledby=evolucion-titulo]");
+  await expect(evo.locator("li")).toHaveCount(2); // solo el ciclo actual
+  await expect(evo.locator("li").nth(0)).toContainText("7 de 10 acciones hechas (70 %) · 3 días completos · carga justa · revisión publicada");
+  await expect(evo.locator("li").nth(1)).toContainText("Sin acciones programadas · 0 días completos · sin revisión publicada");
+  expect(llamadas.find((l) => l.nombre === "evolucion_semanal")!.cuerpo).toEqual({ p_participante: "p1" });
   await sinViolaciones(page);
 });
 
@@ -1143,4 +1287,697 @@ test("Comunidad en móvil: la barra inferior no tapa reportes ni botones al desp
   await hidratar(page);
   await expect(page.getByText("2 reportes").first()).toBeVisible();
   await revisarBarra(page);
+});
+
+test("constructor: una acción medible guarda su cantidad propuesta y su unidad (sugerida u otra)", async ({ page }, info) => {
+  test.skip(info.project.name !== "escritorio", "el constructor es de escritorio (5.6)");
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/constructor/?id=p2");
+  await hidratar(page);
+  await page.getByRole("button", { name: "Crear el borrador" }).click();
+  await page.getByRole("button", { name: "Nueva meta" }).click();
+  await page.locator("#meta-titulo").fill("Moverme más");
+  await page.getByRole("button", { name: "Nueva acción" }).click();
+  await page.locator("#accion-titulo").fill("Tomar agua");
+  await page.locator('input[name="accion-dias"][value="1"]').check();
+  await page.locator("#accion-instrucciones").fill("Ten una botella a mano.");
+  await page.getByLabel("Se mide con una cantidad").check();
+  await page.locator("#accion-objetivo").fill("8");
+  await page.locator("#accion-unidad").selectOption("vasos");
+  await page.getByRole("button", { name: "Guardar borrador" }).click();
+  await expect.poll(() => base.acciones.find((a) => a.titulo === "Tomar agua")).toMatchObject({ cantidad_objetivo: 8, unidad: "vasos" });
+
+  await page.locator("#accion-unidad").selectOption("otra");
+  await page.locator("#accion-unidad-otra").fill("series");
+  await page.getByRole("button", { name: "Guardar borrador" }).click();
+  await expect.poll(() => base.acciones.find((a) => a.titulo === "Tomar agua")).toMatchObject({ cantidad_objetivo: 8, unidad: "series" });
+
+  await page.getByLabel("Se mide con una cantidad").uncheck();
+  await page.getByRole("button", { name: "Guardar borrador" }).click();
+  await expect.poll(() => base.acciones.find((a) => a.titulo === "Tomar agua")).toMatchObject({ cantidad_objetivo: null, unidad: null });
+  await sinViolaciones(page);
+});
+
+// Plantillas del equipo (C4, plantillas_accion y guardar_plantilla, aplicadas): guardar una acción
+// como plantilla y usarla para llenar otra. La meta y los días de la acción no cambian.
+test("constructor: guardar una acción como plantilla y usarla en otra", async ({ page }, info) => {
+  test.skip(info.project.name !== "escritorio", "el constructor es de escritorio (5.6)");
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial() as ReturnType<typeof baseInicial> & { plantillas_accion: Record<string, unknown>[] };
+  base.plantillas_accion = [
+    { id: "pl0", titulo: "Archivada", instrucciones: "No debe verse.", version_corta: null, duracion_min: 10, requiere_foto: false, cantidad_objetivo: null, unidad: null, archivada: true },
+  ];
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/guardar_plantilla`, async (rt) => {
+    const cuerpo = rt.request().postDataJSON() as { p_id: null; p: Record<string, unknown> };
+    llamadas.push({ tipo: "rpc", metodo: "POST", nombre: "guardar_plantilla", url: rt.request().url(), cuerpo, aal: "aal2" });
+    base.plantillas_accion.push({ id: "pl1", ...cuerpo.p, version_corta: cuerpo.p.version_corta || null, archivada: false });
+    return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify("pl1") });
+  });
+  await page.goto("equipo/constructor/?id=p2");
+  await hidratar(page);
+  await page.getByRole("button", { name: "Crear el borrador" }).click();
+  await page.getByRole("button", { name: "Nueva meta" }).click();
+  await page.locator("#meta-titulo").fill("Moverme más");
+  await page.getByRole("button", { name: "Nueva acción" }).click();
+  // Sin plantillas vigentes no aparece el selector; incompleta, no se puede guardar como plantilla.
+  await expect(page.locator("#accion-plantilla")).toHaveCount(0);
+  const guardar = page.getByRole("button", { name: "Guardar como plantilla" });
+  await expect(guardar).toBeDisabled();
+  await page.locator("#accion-titulo").fill("Tomar agua");
+  await page.locator('input[name="accion-dias"][value="1"]').check();
+  await page.locator("#accion-instrucciones").fill("Ten una botella a mano.");
+  await page.getByLabel("Se mide con una cantidad").check();
+  await page.locator("#accion-objetivo").fill("8");
+  await page.locator("#accion-unidad").selectOption("vasos");
+  await guardar.click();
+  await expect(page.getByText("Plantilla guardada. El equipo ya puede usarla.")).toBeVisible();
+  await expect(guardar).toBeDisabled(); // no se duplica con un segundo clic
+  expect(llamadas.find((l) => l.nombre === "guardar_plantilla")!.cuerpo).toEqual({
+    p_id: null,
+    p: { titulo: "Tomar agua", instrucciones: "Ten una botella a mano.", version_corta: "", duracion_min: 10, requiere_foto: false, cantidad_objetivo: 8, unidad: "vasos" },
+  });
+
+  // Otra acción: la plantilla llena título, instrucciones y medición; los días siguen vacíos.
+  const registrosAntes = JSON.stringify(base.registros);
+  await page.getByRole("button", { name: "Nueva acción" }).click();
+  const metaAntes = await page.locator("#accion-meta").inputValue();
+  const elegir = page.locator("#accion-plantilla");
+  await expect(elegir.locator("option")).toHaveText(["Elige una plantilla", "Tomar agua"]);
+  await elegir.selectOption({ label: "Tomar agua" });
+  await page.getByRole("button", { name: "Usar plantilla" }).click();
+  await expect(page.locator("#accion-titulo")).toHaveValue("Tomar agua");
+  await expect(page.locator("#accion-instrucciones")).toHaveValue("Ten una botella a mano.");
+  await expect(page.locator("#accion-objetivo")).toHaveValue("8");
+  await expect(page.locator('input[name="accion-dias"]:checked')).toHaveCount(0);
+  await expect(page.getByText("Se usó la plantilla «Tomar agua». Revisa y ajusta lo que necesites.")).toBeVisible();
+  await expect(page.locator("#accion-meta")).toHaveValue(metaAntes);
+  // Lo que trae la plantilla se puede ajustar antes de guardar; los registros no se tocan.
+  await page.locator("#accion-titulo").fill("Tomar agua en la tarde");
+  await page.locator("#accion-objetivo").fill("4");
+  await page.locator('input[name="accion-dias"][value="3"]').check();
+  await page.getByRole("button", { name: "Guardar borrador" }).click();
+  await expect.poll(() => base.acciones.find((a) => a.titulo === "Tomar agua en la tarde")).toMatchObject({ cantidad_objetivo: 4, dias: [3] });
+  expect(base.acciones.find((a) => a.titulo === "Tomar agua")).toMatchObject({ cantidad_objetivo: 8, dias: [1] });
+  expect(JSON.stringify(base.registros)).toBe(registrosAntes);
+  await sinViolaciones(page);
+});
+
+// Informe de cierre (30-oct-2026): el coach escribe el mensaje de cierre en la ficha.
+test("ficha: mensaje de cierre al final del ciclo, con su autor; oculto sin la migración", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  Object.assign(base.ciclos[0], { estado: "cerrado", mensaje_cierre: null, mensaje_cierre_por: null, mensaje_cierre_en: null });
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/participante/?id=p1");
+  await hidratar(page);
+  await page.getByRole("tab", { name: "Revisiones" }).click();
+  const s = page.locator('section[aria-labelledby="mensaje-cierre-titulo"]');
+  await expect(s).toBeVisible();
+  await s.getByLabel("Tu mensaje para cerrar el ciclo").fill("Bien");
+  await s.getByRole("button", { name: "Guardar mensaje" }).click();
+  await expect(s.getByText("Escribe entre 10 y 800 caracteres.")).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "guardar_mensaje_cierre")).toBe(false);
+  await s.getByLabel("Tu mensaje para cerrar el ciclo").fill("Cerraste el ciclo con constancia. Sigamos.");
+  await s.getByRole("button", { name: "Guardar mensaje" }).click();
+  await expect(s.getByText("Mensaje guardado. La persona lo verá en su informe de cierre.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "guardar_mensaje_cierre")?.cuerpo).toEqual({ p_ciclo: "c1", p_mensaje: "Cerraste el ciclo con constancia. Sigamos." });
+  await expect(s).toContainText(/Escrito por .+ el /);
+  await s.getByRole("button", { name: "Quitar mensaje" }).click();
+  await expect(s.getByText("Mensaje quitado. El informe mostrará tu último foco.")).toBeVisible();
+  expect(base.ciclos[0].mensaje_cierre).toBeNull();
+  await sinViolaciones(page);
+
+  // Sin la migración aplicada, la columna no existe: la tarjeta no aparece.
+  await page.route(/\/rest\/v1\/ciclos\?.*mensaje_cierre/, (rt) => rt.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ code: "42703", message: "column ciclos.mensaje_cierre does not exist" }) }));
+  await page.reload();
+  await hidratar(page);
+  await page.getByRole("tab", { name: "Revisiones" }).click();
+  await expect(page.getByRole("heading", { name: "Semana 4" }).or(page.getByRole("heading", { name: /Semana \d/ }).first())).toBeVisible();
+  await expect(s).toHaveCount(0);
+});
+
+// ---------------------------------------------------------------------------
+// Bloque 2 de Rumbo 1.0: equipo, perfil, videollamadas y postulación con motivo
+
+const seccion = (page: Page, id: string) => page.locator(`section[aria-labelledby="${id}-titulo"]`);
+
+test("Equipo: invitar con mensaje para copiar, revocar, no desactivar a quien acompaña y reasignar", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  await page.getByRole("link", { name: "Equipo: coaches e invitaciones" }).click();
+  await expect(page.locator("h1")).toHaveText("Equipo.");
+  const carla = page.locator("li", { has: page.getByRole("heading", { name: "Carla" }) }).first();
+  await expect(carla.getByText("1 persona")).toBeVisible();
+  await expect(carla.getByText("Acompaño a personas que estudian y trabajan.")).toBeVisible();
+  // Invitar: valida antes de llamar a la base y arma el mensaje con el enlace del panel.
+  await page.getByRole("button", { name: "Crear invitación" }).click();
+  await expect(page.getByText("Escribe un nombre de 2 a 60 caracteres.")).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "invitar_coach")).toBe(false);
+  await page.getByLabel("Nombre", { exact: true }).fill("Tomás Rojas");
+  await page.getByLabel("Correo", { exact: true }).fill("Tomas@Correo.cl");
+  await page.getByRole("switch", { name: "Puede moderar la comunidad" }).check();
+  await page.getByRole("button", { name: "Crear invitación" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Invitación creada para Tomás Rojas." })).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "invitar_coach")!.cuerpo).toEqual({ p_correo: "tomas@correo.cl", p_nombre: "Tomás Rojas", p_puede_moderar: true });
+  await expect(page.locator("pre.pa-plantilla")).toContainText("/equipo/ y escribe tu correo: tomas@correo.cl.");
+  const pendientes = seccion(page, "equipo-pendientes");
+  await expect(pendientes.getByRole("heading", { name: "Tomás Rojas" })).toBeVisible();
+  // La invitación de Marta sigue vigente: se revoca.
+  const marta = pendientes.locator("li", { has: page.getByRole("heading", { name: "Marta" }) });
+  await marta.getByRole("button", { name: "Revocar" }).click();
+  await expect(page.getByText("Invitación a marta@correo.cl revocada.")).toBeVisible();
+  await expect(pendientes.getByRole("heading", { name: "Marta" })).toHaveCount(0);
+  // Carla acompaña a Ana: la base no deja desactivarla y la pantalla lo explica.
+  await carla.getByRole("button", { name: "Desactivar" }).click();
+  await expect(carla.getByRole("alert")).toContainText("Todavía acompaña a personas");
+  await carla.getByRole("button", { name: "Permitir moderar" }).click();
+  await expect(page.getByText("Carla ahora puede moderar la comunidad.")).toBeVisible();
+  // Reasignar a Ana al dueño, con motivo.
+  const ana = seccion(page, "equipo-asignar").locator("li", { has: page.getByRole("heading", { name: "Ana" }) });
+  await expect(ana.getByText("Carla")).toBeVisible();
+  await ana.getByRole("button", { name: "Cambiar coach" }).click();
+  const hoja = page.getByRole("dialog");
+  await hoja.getByLabel("Coach", { exact: true }).selectOption({ label: "Diego (Dueño)" });
+  await hoja.getByLabel("Motivo").fill("Carla cambia de horario.");
+  await hoja.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByText("Ana ahora la acompaña Diego.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "asignar_coach")!.cuerpo).toEqual({ p_participante: "p1", p_coach: UID, p_motivo: "Carla cambia de horario." });
+  await expect(carla.getByText("0 personas")).toBeVisible();
+  await sinViolaciones(page);
+});
+
+test("Equipo: un coach no lo gestiona", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const llamadas = await simular(page, baseInicial(), { factores: VERIFICADO });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/mi_rol_equipo`, (rt) => rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ rol: "coach", puede_moderar: false }) }));
+  await page.goto("equipo/equipo/");
+  await hidratar(page);
+  await expect(page.getByText("Solo el dueño de Rumbo puede gestionar el equipo.")).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "invitaciones_equipo")).toBe(false);
+});
+
+test("invitación: la persona invitada la acepta y pasa a registrar su segundo factor", async ({ page }) => {
+  await preparar(page, "aal1");
+  const base = baseInicial();
+  const llamadas = await simular(page, base, { equipo: false });
+  await page.goto("equipo/");
+  await hidratar(page);
+  await expect(page.locator("h1")).toHaveText("Esta cuenta no tiene acceso al panel.");
+  // Al llegar se busca sola; sin invitación para su correo queda el botón, y al pulsarlo se explica.
+  await expect(page.getByRole("button", { name: "Aceptar mi invitación" })).toBeVisible();
+  await page.getByRole("button", { name: "Aceptar mi invitación" }).click();
+  await expect(page.getByRole("alert")).toContainText("No encontramos una invitación vigente para este correo.");
+  base.invitaciones_equipo.push({ id: "inv9", correo: "diego@correo.cl", nombre: "Diego", puede_moderar: false, creada_en: "2026-10-12T12:00:00Z", expira_en: "2026-10-19T12:00:00Z", aceptada_en: null, revocada_en: null });
+  await page.getByRole("button", { name: "Aceptar mi invitación" }).click();
+  await expect(page.locator("h1")).toHaveText("Segundo factor.");
+  expect(llamadas.filter((l) => l.nombre === "aceptar_invitacion_equipo")).toHaveLength(3);
+  await sinViolaciones(page);
+});
+
+test("invitación vigente: se acepta sola al llegar y pasa directo al segundo factor", async ({ page }) => {
+  await preparar(page, "aal1");
+  const base = baseInicial();
+  base.invitaciones_equipo.push({ id: "inv9", correo: "diego@correo.cl", nombre: "Diego", puede_moderar: false, creada_en: "2026-10-12T12:00:00Z", expira_en: "2026-10-19T12:00:00Z", aceptada_en: null, revocada_en: null });
+  const llamadas = await simular(page, base, { equipo: false });
+  await page.goto("equipo/");
+  await hidratar(page);
+  await expect(page.locator("h1")).toHaveText("Segundo factor.");
+  expect(llamadas.filter((l) => l.nombre === "aceptar_invitacion_equipo")).toHaveLength(1);
+});
+
+test("Más: «Tu perfil» guarda nombre y presentación con actualizar_mi_perfil", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  const perfil = seccion(page, "perfil");
+  await expect(perfil.getByLabel("Nombre")).toHaveValue("Diego");
+  await perfil.getByLabel("Presentación").fill("Acompaño a ordenar la semana sin exigirse de más.");
+  await perfil.getByRole("button", { name: "Guardar perfil" }).click();
+  await expect(perfil.getByText("Perfil guardado.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "actualizar_mi_perfil")!.cuerpo).toEqual({ p: { nombre: "Diego", presentacion: "Acompaño a ordenar la semana sin exigirse de más." } });
+  await sinViolaciones(page);
+});
+
+test("ficha: videollamadas del plan cercano, agendar con enlace y anotar", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  base.ciclos[0].plan_id = "cercano";
+  base.ciclos[0].hora_videollamada = "19:00:00";
+  // La semana 1 ya pasó y quedó agendada.
+  base.videollamadas.push({ id: "vl1", participante_id: "p1", ciclo_id: "c1", semana: 1, programada_para: "2026-10-06T22:00:00Z", enlace: "https://meet.google.com/abc-defg-hij", estado: "programada" });
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/participante/?id=p1&pestana=revisiones");
+  await hidratar(page);
+  const vl = seccion(page, "videollamadas");
+  await expect(vl.getByRole("heading", { name: "Videollamadas" })).toBeVisible();
+  const s1 = vl.locator("li", { has: page.getByRole("heading", { name: "Semana 1" }) });
+  await expect(s1.getByRole("link", { name: /meet\.google\.com/ })).toHaveAttribute("rel", "noopener noreferrer");
+  // Ya pasó la hora: queda «Por anotar» y se pide anotar qué pasó. Sin próximas, no hay destacado.
+  await expect(s1.getByText("Por anotar")).toBeVisible();
+  await expect(s1.getByRole("heading", { name: "Anota qué pasó en esta videollamada" })).toBeVisible();
+  await expect(s1.getByRole("button", { name: "La persona no asistió" })).toBeVisible();
+  await expect(vl.locator(".pa-vl-proxima")).toHaveCount(0);
+  await s1.getByRole("button", { name: "Se realizó" }).click();
+  await expect(vl.getByText("Videollamada de la semana 1 anotada.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "anotar_videollamada")!.cuerpo).toEqual({ p_videollamada: "vl1", p_estado: "realizada" });
+  await expect(s1.getByText("Realizada")).toBeVisible();
+  // Semana 2: propone el día de revisión a la hora acordada; valida el enlace.
+  const s2 = vl.locator("li", { has: page.getByRole("heading", { name: "Semana 2" }) });
+  await s2.getByRole("button", { name: "Agendar" }).click();
+  await expect(s2.getByLabel("Fecha y hora")).toHaveValue("2026-10-13T19:00");
+  await s2.getByLabel("Enlace de la videollamada").fill("meet.google.com/xyz");
+  await s2.getByRole("button", { name: "Guardar" }).click();
+  await expect(s2.getByText("Pega el enlace completo de la videollamada; debe empezar con https://.").first()).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "programar_videollamada")).toBe(false);
+  await s2.getByLabel("Enlace de la videollamada").fill("https://meet.google.com/xyz-abcd-efg");
+  await s2.getByRole("button", { name: "Guardar" }).click();
+  await expect(vl.getByText("Videollamada de la semana 2 agendada. La persona recibió un aviso.")).toBeVisible();
+  const cuerpo = llamadas.find((l) => l.nombre === "programar_videollamada")!.cuerpo as Record<string, unknown>;
+  expect(cuerpo.p_ciclo).toBe("c1");
+  expect(cuerpo.p_semana).toBe(2);
+  expect(cuerpo.p_enlace).toBe("https://meet.google.com/xyz-abcd-efg");
+  await expect(s2.getByText("Agendada")).toBeVisible();
+  // La próxima queda destacada arriba, con su enlace a mano; antes de la hora solo se puede cancelar.
+  const proxima = vl.locator(".pa-vl-proxima");
+  await expect(proxima.getByRole("heading", { name: "Próxima videollamada" })).toBeVisible();
+  await expect(proxima).toContainText("Semana 2 ·");
+  await expect(proxima.getByRole("link", { name: "Abrir la videollamada" })).toHaveAttribute("href", "https://meet.google.com/xyz-abcd-efg");
+  await expect(s2.getByRole("heading", { name: "¿No se hará?" })).toBeVisible();
+  await expect(s2.getByRole("button", { name: "Se realizó" })).toHaveCount(0);
+  await sinViolaciones(page);
+});
+
+test("ficha: el plan con revisión escrita no muestra videollamadas", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const llamadas = await simular(page, baseInicial(), { factores: VERIFICADO });
+  await page.goto("equipo/participante/?id=p1&pestana=revisiones");
+  await hidratar(page);
+  await expect(page.getByRole("heading", { name: "Semana 2" }).first()).toBeVisible();
+  await expect(seccion(page, "videollamadas")).toHaveCount(0);
+  expect(llamadas.some((l) => l.nombre === "videollamadas")).toBe(false);
+});
+
+test("ficha: la postulación se abre solo con motivo", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  base.participantes[0].solicitud_id = "s1";
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/participante/?id=p1&pestana=datos");
+  await hidratar(page);
+  await page.getByRole("button", { name: "Ver su postulación" }).click();
+  const hoja = page.getByRole("dialog");
+  await hoja.getByRole("button", { name: "Ver la postulación" }).click();
+  await expect(hoja.getByText("Escribe el motivo con al menos 10 caracteres.").first()).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "ver_postulacion")).toBe(false);
+  await hoja.getByLabel("Motivo").fill("Revisar sus horarios para agendar.");
+  await hoja.getByRole("button", { name: "Ver la postulación" }).click();
+  await expect(hoja.getByText("Quiero ordenar mi semana para llegar con energía al trabajo y a mis estudios.")).toBeVisible();
+  await expect(hoja.getByText("Lunes, Jueves")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "ver_postulacion")!.cuerpo).toEqual({ p_participante: "p1", p_motivo: "Revisar sus horarios para agendar." });
+  await sinViolaciones(page);
+});
+
+// Capturas para la revisión de Diego (no corre en CI): CAPTURAS=carpeta npx playwright test -g "capturas del bloque 2".
+test("capturas del bloque 2", async ({ page }, info) => {
+  test.skip(!process.env.CAPTURAS, "solo para generar capturas");
+  const dir = process.env.CAPTURAS!;
+  const base = baseInicial();
+  base.ciclos[0].plan_id = "cercano";
+  base.ciclos[0].hora_videollamada = "19:00:00";
+  base.videollamadas.push({ id: "vl1", participante_id: "p1", ciclo_id: "c1", semana: 1, programada_para: "2026-10-06T22:00:00Z", enlace: "https://meet.google.com/abc-defg-hij", estado: "realizada" });
+  base.videollamadas.push({ id: "vl2", participante_id: "p1", ciclo_id: "c1", semana: 2, programada_para: "2026-10-13T22:00:00Z", enlace: "https://meet.google.com/xyz-abcd-efg", estado: "programada" });
+  await preparar(page, "aal2", VERIFICADO);
+  await simular(page, base, { factores: VERIFICADO });
+  const sinBarras = () => page.addStyleTag({ content: ".barra-inferior, .cabecera-app { position: static !important; }" });
+  const foto = async (ruta: string, nombre: string) => {
+    await page.goto(ruta);
+    await hidratar(page);
+    await page.locator("main h1").first().waitFor();
+    await expect(page.getByText("Cargando…")).toHaveCount(0);
+    await page.waitForTimeout(500);
+    await sinBarras();
+    await page.screenshot({ path: `${dir}/${nombre}-${info.project.name}.png`, fullPage: true });
+  };
+  await foto("equipo/equipo/", "equipo");
+  await foto("equipo/participante/?id=p1&pestana=revisiones", "videollamadas");
+  await foto("equipo/mas/", "mas-perfil");
+  await page.goto("equipo/participante/?id=p1&pestana=datos");
+  await hidratar(page);
+  base.participantes[0].solicitud_id = "s1";
+  await page.reload();
+  await hidratar(page);
+  await page.getByRole("button", { name: "Ver su postulación" }).click();
+  await page.getByRole("dialog").getByLabel("Motivo").fill("Revisar sus horarios para agendar.");
+  await page.getByRole("dialog").getByRole("button", { name: "Ver la postulación" }).click();
+  await page.getByRole("dialog").getByText("Lunes, Jueves").waitFor();
+  await page.screenshot({ path: `${dir}/postulacion-${info.project.name}.png` });
+});
+
+// ---------------------------------------------------------------------------
+// Asistente de Rumbo: bandeja de revisión (E2)
+
+const consultasIa = (): Fila[] => [
+  { id: "ia1", participante_id: "p1", tipo: "pregunta", pregunta: "¿Cómo mantengo la motivación?", estado: "por_revisar", respuesta: "Borrador del asistente.", texto_final: null, contexto_enviado: { semana_del_ciclo: 2, semanas: 4, metas: [{ titulo: "Caminar" }] }, error: null, creada_en: "2026-10-13T10:00:00Z", revisada_por: null, revisada_en: null, nota_revision: null },
+  { id: "ia2", participante_id: "p1", tipo: "pregunta", pregunta: "¿Qué hábitos me recomiendas?", estado: "por_revisar", respuesta: "Otro borrador.", texto_final: null, contexto_enviado: { semana_del_ciclo: 2, semanas: 4 }, error: null, creada_en: "2026-10-13T11:00:00Z", revisada_por: null, revisada_en: null, nota_revision: null },
+  { id: "ia3", participante_id: "p1", tipo: "pregunta", pregunta: "Quiero morir", estado: "crisis", respuesta: null, texto_final: null, contexto_enviado: null, error: null, creada_en: "2026-10-12T22:00:00Z", revisada_por: null, revisada_en: null, nota_revision: null },
+  { id: "ia4", participante_id: "p1", tipo: "pregunta", pregunta: "Pregunta antigua", estado: "error", respuesta: null, texto_final: null, contexto_enviado: null, error: "tiempo_agotado", creada_en: "2026-09-01T10:00:00Z", revisada_por: null, revisada_en: null, nota_revision: null },
+  { id: "ia5", participante_id: "p1", tipo: "pregunta", pregunta: "¿Cómo retomo?", estado: "aprobada", respuesta: "Original.", texto_final: "Corregido por el coach.", contexto_enviado: null, error: null, creada_en: "2026-10-10T10:00:00Z", revisada_por: "otra-persona", revisada_en: "2026-10-10T12:00:00Z", nota_revision: "Ajusté el tono." },
+];
+
+test("Asistente: aprobar tal cual, aprobar corregida y no compartir; alertas y revisadas con quién y cuándo", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  base.ia_consultas = consultasIa();
+  base.ia_valoraciones = [{ consulta_id: "ia5", participante_id: "p1", util: false, motivo: "Muy general" }];
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  await page.getByRole("link", { name: "Asistente: respuestas por revisar" }).click();
+  await expect(page.locator("h1")).toHaveText("Asistente: por revisar.");
+  await expect(page.getByText("2 respuestas esperan tu revisión.")).toBeVisible();
+  // Alerta reciente visible con la ficha; el error de hace más de 7 días no.
+  const alertas = page.locator("section", { has: page.getByRole("heading", { name: "Alertas" }) });
+  await expect(alertas).toContainText("Quiero morir");
+  await expect(alertas.getByRole("link", { name: "Abrir la ficha" })).toBeVisible();
+  await expect(page.getByText("Pregunta antigua")).toHaveCount(0);
+  // Contexto enviado, sin el contenido.
+  const primera = page.locator("li", { hasText: "¿Cómo mantengo la motivación?" });
+  await expect(primera).toContainText("Lo que se envió además de la pregunta: semana_del_ciclo".replace("semana_del_ciclo", "semana del ciclo"));
+  await expect(primera).toContainText("metas");
+  await sinViolaciones(page);
+
+  // 1) Corregida: envía el texto nuevo y la nota.
+  await primera.getByLabel("Respuesta que verá la persona").fill("Texto corregido por el coach.");
+  await primera.getByLabel(/Nota interna/).fill("Tono más cálido.");
+  await primera.getByRole("button", { name: "Aprobar con mis cambios" }).click();
+  await expect(page.getByText("Aprobada: la persona ya la puede ver.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "ia_revisar")!.cuerpo).toEqual({ p_consulta: "ia1", p_aprobar: true, p_texto: "Texto corregido por el coach.", p_nota: "Tono más cálido." });
+  expect(llamadas.find((l) => l.nombre === "ia_revisar")!.aal).toBe("aal2");
+
+  // 2) No compartir pide confirmación.
+  const segunda = page.locator("li", { hasText: "¿Qué hábitos me recomiendas?" }).filter({ has: page.getByRole("button", { name: "No compartir" }) });
+  await segunda.getByRole("button", { name: "No compartir" }).click();
+  await expect(segunda.getByText("La persona verá que tu coach decidió no compartir esta respuesta. ¿Seguro?")).toBeVisible();
+  await segunda.getByRole("button", { name: "Sí, no compartir" }).click();
+  await expect(page.getByText("No compartida.", { exact: true })).toBeVisible();
+  expect(llamadas.filter((l) => l.nombre === "ia_revisar")[1].cuerpo).toEqual({ p_consulta: "ia2", p_aprobar: false, p_texto: null, p_nota: null });
+  await expect(page.getByText("No hay respuestas por revisar.").first()).toBeVisible();
+
+  // Revisadas: quién y cuándo, y si se corrigió.
+  const revisadas = page.locator("section", { has: page.getByRole("heading", { name: "Revisadas recientemente" }) });
+  await expect(revisadas.locator("li")).toHaveCount(3);
+  await expect(revisadas.locator("li", { hasText: "¿Cómo retomo?" })).toContainText("Por otra persona del equipo");
+  await expect(revisadas.locator("li", { hasText: "¿Cómo retomo?" })).toContainText("Con cambios");
+  await expect(revisadas.locator("li", { hasText: "¿Cómo mantengo la motivación?" })).toContainText("Por ti");
+  // La valoración de la persona («No me sirvió» y su comentario) la ve su coach.
+  await expect(revisadas.locator("li", { hasText: "¿Cómo retomo?" })).toContainText("Valoración de la persona: No le sirvió · «Muy general»");
+  await expect(revisadas.locator("li", { hasText: "¿Cómo mantengo la motivación?" })).not.toContainText("Valoración de la persona");
+});
+
+test("Asistente: aprobar tal cual no reenvía el texto; si ya fue revisada, se explica", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  base.ia_consultas = consultasIa().slice(0, 1);
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/asistente/");
+  await hidratar(page);
+  const fila = page.locator("li", { hasText: "¿Cómo mantengo la motivación?" });
+  await expect(fila.getByRole("button", { name: "Aprobar y compartir" })).toBeVisible();
+  // Otra persona del equipo la revisó mientras tanto.
+  base.ia_consultas[0].estado = "aprobada";
+  await fila.getByRole("button", { name: "Aprobar y compartir" }).click();
+  await expect(fila.getByRole("alert")).toContainText("Esta respuesta ya fue revisada o ya no está pendiente.");
+  expect(llamadas.find((l) => l.nombre === "ia_revisar")!.cuerpo).toEqual({ p_consulta: "ia1", p_aprobar: true, p_texto: null, p_nota: null });
+  // Vaciar la respuesta no se aprueba.
+  base.ia_consultas[0].estado = "por_revisar";
+  await fila.getByLabel("Respuesta que verá la persona").fill("   ");
+  await fila.getByRole("button", { name: "Aprobar con mis cambios" }).click();
+  await expect(fila.getByText("La respuesta no puede quedar vacía.").first()).toBeVisible();
+  expect(llamadas.filter((l) => l.nombre === "ia_revisar")).toHaveLength(1);
+});
+
+const configIa = (): Fila => ({ id: true, activo: false, modelo: "gpt-4o-mini", instrucciones: "Eres el asistente de Rumbo. Un coach humano revisa tu respuesta antes de que la persona la lea.", max_tokens_respuesta: 400, tokens_entrada_estimados: 2000, precio_entrada_1m: 0.15, precio_salida_1m: 0.6, tope_mensual_usd: 5, tope_diario_persona: 5, activado_en: null });
+
+test("Asistente (dueño): consumo sin conversaciones, estimación por persona, límites y encender con la clave", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  base.ia_config = [configIa()];
+  base.ia_consultas = consultasIa();
+  base.modulos.push({ clave: "asistente_ia", nombre: "Asistente con inteligencia artificial", estado: "planificado", probado_en: null, respaldo: null, que_falta: null, orden: 4, cambiado_en: AHORA.toISOString() });
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  await page.getByRole("link", { name: "Asistente: encender, límites y consumo" }).click();
+  await expect(page.locator("h1")).toHaveText("Asistente: administración.");
+  await expect(page.getByText("Apagado", { exact: true })).toBeVisible();
+  await expect(page.getByText("Módulo «Asistente con inteligencia artificial»: Planificado.")).toBeVisible();
+  // Consumo: montos y cuentas, nunca preguntas ni respuestas.
+  const consumo = page.locator("section", { has: page.getByRole("heading", { name: "Consumo de este mes" }) });
+  await expect(consumo).toContainText("USD 0,0123 de USD 5,00");
+  await expect(consumo).toContainText("Respuestas por revisar2");
+  await expect(page.locator("main")).not.toContainText("¿Cómo mantengo la motivación?");
+  await expect(page.locator("main")).not.toContainText("Quiero morir");
+  // Estimación: (2000 × 0,15 + 400 × 0,60) / 1e6 = 0,00054 por consulta; × 5 × 28.
+  const est = page.locator("section", { has: page.getByRole("heading", { name: "Costo estimado por persona" }) });
+  await expect(est).toContainText("USD 0,0005");
+  await expect(est).toContainText("USD 0,08");
+  await sinViolaciones(page);
+
+  // Límites: valida y guarda.
+  await page.getByLabel("Límite mensual (USD)").fill("diez");
+  await page.getByRole("button", { name: "Guardar límites" }).click();
+  await expect(page.getByLabel("Límite mensual (USD)")).toBeFocused();
+  expect(llamadas.some((l) => l.nombre === "guardar_ia_config")).toBe(false);
+  await page.getByLabel("Límite mensual (USD)").fill("10");
+  await page.getByRole("button", { name: "Guardar límites" }).click();
+  await expect(page.getByText("Límites guardados.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "guardar_ia_config")!.cuerpo).toEqual({
+    p: { tope_mensual_usd: 10, tope_diario_persona: 5, modelo: "gpt-4o-mini", max_tokens_respuesta: 400, tokens_entrada_estimados: 2000, precio_entrada_1m: 0.15, precio_salida_1m: 0.6 },
+  });
+  await expect(consumo).toContainText("USD 0,0123 de USD 10,00");
+
+  // Encender sin clave: la base lo rechaza y se explica.
+  await page.getByRole("button", { name: "Encender el asistente" }).click();
+  await expect(page.getByText(/se envía a OpenAI \(servicio pagado\)/)).toBeVisible();
+  await page.getByRole("button", { name: "Sí, continuar" }).click();
+  await expect(page.getByText("Falta la clave de OpenAI en el Vault de Supabase.", { exact: false })).toBeVisible();
+  expect(base.ia_config[0].activo).toBe(false);
+  // Con la clave, enciende.
+  base.ia_clave = true;
+  await page.getByRole("button", { name: "Encender el asistente" }).click();
+  await page.getByRole("button", { name: "Sí, continuar" }).click();
+  await expect(page.getByText("El asistente quedó encendido.")).toBeVisible();
+  await expect(page.getByText("Encendido", { exact: true })).toBeVisible();
+  expect(llamadas.filter((l) => l.nombre === "guardar_ia_config").at(-1)!.cuerpo).toEqual({ p: { activo: true } });
+});
+
+test("Asistente (dueño): un coach no ve la administración", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  base.ia_config = [configIa()];
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/mi_rol_equipo`, (rt) => rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ rol: "coach", puede_moderar: false }) }));
+  await page.goto("equipo/asistente/administracion/");
+  await hidratar(page);
+  await expect(page.getByText("Solo el dueño puede administrar el asistente.")).toBeVisible();
+  expect(llamadas.filter((l) => l.nombre === "ia_config" || l.nombre === "ia_gasto")).toHaveLength(0);
+});
+
+// ---------------------------------------------------------------------------
+// Pagos (dueño): registro manual con las funciones de la base (20261029000000_pagos, aplicada).
+
+function rpcPagos(base: Base) {
+  return {
+    registrar_pago: (c: Record<string, unknown>) => {
+      if (base.pagos.some((p) => p.ciclo_id === c.p_ciclo)) return { __error: "pago:ya_registrado", __estado: 409 };
+      const ciclo = base.ciclos.find((x) => x.id === c.p_ciclo)!;
+      const id = `pago-${base.pagos.length + 1}`;
+      base.pagos.push({ id, participante_id: ciclo.participante_id, ciclo_id: c.p_ciclo, monto: c.p_monto, moneda: c.p_moneda, medio: c.p_medio, pagado_en: c.p_pagado_en, referencia: c.p_referencia, devuelto: 0, devuelto_en: null, devolucion_motivo: null });
+      return id;
+    },
+    // Ana: semana 2 de 4 empezada el 13 de octubre → quedan 2 semanas sin empezar (la mitad).
+    devolucion_sugerida: (c: Record<string, unknown>) => {
+      const g = base.pagos.find((p) => p.id === c.p_pago)!;
+      return Number(g.monto) / 2 - Number(g.devuelto);
+    },
+    registrar_devolucion: (c: Record<string, unknown>) => {
+      const g = base.pagos.find((p) => p.id === c.p_pago)!;
+      Object.assign(g, { devuelto: Number(g.devuelto) + Number(c.p_monto), devuelto_en: c.p_devuelto_en, devolucion_motivo: c.p_motivo });
+      return null;
+    },
+  };
+}
+
+test("Pagos: el dueño registra un pago y una devolución con las reglas de la base", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  for (const c of base.ciclos) c.precio_acordado_clp = 64000;
+  base.pagos = [];
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/*`, async (rt) => {
+    const nombre = new URL(rt.request().url()).pathname.split("/").pop()!;
+    const f = (rpcPagos(base) as Record<string, (c: Record<string, unknown>) => unknown>)[nombre];
+    if (!f) return rt.fallback();
+    const cuerpo = (rt.request().postDataJSON() ?? {}) as Record<string, unknown>;
+    llamadas.push({ tipo: "rpc", metodo: "POST", nombre, url: rt.request().url(), cuerpo, aal: "aal2" });
+    const r = f(cuerpo) as { __error?: string; __estado?: number } | null;
+    if (r && typeof r === "object" && "__error" in r) return rt.fulfill({ status: r.__estado, contentType: "application/json", body: JSON.stringify({ code: "P0001", message: r.__error }) });
+    return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(r) });
+  });
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  await page.getByRole("link", { name: "Pagos y devoluciones" }).click();
+  await expect(page.locator("h1")).toHaveText("Pagos.");
+  const porRegistrar = page.locator("section[aria-labelledby=por-registrar-titulo]");
+  await expect(porRegistrar.locator("li")).toHaveCount(2);
+  await sinViolaciones(page);
+
+  // Ana: el monto viene con el precio acordado; una fecha futura no se acepta.
+  const ana = porRegistrar.locator("li", { hasText: "Ana" });
+  await ana.getByRole("button", { name: "Registrar pago" }).click();
+  await expect(ana.getByLabel("Monto en pesos")).toHaveValue("64000");
+  await ana.getByLabel("Fecha del pago").fill("2026-10-20");
+  await ana.getByRole("button", { name: "Guardar pago" }).click();
+  await expect(ana.getByText("Elige una fecha de hoy o anterior.")).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "registrar_pago")).toBe(false);
+  await ana.getByLabel("Fecha del pago").fill("2026-10-10");
+  await ana.getByLabel("Referencia").fill("OP-123");
+  await sinViolaciones(page);
+  await ana.getByRole("button", { name: "Guardar pago" }).click();
+  await expect(page.getByText("Pago de Ana registrado.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "registrar_pago")!.cuerpo).toEqual({
+    p_ciclo: "c1",
+    p_medio: "transferencia",
+    p_pagado_en: "2026-10-10",
+    p_monto: 64000,
+    p_moneda: "CLP",
+    p_referencia: "OP-123",
+  });
+  await expect(porRegistrar.locator("li")).toHaveCount(1);
+  const pagada = page.locator("section[aria-labelledby=registrados-titulo] li", { hasText: "Ana" });
+  await expect(pagada).toContainText("$64.000");
+  await expect(pagada).toContainText("Pagado");
+
+  // Devolución: la base calcula lo que corresponde; hay que confirmar que ya se hizo.
+  await pagada.getByRole("button", { name: "Registrar devolución" }).click();
+  await expect(pagada.getByText("Según las condiciones, hoy corresponde devolver $32.000.", { exact: false })).toBeVisible();
+  await expect(pagada.getByLabel("Monto devuelto en pesos")).toHaveValue("32000");
+  await pagada.getByRole("button", { name: "Guardar devolución" }).click();
+  await expect(pagada.getByText("Marca la casilla para confirmar que la devolución ya está hecha.")).toBeVisible();
+  await pagada.getByLabel("Monto devuelto en pesos").fill("70000");
+  await pagada.getByRole("checkbox").check();
+  await pagada.getByRole("button", { name: "Guardar devolución" }).click();
+  await expect(pagada.getByText("Escribe un monto mayor que cero y hasta $64.000.")).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "registrar_devolucion")).toBe(false);
+  await pagada.getByLabel("Monto devuelto en pesos").fill("32000");
+  await pagada.getByRole("button", { name: "Guardar devolución" }).click();
+  await expect(page.getByText("Devolución de Ana registrada.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "registrar_devolucion")!.cuerpo).toEqual({
+    p_pago: "pago-1",
+    p_monto: 32000,
+    p_motivo: "semanas_no_empezadas",
+    p_devuelto_en: "2026-10-13",
+  });
+  await expect(pagada).toContainText("Devolución parcial");
+  await expect(pagada).toContainText("$32.000");
+});
+
+test("Pagos: si la base rechaza, se explica; PayPal pasa a dólares sin monto; un coach no los ve", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  for (const c of base.ciclos) c.precio_acordado_clp = 64000;
+  // Otro dispositivo ya anotó el pago de Bruno (la pantalla aún no lo sabe).
+  base.pagos = [];
+  await simular(page, base, { factores: VERIFICADO });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/registrar_pago`, (rt) =>
+    rt.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ code: "P0001", message: "pago:ya_registrado" }) }),
+  );
+  await page.goto("equipo/pagos/");
+  await hidratar(page);
+  const bruno = page.locator("section[aria-labelledby=por-registrar-titulo] li", { hasText: "Bruno" });
+  await bruno.getByRole("button", { name: "Registrar pago" }).click();
+  await bruno.getByLabel("Medio de pago").selectOption("paypal");
+  await expect(bruno.getByLabel("Moneda")).toHaveValue("USD");
+  await expect(bruno.getByLabel("Monto en dólares")).toHaveValue("");
+  await bruno.getByLabel("Monto en dólares").fill("72");
+  await bruno.getByRole("button", { name: "Guardar pago" }).click();
+  await expect(bruno.getByText("Este ciclo ya tiene un pago anotado. Vuelve a cargar la página para verlo.")).toBeVisible();
+
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/mi_rol_equipo`, (rt) => rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ rol: "coach", puede_moderar: false }) }));
+  await page.goto("equipo/pagos/");
+  await hidratar(page);
+  await expect(page.getByText("Solo el dueño puede ver y registrar pagos.")).toBeVisible();
+  await expect(page.locator("section[aria-labelledby=por-registrar-titulo]")).toHaveCount(0);
+});
+
+// Negocio (dueño): indicadores agregados de la base (20261027000000_indicadores, aplicada) e ingresos de pagos.
+const INDICADORES = {
+  periodo: { desde: "2026-09-16", hasta: "2026-10-13" },
+  conversion: { postulaciones: 8, interes: 3, respondidas_a_tiempo: 6, acordadas: 2, revisadas: 4, acuerdos_aceptados: 2, ciclos_por_plan: { coach: 1, cercano: 1 } },
+  activacion: { empezaron: 2, primera_accion_3_dias: 2, registro_semana_1: 1 },
+  cumplimiento: { acciones_programadas: 40, acciones_hechas: 30, dias_con_acciones: 0, dias_completos: 0, registros_semanales_enviados: 3, revisiones_publicadas: 3, ajustes_pedidos: 1 },
+  retencion: { en_ciclo_activo: 2, con_actividad: 2, pausados: 0, cerrados: 0, cerrados_antes_del_fin: 0, renovaciones: 0 },
+  equipo: { acompanantes_activos: 1, participantes_con_coach: 2, participantes_sin_coach: 0 },
+  no_disponible: [
+    { indicador: "visitas y tasa de postulación", falta: "analítica sin cookies (no activa)" },
+    { indicador: "conversión a pago, devoluciones, ingreso y margen", falta: "registro de pagos (B4)" },
+  ],
+};
+
+test("Negocio: el dueño ve los indicadores del período, sin porcentajes inventados; un coach no los ve", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  base.pagos = [
+    { id: "g1", participante_id: "p1", ciclo_id: "c1", monto: 64000, moneda: "CLP", medio: "transferencia", pagado_en: "2026-10-01", referencia: null, devuelto: 32000, devuelto_en: "2026-10-10", devolucion_motivo: "semanas_no_empezadas" },
+    { id: "g2", participante_id: "p2", ciclo_id: "c2", monto: 72, moneda: "USD", medio: "paypal", pagado_en: "2026-10-05", referencia: null, devuelto: 0, devuelto_en: null, devolucion_motivo: null },
+    { id: "g3", participante_id: "p2", ciclo_id: "c9", monto: 100000, moneda: "CLP", medio: "transferencia", pagado_en: "2026-01-05", referencia: null, devuelto: 0, devuelto_en: null, devolucion_motivo: null },
+  ];
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/indicadores`, async (rt) => {
+    const cuerpo = (rt.request().postDataJSON() ?? {}) as Record<string, unknown>;
+    llamadas.push({ tipo: "rpc", metodo: "POST", nombre: "indicadores", url: rt.request().url(), cuerpo, aal: "aal2" });
+    return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...INDICADORES, periodo: { desde: cuerpo.p_desde, hasta: cuerpo.p_hasta } }) });
+  });
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  await page.getByRole("link", { name: "Negocio" }).click();
+  await expect(page.locator("h1")).toHaveText("Negocio.");
+  const conv = page.locator("section[aria-labelledby=ng-conversion-titulo]");
+  await expect(conv).toContainText("Respondidas dentro de 2 días hábiles6 de 8 (75 %)");
+  await expect(conv).toContainText("Ciclos que empezaron · Acompañamiento cercano1");
+  // Sin días con acciones no hay porcentaje: se dice, no se inventa.
+  await expect(page.locator("section[aria-labelledby=ng-cumplimiento-titulo]")).toContainText("Acciones hechas (de las programadas)30 de 40 (75 %)");
+  await expect(page.locator("section[aria-labelledby=ng-cumplimiento-titulo]")).toContainText("0 (sin datos para calcular el porcentaje)");
+  // Ingresos del período desde los pagos anotados (el pago de enero queda fuera de las 4 semanas).
+  const ing = page.locator("section[aria-labelledby=ng-ingresos-titulo]");
+  await expect(ing).toContainText("Pagos recibidos$64.000 · USD 72");
+  await expect(ing).toContainText("Devoluciones hechas$32.000");
+  // Lo que ya tiene registro (pagos) no aparece como faltante.
+  const faltan = page.locator("section[aria-labelledby=ng-faltan-titulo]");
+  await expect(faltan).toContainText("Visitas y tasa de postulación");
+  await expect(faltan).not.toContainText("ingreso y margen");
+  await sinViolaciones(page);
+  const primera = llamadas.filter((l) => l.nombre === "indicadores")[0].cuerpo as { p_desde: string; p_hasta: string };
+  expect((Date.parse(primera.p_hasta) - Date.parse(primera.p_desde)) / 86_400_000).toBe(27);
+
+  // Otro período: vuelve a consultar con lo que va del año.
+  await page.getByLabel("Período").selectOption("anio");
+  await expect(ing).toContainText("Pagos recibidos$164.000 · USD 72");
+  const ultima = llamadas.filter((l) => l.nombre === "indicadores").at(-1)!.cuerpo as { p_desde: string; p_hasta: string };
+  expect(ultima.p_desde).toBe(`${primera.p_hasta.slice(0, 4)}-01-01`);
+
+  const antes = llamadas.filter((l) => l.nombre === "indicadores").length;
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/mi_rol_equipo`, (rt) => rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ rol: "coach", puede_moderar: false }) }));
+  await page.goto("equipo/negocio/");
+  await hidratar(page);
+  await expect(page.getByText("Solo el dueño puede ver los indicadores del negocio.")).toBeVisible();
+  expect(llamadas.filter((l) => l.nombre === "indicadores")).toHaveLength(antes);
 });

@@ -109,6 +109,9 @@ const detalle = () => import("./mi-espacio/DetalleAccion");
 const anteriores = () => import("./mi-espacio/DiasAnteriores");
 const progreso = () => import("./mi-espacio/Progreso");
 const creditos = () => import("./mi-espacio/Creditos");
+const misAvisos = () => import("./mi-espacio/MisAvisos");
+const recordatorios = () => import("./mi-espacio/Recordatorios");
+const asistente = () => import("./mi-espacio/Asistente");
 const acompanamiento = () => import("./mi-espacio/Acompanamiento");
 const misMetas = () => import("./mi-espacio/MisMetas");
 const comunidad = () => import("./mi-espacio/Comunidad");
@@ -161,8 +164,11 @@ const MI_ESPACIO_FILAS: Fila[] = [
   { ruta: "mi-espacio/plan/accion/foto-aprobada/", nombre: "Foto aprobada, con nota", estado: "foto-aprobada", titulo: MI_ESPACIO("Acción"), marco: "mi-espacio", seccion: "Acción", activo: "plan", apartado: "Detalle de acción", cargar: detalle },
   { ruta: "mi-espacio/plan/accion/foto-no-aprobada/", nombre: "Foto no aprobada", estado: "foto-no-aprobada", titulo: MI_ESPACIO("Acción"), marco: "mi-espacio", seccion: "Acción", activo: "plan", apartado: "Detalle de acción", cargar: detalle },
   { ruta: "mi-espacio/plan/accion/foto-depurada/", nombre: "Foto depurada", estado: "foto-depurada", titulo: MI_ESPACIO("Acción"), marco: "mi-espacio", seccion: "Acción", activo: "plan", apartado: "Detalle de acción", cargar: detalle },
+  { ruta: "mi-espacio/plan/accion/medible/", nombre: "Registrar acción medible", estado: "medible", titulo: MI_ESPACIO("Acción"), marco: "mi-espacio", seccion: "Acción", activo: "plan", apartado: "Detalle de acción", cargar: detalle },
+  { ruta: "mi-espacio/plan/accion/medible-hecha/", nombre: "Acción medible registrada", estado: "medible-hecha", titulo: MI_ESPACIO("Acción"), marco: "mi-espacio", seccion: "Acción", activo: "plan", apartado: "Detalle de acción", cargar: detalle },
   { ruta: "mi-espacio/logros/", nombre: "Progreso", titulo: MI_ESPACIO("Mis logros"), marco: "mi-espacio", seccion: "Mis logros", activo: "logros", apartado: "Mis logros", cargar: progreso },
   { ruta: "mi-espacio/logros/creditos/", nombre: "Historial de créditos", titulo: MI_ESPACIO("Créditos"), marco: "mi-espacio", seccion: "Créditos", activo: "logros", apartado: "Mis logros", cargar: creditos },
+  { ruta: "mi-espacio/avisos/", nombre: "Mis avisos", titulo: MI_ESPACIO("Mis avisos"), marco: "mi-espacio", seccion: "Mis avisos", activo: "avisos", apartado: "Mis avisos", cargar: misAvisos },
   { ruta: "mi-espacio/acompanamiento/", nombre: "Registro sin enviar", estado: "sin-enviar", titulo: MI_ESPACIO("Mi acompañamiento"), marco: "mi-espacio", seccion: "Mi acompañamiento", activo: "acompanamiento", apartado: "Mi acompañamiento", cargar: acompanamiento },
   { ruta: "mi-espacio/acompanamiento/enviado/", nombre: "Registro enviado", estado: "enviado", titulo: MI_ESPACIO("Mi acompañamiento"), marco: "mi-espacio", seccion: "Mi acompañamiento", activo: "acompanamiento", apartado: "Mi acompañamiento", cargar: acompanamiento },
   { ruta: "mi-espacio/acompanamiento/en-revision/", nombre: "Revisión en curso", estado: "en-revision", titulo: MI_ESPACIO("Mi acompañamiento"), marco: "mi-espacio", seccion: "Mi acompañamiento", activo: "acompanamiento", apartado: "Mi acompañamiento", cargar: acompanamiento },
@@ -183,6 +189,17 @@ const MI_ESPACIO_FILAS: Fila[] = [
   { ruta: "mi-espacio/lo-que-viene/", nombre: "Lo que viene en Rumbo", titulo: MI_ESPACIO("Lo que viene en Rumbo"), marco: "mi-espacio", seccion: "Lo que viene en Rumbo", apartado: "Comunidad y Lo que viene", sinDatos: true, cargar: loQueViene },
   { ruta: "mi-espacio/preferencias/", nombre: "Preferencias y Mis datos", estado: "preferencias", titulo: MI_ESPACIO("Preferencias"), marco: "mi-espacio", seccion: "Preferencias", apartado: "Preferencias", cargar: preferencias },
   { ruta: "mi-espacio/preferencias/eliminar/", nombre: "Pedir que eliminen mis datos", estado: "eliminar", titulo: MI_ESPACIO("Preferencias"), marco: "mi-espacio", seccion: "Preferencias", apartado: "Preferencias", cargar: preferencias },
+  { ruta: "mi-espacio/preferencias/recordatorios/", nombre: "Recordatorios", titulo: MI_ESPACIO("Recordatorios"), marco: "mi-espacio", seccion: "Recordatorios", activo: "preferencias", apartado: "Preferencias", cargar: recordatorios },
+  { ruta: "mi-espacio/asistente/", nombre: "Asistente de Rumbo", titulo: MI_ESPACIO("Asistente de Rumbo"), marco: "mi-espacio", seccion: "Asistente de Rumbo", activo: "asistente", apartado: "Asistente", cargar: asistente },
+  { ruta: "mi-espacio/asistente/autorizar/", nombre: "Asistente: autorización antes de empezar", estado: "consentimiento", titulo: MI_ESPACIO("Asistente de Rumbo"), marco: "mi-espacio", seccion: "Asistente de Rumbo", activo: "asistente", apartado: "Asistente", cargar: asistente },
+  { ruta: "mi-espacio/asistente/apagado/", nombre: "Asistente: no disponible", estado: "apagado", titulo: MI_ESPACIO("Asistente de Rumbo"), marco: "mi-espacio", seccion: "Asistente de Rumbo", activo: "asistente", apartado: "Asistente", cargar: asistente },
+  { ruta: "mi-espacio/asistente/bienvenida/", nombre: "Asistente: primera visita", estado: "bienvenida", titulo: MI_ESPACIO("Asistente de Rumbo"), marco: "mi-espacio", seccion: "Asistente de Rumbo", activo: "asistente", apartado: "Asistente", cargar: asistente },
+  { ruta: "mi-espacio/asistente/enviada/", nombre: "Asistente: pregunta enviada", estado: "enviada", titulo: MI_ESPACIO("Asistente de Rumbo"), marco: "mi-espacio", seccion: "Asistente de Rumbo", activo: "asistente", apartado: "Asistente", cargar: asistente },
+  { ruta: "mi-espacio/asistente/aprobada/", nombre: "Asistente: respuesta aprobada", estado: "aprobada", titulo: MI_ESPACIO("Asistente de Rumbo"), marco: "mi-espacio", seccion: "Asistente de Rumbo", activo: "asistente", apartado: "Asistente", cargar: asistente },
+  { ruta: "mi-espacio/asistente/no-compartida/", nombre: "Asistente: respuesta no compartida", estado: "no-compartida", titulo: MI_ESPACIO("Asistente de Rumbo"), marco: "mi-espacio", seccion: "Asistente de Rumbo", activo: "asistente", apartado: "Asistente", cargar: asistente },
+  { ruta: "mi-espacio/asistente/conversaciones/", nombre: "Asistente: mis conversaciones", estado: "conversaciones", titulo: MI_ESPACIO("Asistente de Rumbo"), marco: "mi-espacio", seccion: "Asistente de Rumbo", activo: "asistente", apartado: "Asistente", cargar: asistente },
+  { ruta: "mi-espacio/asistente/configuracion/", nombre: "Asistente: configuración", estado: "configuracion", titulo: MI_ESPACIO("Asistente de Rumbo"), marco: "mi-espacio", seccion: "Asistente de Rumbo", activo: "asistente", apartado: "Asistente", cargar: asistente },
+  { ruta: "mi-espacio/asistente/desactivado/", nombre: "Asistente: desactivado por la persona", estado: "desactivado", titulo: MI_ESPACIO("Asistente de Rumbo"), marco: "mi-espacio", seccion: "Asistente de Rumbo", activo: "asistente", apartado: "Asistente", cargar: asistente },
   { ruta: "mi-espacio/ayuda/", nombre: "Ayuda inmediata", titulo: MI_ESPACIO("Ayuda inmediata"), marco: "mi-espacio", seccion: "Ayuda inmediata", apartado: "Ayuda", sinDatos: true, cargar: ayudaInmediata },
 ];
 

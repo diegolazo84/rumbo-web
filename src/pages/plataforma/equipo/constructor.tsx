@@ -9,7 +9,7 @@ import { datos, ErrorBase } from "../../../lib/supabase";
 import { Icono } from "../../../components/app";
 import Carga from "../../vista-previa/mi-espacio/Carga";
 import { Cabeza, conId, usePanel } from "../../vista-previa/panel/comun";
-import { PantallaConstructor, type AccionB, type MetaB, type ProgramaLectura, type ServidorConstructor } from "../../vista-previa/panel/Constructor";
+import { PantallaConstructor, type AccionB, type MetaB, type PlantillaAccion, type ProgramaLectura, type ServidorConstructor } from "../../vista-previa/panel/Constructor";
 import { CONSTRUCTOR as C, PANEL_REAL } from "../../vista-previa/panel/textos";
 import { Alerta, NoEncontrada, useDatosPanel, useEscritura, useParticipante } from "./comun";
 import { nombreDe, semanaDelCiclo, type FilaCicloPanel, type FilaParticipantePanel } from "./datos";
@@ -28,6 +28,8 @@ type FilaAccion = {
   semana_desde: number;
   semanas: number;
   requiere_foto: boolean;
+  cantidad_objetivo?: number | null;
+  unidad?: string | null;
   orden: number;
 };
 
@@ -44,6 +46,7 @@ const aAccionB = (a: FilaAccion): AccionB => ({
   instrucciones: a.instrucciones,
   versionCorta: a.version_corta ?? "",
   conFoto: a.requiere_foto,
+  medible: a.cantidad_objetivo && a.unidad ? { objetivo: a.cantidad_objetivo, unidad: a.unidad } : null,
 });
 
 export function ConstructorReal() {
@@ -76,7 +79,7 @@ function ContenidoConstructor({ p, c }: { p: FilaParticipantePanel; c: FilaCiclo
       const [metas, acciones] = ids.length
         ? await Promise.all([
             sb.from("metas").select("id,programa_id,titulo,para_que,categoria,hitos,orden").in("programa_id", ids).order("orden"),
-            sb.from("acciones").select("id,programa_id,meta_id,titulo,instrucciones,version_corta,hora,duracion_min,dias,semana_desde,semanas,requiere_foto,orden").in("programa_id", ids).order("orden"),
+            sb.from("acciones").select("id,programa_id,meta_id,titulo,instrucciones,version_corta,hora,duracion_min,dias,semana_desde,semanas,requiere_foto,cantidad_objetivo,unidad,orden").in("programa_id", ids).order("orden"),
           ])
         : [{ data: [], error: null }, { data: [], error: null }];
       const m = datos(metas) as FilaMeta[];
@@ -106,6 +109,21 @@ function ContenidoConstructor({ p, c }: { p: FilaParticipantePanel; c: FilaCiclo
   }, [leer]);
 
   const borradorId = leido?.borrador?.id ?? null;
+  // Plantillas vigentes del equipo (plantillas_accion, aplicada; la leen el dueño y los coaches).
+  const plantillas = useCallback(async (): Promise<PlantillaAccion[]> => {
+    const filas = datos(
+      await sb.from("plantillas_accion").select("id,titulo,instrucciones,version_corta,duracion_min,requiere_foto,cantidad_objetivo,unidad").eq("archivada", false).order("titulo"),
+    ) as { id: string; titulo: string; instrucciones: string; version_corta: string | null; duracion_min: number; requiere_foto: boolean; cantidad_objetivo: number | null; unidad: string | null }[];
+    return (filas ?? []).map((f) => ({
+      id: f.id,
+      titulo: f.titulo,
+      instrucciones: f.instrucciones,
+      versionCorta: f.version_corta ?? "",
+      duracion: f.duracion_min,
+      conFoto: f.requiere_foto,
+      medible: f.cantidad_objetivo && f.unidad ? { objetivo: f.cantidad_objetivo, unidad: f.unidad } : null,
+    }));
+  }, [sb]);
   const servidor = useMemo<ServidorConstructor | undefined>(() => {
     if (!borradorId) return undefined;
     // Si la base dice que el programa ya no es borrador (se publicó aquí o en otra pestaña),
@@ -152,6 +170,8 @@ function ContenidoConstructor({ p, c }: { p: FilaParticipantePanel; c: FilaCiclo
                 semana_desde: a.desde,
                 semanas: a.durante,
                 requiere_foto: a.conFoto,
+                cantidad_objetivo: a.medible ? a.medible.objetivo : null,
+                unidad: a.medible ? a.medible.unidad.trim() : null,
                 orden: i,
               })),
             ),
@@ -181,9 +201,26 @@ function ContenidoConstructor({ p, c }: { p: FilaParticipantePanel; c: FilaCiclo
     return {
       guardar: (m, a) => s.guardar(m, a).catch(siYaNoEsBorrador),
       revisar: () => s.revisar(),
+      plantillas,
+      guardarPlantilla: async (a) => {
+        datos(
+          await sb.rpc("guardar_plantilla", {
+            p_id: null,
+            p: {
+              titulo: a.titulo.trim(),
+              instrucciones: a.instrucciones.trim(),
+              version_corta: a.versionCorta.trim(),
+              duracion_min: a.duracion,
+              requiere_foto: a.conFoto,
+              cantidad_objetivo: a.medible ? a.medible.objetivo : null,
+              unidad: a.medible ? a.medible.unidad.trim() : null,
+            },
+          }),
+        );
+      },
       publicar: (x) => s.publicar(x).catch(siYaNoEsBorrador),
     };
-  }, [borradorId, sb, p.id, recargar, leer]);
+  }, [borradorId, sb, p.id, recargar, leer, plantillas]);
 
   if (error) return <Carga estado="error" alReintentar={() => void leer()} />;
   if (!leido) return <Carga estado="cargando" />;

@@ -2,7 +2,7 @@
 // entrar directo por accion/?id=. Desde una lista (Hoy, calendario) el mismo contenido se abre
 // en una hoja. Estados: por-hacer, hecha, futura, dejada-pasar, anulada-ajuste, anulada-pausa
 // y, en acciones con foto (Martín), con-foto, foto-en-revision, foto-aprobada, foto-no-aprobada
-// y foto-depurada.
+// y foto-depurada; en una acción medible, medible y medible-hecha.
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { TEXTOS_CARGA, Tostada } from "../../../components/app";
@@ -14,13 +14,15 @@ import {
   accionFotoAprobada,
   accionFotoDepurada,
   accionFotoNoAprobada,
+  accionMedible,
+  accionMedibleHecha,
   ocurrenciaPorId,
   type EstadoRegistro,
   type Ocurrencia,
 } from "../../../data/ejemplo-app";
 import type { PropsPantalla } from "../registro";
 import Detalle, { type FotoInicial } from "./Detalle";
-import { Cabeza, RegionViva, useAvisos, useEspacio, usePrograma, type Progreso } from "./comun";
+import { Cabeza, RegionViva, useAvisos, useCelebrar, useEspacio, useFalloRegistro, usePrograma, type Progreso } from "./comun";
 import { T_COMUN, T_DETALLE, T_HOY } from "./textos";
 
 // Una ocurrencia del ejemplo por estado (src/data/ejemplo-app.ts).
@@ -36,6 +38,8 @@ const POR_ESTADO: Record<string, () => Ocurrencia> = {
   "foto-aprobada": () => accionFotoAprobada,
   "foto-no-aprobada": () => accionFotoNoAprobada,
   "foto-depurada": () => accionFotoDepurada,
+  medible: () => accionMedible,
+  "medible-hecha": () => accionMedibleHecha,
 };
 
 const FOTO: Record<string, FotoInicial> = {
@@ -55,8 +59,8 @@ function DetallePrevia({ estado = "por-hacer" }: PropsPantalla) {
   const inicial = (POR_ESTADO[estado] ?? POR_ESTADO["por-hacer"])();
   const [registro, setRegistro] = useState<EstadoRegistro | null>(inicial.registro);
   return (
-    <div className="me-pantalla me-pantalla--angosta">
-      <Detalle o={{ ...inicial, registro }} hoy={HOY} onRegistrar={setRegistro} fotoInicial={FOTO[estado]} />
+    <div className="me-pantalla me-pantalla--detalle">
+      <Detalle key={estado} o={{ ...inicial, registro }} hoy={HOY} onRegistrar={setRegistro} fotoInicial={FOTO[estado]} />
     </div>
   );
 }
@@ -69,11 +73,13 @@ function DetalleReal() {
   useEffect(() => setId(new URLSearchParams(search).get("id") ?? ""), [search]);
   const { lista, registrar, hoy } = usePrograma();
   const { tostada, setTostada, vivo, setVivo, cerrar } = useAvisos();
+  const fallo = useFalloRegistro(setTostada);
+  const celebrar = useCelebrar();
   const o = id ? lista.find((x) => x.id === id) : undefined;
 
   if (id === null) {
     return (
-      <div className="me-pantalla me-pantalla--angosta">
+      <div className="me-pantalla me-pantalla--detalle">
         <div className="cargando" role="status">
           <h1 className="me-cargando__titulo">{TEXTOS_CARGA.cargando}</h1>
         </div>
@@ -82,20 +88,21 @@ function DetalleReal() {
   }
   if (!o) {
     return (
-      <div className="me-pantalla me-pantalla--angosta">
+      <div className="me-pantalla me-pantalla--detalle">
         <Cabeza titulo={T_DETALLE.noEncontrada} bajada={<p><Link to={R.calendario}>{T_DETALLE.irAlCalendario}</Link></p>} />
       </div>
     );
   }
   const anunciar = (p: Progreso) => setVivo(T_HOY.marcar.vivo(p.creditos, p.nivel.nivel, p.nivel.nombre));
-  const guardar = (estado: EstadoRegistro | null): void =>
-    registrar(o.id, estado, anunciar, () =>
-      setTostada({ mensaje: T_HOY.marcar.error(o.titulo), accion: { texto: T_HOY.marcar.reintentar, onClick: () => guardar(estado) } }),
-    );
+  const listo = (estado: EstadoRegistro | null) => (p: Progreso) => {
+    anunciar(p);
+    if (estado === "hecha" || estado === "corta") celebrar(o, estado, p);
+  };
+  const guardar = (estado: EstadoRegistro | null): void => registrar(o.id, estado, listo(estado), fallo(o, () => guardar(estado)));
   return (
-    <div className="me-pantalla me-pantalla--angosta">
+    <div className="me-pantalla me-pantalla--detalle">
       <Detalle o={o} hoy={hoy} onRegistrar={guardar} />
-      <Tostada mensaje={tostada?.mensaje ?? null} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
+      <Tostada mensaje={tostada?.mensaje ?? null} titulo={tostada?.titulo} detalle={tostada?.detalle} tono={tostada?.tono} accion={tostada?.accion} onCerrar={cerrar} textoCerrar={T_COMUN.cerrar} />
       <RegionViva texto={vivo} />
     </div>
   );

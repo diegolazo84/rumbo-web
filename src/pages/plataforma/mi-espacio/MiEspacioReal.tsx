@@ -4,6 +4,7 @@
 // - Sin sesión: lleva a mi-espacio/entrar/ y recuerda la ruta de destino.
 // - La sesión vence: tostada «Tu sesión terminó…» en entrar/ (4.2.5).
 // - Cuenta del equipo sin ficha de participante: lleva al panel.
+import { rutaFoto } from "../../../lib/foto-privada";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Banda, BandaSinConexion, EstructuraApp, Icono } from "../../../components/app";
@@ -11,7 +12,7 @@ import type { EstadoRegistro, SolicitudAjuste } from "../../../data/ejemplo-app"
 import type { Iso } from "../../../lib/fechas";
 import { datos, supabase, type Cliente } from "../../../lib/supabase";
 import type { RutaPlataforma } from "../rutas";
-import { ESPACIO_PREVIA, EspacioContexto, R_REAL, type Ausencia, type CoachEspacio, type Espacio, type VideollamadaEspacio, type Progreso, type Servidor } from "../../vista-previa/mi-espacio/espacio";
+import { ESPACIO_PREVIA, EspacioContexto, R_REAL, RECORDATORIOS_POR_DEFECTO, type PrefRecordatorios, type Asistente, type ConsultaAsistente, type EstadoConsulta, type Ausencia, type CoachEspacio, type Espacio, type VideollamadaEspacio, type Progreso, type Servidor } from "../../vista-previa/mi-espacio/espacio";
 import Ajuste from "../../vista-previa/mi-espacio/Ajuste";
 import AyudaInmediata from "../../vista-previa/mi-espacio/AyudaInmediata";
 import Calendario from "../../vista-previa/mi-espacio/Calendario";
@@ -22,6 +23,10 @@ import EstadoPrograma from "../../vista-previa/mi-espacio/EstadoPrograma";
 import Hoy from "../../vista-previa/mi-espacio/Hoy";
 import Preferencias from "../../vista-previa/mi-espacio/Preferencias";
 import ProgresoPantalla from "../../vista-previa/mi-espacio/Progreso";
+import MisAvisos from "../../vista-previa/mi-espacio/MisAvisos";
+import Recordatorios from "../../vista-previa/mi-espacio/Recordatorios";
+import AsistentePantalla from "../../vista-previa/mi-espacio/Asistente";
+import { categoriaDe, type Aviso } from "../../vista-previa/mi-espacio/avisos/datos";
 import Acompanamiento from "../../vista-previa/mi-espacio/Acompanamiento";
 import Comunidad from "../../vista-previa/mi-espacio/Comunidad";
 import CrearPublicacion from "../../vista-previa/mi-espacio/CrearPublicacion";
@@ -45,7 +50,7 @@ const COLUMNAS = {
   meta: "programa_id,clave,titulo,para_que,categoria,hitos,orden",
   ocurrencia:
     "id,programa_id,accion_id,meta_clave,meta_titulo,categoria,fecha,hora,duracion_min,titulo,instrucciones,version_corta,requiere_foto,vigente,anulada_motivo,anulada_en",
-  registro: "ocurrencia_id,estado,version,explicacion,nota_revision,revisado_en",
+  registro: "ocurrencia_id,estado,version,explicacion,nota_revision,revisado_en,foto_ruta,foto_depurada_en",
   progreso: "creditos,nivel,racha,bono_siguiente",
   dia: "fecha,programadas,hechas,en_revision,creditos_acciones,bono,racha,en_suspenso",
   registroSemanal: "semana,carga,funciono,costo,cambiar,enviado_en",
@@ -53,7 +58,19 @@ const COLUMNAS = {
   ajuste: "id,creada_en,tipo,ocurrencias,desde,texto,estado,respuesta,cuenta_como_reorden,respondida_en",
 } as const;
 
-type Leido = { filas: Filas; ctx: Contexto; ausencia: Ausencia | null; coach: CoachEspacio | null; videollamadas: VideollamadaEspacio[] };
+type Leido = {
+  filas: Filas;
+  ctx: Contexto;
+  ausencia: Ausencia | null;
+  coach: CoachEspacio | null;
+  videollamadas: VideollamadaEspacio[];
+  fotos: boolean;
+  avisos: Aviso[] | null;
+  comunidad: boolean;
+  recordatorios: PrefRecordatorios | "no-disponible" | null;
+  correoDisponible: boolean | null;
+  asistente: Asistente | null;
+};
 
 async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> {
   const participante = datos(
@@ -64,7 +81,7 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
     await sb.from("ciclos").select(COLUMNAS.ciclo).eq("participante_id", participante.id).order("numero", { ascending: false }).limit(1).maybeSingle(),
   ) as Filas["ciclo"] | null;
   if (!ciclo) return "sin-ficha";
-  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas] =
+  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas, moduloFotos, avisos, moduloComunidad, medibles, notas, recordatorios, correo, asistente] =
     await Promise.all([
       sb.from("programas").select(COLUMNAS.programa).eq("ciclo_id", ciclo.id).neq("estado", "borrador").order("version"),
       sb.from("ocurrencias").select(COLUMNAS.ocurrencia).eq("ciclo_id", ciclo.id).order("fecha").limit(5000),
@@ -80,6 +97,17 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
       // A3 y C2: si la migración todavía no está en la base, «Tu coach» queda genérico y sin videollamadas.
       sb.rpc("mi_coach"),
       sb.from("videollamadas").select("semana,programada_para,enlace,estado").eq("ciclo_id", ciclo.id).order("semana"),
+      // Módulo «fotos» (A4): mientras el dueño no lo habilite, la subida no se muestra.
+      sb.rpc("modulo_visible", { p_clave: "fotos" }),
+      // Mis avisos (A5): los propios, por RLS. Si no se pueden leer, la pantalla lo dice.
+      leerAvisos(sb),
+      sb.rpc("modulo_visible", { p_clave: "comunidad" }),
+      ...leerMedibles(sb, participante.id, ciclo),
+      // Recordatorios (R1): sin la migración de recordatorios completos, la pantalla lo dice.
+      sb.from("recordatorios").select(COLUMNAS_RECORDATORIOS).maybeSingle(),
+      sb.rpc("correo_disponible"),
+      // Asistente de Rumbo (E2): si está encendido, el consentimiento y las consultas propias.
+      leerAsistente(sb),
     ]);
   const progs = datos(programas) as Filas["programas"];
   const ids = progs.map((p) => p.id);
@@ -106,12 +134,98 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
       revisiones: datos(revisiones) as Filas["revisiones"],
       ajustes: datos(ajustes) as Filas["ajustes"],
       planes: datos(planes) as Filas["planes"],
+      ...armarMedibles(medibles, notas),
     },
     ctx,
     ausencia: armarAusencia(aus),
     coach: armarCoach(coach.error ? null : coach.data),
     videollamadas: llamadas.error ? [] : armarVideollamadas(llamadas.data),
+    fotos: !moduloFotos.error && moduloFotos.data === true,
+    avisos,
+    comunidad: !moduloComunidad.error && moduloComunidad.data === true,
+    recordatorios: armarRecordatorios(recordatorios),
+    correoDisponible: correo.error ? null : correo.data === true,
+    asistente,
   };
+}
+
+const COLUMNAS_RECORDATORIOS =
+  "activos,acciones_del_dia,registro_semanal,videollamadas,mensajes_coach,comunidad,logros,por_correo,desde,hasta,hora,dias";
+type FilaRecordatorios = {
+  activos: boolean;
+  acciones_del_dia: boolean;
+  registro_semanal: boolean;
+  videollamadas: boolean;
+  mensajes_coach: boolean;
+  comunidad: boolean;
+  logros: boolean;
+  por_correo: boolean;
+  desde: number;
+  hasta: number;
+  hora: number;
+  dias: number[];
+};
+function armarRecordatorios(r: { data: unknown; error: { code?: string } | null }): PrefRecordatorios | "no-disponible" | null {
+  // 42703: columna inexistente (la migración todavía no está en la base).
+  if (r.error) return r.error.code === "42703" || r.error.code === "PGRST204" ? "no-disponible" : null;
+  const f = r.data as FilaRecordatorios | null;
+  if (!f) return RECORDATORIOS_POR_DEFECTO;
+  return {
+    activos: f.activos,
+    accionesDelDia: f.acciones_del_dia,
+    registroSemanal: f.registro_semanal,
+    videollamadas: f.videollamadas,
+    mensajesCoach: f.mensajes_coach,
+    comunidad: f.comunidad,
+    logros: f.logros,
+    porCorreo: f.por_correo,
+    desde: f.desde,
+    hasta: f.hasta,
+    hora: f.hora,
+    dias: [...f.dias].sort((a, b) => a - b),
+  };
+}
+
+const COLUMNAS_AVISO = "id,tipo,titulo,enlace,creado_en,leido_en";
+async function leerAvisos(sb: Cliente): Promise<Aviso[] | null> {
+  const r = await sb.from("avisos").select(COLUMNAS_AVISO).like("enlace", "/mi-espacio/%").order("creado_en", { ascending: false }).limit(200);
+  if (r.error) return null;
+  const filas = (r.data ?? []) as { id: string; tipo: string; titulo: string; enlace: string; creado_en: string; leido_en: string | null }[];
+  return filas.map((f) => ({ id: f.id, tipo: f.tipo, titulo: f.titulo, enlace: f.enlace, creadoEn: f.creado_en, leidoEn: f.leido_en }));
+}
+
+// Asistente: ia_disponible (dueño + clave + módulo), el consentimiento (yo_leer) y mis_consultas_ia,
+// que nunca trae borradores sin revisar. Si algo falla: null (la pantalla lo dice).
+async function leerAsistente(sb: Cliente): Promise<Asistente | null> {
+  const [disp, cons, consultas, valoraciones] = await Promise.all([
+    sb.rpc("ia_disponible"),
+    sb.from("ia_consentimientos").select("metas,acciones,registro_semanal,aceptado_en,retirado_en").maybeSingle(),
+    leerConsultas(sb),
+    leerValoraciones(sb),
+  ]);
+  if (disp.error || cons.error || !consultas) return null;
+  const c = cons.data as { metas: boolean; acciones: boolean; registro_semanal: boolean; aceptado_en: string | null; retirado_en: string | null } | null;
+  return {
+    disponible: disp.data === true,
+    consentimiento: c && { metas: c.metas, acciones: c.acciones, registroSemanal: c.registro_semanal, aceptadoEn: c.aceptado_en, retiradoEn: c.retirado_en },
+    consultas,
+    valoraciones,
+  };
+}
+
+// «Me sirvió» / «No me sirvió» (20261127000000). Si la tabla todavía no existe, los botones no se muestran.
+async function leerValoraciones(sb: Cliente): Promise<Asistente["valoraciones"]> {
+  const r = await sb.from("ia_valoraciones").select("consulta_id,util,motivo").limit(1000);
+  if (r.error) return null;
+  const filas = (r.data ?? []) as { consulta_id: string; util: boolean; motivo: string | null }[];
+  return Object.fromEntries(filas.map((f) => [f.consulta_id, { util: f.util, motivo: f.motivo }]));
+}
+
+async function leerConsultas(sb: Cliente): Promise<ConsultaAsistente[] | null> {
+  const r = await sb.rpc("mis_consultas_ia");
+  if (r.error) return null;
+  const filas = (Array.isArray(r.data) ? r.data : []) as { id: string; pregunta: string; estado: EstadoConsulta; respuesta: string | null; creada_en: string; revisada_en: string | null }[];
+  return filas.map((f) => ({ id: f.id, pregunta: f.pregunta, estado: f.estado, respuesta: f.respuesta, creadaEn: f.creada_en, revisadaEn: f.revisada_en }));
 }
 
 function armarCoach(d: unknown): CoachEspacio | null {
@@ -125,18 +239,36 @@ function armarVideollamadas(d: unknown): VideollamadaEspacio[] {
   return filas.map((f) => ({ semana: f.semana, programadaPara: f.programada_para, enlace: f.enlace, estado: f.estado }));
 }
 
-// Después de marcar: solo lo que cambia (registros y progreso).
+// Lo medible de las acciones del ciclo (C4) y las notas de la persona (R1). Si la base todavía no
+// tiene la columna nota (migración 20261123000000 sin aplicar), la nota no se muestra.
+function leerMedibles(sb: Cliente, participante: string, ciclo: Filas["ciclo"]) {
+  return [
+    sb.rpc("mis_medibles", { p_desde: ciclo.inicio, p_hasta: ciclo.fin }),
+    sb.from("registros").select("ocurrencia_id,nota").eq("participante_id", participante).limit(5000),
+  ] as const;
+}
+type Respuesta = { data: unknown; error: unknown };
+function armarMedibles(medibles: Respuesta, notas: Respuesta): Pick<Filas, "medibles" | "notas"> {
+  return {
+    medibles: medibles.error || !Array.isArray(medibles.data) ? [] : (medibles.data as NonNullable<Filas["medibles"]>),
+    notas: notas.error || !Array.isArray(notas.data) ? null : (notas.data as NonNullable<Filas["notas"]>),
+  };
+}
+
+// Después de marcar: solo lo que cambia (registros, progreso, cantidades y notas).
 async function leerRegistros(sb: Cliente, f: Filas): Promise<Filas> {
-  const [registros, progreso, dias] = await Promise.all([
+  const [registros, progreso, dias, medibles, notas] = await Promise.all([
     sb.from("registros").select(COLUMNAS.registro).eq("participante_id", f.participante.id).limit(5000),
     sb.from("progreso").select(COLUMNAS.progreso).eq("participante_id", f.participante.id).maybeSingle(),
     sb.from("progreso_diario").select(COLUMNAS.dia).eq("participante_id", f.participante.id).gte("fecha", f.ciclo.inicio).order("fecha"),
+    ...leerMedibles(sb, f.participante.id, f.ciclo),
   ]);
   return {
     ...f,
     registros: datos(registros) as Filas["registros"],
     progreso: datos(progreso) as Filas["progreso"],
     dias: datos(dias) as Filas["dias"],
+    ...armarMedibles(medibles, notas),
   };
 }
 
@@ -248,16 +380,106 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
       return armarDatos(nuevas, l.ctx).progreso;
     };
     const recargar = () => void cargar(true);
+
+    // Fotos privadas (bucket «evidencias»). Orden pensado para no dejar archivos sueltos ni
+    // registros que apunten a un archivo que no existe:
+    //   subir → registrar en la base (si la base rechaza, se borra lo subido) → borrar la anterior;
+    //   quitar → la base primero → borrar el archivo.
+    // Al final se revisa la carpeta de la acción y se borra lo que no sea la foto vigente.
+    const BUCKET = "evidencias";
+    const registroDe = (id: string) => filas.current?.filas.registros.find((r) => r.ocurrencia_id === id);
+    const carpeta = (id: string) => `${filas.current!.filas.participante.id}/${id}`;
+    const borrarArchivos = async (rutas: string[]) => {
+      if (!rutas.length) return;
+      const { error } = await sb().storage.from(BUCKET).remove(rutas);
+      if (error) throw error;
+    };
+    const ordenarCarpeta = async (id: string) => {
+      try {
+        const vigente = registroDe(id)?.foto_ruta ?? null;
+        const { data, error } = await sb().storage.from(BUCKET).list(carpeta(id));
+        if (error) return;
+        const sobran = (data ?? []).map((f) => `${carpeta(id)}/${f.name}`).filter((r) => r !== vigente);
+        await borrarArchivos(sobran);
+      } catch {
+        /* se reintenta la próxima vez que se suba o quite una foto de esta acción */
+      }
+    };
+    const releer = async (): Promise<Progreso> => {
+      const actual = filas.current!;
+      const nuevas = await leerRegistros(sb(), actual.filas);
+      const l = { ...actual, filas: nuevas };
+      poner(l);
+      return armarDatos(nuevas, l.ctx).progreso;
+    };
+
     return {
       registrar: (id: string, e: EstadoRegistro | null) => {
-        if (e === null) return conProgreso("desmarcar_accion", { p_ocurrencia: id });
+        if (e === null) {
+          // Desmarcar borra el registro: si tenía una foto opcional, su archivo también se borra.
+          const conFoto = !!registroDe(id)?.foto_ruta;
+          return conProgreso("desmarcar_accion", { p_ocurrencia: id }).then(async (p) => {
+            if (conFoto) await ordenarCarpeta(id);
+            return p;
+          });
+        }
         if (e === "hecha" || e === "corta") return conProgreso("marcar_accion", { p_ocurrencia: id, p_version: e === "corta" ? "corta" : "completa" });
         if (e === "dejada") return conProgreso("dejar_pasar", { p_ocurrencia: id });
         return Promise.reject(new Error("estado no registrable"));
       },
+      anotar: async (id, d) => {
+        if (d.cantidad !== undefined) datos(await sb().rpc("anotar_cantidad", { p_ocurrencia: id, p_cantidad: d.cantidad }));
+        if (d.nota !== undefined) datos(await sb().rpc("anotar_nota", { p_ocurrencia: id, p_nota: d.nota ?? "" }));
+        await releer();
+      },
       registrarEvidencia: (id, explicacion) =>
         conProgreso("registrar_evidencia", { p_ocurrencia: id, p_foto_ruta: null, p_explicacion: explicacion }),
-      eliminarEvidencia: (id) => conProgreso("eliminar_evidencia", { p_ocurrencia: id }),
+      eliminarEvidencia: async (id) => {
+        const ruta = registroDe(id)?.foto_ruta ?? null;
+        datos(await sb().rpc("eliminar_evidencia", { p_ocurrencia: id }));
+        const p = await releer();
+        if (ruta) await borrarArchivos([ruta]).catch(() => undefined);
+        await ordenarCarpeta(id);
+        return p;
+      },
+      subirFoto: async (id, foto, modo) => {
+        const anterior = registroDe(id)?.foto_ruta ?? null;
+        const ruta = rutaFoto(filas.current!.filas.participante.id, id, crypto.randomUUID());
+        const subida = await sb().storage.from(BUCKET).upload(ruta, foto, { contentType: "image/webp", upsert: false, cacheControl: "60" });
+        if (subida.error) throw subida.error;
+        try {
+          datos(
+            modo === "evidencia"
+              ? await sb().rpc("registrar_evidencia", { p_ocurrencia: id, p_foto_ruta: ruta, p_explicacion: null })
+              : await sb().rpc("adjuntar_foto", { p_ocurrencia: id, p_foto_ruta: ruta }),
+          );
+        } catch (e) {
+          // La base no la aceptó (plazo, tope de 3 archivos, acción anulada…): no queda suelta.
+          // Si fue un corte de red, puede que sí la haya guardado: se comprueba antes de borrar.
+          const guardada = await releer()
+            .then(() => registroDe(id)?.foto_ruta === ruta)
+            .catch(() => true); // sin poder comprobar, no se borra: la limpieza de la carpeta lo ordena después
+          if (!guardada) await borrarArchivos([ruta]).catch(() => undefined);
+          throw e;
+        }
+        const p = await releer();
+        if (anterior && anterior !== ruta) await borrarArchivos([anterior]).catch(() => undefined);
+        await ordenarCarpeta(id);
+        return p;
+      },
+      quitarFoto: async (id) => {
+        const ruta = registroDe(id)?.foto_ruta ?? null;
+        datos(await sb().rpc("quitar_foto", { p_ocurrencia: id }));
+        const p = await releer();
+        if (ruta) await borrarArchivos([ruta]).catch(() => undefined);
+        await ordenarCarpeta(id);
+        return p;
+      },
+      urlFoto: async (ruta) => {
+        const { data, error } = await sb().storage.from(BUCKET).createSignedUrl(ruta, 300);
+        if (error || !data?.signedUrl) throw error ?? new Error("sin enlace");
+        return data.signedUrl;
+      },
       guardarRegistroSemanal: async (semana, d, enviar) => {
         datos(
           await sb().rpc("guardar_registro_semanal", {
@@ -292,6 +514,68 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
         return r?.fecha_limite ?? null;
       },
       exportar: async () => datos(await sb().rpc("exportar_mis_datos")),
+      marcarAvisos: async (ids) => {
+        datos(await sb().rpc("marcar_avisos_leidos", { p_ids: ids }));
+        const actual = filas.current;
+        if (!actual?.avisos) return;
+        const ahora = new Date().toISOString();
+        const todos = ids === null;
+        const marcados = new Set(ids ?? []);
+        poner({ ...actual, avisos: actual.avisos.map((a) => (!a.leidoEn && (todos || marcados.has(a.id)) ? { ...a, leidoEn: ahora } : a)) });
+      },
+      guardarRecordatorios: async (x) => {
+        datos(
+          await sb().rpc("guardar_recordatorios", {
+            p: {
+              activos: x.activos,
+              acciones_del_dia: x.accionesDelDia,
+              registro_semanal: x.registroSemanal,
+              videollamadas: x.videollamadas,
+              mensajes_coach: x.mensajesCoach,
+              comunidad: x.comunidad,
+              logros: x.logros,
+              por_correo: x.porCorreo,
+              desde: x.desde,
+              hasta: x.hasta,
+              hora: x.hora,
+              dias: x.dias,
+            },
+          }),
+        );
+        const actual = filas.current;
+        if (actual) poner({ ...actual, recordatorios: { ...x, dias: [...x.dias] } });
+      },
+      aceptarAsistente: async (c) => {
+        datos(await sb().rpc("ia_guardar_consentimiento", { p_metas: c.metas, p_acciones: c.acciones, p_registro_semanal: c.registroSemanal }));
+        const actual = filas.current;
+        if (actual?.asistente)
+          poner({ ...actual, asistente: { ...actual.asistente, consentimiento: { ...c, aceptadoEn: new Date().toISOString(), retiradoEn: null } } });
+      },
+      retirarAsistente: async () => {
+        datos(await sb().rpc("ia_retirar_consentimiento"));
+        const actual = filas.current;
+        const previo = actual?.asistente?.consentimiento;
+        if (actual?.asistente && previo)
+          poner({ ...actual, asistente: { ...actual.asistente, consentimiento: { metas: false, acciones: false, registroSemanal: false, aceptadoEn: previo.aceptadoEn, retiradoEn: new Date().toISOString() } } });
+      },
+      preguntarAsistente: async (pregunta) => {
+        const r = datos(await sb().rpc("ia_preguntar", { p_pregunta: pregunta })) as { estado?: string } | null;
+        const consultas = await leerConsultas(sb());
+        const actual = filas.current;
+        if (actual?.asistente && consultas) poner({ ...actual, asistente: { ...actual.asistente, consultas } });
+        // La base devuelve «enviada» (la persona la ve como «en revisión»), «crisis» o «sin_presupuesto».
+        return r?.estado === "crisis" || r?.estado === "sin_presupuesto" ? r.estado : "en_revision";
+      },
+      valorarAsistente: async (consulta, util, motivo) => {
+        datos(await sb().rpc("ia_valorar", { p_consulta: consulta, p_util: util, p_motivo: util === false ? motivo : null }));
+        const actual = filas.current;
+        if (actual?.asistente?.valoraciones) {
+          const v = { ...actual.asistente.valoraciones };
+          if (util === null) delete v[consulta];
+          else v[consulta] = { util, motivo: util ? null : motivo?.trim() || null };
+          poner({ ...actual, asistente: { ...actual.asistente, valoraciones: v } });
+        }
+      },
       verNovedad: (id) => {
         setVistas((v) => {
           const n = new Set(v).add(id);
@@ -328,6 +612,13 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
       coach: estado.coach,
       videollamadas: estado.videollamadas,
       servidor,
+      fotos: estado.fotos,
+      // Con la Comunidad cerrada, sus avisos no se muestran ni cuentan en la campana.
+      avisos: estado.comunidad ? estado.avisos : (estado.avisos?.filter((a) => categoriaDe(a.tipo) !== "comunidad") ?? null),
+      comunidad: estado.comunidad,
+      recordatorios: estado.recordatorios,
+      correoDisponible: estado.correoDisponible,
+      asistente: estado.asistente,
     };
   }, [estado, vistas, servidor]);
 
@@ -347,10 +638,11 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
     <EspacioContexto.Provider value={espacio ?? ESPACIO_CARGANDO}>
       <EstructuraApp
         tipo="mi-espacio"
-        rutas={RUTAS_NAV}
+        rutas={espacio?.asistente?.disponible ? { ...RUTAS_NAV, asistente: R_REAL.asistente } : RUTAS_NAV}
         seccion={ruta.seccion}
         activo={ruta.activo}
         novedades={novedades}
+        avisos={{ href: R_REAL.avisos, sinLeer: espacio?.avisos?.filter((a) => !a.leidoEn).length ?? 0 }}
         banda={banda}
       >
         {estado.tipo === "cargando" ? (
@@ -390,7 +682,7 @@ const RUTAS_NAV = {
 };
 
 // Mientras carga: rutas reales y sin datos de ejemplo visibles (solo se muestra «Cargando…»).
-const ESPACIO_CARGANDO: Espacio = { ...ESPACIO_PREVIA, real: true, R: R_REAL, novedades: [], ausencia: null };
+const ESPACIO_CARGANDO: Espacio = { ...ESPACIO_PREVIA, real: true, R: R_REAL, novedades: [], ausencia: null, avisos: [], comunidad: false, recordatorios: null, correoDisponible: null, asistente: null };
 
 // Qué pantalla corresponde a la ruta. En mi-espacio/ decide el estado del ciclo (4.3).
 function PantallaReal({ ruta, espacio }: { ruta: RutaPlataforma; espacio: Espacio }): ReactNode {
@@ -419,10 +711,16 @@ function PantallaReal({ ruta, espacio }: { ruta: RutaPlataforma; espacio: Espaci
       return <ProgresoPantalla />;
     case "/mi-espacio/logros/creditos/":
       return <Creditos />;
+    case "/mi-espacio/avisos/":
+      return <MisAvisos />;
     case "/mi-espacio/lo-que-viene/":
       return <LoQueViene />;
     case "/mi-espacio/preferencias/":
       return <Preferencias />;
+    case "/mi-espacio/preferencias/recordatorios/":
+      return <Recordatorios />;
+    case "/mi-espacio/asistente/":
+      return <AsistentePantalla />;
     case "/mi-espacio/preferencias/eliminar/":
       return <Preferencias estado="eliminar" />;
     case "/mi-espacio/ayuda/":

@@ -6,6 +6,7 @@
 // recuadro punteado. Estados (registro.ts): cola y vacio.
 import { useState } from "react";
 import Etiqueta from "../../../components/Etiqueta";
+import MiniaturaPrivada from "../../../components/MiniaturaPrivada";
 import { Icono } from "../../../components/app";
 import { CampoArea, GrupoOpciones, Opcion } from "../../../components/form";
 import { LIMITES } from "../../../data/formularios";
@@ -23,7 +24,10 @@ export default function Fotos({ estado }: PropsPantalla) {
 // Panel real: revisar_evidencia (aprobar suma el crédito; no aprobar exige nota).
 export type RevisarEvidencia = (id: string, aprobar: boolean, nota: string) => Promise<void>;
 
-export function ListaEvidencias({ lista, onRevisar, nota }: { lista: Evidencia[]; onRevisar?: RevisarEvidencia; nota?: string }) {
+// Panel real: enlace firmado de corta duración para ver la foto (nunca se guarda).
+export type PedirUrlFoto = (ruta: string) => Promise<string>;
+
+export function ListaEvidencias({ lista, onRevisar, nota, pedirUrl }: { lista: Evidencia[]; onRevisar?: RevisarEvidencia; nota?: string; pedirUrl?: PedirUrlFoto }) {
   return (
     <div className="pa-pantalla">
       <Cabeza ojo={FOTOS.ojo} titulo={FOTOS.titulo} />
@@ -35,7 +39,7 @@ export function ListaEvidencias({ lista, onRevisar, nota }: { lista: Evidencia[]
       {lista.length ? (
         <ul className="pa-filas">
           {lista.map((e) => (
-            <Item key={e.id} e={e} onRevisar={onRevisar} />
+            <Item key={e.id} e={e} onRevisar={onRevisar} pedirUrl={pedirUrl} />
           ))}
         </ul>
       ) : (
@@ -45,7 +49,7 @@ export function ListaEvidencias({ lista, onRevisar, nota }: { lista: Evidencia[]
   );
 }
 
-function Item({ e, onRevisar }: { e: Evidencia; onRevisar?: RevisarEvidencia }) {
+function Item({ e, onRevisar, pedirUrl }: { e: Evidencia; onRevisar?: RevisarEvidencia; pedirUrl?: PedirUrlFoto }) {
   const [estado, setEstado] = useState<"revision" | "aprobada" | "no_aprobada">("revision");
   const [rechazo, setRechazo] = useState(false);
   const [nota, setNota] = useState("");
@@ -70,7 +74,9 @@ function Item({ e, onRevisar }: { e: Evidencia; onRevisar?: RevisarEvidencia }) 
   return (
     <li className="tarjeta pa-fila pa-evidencia" aria-labelledby={`${id}-titulo`}>
       <div className="pa-evidencia__cuerpo">
-        {e.foto && (
+        {e.foto && e.fotoRuta && pedirUrl ? (
+          <MiniaturaPrivada ruta={e.fotoRuta} pedirUrl={pedirUrl} alt={`${FOTOS.miniatura}: ${e.accion}`} clase="pa-miniatura" />
+        ) : e.foto && (
           <div className="pa-miniatura" role="img" aria-label={FOTOS.miniatura}>
             {sinArchivo ? <span className="microcopia">{FOTOS.archivoEliminado}</span> : <Icono nombre="camera" tamaño={24} />}
           </div>
@@ -109,7 +115,8 @@ function Item({ e, onRevisar }: { e: Evidencia; onRevisar?: RevisarEvidencia }) 
           <button type="button" className="boton boton--secundario" onClick={() => setRechazo(true)}>
             {FOTOS.noAprobar}
           </button>
-          {e.foto && !sinArchivo && (
+          {/* «Eliminar archivo ahora» es solo de la vista previa: el panel real aún no lo tiene. */}
+          {e.foto && !sinArchivo && !onRevisar && (
             <button type="button" className="boton boton--terciario" onClick={() => setSinArchivo(true)}>
               <Icono nombre="trash-2" tamaño={20} />
               {FOTOS.eliminarArchivo}
