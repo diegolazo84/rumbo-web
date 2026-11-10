@@ -537,3 +537,7 @@ a.pa-coach__texto:hover { text-decoration: underline; }
   .pa-mant__tabla tbody th, .pa-mant__tabla td { justify-items: start; }
   .pa-mant__tabla tbody th::before, .pa-mant__tabla td::before { content: attr(data-etiqueta); font-weight: 600; color: var(--tinta-suave); }
 }
+
+/* Pagos: beneficio de renovación por aplicar antes de registrar el pago. */
+.pa-beneficio { display: grid; gap: var(--e-2); padding: var(--e-3); border-radius: var(--r-m); background: var(--niebla); }
+.pa-beneficio > * { margin: 0; }

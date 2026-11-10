@@ -35,7 +35,7 @@ autorización de Diego.
 | Comunidad | Interior de grupo, desafíos, foto por desafío | en PR (#61, #62, #63), con 3 migraciones sin aplicar | Autorización |
 | Gamificación | Niveles, créditos, rachas, Mis logros | operativa | — |
 | Gamificación | Reconocimientos y ranking | apagada (módulos «reconocimientos» y «ranking») | Revisión legal del ranking |
-| Gamificación | 10 % en una renovación (`guardar_beneficio`, `aplicar_beneficio`) y ajuste de reconocimientos (`guardar_reconocimiento`) | sin pantalla; descuento apagado | Sección del dueño; Diego decide si se activa |
+| Gamificación | 10 % en una renovación (`guardar_beneficio`, `aplicar_beneficio`) y ajuste de reconocimientos (`guardar_reconocimiento`) | en PR: pantalla «Reconocimientos y beneficio» del dueño y aplicar el descuento en Pagos; descuento apagado | Diego decide si lo activa; la tarjeta en Mis logros necesita 20261120 |
 | Fotos | Subida privada en las acciones | apagada (módulo «fotos», #67) | Revisión legal, iPhone real |
 | Fotos | Borrado a los 30 días y Mantención | en PR (#68), con 1 migración sin aplicar | Etapas 3 a 8 de la guía de despliegue |
 | IA | Asistente con consentimiento y aprobación del coach (`ia_*`, `mis_consultas_ia`, `guardar_ia_config`) | pantalla del participante con la maqueta definitiva (#75): 8 estados, acceso desde Apoyo, «Crear plan» como pregunta revisada, ilustraciones definitivas, móvil compacto; bandeja de revisión del coach (#76) y administración del dueño: interruptor, topes y gasto (#77); «Me sirvió»/«No me sirvió» (`ia_valoraciones`, `ia_valorar`, 20261127) y aviso «no compartida» en Mis avisos (20261128) aplicados en producción el 31-oct; apagado | Cargar la clave y prueba real con tope de USD 10 |
