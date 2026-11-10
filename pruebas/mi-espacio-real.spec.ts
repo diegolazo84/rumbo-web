@@ -2044,3 +2044,17 @@ for (const ruta of [
     expect(await desbordesME(page)).toEqual({ extra: 0, fuera: [] });
   });
 }
+
+test("Mi plan antes de que empiece el ciclo: dice cuándo empieza y abre en la primera semana", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  for (const c of base.ciclos) { c.inicio = "2026-10-19"; c.fin = "2026-11-15"; }
+  for (const o of base.ocurrencias) { o.fecha = sumar(o.fecha as string, 14); o.id = `o-${o.fecha}`; }
+  await simular(page, base);
+  await page.goto("mi-espacio/plan/");
+  await hidratar(page);
+  await expect(page.locator(".me-plan-hoy__vacio")).toHaveText("Tu programa empieza el lunes 19.");
+  await expect(page.getByText("19 al 25 de octubre")).toBeVisible();
+  await expect(page.getByText("Escribir 30 minutos").first()).toBeVisible();
+  await sinViolaciones(page);
+});
