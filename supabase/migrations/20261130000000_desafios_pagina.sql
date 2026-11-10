@@ -127,6 +127,8 @@ language sql stable security definer set search_path = '' as $$
     'asistente_consultas', (select jsonb_agg(jsonb_build_object('pregunta', x.pregunta, 'contexto_enviado', x.contexto_enviado,
         'estado', x.estado, 'respuesta', case when x.estado = 'aprobada' then x.texto_final end, 'creada_en', x.creada_en))
       from public.ia_consultas x, yo where x.participante_id = yo.id and x.tipo = 'pregunta'),
+    'asistente_valoraciones', (select jsonb_agg(jsonb_build_object('consulta_id', x.consulta_id, 'util', x.util,
+        'motivo', x.motivo, 'actualizada_en', x.actualizada_en)) from public.ia_valoraciones x, yo where x.participante_id = yo.id),
     'especialistas_vinculos', (select jsonb_agg(to_jsonb(x)) from public.vinculos_especialista x, yo where x.participante_id = yo.id),
     'especialistas_reservas', (select jsonb_agg(to_jsonb(x) - 'comision_pct' - 'comision_clp') from public.reservas_especialista x, yo
                                 where x.participante_id = yo.id),

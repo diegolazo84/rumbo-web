@@ -1,4 +1,4 @@
--- Deshace 20261118000000_desafios_pagina.sql: se borran las propuestas de desafío (con su
+-- Deshace 20261130000000_desafios_pagina.sql: se borran las propuestas de desafío (con su
 -- historial) y la actividad propia; la copia de datos vuelve a la versión de C13.
 drop function public.mi_actividad_desafios();
 drop function public.responder_propuesta_desafio(uuid, text);

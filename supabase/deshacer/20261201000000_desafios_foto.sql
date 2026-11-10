@@ -1,4 +1,4 @@
--- Deshace 20261119000000_desafios_foto.sql: vuelve comunidad_desafios de C9, se quitan la función,
+-- Deshace 20261201000000_desafios_foto.sql: vuelve comunidad_desafios de C9, se quitan la función,
 -- las políticas y la columna. Antes, vaciar el bucket «desafios» desde el panel de Supabase
 -- (Storage) o con la API: Supabase no deja borrar filas de storage.objects con SQL.
 drop function public.poner_foto_desafio(uuid, text);

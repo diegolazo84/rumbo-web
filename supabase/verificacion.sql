@@ -81,7 +81,7 @@ select 'etapa 1: políticas de archivos exactas (evidencias; desde C7, comunidad
                 || 'evid_borrar DELETE authenticated ((bucket_id = ''evidencias''::text) AND privado.foto_permitida(name, false)) -; '
                 || 'evid_subir INSERT authenticated - ((bucket_id = ''evidencias''::text) AND privado.foto_permitida(name, true)); '
                 || 'evid_ver SELECT authenticated ((bucket_id = ''evidencias''::text) AND privado.foto_permitida(name, false)) -'
-            then 'ok' else 'FALLA: las políticas de storage no coinciden con 20261008000003_storage.sql 20261112000000_comunidad_reacciones_fotos_grupos.sql y 20261119000000_desafios_foto.sql' end
+            then 'ok' else 'FALLA: las políticas de storage no coinciden con 20261008000003_storage.sql 20261112000000_comunidad_reacciones_fotos_grupos.sql y 20261201000000_desafios_foto.sql' end
 union all
 select 'etapa 1: buckets privados (evidencias, comunidad y, desde C16, desafios)',
        case when (select string_agg(id || ':' || public::text, ',' order by id) from storage.buckets) = 'comunidad:false,desafios:false,evidencias:false' then 'ok'
