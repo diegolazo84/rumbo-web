@@ -63,6 +63,7 @@ const TABLAS = {
   progreso_diario: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   invitaciones_equipo: { leer: "equipo", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   pagos: { leer: "propio", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
+  avisos_pago: { leer: "propio", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   videollamadas: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
   recordatorios: { leer: "propio", escribir: "funciones", coach: { leer: "nada", escribir: "nada" } },
   alias: { leer: "propio", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
@@ -118,7 +119,7 @@ const FUNCIONES = {
     "reaccionar_publicacion", "unirme_a_grupo", "salir_de_grupo", "comunidad_grupos", "comunidad_miembros_grupo", "proponer_grupo", "mis_propuestas_grupo",
     "guardar_publicacion", "bloquear_autor", "desbloquear_alias", "mis_bloqueos", "comunidad_temas", "mi_impacto_comunidad",
     "unirme_a_desafio", "salir_de_desafio", "comunidad_desafios", "mi_avance_desafio", "proponer_desafio", "mis_propuestas_desafio", "mi_actividad_desafios",
-    "mis_reconocimientos", "mis_beneficios", "mi_beneficio_renovacion",
+    "mis_reconocimientos", "mis_beneficios", "mi_beneficio_renovacion", "mi_pago", "avisar_pago",
     "ia_guardar_consentimiento", "ia_retirar_consentimiento", "ia_preguntar", "mis_consultas_ia", "ia_valorar",
     "autorizar_especialista", "retirar_especialista", "pedir_reserva", "cancelar_reserva", "enviar_mensaje_especialista",
   ],
@@ -233,6 +234,10 @@ insert into public.solicitudes_ajuste (participante_id, ciclo_id, tipo, texto)
    where c.participante_id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
 insert into public.pagos (participante_id, ciclo_id, monto, moneda, medio, pagado_en)
   select c.participante_id, c.id, c.precio_acordado_clp, 'CLP', 'transferencia', current_date from public.ciclos c
+   where c.participante_id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}') and c.precio_acordado_clp is not null
+  on conflict (ciclo_id) do nothing;
+insert into public.avisos_pago (participante_id, ciclo_id, referencia)
+  select c.participante_id, c.id, 'CI' from public.ciclos c
    where c.participante_id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}') and c.precio_acordado_clp is not null
   on conflict (ciclo_id) do nothing;
 insert into public.invitaciones_equipo (correo, nombre) values ('invitada-ci@example.com', 'Invitada de CI') on conflict do nothing;
@@ -660,6 +665,28 @@ if (pagoA) {
   exigir(exportB.ok && exportB.salida === "0", "la copia de datos de B incluye un pago de A");
 }
 paso("pagos: solo el dueño registra; un pago por ciclo, con el precio acordado; la devolución no supera lo pagado");
+
+// Pago en Mi espacio: cada persona ve solo su pago; los datos salen de Vault solo mientras falta
+// pagar; «ya transferí» deja un aviso y no registra el pago ni cambia el ciclo.
+{
+  const cicloA = sql(`select id from public.ciclos where participante_id = '${ROLES.A.ficha}' and estado <> 'cerrado' order by numero desc limit 1`);
+  const sinPagar = `reset role; delete from public.pagos where ciclo_id = '${cicloA}'; delete from public.avisos_pago where ciclo_id = '${cicloA}';
+    select vault.create_secret(E'Banco CI\nCuenta 123', 'datos_transferencia'); set local role authenticated`;
+  const ver = como(ROLES.A, `${sinPagar}; select (p->>'ciclo_id' = '${cicloA}' and not (p->>'pagado')::boolean
+    and p->'datos' = '["Banco CI","Cuenta 123"]'::jsonb and (p->>'vence')::date = (p->>'inicio')::date - 1)::int from public.mi_pago() p`);
+  exigir(ver.ok && ultima(ver) === "1", `mi_pago no muestra el pago pendiente de A con los datos de Vault: ${ver.error ?? ultima(ver)}`);
+  const pagado = como(ROLES.A, "select (p->>'pagado')::boolean::int || (p->'datos' = 'null'::jsonb)::int from public.mi_pago() p");
+  exigir(pagado.ok && ultima(pagado) === "11", `con el pago registrado, mi_pago debe decir pagado y no mostrar datos: ${pagado.error ?? ultima(pagado)}`);
+  const aviso = como(ROLES.A, `${sinPagar}; select public.avisar_pago('Transferencia 42') is not null;
+    select (select count(*) from public.avisos_pago where ciclo_id = '${cicloA}')::text || (select count(*) from public.pagos where ciclo_id = '${cicloA}')::text
+      || (select estado from public.ciclos where id = '${cicloA}') = '10' || (select estado from public.ciclos where id = '${cicloA}')`);
+  exigir(aviso.ok && ultima(aviso) === "t", `avisar_pago debe dejar un aviso sin registrar el pago ni cambiar el ciclo: ${aviso.error ?? ultima(aviso)}`);
+  const yaPagado = como(ROLES.A, "select public.avisar_pago(null)");
+  exigir(!yaPagado.ok && /ya_registrado/.test(yaPagado.error), "se pudo avisar un pago ya registrado");
+  const anon = como(ROLES.anon, "select public.mi_pago()");
+  exigir(!anon.ok, "anon pudo leer mi_pago");
+}
+paso("pago en Mi espacio: cada persona ve su pago; datos solo mientras falta pagar; el aviso no confirma nada");
 
 // B5 · Coaches: el dueño invita; la persona invitada acepta con su sesión; nadie más entra al equipo.
 const correoNuevo = `coach-nuevo-${Date.now()}@example.com`;

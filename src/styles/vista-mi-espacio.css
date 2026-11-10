@@ -2027,3 +2027,19 @@ a.as-linea__numero { display: inline-flex; min-block-size: 44px; align-items: ce
 .as-acceso__texto { display: grid; gap: 2px; font-size: var(--t-xs); color: var(--tinta-suave); }
 .as-acceso__titulo { font: 600 var(--t-s)/1.3 var(--sans); color: var(--tinta); }
 .as-acceso > .icono { color: var(--bosque); }
+
+/* Tu pago: monto y vencimiento, datos con «Copiar» y aviso de transferencia (sin confirmar). */
+.me-pago { display: grid; gap: var(--e-4); }
+.me-pago__tarjeta { display: grid; gap: var(--e-3); justify-items: start; }
+.me-pago__tarjeta > * { margin: 0; }
+.me-pago__cifras { display: grid; gap: var(--e-3); margin: 0; }
+.me-pago__cifras dt { font-size: 0.875rem; color: var(--tinta-suave); }
+.me-pago__cifras dd { margin: 0; }
+.me-pago__monto { font-family: var(--serif); font-size: 2rem; line-height: 1.1; }
+.me-pago__datos { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--e-2); inline-size: 100%; }
+.me-pago__dato { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--e-2); padding-block: var(--e-2); border-block-end: 1px solid var(--niebla); }
+.me-pago__valor { overflow-wrap: anywhere; min-inline-size: 0; flex: 1 1 12rem; }
+.me-pago__copiar { min-block-size: 44px; }
+.me-pago__form { display: grid; gap: var(--e-3); inline-size: 100%; }
+.me-pago__form .campo { inline-size: 100%; }
+.me-pago__inicio { margin-block-start: var(--e-4); }
