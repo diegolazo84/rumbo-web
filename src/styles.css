@@ -951,7 +951,7 @@ html:not(.hidratado) .menu-boton { visibility: hidden; }
 .niveles li:last-child { border-block-end: 0; }
 
 /* 3.15 Planes ------------------------------------------------------------- */
-.planes { display: grid; gap: 16px; max-inline-size: var(--ancho-medio); }
+.planes { display: grid; gap: 16px; }
 @media (min-width: 600px) { .planes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; } }
 .planes > .panel-planes { grid-column: 1 / -1; }
 .plan { border-radius: var(--r-l); padding: 24px; }
