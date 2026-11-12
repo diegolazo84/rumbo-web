@@ -45,6 +45,26 @@
 .portada-confianza { margin-block-start: var(--e-4); }
 .portada-ruta { display: none; }
 
+/* Foto y calendario: la foto es apaisada en su caja y el calendario sube sobre su borde
+   inferior, con margen a los lados para que la foto se vea como marco. */
+.portada-visual { display: grid; min-inline-size: 0; }
+.portada-foto { display: block; overflow: hidden; border-radius: var(--r-l); box-shadow: var(--sombra-1); }
+.portada-foto img { display: block; inline-size: 100%; block-size: auto; aspect-ratio: 4 / 3; object-fit: cover; object-position: 50% 42%; }
+.portada-visual > .calendario {
+  position: relative;
+  margin-block-start: calc(-1 * clamp(3rem, 2rem + 6vw, 5.5rem));
+  margin-inline: var(--e-3);
+  box-shadow: var(--sombra-2);
+}
+@media (min-width: 600px) and (max-width: 1023.98px) {
+  .portada-visual { max-inline-size: 640px; }
+  .portada-visual > .calendario { margin-inline: var(--e-5); }
+}
+@media (min-width: 1024px) {
+  .portada-foto img { aspect-ratio: 16 / 11; }
+  .portada-visual > .calendario { margin-inline: calc(-1 * var(--e-5)) var(--e-5); }
+}
+
 /* Desde 1024 px: texto a la izquierda, calendario a la derecha y la ruta de puntos
    bajo el texto, entrando en la separación hacia el calendario. */
 @media (min-width: 1024px) {
@@ -55,7 +75,7 @@
     row-gap: 0;
   }
   .portada-texto { grid-column: 1; grid-row: 1; padding-block-start: var(--e-4); }
-  .portada-grilla > .calendario { grid-column: 2; grid-row: 1 / -1; align-self: start; }
+  .portada-visual { grid-column: 2; grid-row: 1 / -1; align-self: start; }
   .portada-ruta {
     display: block;
     grid-column: 1;
@@ -83,7 +103,7 @@
   .portada-texto > .acciones { grid-row: 5; }
   .portada-salida { grid-row: 6; }
   .portada-confianza { grid-row: 7; }
-  .portada-grilla > .calendario { grid-row: 3 / -1; margin-block-start: var(--e-5); }
+  .portada-visual { grid-row: 3 / -1; margin-block-start: var(--e-5); }
   .portada-ruta { grid-row: 8; }
 }
 
@@ -197,4 +217,22 @@
   .portada-texto > .h1--display,
   .portada-texto > .bajada { margin-block-start: var(--e-4); }
   .mas-adelante { gap: var(--e-4); }
+}
+
+/* ========================================================================
+   Fotos de la portada (nov-2026): cómo funciona y planes
+   ======================================================================== */
+.metodo-foto { margin-block-end: var(--bloque); overflow: hidden; border-radius: var(--r-l); }
+.metodo-foto .foto, .planes-foto .foto { display: block; }
+.metodo-foto img { display: block; inline-size: 100%; block-size: auto; aspect-ratio: 16 / 9; object-fit: cover; object-position: 50% 50%; }
+@media (min-width: 600px) { .metodo-foto img { aspect-ratio: 2 / 1; } }
+@media (min-width: 1024px) { .metodo-foto img { aspect-ratio: 20 / 7; } }
+
+.planes-cabeza { display: grid; gap: var(--e-5); margin-block-end: var(--bloque); }
+.planes-cabeza > .encabezado { margin-block-end: 0; }
+.planes-foto { overflow: hidden; border-radius: var(--r-l); box-shadow: var(--sombra-1); }
+.planes-foto img { display: block; inline-size: 100%; block-size: auto; aspect-ratio: 5 / 2; object-fit: cover; }
+@media (min-width: 1024px) {
+  .planes-cabeza { grid-template-columns: minmax(0, 1fr) minmax(0, 24rem); align-items: center; column-gap: var(--e-8); }
+  .planes-foto img { aspect-ratio: 4 / 3; }
 }
