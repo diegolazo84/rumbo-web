@@ -3,7 +3,7 @@ name: ui-ux-pro-max
 description: "UI/UX design intelligence for web, mobile, and desktop. This skill should be used when designing, building, reviewing, or fixing interfaces, including pages, components, design systems, accessibility, interaction, responsive layout, typography, color, charts, and stack-specific UI implementation. Searchable local data: 80 searchable styles (51 active), 192 product palettes and reasoning profiles, 74 font pairings, 120 UX guidelines, 105 icons, 17 GSAP presets, 25 chart types, and 22 stacks."
 ---
 
-> **Uso en Rumbo (prioridad sobre este archivo):** úsala para criterios de UX, accesibilidad, rendimiento y revisión. Sus estilos, paletas y tipografías NO reemplazan el sistema visual aprobado (verde oscuro, crema, salvia, terracota, Fraunces) ni las maquetas aprobadas. No uses `--persist` (no escribir archivos de sistema de diseño en el repo). Textos según la regla de lenguaje humano del proyecto.
+> **Uso en Rumbo (prioridad sobre este archivo):** Diego autorizó (2026-11-12) usar esta skill para mejorar y elevar la web, aunque implique cambiar cosas del diseño actual. Parte del sistema visual aprobado (verde oscuro, crema, salvia, terracota, Fraunces) y de las maquetas aprobadas; cualquier cambio de fondo (colores, tipografía, estructura) va en un PR en borrador con capturas antes/después y se explica por qué mejora, para que Diego lo apruebe antes de publicar. No uses `--persist` (no escribir archivos de sistema de diseño en el repo). Textos según la regla de lenguaje humano del proyecto; no inventar datos ni testimonios.
 
 # UI/UX Pro Max - Design Intelligence
 
