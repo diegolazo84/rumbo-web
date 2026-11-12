@@ -358,7 +358,7 @@ function MensajeCoach({ informe }: { informe: Informe }) {
 }
 
 function QueSigue() {
-  const { R, hoy } = useEspacio();
+  const { R, hoy, participante } = useEspacio();
   const descargar = useDescargarDatos();
   return (
     <section className="ml-tarjeta ic-sigue" aria-labelledby="ic-sigue">
@@ -371,7 +371,11 @@ function QueSigue() {
         </h2>
         <p>{T.sigue.texto}</p>
         <div className="ic-sigue__acciones">
-          <Link to="/contacto/?motivo=solicitud" className="boton boton--primario ic-sigue__nuevo">
+          <Link
+            to="/contacto/?motivo=solicitud&tema=nuevo-ciclo"
+            state={{ nombre: participante.nombre, correo: participante.correo }}
+            className="boton boton--primario ic-sigue__nuevo"
+          >
             {T.sigue.nuevo}
             <Icono nombre="arrow-right" tamaño={20} />
           </Link>

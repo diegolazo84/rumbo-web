@@ -1796,8 +1796,14 @@ test("Informe de cierre real: datos de informe_ciclo y el mensaje escrito por el
   await expect(coach.locator(".ic-coach__texto")).toHaveText("Cerraste este ciclo con mucha constancia.\nSigamos conversando.");
   await expect(coach.locator(".ic-coach__autor")).toHaveText("Carla Soto");
   await expect(coach.locator(".me-coach__avatar")).toHaveText("CS");
-  await expect(page.getByRole("link", { name: "Quiero seguir con un nuevo ciclo" })).toHaveAttribute("href", /\/contacto\/\?motivo=solicitud$/);
+  await expect(page.getByRole("link", { name: "Quiero seguir con un nuevo ciclo" })).toHaveAttribute("href", /\/contacto\/\?motivo=solicitud&tema=nuevo-ciclo$/);
   await sinViolaciones(page);
+  // Renovar: el contacto llega con el mensaje preparado y el correo de la persona (sin ir en la dirección).
+  await page.getByRole("link", { name: "Quiero seguir con un nuevo ciclo" }).click();
+  await expect(page.getByLabel("Tu mensaje")).toHaveValue(/quiero seguir con uno nuevo/);
+  await expect(page.getByLabel(/^Tu correo/)).toHaveValue(/@/);
+  await expect(page.getByRole("radio", { name: "Sobre mi solicitud" })).toBeChecked();
+  expect(page.url()).not.toContain("@");
 });
 
 test("Informe de cierre real: sin mensaje, el último foco; sin focos, ninguna tarjeta; error con reintento", async ({ page }) => {
