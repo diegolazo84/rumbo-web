@@ -1,8 +1,8 @@
 # Inventario de funciones de Rumbo
 
 Lista única de las funciones del producto y su estado real. Se actualiza en cada PR que cambia
-una función. Última revisión: 9 de noviembre de 2026 (`main` en
-f00dbb4).
+una función. Última revisión: 10 de noviembre de 2026 (`main` en
+c3f6813).
 
 **Estados:**
 - *operativa*: funciona en producción.
@@ -19,6 +19,7 @@ autorización de Diego.
 | Área | Función | Estado | Falta |
 |---|---|---|---|
 | Ingreso | Postular, acuerdo, crear espacio, ingreso por código | operativa | Recorrido completo con cuenta de prueba (bloque 9) |
+| Pago | Paso del pago en Estado (#88) y «Tu pago» en Mi espacio: monto, vencimiento, datos para copiar, aviso «ya transferí» sin confirmar y correos (#90, migración 20261203 aplicada el 10-nov) | operativa; sin datos bancarios hasta crear el secreto `datos_transferencia`; correos sin clave de Brevo | Diego carga `datos_transferencia` en Vault y las claves de Brevo |
 | Planificación | Mi Rumbo, Mi plan, detalle de acción, ajustes, constructor | operativa | — |
 | Planificación | Acciones medibles (`anotar_cantidad`, `mis_medibles`) | operativa | — |
 | Planificación | Plantillas del equipo (`guardar_plantilla`) | operativa | Editar y archivar plantillas (mejora futura) |
@@ -32,23 +33,24 @@ autorización de Diego.
 | Avisos | Mis avisos: campana, filtros, búsqueda y marcar como leído (`marcar_avisos_leidos`) | operativa (#73); avisos de la Comunidad con la migración 20261126 (antes 20261124), sin aplicar | Autorizar 20261126 al abrir la Comunidad |
 | Avisos | Configuración de recordatorios: interruptor general, categorías, horario, días, correo (`guardar_recordatorios`, `correo_disponible`) | operativa (#74, migración 20261125 aplicada); logros siempre en Mis avisos; correo sin clave de Brevo | Claves de Brevo para el correo |
 | Comunidad | Comunidad, crear publicación, grupos, panel de moderación | apagada (módulo «comunidad») | Revisión legal |
-| Comunidad | Interior de grupo, desafíos, foto por desafío | en PR (#61, #62, #63), con 3 migraciones sin aplicar | Autorización |
+| Comunidad | Interior de grupo, desafíos, foto por desafío | apagada (módulo «comunidad»; #63 y migraciones 20261129–20261201 aplicadas el 10-nov) | Revisión legal; 20261126 al abrir la Comunidad |
 | Gamificación | Niveles, créditos, rachas, Mis logros | operativa | — |
 | Gamificación | Reconocimientos y ranking | apagada (módulos «reconocimientos» y «ranking») | Revisión legal del ranking |
-| Gamificación | 10 % en una renovación (`guardar_beneficio`, `aplicar_beneficio`) y ajuste de reconocimientos (`guardar_reconocimiento`) | en PR: pantalla «Reconocimientos y beneficio» del dueño y aplicar el descuento en Pagos; descuento apagado | Diego decide si lo activa; la tarjeta en Mis logros necesita 20261120 |
+| Gamificación | 10 % en una renovación (`guardar_beneficio`, `aplicar_beneficio`) y ajuste de reconocimientos (`guardar_reconocimiento`) | publicado (#93): pantalla «Reconocimientos y beneficio» del dueño (/equipo/recompensas/) y descuento aplicado en Pagos; descuento apagado | Diego decide si lo activa; la tarjeta en Mis logros necesita 20261120 |
 | Fotos | Subida privada en las acciones | apagada (módulo «fotos», #67) | Revisión legal, iPhone real |
-| Fotos | Borrado a los 30 días y Mantención | en PR (#68), con 1 migración sin aplicar | Etapas 3 a 8 de la guía de despliegue |
+| Fotos | Borrado a los 30 días y Mantención | apagada (#68 y migración 20261202 aplicadas el 10-nov; tarea `fotos-depurar` inactiva, función sin desplegar, sin `depurar_fotos_url`) | Política de privacidad publicada, iPhone real y `docs/borrado-fotos.md` |
 | IA | Asistente con consentimiento y aprobación del coach (`ia_*`, `mis_consultas_ia`, `guardar_ia_config`) | pantalla del participante con la maqueta definitiva (#75): 8 estados, acceso desde Apoyo, «Crear plan» como pregunta revisada, ilustraciones definitivas, móvil compacto; bandeja de revisión del coach (#76) y administración del dueño: interruptor, topes y gasto (#77); «Me sirvió»/«No me sirvió» (`ia_valoraciones`, `ia_valorar`, 20261127) y aviso «no compartida» en Mis avisos (20261128) aplicados en producción el 31-oct; apagado | Cargar la clave y prueba real con tope de USD 10 |
 | Administración | Módulos | operativa | — |
-| Administración | Indicadores de negocio (`indicadores`) | operativa | — |
-| Administración | Pagos y devoluciones (`registrar_pago`, `registrar_devolucion`, `devolucion_sugerida`) | operativa | — |
-| Administración | Auditoría de cambios y accesos | en PR | — |
+| Administración | Indicadores de negocio (`indicadores`) | operativa (#84) | — |
+| Administración | Pagos y devoluciones (`registrar_pago`, `registrar_devolucion`, `devolucion_sugerida`) y avisos «ya transferí» | operativa (#83, #90) | — |
+| Administración | Auditoría de cambios y accesos | operativa (#87) | — |
 | Perfil | Preferencias, tus datos, eliminar cuenta | operativa | — |
-| Móvil | Mi espacio instalable | en PR (#39) | Autorización |
+| Móvil | Revisión móvil del panel y Mi espacio (320 px, toques de 44 px, axe) | operativa (#89) | iPhone y Android reales |
+| Móvil | Mi espacio instalable | publicado (#92): manifiesto y service worker solo en /mi-espacio/, «Instalar Rumbo» en Preferencias y tarjeta en el teléfono | Probar en iPhone y Android reales |
 
 **Funciones internas, sin pantalla propia:**
 - `ping`: vigilancia.
-- `depuracion_*`: la usa la Edge Function de #68.
+- `depuracion_*`: la usa la Edge Function de #68 (sin desplegar).
 
 ## Próximamente (fuera de Rumbo 1.0)
 
