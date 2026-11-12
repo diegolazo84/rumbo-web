@@ -604,8 +604,9 @@ test("presupuesto de peso (dist/)", async () => {
   const js = cargados.filter((f) => f.endsWith(".js")).reduce((t, f) => t + gz(f), 0);
   const css = cargados.filter((f) => f.endsWith(".css")).reduce((t, f) => t + gz(f), 0);
   // 111 KB desde la Etapa 0 de Rumbo 2.0 (antes 110): los textos de Privacidad y Condiciones 1.2 conviven con los del
-  // modo con los interruptores apagados, que el compilado no descarta.
-  expect(js, "JS comprimido").toBeLessThan(111 * 1024);
+  // modo con los interruptores apagados, que el compilado no descarta. 114 KB desde Rumbo 1.0: suman los textos 1.3
+  // (apagados). Al publicar la 1.3, borrar las ramas 1.0–1.2 y volver a bajar este límite.
+  expect(js, "JS comprimido").toBeLessThan(114 * 1024);
   expect(css, "CSS comprimido").toBeLessThan(12 * 1024);
   expect(html.length, "HTML de la portada").toBeLessThan(70 * 1024);
   const precargas = [...html.toString().matchAll(/rel="preload" href="[^"]*\/assets\/([^"]+)"/g)].map((m) => m[1]);
@@ -901,6 +902,7 @@ test("navegación interna entre páginas de lectura sin errores", async ({ page 
 // ninguna página presenta como disponible lo que todavía no existe («Lo que viene en Rumbo»).
 test.describe("Etapa 0: proveedores reales y funciones futuras rotuladas", () => {
   test.skip(!(operacion.formularioPropio && operacion.miEspacioPropio), "solo con Mi espacio propio");
+  test.skip(operacion.legal13, "con LEGAL_13 rige la versión 1.3");
 
   test("Privacidad 1.2 nombra a Supabase, Brevo y GitHub, y no a OpenAI ni ChatGPT", async ({ page }) => {
     await page.goto("privacidad/");
@@ -933,5 +935,35 @@ test.describe("Etapa 0: proveedores reales y funciones futuras rotuladas", () =>
     const recibes = page.locator(".transparencia").first();
     await expect(recibes).not.toContainText(/foro|ranking|foto/i);
     await expect(page.locator("main")).not.toContainText(/comunidad es opcional|comunidad solo muestra/);
+  });
+});
+
+// Rumbo 1.0: Privacidad y Condiciones 1.3 (solo con LEGAL_13=1 hasta que se publiquen).
+test.describe("Versión legal 1.3", () => {
+  test.skip(!(operacion.miEspacioPropio && operacion.legal13), "solo con LEGAL_13=1");
+
+  test("Privacidad 1.3 describe comunidad, ranking, fotos, reconocimientos y pago; la IA sigue inactiva", async ({ page }) => {
+    await page.goto("privacidad/");
+    const main = page.locator("main");
+    await expect(main).toContainText(/versión 1\.3/i);
+    for (const titulo of ["Comunidad (opcional)", "Ranking semanal (opcional)", "Fotografías de tus acciones", "Reconocimientos y descuento por renovación", "Pago dentro de Mi espacio", "Asistente con inteligencia artificial"])
+      await expect(main.getByRole("heading", { name: titulo, exact: true })).toBeVisible();
+    await expect(main).not.toContainText("Funciones que todavía no existen");
+    await expect(main).toContainText("todavía no está activo");
+    await expect(main).toContainText("menos de 3 personas");
+    await expect(main).toContainText("30 días después de su revisión");
+    await expect(main).not.toContainText(/ChatGPT|OpenAI/);
+    expect((await new AxeBuilder({ page }).withTags(ETIQUETAS_AXE).analyze()).violations).toEqual([]);
+  });
+
+  test("Condiciones 1.3 publican las reglas de la comunidad y no cambian precios", async ({ page }) => {
+    await page.goto("condiciones/");
+    const main = page.locator("main");
+    await expect(main).toContainText(/versión 1\.3/i);
+    await expect(main.getByRole("heading", { name: "Comunidad y ranking", exact: true })).toBeVisible();
+    await expect(main).toContainText("Sin publicidad ni ventas.");
+    await expect(main).not.toContainText("todavía no están disponibles");
+    await expect(main).toContainText("$64.000");
+    expect((await new AxeBuilder({ page }).withTags(ETIQUETAS_AXE).analyze()).violations).toEqual([]);
   });
 });

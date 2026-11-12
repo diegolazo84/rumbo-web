@@ -115,7 +115,7 @@ export interface FuenteComunidad {
   reportar(id: string, motivo: MotivoReporte, detalle: string | null): Promise<void>;
   bloquear(id: string): Promise<void>;
   desbloquear(alias: string): Promise<void>;
-  borrar(id: string): Promise<void>;
+  borrar(id: string, fotos?: string[]): Promise<void>; // fotos: rutas propias que se quitan del bucket
   unirmeGrupo(id: string): Promise<void>;
   salirGrupo(id: string): Promise<void>;
   miembrosGrupo(id: string): Promise<MiembroGrupo[]>;
@@ -374,7 +374,15 @@ export function fuenteReal(): FuenteComunidad {
     reportar: (id, motivo, detalle) => rpc("reportar_publicacion", { p_id: id, p_motivo: motivo, p_detalle: detalle }),
     bloquear: (id) => rpc("bloquear_autor", { p_publicacion: id }),
     desbloquear: (alias) => rpc("desbloquear_alias", { p_alias: alias }),
-    borrar: (id) => rpc("borrar_mi_publicacion", { p_id: id }),
+    async borrar(id, fotos) {
+      // La base marca la publicación como borrada; los archivos de sus fotos se quitan del bucket
+      // (la persona puede borrar los de su carpeta). Si quitarlos falla, la publicación igual dejó de verse.
+      await rpc("borrar_mi_publicacion", { p_id: id });
+      if (fotos?.length) {
+        const sb = await supabase();
+        await sb.storage.from("comunidad").remove(fotos).catch(() => undefined);
+      }
+    },
     unirmeGrupo: (id) => rpc("unirme_a_grupo", { p_grupo: id }),
     salirGrupo: (id) => rpc("salir_de_grupo", { p_grupo: id }),
     miembrosGrupo: async (id) =>

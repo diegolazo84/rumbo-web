@@ -35,9 +35,12 @@ import {
 // Versión 1.2 (Etapa 0 de Rumbo 2.0): con Mi espacio propio (B), fotos, comunidad y ranking
 // quedan como «todavía no disponibles». ajustes_operacion.version_condiciones NO se cambia
 // sola: Diego la pasa a '1.2' el día que se publica (docs/revision-legal.md).
+// Versión 1.3 (Rumbo 1.0, operacion.legal13, apagada): reglas de fotos, comunidad, ranking,
+// desafíos, reconocimientos y del descuento por renovación. Precios, pago, pausa y término no cambian.
 const A = op.formularioPropio;
 const B = A && op.miEspacioPropio;
-const VERSION_CONDICIONES = { numero: B ? "1.2" : A ? "1.1" : "1.0", fecha: VERSION_PUBLICADA.texto };
+const C = B && op.legal13;
+const VERSION_CONDICIONES = { numero: C ? "1.3" : B ? "1.2" : A ? "1.1" : "1.0", fecha: VERSION_PUBLICADA.texto };
 
 const ACEPTACION =
   "La aceptación depende de que el piloto pueda ayudarte con tu meta y de nuestra capacidad en esta etapa.";
@@ -194,11 +197,30 @@ const secciones: Paso[] = [
             reglasCreditos,
           )}
         </p>
-        <p>
-          Fotografías de acciones, comunidad (foro moderado) y ranking semanal: todavía no están disponibles. Cuando
-          existan serán opcionales; las fotografías serán privadas y el ranking, voluntario y basado en el cumplimiento de
-          tu propia semana. Antes de abrirlos publicaremos sus reglas en estas condiciones.
-        </p>
+        {C ? (
+          <>
+            <p>
+              Fotografías de acciones: algunas acciones piden una foto y en las demás es opcional. Son privadas: las ven
+              tú, quien te acompaña y el responsable de Rumbo, y se eliminan según la Política de privacidad. Si no
+              puedes subir una foto, puedes contar lo que hiciste con tus palabras; la revisamos igual.
+            </p>
+            <p>
+              Reconocimientos: se otorgan solos según tus acciones. No son dinero, no se canjean y no evalúan a la
+              persona. Los desafíos de la comunidad tampoco dan créditos ni cambian tu nivel o tu racha.
+            </p>
+            <p>
+              Descuento por renovación: si Rumbo lo ofrece, lo anunciaremos en Mi espacio con su porcentaje y sus
+              condiciones. Se aplica a una sola renovación, no se acumula con otro descuento y solo cuentan las acciones
+              programadas de tu ciclo, con los ajustes que hayamos acordado.
+            </p>
+          </>
+        ) : (
+          <p>
+            Fotografías de acciones, comunidad (foro moderado) y ranking semanal: todavía no están disponibles. Cuando
+            existan serán opcionales; las fotografías serán privadas y el ranking, voluntario y basado en el cumplimiento
+            de tu propia semana. Antes de abrirlos publicaremos sus reglas en estas condiciones.
+          </p>
+        )}
       </>
     ),
   },
@@ -236,6 +258,39 @@ const secciones: Paso[] = [
       </>
     ),
   },
+  ...(C
+    ? [
+        {
+          titulo: "Comunidad y ranking",
+          contenido: (
+            <>
+              <p>
+                Son opcionales y se abren cuando el equipo de Rumbo puede moderarlos. Participas con un alias y puedes
+                salir cuando quieras. Al entrar a la comunidad aceptas sus reglas:
+              </p>
+              <ListaLectura
+                items={[
+                  "Trata a todas las personas con respeto. Nada de burlas, acoso ni discriminación.",
+                  "No compartas datos personales tuyos ni de otras personas (nombre completo, teléfono, dirección, diagnósticos).",
+                  "Comparte experiencias, no indicaciones de salud: para eso están tu coach y los profesionales.",
+                  "Sin publicidad ni ventas.",
+                  "Si algo no está bien, repórtalo. El equipo de Rumbo revisa cada reporte.",
+                ]}
+              />
+              <p>
+                Moderación puede ocultar una publicación que no cumpla las reglas, con un motivo. Hay un máximo de 20
+                publicaciones por persona al día. La comunidad no es un servicio de emergencia: si alguien está en
+                riesgo, usa Ayuda inmediata.
+              </p>
+              <p>
+                El ranking semanal compara el porcentaje de tus propias acciones programadas que completaste, no la
+                cantidad. Solo se muestra con 3 o más participantes. No da premios ni cambia tu precio.
+              </p>
+            </>
+          ),
+        },
+      ]
+    : []),
   {
     titulo: "Tus datos",
     contenido: (
