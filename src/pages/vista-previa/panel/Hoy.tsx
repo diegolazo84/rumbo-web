@@ -17,9 +17,10 @@ export function Tarjeta({ item }: { item: Item }) {
   const idDetalle = `${item.id}-detalle`;
   const vence = item.vence ? venceTexto(item.vence) : null;
   const pasado = !!item.vence && item.vence < hoy;
+  const urgencia = pasado ? "pasado" : item.vence === hoy ? "hoy" : undefined;
   return (
     <li>
-      <article className="tarjeta tarjeta--enlazada pa-cola__tarjeta" aria-labelledby={idQue}>
+      <article className="tarjeta tarjeta--enlazada pa-cola__tarjeta" data-urgencia={urgencia} aria-labelledby={idQue}>
         <h2 id={idQue} className="pa-cola__que">
           {item.que}
         </h2>

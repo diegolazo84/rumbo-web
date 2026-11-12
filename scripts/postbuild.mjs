@@ -224,6 +224,25 @@ function jsonLd() {
   return `<script type="application/ld+json">${JSON.stringify(datos).replaceAll("<", "\\u003c")}</script>`;
 }
 
+// FAQPage con las mismas preguntas que se ven en la portada (details[data-faq]): ayuda a
+// buscadores y asistentes de IA a citar respuestas exactas. Solo texto visible, sin agregar nada.
+const textoDe = (fragmento) =>
+  fragmento
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ").replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")
+    .replace(/\u2060/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+function jsonLdPreguntas(html) {
+  const preguntas = [...html.matchAll(/<details data-faq="[^"]+"><summary><span>([\s\S]*?)<\/span>[\s\S]*?<div class="acordeon-respuesta">([\s\S]*?)<\/div><\/details>/g)]
+    .map(([, q, r]) => ({ "@type": "Question", name: textoDe(q), acceptedAnswer: { "@type": "Answer", text: textoDe(r) } }))
+    .filter((x) => x.name && x.acceptedAnswer.text);
+  if (preguntas.length < 3) throw new Error(`postbuild: la portada solo tiene ${preguntas.length} preguntas para FAQPage.`);
+  const datos = { "@context": "https://schema.org", "@type": "FAQPage", inLanguage: "es-CL", mainEntity: preguntas };
+  return `<script type="application/ld+json">${JSON.stringify(datos).replaceAll("<", "\\u003c")}</script>`;
+}
+
 // Todo HTML escrito pasa por el guardián antes de llegar a disco.
 const escritos = [];
 function escribirArchivo(archivo, html) {
@@ -295,6 +314,7 @@ for (const p of paginas) {
   } else {
     html = pagina(url, p.id, head);
   }
+  if (p.id === "inicio") html = html.replace("</head>", `  ${jsonLdPreguntas(html)}\n  </head>`);
   // Política de referrer propia (/estado/: no-referrer, plataforma 2.1): reemplaza la de la
   // plantilla, porque con dos <meta name="referrer"> manda la última.
   if (p.referrer) {
