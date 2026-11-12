@@ -605,7 +605,8 @@ test("presupuesto de peso (dist/)", async () => {
   const css = cargados.filter((f) => f.endsWith(".css")).reduce((t, f) => t + gz(f), 0);
   // 111 KB desde la Etapa 0 de Rumbo 2.0 (antes 110): los textos de Privacidad y Condiciones 1.2 conviven con los del
   // modo con los interruptores apagados, que el compilado no descarta.
-  expect(js, "JS comprimido").toBeLessThan(111 * 1024);
+  // 112 KB desde las fotos de la portada (nov-2026): rutas, anchos y textos alternativos de 8 fotos.
+  expect(js, "JS comprimido").toBeLessThan(112 * 1024);
   expect(css, "CSS comprimido").toBeLessThan(12 * 1024);
   expect(html.length, "HTML de la portada").toBeLessThan(70 * 1024);
   const precargas = [...html.toString().matchAll(/rel="preload" href="[^"]*\/assets\/([^"]+)"/g)].map((m) => m[1]);

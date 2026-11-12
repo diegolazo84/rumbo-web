@@ -980,6 +980,14 @@ html:not(.hidratado) .menu-boton { visibility: hidden; }
 @media (min-width: 600px) { .caminos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; } }
 .camino-cabeza { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .camino-texto { color: var(--tinta-suave); }
+/* Foto del camino: de borde a borde arriba de la tarjeta; se acerca un poco al pasar el cursor. */
+.camino-foto { display: block; margin: -24px -24px 4px; overflow: hidden; border-radius: var(--r-m) var(--r-m) 0 0; }
+.camino-foto img { display: block; inline-size: 100%; block-size: auto; aspect-ratio: 2 / 1; object-fit: cover; }
+@media (min-width: 1024px) { .camino-foto { margin: -28px -28px 4px; } }
+@media (prefers-reduced-motion: no-preference) {
+  .camino-foto img { transition: transform var(--dur-4) var(--curva); }
+  .camino:hover .camino-foto img { transform: scale(1.04); }
+}
 
 /* 3.16 Fila «Más adelante» ------------------------------------------------ */
 .filas-futuras { display: grid; gap: 16px; }

@@ -20,6 +20,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Etiqueta from "../../../components/Etiqueta";
+import Foto from "../../../components/Foto";
+import { fotos } from "../../../data/fotos";
 import { AnilloDia, BarraProgreso, ErrorBloque, Hoja, HojaAyuda, Icono, Ilustracion, Tostada } from "../../../components/app";
 import { ESCENARIO_CERCANO, HOY, cuentaComoHecha, ocurrenciasDel, type Escenario, type EstadoRegistro, type Meta, type Ocurrencia } from "../../../data/ejemplo-app";
 import { niveles } from "../../../data/rumbo";
@@ -371,7 +373,7 @@ function Bienvenida({ hoy, semana, total, progreso, esc, deHoy, principal, conCo
 
   return (
     <header className="me-bienvenida me-hoy__cabeza">
-      <Ilustracion nombre="paisaje" className="me-bienvenida__ilus" />
+      <Foto foto={fotos.miEspacio} decorativa prioridad className="me-bienvenida__foto" sizes="(min-width: 1024px) 520px, 60vw" />
       <div className="me-bienvenida__texto">
         <div className="me-bienvenida__ojo">
           <h1 className="me-bienvenida__h1">{T_SECCIONES.rumbo}</h1>

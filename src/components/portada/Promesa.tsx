@@ -1,10 +1,12 @@
-// Capítulo 1: Promesa (5.2). Papel con cuadrícula de agenda; texto y calendario de
-// ejemplo, en dos columnas desde 1024 px. Sin revelado al desplazar: es el primer pantallazo.
+// Capítulo 1: Promesa (5.2). Papel con cuadrícula de agenda; texto y, al lado, una foto con el
+// calendario de ejemplo apoyado encima, en dos columnas desde 1024 px. Sin revelado al desplazar: es el primer pantallazo.
+import { fotos } from "../../data/fotos";
 import { rayas } from "../../data/rumbo";
 import { ListaCheck } from "../Bloques";
 import CalendarioEjemplo from "../CalendarioEjemplo";
 import { Boton, BotonPostular } from "../Enlaces";
 import { EtiquetaEstado } from "../Etiqueta";
+import Foto from "../Foto";
 import Icono from "../Icono";
 import RutaPuntos from "../RutaPuntos";
 import { NOTA_SALIDA } from "./textos";
@@ -43,7 +45,16 @@ export default function Promesa() {
             items={["Postular es gratis", "No necesitas cuenta", "Una persona lee cada solicitud"]}
           />
         </div>
-        <CalendarioEjemplo />
+        {/* La foto abre la columna y el calendario de ejemplo se apoya sobre su borde inferior. */}
+        <div className="portada-visual">
+          <Foto
+            foto={fotos.portada}
+            className="portada-foto"
+            sizes="(min-width: 1024px) 560px, calc(100vw - 32px)"
+            prioridad
+          />
+          <CalendarioEjemplo />
+        </div>
         {/* Desde 1024 px: la ruta une el texto con el calendario, bajo el texto. */}
         <RutaPuntos variante="fondo" className="portada-ruta" />
       </div>

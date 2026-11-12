@@ -1,9 +1,11 @@
 // Capítulo 5: Decidir (5.2). Papel hondo: los dos planes con el mismo peso visual y,
 // tras el separador, las preguntas frecuentes (src/data/preguntas.ts).
+import { fotos } from "../../data/fotos";
 import { preguntasPorGrupo } from "../../data/preguntas";
 import { FORMULARIO_EXTERNO, operacion, postularHref, rutas, t } from "../../data/rumbo";
 import { Acordeon, Encabezado, Segmentos } from "../Bloques";
 import { Enlace, EnlaceFlecha, SeAbrePlataforma } from "../Enlaces";
+import Foto from "../Foto";
 import GrillaPlanes from "../Planes";
 import { bajadaPlanes } from "./textos";
 
@@ -45,18 +47,23 @@ export default function Decidir() {
     <section className="capitulo capitulo--hondo">
       <div className="contenedor">
         <div id="planes">
-          <Encabezado
-            revelar
-            ojo="Planes"
-            titulo="Ciclos de 4 semanas, con revisión humana cada semana."
-            bajada={bajadaPlanes()}
-          >
-            {grupo && (
-              <p className="bajada">
-                {t("El primer grupo es pequeño, de {n} personas, para poder acompañar bien a cada una.", { n: grupo })}
-              </p>
-            )}
-          </Encabezado>
+          <div className="planes-cabeza">
+            <Encabezado
+              revelar
+              ojo="Planes"
+              titulo="Ciclos de 4 semanas, con revisión humana cada semana."
+              bajada={bajadaPlanes()}
+            >
+              {grupo && (
+                <p className="bajada">
+                  {t("El primer grupo es pequeño, de {n} personas, para poder acompañar bien a cada una.", { n: grupo })}
+                </p>
+              )}
+            </Encabezado>
+            <div className="planes-foto" data-revelar="">
+              <Foto foto={fotos.planes} sizes="(min-width: 1024px) 420px, calc(100vw - 32px)" />
+            </div>
+          </div>
           <div data-revelar="">
             <GrillaPlanes />
           </div>
