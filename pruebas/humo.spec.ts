@@ -745,9 +745,10 @@ test.describe("medidas de la portada", () => {
   // del 2 de octubre agregaron unos 640 px (19.584 px, #planes al 66,1 %): la meta de alto pasó a
   // 19.800 px. La Etapa 0 de Rumbo 2.0 (12 de octubre) agregó «Lo que viene en Rumbo», pedido por
   // Diego, y el rótulo del ranking (19.923 px en CI): la meta pasó a 20.200 px. Ver docs/pendientes.md.
-  const META_19 = { alto: 20200, planes: 0.685 };
+  // 21.200 px desde las fotos de la portada (nov-2026): inicio, caminos, cómo funciona y planes.
+  const META_19 = { alto: 21200, planes: 0.685 };
 
-  test("a 390 px la portada no pasa de 20.200 px y #planes empieza antes del 68,5 % (aceptación 19)", async ({ page }) => {
+  test("a 390 px la portada no pasa de 21.200 px y #planes empieza antes del 68,5 % (aceptación 19)", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("./");
     await esperarHidratacion(page);

@@ -224,14 +224,14 @@
    ======================================================================== */
 .metodo-foto { margin-block-end: var(--bloque); overflow: hidden; border-radius: var(--r-l); }
 .metodo-foto .foto, .planes-foto .foto { display: block; }
-.metodo-foto img { display: block; inline-size: 100%; block-size: auto; aspect-ratio: 4 / 3; object-fit: cover; object-position: 50% 50%; }
+.metodo-foto img { display: block; inline-size: 100%; block-size: auto; aspect-ratio: 16 / 9; object-fit: cover; object-position: 50% 50%; }
 @media (min-width: 600px) { .metodo-foto img { aspect-ratio: 2 / 1; } }
 @media (min-width: 1024px) { .metodo-foto img { aspect-ratio: 20 / 7; } }
 
 .planes-cabeza { display: grid; gap: var(--e-5); margin-block-end: var(--bloque); }
 .planes-cabeza > .encabezado { margin-block-end: 0; }
 .planes-foto { overflow: hidden; border-radius: var(--r-l); box-shadow: var(--sombra-1); }
-.planes-foto img { display: block; inline-size: 100%; block-size: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+.planes-foto img { display: block; inline-size: 100%; block-size: auto; aspect-ratio: 5 / 2; object-fit: cover; }
 @media (min-width: 1024px) {
   .planes-cabeza { grid-template-columns: minmax(0, 1fr) minmax(0, 24rem); align-items: center; column-gap: var(--e-8); }
   .planes-foto img { aspect-ratio: 4 / 3; }

@@ -982,7 +982,8 @@ html:not(.hidratado) .menu-boton { visibility: hidden; }
 .camino-texto { color: var(--tinta-suave); }
 /* Foto del camino: de borde a borde arriba de la tarjeta; se acerca un poco al pasar el cursor. */
 .camino-foto { display: block; margin: -24px -24px 4px; overflow: hidden; border-radius: var(--r-m) var(--r-m) 0 0; }
-.camino-foto img { display: block; inline-size: 100%; block-size: auto; aspect-ratio: 2 / 1; object-fit: cover; }
+.camino-foto img { display: block; inline-size: 100%; block-size: auto; aspect-ratio: 5 / 2; object-fit: cover; }
+@media (min-width: 600px) { .camino-foto img { aspect-ratio: 2 / 1; } }
 @media (min-width: 1024px) { .camino-foto { margin: -28px -28px 4px; } }
 @media (prefers-reduced-motion: no-preference) {
   .camino-foto img { transition: transform var(--dur-4) var(--curva); }
