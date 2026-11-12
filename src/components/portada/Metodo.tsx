@@ -1,9 +1,11 @@
 // Capítulo 3: Método (5.2). Bosque: los cinco pasos, lo que puedes esperar del piloto y,
 // solo si existe operacion.acompanante, quién te acompaña.
 import { BASENAME } from "../../base";
+import { fotos } from "../../data/fotos";
 import { operacion, rayas, t } from "../../data/rumbo";
 import { Aviso, Encabezado, Pasos } from "../Bloques";
 import { BotonPostular } from "../Enlaces";
+import Foto from "../Foto";
 import Icono, { type NombreIcono } from "../Icono";
 import { textoRevision } from "./textos";
 
@@ -92,6 +94,9 @@ export default function Metodo() {
   return (
     <section id="como-funciona" className="capitulo capitulo--oscuro">
       <div className="contenedor">
+        <div className="metodo-foto" data-revelar="">
+          <Foto foto={fotos.comoFunciona} sizes="(min-width: 1184px) 1120px, calc(100vw - 32px)" />
+        </div>
         <div className="partido">
           <Encabezado
             revelar
