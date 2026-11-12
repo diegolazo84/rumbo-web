@@ -2143,6 +2143,47 @@ test("Asistente real: Mis conversaciones muestra solo lo que entrega mis_consult
 // deja un aviso y no registra el pago ni toca el ciclo.
 const PAGO = { ciclo_id: "c2", numero: 1, monto_clp: 64000, inicio: "2026-10-19", vence: "2026-10-18", pagado: false, aviso_en: null, datos: ["Banco de Prueba", "Cuenta corriente 000123"] };
 
+test("App instalable: tarjeta en Mi Rumbo (teléfono) con el aviso del navegador, «Ahora no» la guarda y Preferencias lo explica", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await conSesion(page);
+  await simular(page, baseInicial());
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  await expect(page.locator("main h1")).toHaveText("Mi Rumbo", { timeout: 15_000 });
+  // Sin aviso del navegador (y fuera de iPhone) no hay tarjeta.
+  await expect(page.locator(".me-app__inicio")).toHaveCount(0);
+  const ofrecer = () =>
+    page.evaluate(() => {
+      const e = new Event("beforeinstallprompt") as Event & Record<string, unknown>;
+      e.prompt = async () => void ((window as unknown as Record<string, boolean>).__pidio = true);
+      e.userChoice = Promise.resolve({ outcome: "dismissed" });
+      window.dispatchEvent(e);
+    });
+  await ofrecer();
+  const tarjeta = page.locator(".me-app__inicio");
+  await expect(tarjeta.getByRole("heading", { name: "Ten Rumbo a un toque" })).toBeVisible();
+  await tarjeta.getByRole("button", { name: "Instalar Rumbo" }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as Record<string, boolean>).__pidio)).toBe(true);
+  await ofrecer();
+  const axe = await new AxeBuilder({ page }).include(".me-app__inicio").withTags(ETIQUETAS_AXE).analyze();
+  expect(axe.violations.map((v) => v.id)).toEqual([]);
+  await tarjeta.getByRole("button", { name: "Ahora no" }).click();
+  await expect(tarjeta).toHaveCount(0);
+  await page.reload();
+  await hidratar(page);
+  await expect(page.locator("main h1")).toHaveText("Mi Rumbo", { timeout: 15_000 });
+  await ofrecer();
+  await expect(page.locator(".me-app__inicio")).toHaveCount(0);
+  // Preferencias sigue ofreciendo instalar, sin guardar datos en el teléfono.
+  await page.goto("mi-espacio/preferencias/");
+  await hidratar(page);
+  const seccion = page.locator("#app");
+  await expect(seccion.getByRole("heading", { name: "Rumbo en tu teléfono" })).toBeVisible({ timeout: 15_000 });
+  await ofrecer();
+  await expect(seccion.getByRole("button", { name: "Instalar Rumbo" })).toBeVisible();
+  await expect(seccion).toContainText("No guardamos tus datos en el teléfono.");
+});
+
 test("Tu pago: monto, vencimiento, copiar datos y avisar sin confirmar el pago", async ({ page, context, browserName }) => {
   if (browserName === "chromium") await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await conSesion(page);
@@ -2266,4 +2307,30 @@ test("Mi plan antes de que empiece el ciclo: dice cuándo empieza y abre en la p
   await expect(page.getByText("19 al 25 de octubre")).toBeVisible();
   await expect(page.getByText("Escribir 30 minutos").first()).toBeVisible();
   await sinViolaciones(page);
+});
+
+test.describe("service worker", () => {
+test.use({ serviceWorkers: "allow" });
+test("Mi espacio se instala como app: manifiesto propio, service worker solo en /mi-espacio/ y aviso sin conexión", async ({ page, context }) => {
+  await simular(page, baseInicial());
+  await page.goto("mi-espacio/entrar/");
+  await hidratar(page);
+  const manifiesto = await page.locator('link[rel="manifest"]').getAttribute("href");
+  expect(manifiesto).toMatch(/mi-espacio\.webmanifest$/);
+  const m = await (await page.request.get(new URL(manifiesto!, page.url()).href)).json();
+  expect(m.display).toBe("standalone");
+  expect(m.scope).toBe("mi-espacio/");
+  const alcance = await page.evaluate(async () => (await navigator.serviceWorker.ready).scope);
+  expect(new URL(alcance).pathname).toMatch(/\/mi-espacio\/$/);
+  // Sin conexión, la página de Mi espacio explica que necesita internet y deja los números de ayuda.
+  await page.reload();
+  await context.setOffline(true);
+  await page.goto("mi-espacio/plan/").catch(() => {});
+  await expect(page.locator("h1")).toHaveText("Sin conexión");
+  await expect(page.getByRole("link", { name: "131" })).toHaveAttribute("href", "tel:131");
+  await context.setOffline(false);
+  // La portada no queda bajo el service worker.
+  await page.goto("./");
+  expect(await page.evaluate(() => navigator.serviceWorker.controller)).toBeNull();
+});
 });

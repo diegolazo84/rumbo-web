@@ -13,6 +13,7 @@ import { guardarSonido, sonar, sonidoActivo } from "../../../lib/celebrar";
 import type { PropsPantalla } from "../registro";
 import { AlertaGuardar, Cabeza, useDescargarDatos, useEspacio } from "./comun";
 import { T_PREFERENCIAS, T_RECORDATORIOS } from "./textos";
+import { SeccionApp } from "../../plataforma/mi-espacio/InstalarApp";
 
 // Fecha límite de ejemplo para los pedidos sobre datos personales. El plazo real lo fija la
 // ley y lo confirma Diego (plataforma 9.3): aquí es solo un ejemplo.
@@ -138,6 +139,10 @@ function PantallaPreferencias() {
           {T_RECORDATORIOS.enPreferencias.enlace}
         </Link>
       </section>
+
+      <hr className="me-separador" />
+
+      <SeccionApp />
 
       <hr className="me-separador" />
 
