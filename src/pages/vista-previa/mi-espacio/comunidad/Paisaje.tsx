@@ -5,11 +5,13 @@
 //   · Miniaturas de grupos y desafíos (sendero, lago, montaña, colinas, brote, atardecer).
 // Decorativos siempre (aria-hidden): el texto vecino da el significado.
 import { useId } from "react";
+import { BASENAME } from "../../../../base";
 import type { Ilustracion } from "./fuente";
 
-// Fotografía definitiva de la portada (pendiente de ChatGPT). Cuando llegue, se pone aquí su ruta
-// en /public y Comunidad y Crear publicación la usan en lugar de la ilustración.
-export const FOTO_PORTADA: string | null = null;
+// Fotografía de la portada (ChatGPT, nov-2026: persona de espalda mirando los cerros al atardecer).
+// Comunidad, Mis logros, Mis avisos, Recordatorios y el informe de cierre la usan en lugar de la
+// ilustración; la ilustración queda como respaldo si se vuelve a null.
+export const FOTO_PORTADA: string | null = `${BASENAME}fotos/camino-sin-claridad-1440.webp`;
 
 export function PaisajePortada({ className }: { className?: string }) {
   const id = useId().replace(/:/g, "");

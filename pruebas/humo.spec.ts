@@ -605,7 +605,8 @@ test("presupuesto de peso (dist/)", async () => {
   const css = cargados.filter((f) => f.endsWith(".css")).reduce((t, f) => t + gz(f), 0);
   // 111 KB desde la Etapa 0 de Rumbo 2.0 (antes 110): los textos de Privacidad y Condiciones 1.2 conviven con los del
   // modo con los interruptores apagados, que el compilado no descarta.
-  expect(js, "JS comprimido").toBeLessThan(111 * 1024);
+  // 112 KB desde las fotos de la portada (nov-2026): rutas, anchos y textos alternativos de 8 fotos.
+  expect(js, "JS comprimido").toBeLessThan(112 * 1024);
   expect(css, "CSS comprimido").toBeLessThan(12 * 1024);
   expect(html.length, "HTML de la portada").toBeLessThan(70 * 1024);
   const precargas = [...html.toString().matchAll(/rel="preload" href="[^"]*\/assets\/([^"]+)"/g)].map((m) => m[1]);
@@ -744,9 +745,10 @@ test.describe("medidas de la portada", () => {
   // del 2 de octubre agregaron unos 640 px (19.584 px, #planes al 66,1 %): la meta de alto pasó a
   // 19.800 px. La Etapa 0 de Rumbo 2.0 (12 de octubre) agregó «Lo que viene en Rumbo», pedido por
   // Diego, y el rótulo del ranking (19.923 px en CI): la meta pasó a 20.200 px. Ver docs/pendientes.md.
-  const META_19 = { alto: 20200, planes: 0.685 };
+  // 21.200 px desde las fotos de la portada (nov-2026): inicio, caminos, cómo funciona y planes.
+  const META_19 = { alto: 21200, planes: 0.685 };
 
-  test("a 390 px la portada no pasa de 20.200 px y #planes empieza antes del 68,5 % (aceptación 19)", async ({ page }) => {
+  test("a 390 px la portada no pasa de 21.200 px y #planes empieza antes del 68,5 % (aceptación 19)", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("./");
     await esperarHidratacion(page);

@@ -3,6 +3,7 @@
 // pública. Las pantallas son las de la vista previa en modo real (EspacioContexto y
 // PanelContexto); aquí solo se elige el marco y la pantalla según la ruta.
 // postbuild.mjs prerenderiza cada ruta con «Cargando…» (y el formulario de ingreso), noindex.
+import { registrarAppInstalable } from "../../lib/app-instalable";
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import { EstructuraApp } from "../../components/app";
@@ -85,6 +86,11 @@ export default function Plataforma() {
   useEffect(() => {
     document.title = ruta?.titulo ?? `${T_PLATAFORMA.noExiste.replace(/\.$/, "")} · Rumbo`;
   }, [ruta]);
+  // Mi espacio se puede instalar como app; el panel del equipo no.
+  const esMiEspacio = ruta?.marco === "mi-espacio" || ruta?.marco === "ingreso";
+  useEffect(() => {
+    if (esMiEspacio) registrarAppInstalable();
+  }, [esMiEspacio]);
 
   if (!ruta) return <NoExiste />;
   // Ruta anterior a la etapa 2: a la sección nueva, con la misma búsqueda y ancla.

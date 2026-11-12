@@ -2166,6 +2166,141 @@ test("Pagos: el aviso «ya transferí» de la persona se ve en Por registrar y n
   expect(base.pagos).toEqual([]);
   await sinViolaciones(page);
 });
+// Reconocimientos y beneficio (dueño): la base impone las reglas; la pantalla solo las explica.
+function baseRecompensas() {
+  const base = baseInicial();
+  base.reconocimientos = [
+    { clave: "primer_paso", nombre: "Primer paso", descripcion: "Marcaste tu primera acción.", umbral: null, activo: true, orden: 1 },
+    { clave: "constancia", nombre: "Constancia", descripcion: "Sostuviste una racha de días seguidos en tu ciclo.", umbral: 7, activo: true, orden: 3 },
+    { clave: "mitad_del_camino", nombre: "Mitad del camino", descripcion: "Llegaste a la mitad del ciclo con buena parte de lo programado hecho.", umbral: 50, activo: false, orden: 4 },
+  ];
+  base.reconocimientos_otorgados = [{ clave: "primer_paso" }, { clave: "primer_paso" }];
+  base.beneficios = [
+    { id: "b1", tipo: "descuento_renovacion", nombre: "10 % en tu próxima renovación", descripcion: "Por completar todas las acciones programadas de tu ciclo de 28 días.", porcentaje: 10, dias_ciclo: 28, activo: false },
+  ];
+  base.beneficios_otorgados = [];
+  return base;
+}
+
+async function rutasRpc(page: Page, llamadas: Llamada[], f: Record<string, (c: Record<string, unknown>) => unknown>) {
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/*`, async (rt) => {
+    const nombre = new URL(rt.request().url()).pathname.split("/").pop()!;
+    if (!f[nombre]) return rt.fallback();
+    const cuerpo = (rt.request().postDataJSON() ?? {}) as Record<string, unknown>;
+    llamadas.push({ tipo: "rpc", metodo: "POST", nombre, url: rt.request().url(), cuerpo, aal: "aal2" });
+    const r = f[nombre](cuerpo) as { __error?: string; __estado?: number } | null;
+    if (r && typeof r === "object" && "__error" in r) return rt.fulfill({ status: r.__estado, contentType: "application/json", body: JSON.stringify({ code: "P0001", message: r.__error }) });
+    return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(r) });
+  });
+}
+
+test("Reconocimientos y beneficio: el dueño ajusta un umbral, cambia el porcentaje y activa el beneficio confirmando", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseRecompensas();
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await rutasRpc(page, llamadas, {
+    guardar_reconocimiento: (c) => {
+      Object.assign(base.reconocimientos.find((r) => r.clave === c.p_clave)!, c.p as Fila);
+      return null;
+    },
+    guardar_beneficio: (c) => {
+      const b = base.beneficios.find((x) => x.id === c.p_id)!;
+      const p = c.p as Fila;
+      if (b.activo && ("porcentaje" in p || "dias_ciclo" in p)) return { __error: "beneficio:activo", __estado: 409 };
+      Object.assign(b, p);
+      return b.id;
+    },
+  });
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  await page.getByRole("link", { name: "Reconocimientos y beneficio" }).click();
+  await expect(page.locator("h1")).toHaveText("Reconocimientos y beneficio.");
+  const recs = page.locator("section[aria-labelledby=reconocimientos-titulo]");
+  await expect(recs).toContainText("Ocultos");
+  await expect(recs.locator("li", { hasText: "Primer paso" })).toContainText("2 veces");
+  await expect(recs.locator("li", { hasText: "Mitad del camino" })).toContainText("Pausado");
+  await sinViolaciones(page);
+
+  // Constancia: un umbral fuera de límites no se envía; uno válido sí, con los textos.
+  const constancia = recs.locator("li", { hasText: "Constancia" });
+  await expect(constancia).toContainText("7 días seguidos");
+  await constancia.getByRole("button", { name: "Editar" }).click();
+  await constancia.getByLabel("Días seguidos").fill("500");
+  await constancia.getByRole("button", { name: "Guardar" }).click();
+  await expect(constancia.getByText("Escribe un número entre 1 y 100.")).toBeVisible();
+  expect(llamadas.some((l) => l.nombre === "guardar_reconocimiento")).toBe(false);
+  await constancia.getByLabel("Días seguidos").fill("10");
+  await sinViolaciones(page);
+  await constancia.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByText("«Constancia» quedó guardado.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "guardar_reconocimiento")!.cuerpo).toEqual({
+    p_clave: "constancia",
+    p: { nombre: "Constancia", descripcion: "Sostuviste una racha de días seguidos en tu ciclo.", activo: true, umbral: 10 },
+  });
+  await expect(constancia).toContainText("10 días seguidos");
+
+  // Beneficio apagado: se cambia el porcentaje; activarlo pide confirmar.
+  const ben = page.locator("section[aria-labelledby=beneficio-titulo]");
+  await expect(ben).toContainText("Apagado");
+  await ben.getByRole("button", { name: "Editar" }).click();
+  await ben.getByLabel("Porcentaje de descuento").fill("15");
+  await ben.getByRole("button", { name: "Guardar" }).click();
+  await expect(ben).toContainText("15 %");
+  expect(llamadas.find((l) => l.nombre === "guardar_beneficio")!.cuerpo).toEqual({
+    p_id: "b1",
+    p: { nombre: "10 % en tu próxima renovación", descripcion: "Por completar todas las acciones programadas de tu ciclo de 28 días.", porcentaje: 15, dias_ciclo: 28 },
+  });
+  await ben.getByRole("button", { name: "Activar beneficio" }).click();
+  await expect(ben.getByText("recibirá 15 % de descuento en su renovación", { exact: false })).toBeVisible();
+  await ben.getByRole("button", { name: "Activar beneficio" }).click();
+  await expect(ben.getByText("Marca la casilla para confirmar.")).toBeVisible();
+  await ben.getByRole("checkbox").check();
+  await sinViolaciones(page);
+  await ben.getByRole("button", { name: "Activar beneficio" }).click();
+  await expect(page.getByText("El beneficio quedó activo.")).toBeVisible();
+  expect(base.beneficios[0].activo).toBe(true);
+  // Activo: solo nombre y texto; el porcentaje queda bloqueado.
+  await ben.getByRole("button", { name: "Editar" }).click();
+  await expect(ben.getByLabel("Porcentaje de descuento")).toBeDisabled();
+  await ben.getByLabel("Nombre").fill("15 % en tu renovación");
+  await ben.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByText("«10 % en tu próxima renovación» quedó guardado.")).toBeVisible();
+  expect(llamadas.filter((l) => l.nombre === "guardar_beneficio").pop()!.cuerpo).toEqual({
+    p_id: "b1",
+    p: { nombre: "15 % en tu renovación", descripcion: "Por completar todas las acciones programadas de tu ciclo de 28 días." },
+  });
+});
+
+test("Pagos: un beneficio por usar se aplica a la renovación y el monto sugerido ya viene con el descuento", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  const base = baseInicial();
+  for (const c of base.ciclos) c.precio_acordado_clp = 64000;
+  base.pagos = [];
+  const c0 = base.ciclos[0];
+  // Ganado en un ciclo anterior (número 0) de la misma persona.
+  base.ciclos.push({ ...c0, id: "c-ant", numero: 0, estado: "cerrado" });
+  base.beneficios_otorgados = [
+    { id: "bo1", participante_id: c0.participante_id, ciclo_origen: "c-ant", porcentaje: 10, estado: "disponible", aplicado_en_ciclo: null, descuento_clp: null, beneficios: { tipo: "descuento_renovacion" } },
+  ];
+  const llamadas = await simular(page, base, { factores: VERIFICADO });
+  await rutasRpc(page, llamadas, {
+    aplicar_beneficio: (c) => {
+      Object.assign(base.beneficios_otorgados[0], { estado: "aplicado", aplicado_en_ciclo: c.p_ciclo, descuento_clp: 6400 });
+      return 6400;
+    },
+  });
+  await page.goto("equipo/pagos/");
+  await hidratar(page);
+  const fila = page.locator("section[aria-labelledby=por-registrar-titulo] li", { hasText: "Ana" });
+  await expect(fila.getByText("Ganó 10 % de descuento por completar un ciclo. Si lo aplicas aquí, esta renovación baja $6.400.")).toBeVisible();
+  await sinViolaciones(page);
+  await fila.getByRole("button", { name: "Aplicar 10 % a esta renovación" }).click();
+  await expect(fila).toContainText("10 % aplicado: −$6.400. Corresponde cobrar $57.600.");
+  expect(llamadas.find((l) => l.nombre === "aplicar_beneficio")!.cuerpo).toEqual({ p_otorgado: "bo1", p_ciclo: c0.id });
+  await fila.getByRole("button", { name: "Registrar pago" }).click();
+  await expect(fila.getByLabel("Monto en pesos")).toHaveValue("57600");
+});
+
 // ---------------------------------------------------------------------------
 // Móvil: cada pantalla del panel a 320 px y al ancho del teléfono, sin desborde,
 // con objetivos táctiles de 44 px y sin violaciones de axe.
@@ -2201,12 +2336,12 @@ for (const ruta of [
   "equipo/", "equipo/participantes/", "equipo/solicitudes/", "equipo/solicitud/?id=s1", "equipo/participante/?id=p1",
   "equipo/participante/?id=p1&pestana=revisiones", "equipo/participante/?id=p1&pestana=datos", "equipo/constructor/?id=p2",
   "equipo/revision/?id=p1&n=2", "equipo/revisar/", "equipo/ajustes/", "equipo/contacto/", "equipo/mas/", "equipo/comunidad/",
-  "equipo/modulos/", "equipo/equipo/", "equipo/pagos/", "equipo/negocio/", "equipo/auditoria/", "equipo/asistente/",
+  "equipo/modulos/", "equipo/equipo/", "equipo/pagos/", "equipo/negocio/", "equipo/auditoria/", "equipo/asistente/", "equipo/recompensas/",
 ]) {
   test(`móvil: ${ruta} sin desborde a 320 px, objetivos de 44 px y axe`, async ({ page, isMobile }) => {
     test.skip(!isMobile, "solo en el proyecto móvil");
     await preparar(page, "aal2", VERIFICADO);
-    await simular(page, baseInicial(), { factores: VERIFICADO });
+    await simular(page, ruta === "equipo/recompensas/" ? baseRecompensas() : baseInicial(), { factores: VERIFICADO });
     await page.goto(ruta);
     await hidratar(page);
     await expect(page.locator("main h1")).toBeVisible();

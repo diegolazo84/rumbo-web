@@ -86,7 +86,9 @@
   overflow: hidden;
   background: var(--crema);
 }
-.me-bienvenida__ilus { position: absolute; inset-block-end: 0; inset-inline-end: 0; inline-size: 46%; max-inline-size: 240px; block-size: auto; }
+/* Foto del amanecer a la derecha, fundida con el crema hacia el texto (nov-2026). */
+.me-bienvenida__foto { position: absolute; inset-block: 0; inset-inline-end: 0; inline-size: 46%; pointer-events: none; }
+.me-bienvenida__foto img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; object-position: 60% 50%; mask-image: linear-gradient(to right, transparent, black 65%); }
 .me-bienvenida__texto { position: relative; display: grid; gap: 4px; }
 .me-bienvenida__saludo, .me-bienvenida__frase { max-inline-size: 68%; }
 .me-bienvenida__ojo { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font: 600 var(--t-micro)/1.3 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--terracota-texto); }
@@ -96,7 +98,8 @@
 .me-bienvenida__frase { font-size: var(--t-s); line-height: 1.4; color: var(--tinta-suave); }
 @media (min-width: 1024px) {
   .me-bienvenida { margin-inline: 0; margin-block-start: 0; padding: var(--e-6) var(--e-6) var(--e-7); border-radius: var(--r-l); }
-  .me-bienvenida__ilus { inline-size: auto; block-size: 100%; max-inline-size: 48%; }
+  .me-bienvenida__foto { inline-size: 50%; }
+  .me-bienvenida__foto img { mask-image: linear-gradient(to right, transparent, black 40%); }
   .me-bienvenida__texto { gap: 6px; }
   .me-bienvenida__saludo, .me-bienvenida__frase { max-inline-size: 56%; }
   .me-bienvenida__frase { font-size: var(--t-base); }
@@ -807,6 +810,13 @@
    Estados del programa (4.3)
    ======================================================================== */
 .me-estado { gap: var(--e-6); }
+/* Preparación: foto de la mesa lista para empezar, de borde a borde en el teléfono. */
+.me-estado__foto { display: block; margin-inline: calc(-1 * var(--gutter)); margin-block: calc(-1 * var(--e-5)) calc(-1 * var(--e-3)); overflow: hidden; }
+.me-estado__foto img { display: block; inline-size: 100%; block-size: auto; aspect-ratio: 16 / 9; object-fit: cover; object-position: 50% 55%; }
+@media (min-width: 1024px) {
+  .me-estado__foto { margin: 0; border-radius: var(--r-l); box-shadow: var(--sombra-1); }
+  .me-estado__foto img { aspect-ratio: 3 / 1; }
+}
 .me-estado .estado-vacio { padding-block-start: 0; }
 .me-estado .estado-vacio__titulo { font-size: var(--t-h2); font-weight: 500; line-height: 1.1; letter-spacing: -0.015em; max-inline-size: 18ch; }
 .me-estado .estado-vacio__texto { font-size: var(--t-base); line-height: 1.55; color: var(--tinta-suave); }
@@ -974,6 +984,7 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
   color: var(--sobre-oscuro);
 }
 .me-acomp-portada__fondo { position: absolute; inset: 0; z-index: -2; inline-size: 100%; block-size: 100%; }
+.me-acomp-portada__fondo img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; object-position: 50% 30%; }
 .me-acomp-portada::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgb(22 54 40 / 0) 30%, rgb(22 54 40 / 0.55) 100%); }
 .me-acomp-portada__texto { display: grid; gap: var(--e-2); }
 .me-acomp-portada__h1 { margin: 0; font: 600 var(--t-saludo)/1.05 var(--serif); letter-spacing: -0.015em; color: var(--superficie); text-shadow: 0 1px 12px rgb(22 54 40 / 0.35); }
@@ -1153,7 +1164,7 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
   isolation: isolate;
   background: var(--crema);
 }
-.ml-portada__fondo { position: absolute; inset: 0 0 auto; z-index: -2; inline-size: 100%; block-size: 170px; }
+.ml-portada__fondo { position: absolute; inset: 0 0 auto; z-index: -2; inline-size: 100%; block-size: 170px; object-fit: cover; object-position: 50% 40%; }
 .ml-portada__texto { display: grid; gap: var(--e-2); padding: 186px var(--gutter) var(--e-5); }
 .ml-portada__fila { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-3); }
 .ml-portada__h1 { margin: 0; font: 600 var(--t-h3)/1.2 var(--serif); color: var(--bosque); }
@@ -1167,10 +1178,10 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
     position: absolute;
     inset: 0 auto 0 30%;
     z-index: -1;
-    inline-size: 24%;
-    background: linear-gradient(90deg, var(--crema), transparent);
+    inline-size: 30%;
+    background: linear-gradient(90deg, var(--crema) 15%, transparent);
   }
-  .ml-portada__texto { align-self: center; max-inline-size: 58%; padding: var(--e-6) var(--e-7); }
+  .ml-portada__texto { align-self: center; max-inline-size: 52%; padding: var(--e-6) var(--e-7); }
   .ml-portada__titulo { font-size: var(--t-display); }
   .ml-portada__bajada { font-size: var(--t-lead); }
 }
@@ -1374,7 +1385,7 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
   isolation: isolate;
   background: var(--crema);
 }
-.av-portada__fondo { position: absolute; inset: 0 0 auto; z-index: -2; inline-size: 100%; block-size: 130px; }
+.av-portada__fondo { position: absolute; inset: 0 0 auto; z-index: -2; inline-size: 100%; block-size: 130px; object-fit: cover; object-position: 50% 40%; }
 .av-portada__texto { display: grid; gap: var(--e-2); padding: 140px var(--gutter) var(--e-4); }
 .av-portada__fila { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-3); }
 .av-portada__h1 { margin: 0; font: 600 var(--t-titulo)/1.05 var(--serif); letter-spacing: -0.015em; color: var(--bosque); }
@@ -1636,7 +1647,7 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
   isolation: isolate;
   background: var(--crema);
 }
-.rc-portada__fondo { position: absolute; inset: 0 0 auto; z-index: -2; inline-size: 100%; block-size: 120px; }
+.rc-portada__fondo { position: absolute; inset: 0 0 auto; z-index: -2; inline-size: 100%; block-size: 120px; object-fit: cover; object-position: 50% 40%; }
 .rc-portada__texto { display: grid; gap: var(--e-2); padding: 132px var(--gutter) var(--e-4); }
 .rc-portada__fila { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-3); }
 .rc-portada__h1 { margin: 0; font: 600 var(--t-h2)/1.1 var(--serif); letter-spacing: -0.015em; color: var(--bosque); }
@@ -2043,3 +2054,14 @@ a.as-linea__numero { display: inline-flex; min-block-size: 44px; align-items: ce
 .me-pago__form { display: grid; gap: var(--e-3); inline-size: 100%; }
 .me-pago__form .campo { inline-size: 100%; }
 .me-pago__inicio { margin-block-start: var(--e-4); }
+
+/* Mi espacio instalable: sección en Preferencias y tarjeta en Mi Rumbo (solo teléfono). */
+.me-app { display: grid; gap: var(--e-3); justify-items: start; }
+.me-app > * { margin: 0; }
+.me-app__pasos { margin: 0; padding-inline-start: 1.5rem; display: grid; gap: var(--e-2); }
+.me-app__pasos .icono { vertical-align: -2px; margin-inline-end: 6px; }
+.me-app__inicio { margin-block-start: var(--e-4); }
+.me-app__tarjeta { display: grid; gap: var(--e-3); justify-items: start; }
+.me-app__tarjeta > * { margin: 0; }
+.me-app__acciones { display: flex; flex-wrap: wrap; gap: var(--e-2); }
+.me-app__acciones .boton { min-block-size: 44px; }

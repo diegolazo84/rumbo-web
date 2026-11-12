@@ -430,6 +430,11 @@ export const CONTACTO = {
     errores: { vacio: "Escribe tu mensaje.", corto: "Cuéntanos un poco más (mínimo 10 caracteres)." },
   },
   informacion: { antes: "Usamos tu correo y tu mensaje solo para responderte. Más en ", enlace: "Política de privacidad", despues: "." },
+  // ?tema=: mensajes preparados desde Mi espacio (la persona puede editarlos antes de enviar).
+  temas: {
+    "nuevo-ciclo":
+      "Terminé mi ciclo en Rumbo y quiero seguir con uno nuevo. Me gustaría conversar qué mantener, qué ajustar y cuándo empezar.",
+  } as Record<string, string>,
   boton: "Enviar mensaje",
   confirmacion: {
     titulo: "Recibimos tu mensaje.",

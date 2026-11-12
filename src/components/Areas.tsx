@@ -1,8 +1,10 @@
 // Tarjetas de camino del piloto (tarjeta enlazada, 3.6) y filas «Más adelante» (3.16).
 // Todo el texto sale de `areas` en rumbo.ts.
 import { FORMULARIO_EXTERNO, estados, microcopiaFormulario, postularHref, type Area } from "../data/rumbo";
+import { fotos } from "../data/fotos";
 import { EnlaceFlecha } from "./Enlaces";
 import Etiqueta, { EtiquetaCategoria } from "./Etiqueta";
+import Foto from "./Foto";
 import Icono from "./Icono";
 
 // Mosaico de icono: color de la categoría, o niebla y bosque sin categoría.
@@ -17,8 +19,12 @@ function Mosaico({ area }: { area: Area }) {
 // Camino del piloto: toda la tarjeta es clicable (enlace estirado).
 export function TarjetaCamino({ area }: { area: Area }) {
   const micro = microcopiaFormulario(area.opcionFormulario);
+  const foto = area.id in fotos ? fotos[area.id as keyof typeof fotos] : undefined;
   return (
     <article className="tarjeta tarjeta--enlazada camino" data-cat={area.categoria ?? undefined}>
+      {foto && (
+        <Foto foto={foto} decorativa className="camino-foto" sizes="(min-width: 1024px) 540px, (min-width: 600px) 45vw, calc(100vw - 32px)" />
+      )}
       <div className="camino-cabeza">
         <Mosaico area={area} />
         {area.categoria && <EtiquetaCategoria cat={area.categoria} />}

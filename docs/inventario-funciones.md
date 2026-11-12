@@ -36,7 +36,7 @@ autorización de Diego.
 | Comunidad | Interior de grupo, desafíos, foto por desafío | apagada (módulo «comunidad»; #63 y migraciones 20261129–20261201 aplicadas el 10-nov) | Revisión legal; 20261126 al abrir la Comunidad |
 | Gamificación | Niveles, créditos, rachas, Mis logros | operativa | — |
 | Gamificación | Reconocimientos y ranking | apagada (módulos «reconocimientos» y «ranking») | Revisión legal del ranking |
-| Gamificación | 10 % en una renovación (`guardar_beneficio`, `aplicar_beneficio`) y ajuste de reconocimientos (`guardar_reconocimiento`) | sin pantalla; descuento apagado; 20261120 sin aplicar | Sección del dueño; Diego decide si se activa |
+| Gamificación | 10 % en una renovación (`guardar_beneficio`, `aplicar_beneficio`) y ajuste de reconocimientos (`guardar_reconocimiento`) | publicado (#93): pantalla «Reconocimientos y beneficio» del dueño (/equipo/recompensas/) y descuento aplicado en Pagos; descuento apagado | Diego decide si lo activa; la tarjeta en Mis logros necesita 20261120 |
 | Fotos | Subida privada en las acciones | apagada (módulo «fotos», #67) | Revisión legal, iPhone real |
 | Fotos | Borrado a los 30 días y Mantención | apagada (#68 y migración 20261202 aplicadas el 10-nov; tarea `fotos-depurar` inactiva, función sin desplegar, sin `depurar_fotos_url`) | Política de privacidad publicada, iPhone real y `docs/borrado-fotos.md` |
 | IA | Asistente con consentimiento y aprobación del coach (`ia_*`, `mis_consultas_ia`, `guardar_ia_config`) | pantalla del participante con la maqueta definitiva (#75): 8 estados, acceso desde Apoyo, «Crear plan» como pregunta revisada, ilustraciones definitivas, móvil compacto; bandeja de revisión del coach (#76) y administración del dueño: interruptor, topes y gasto (#77); «Me sirvió»/«No me sirvió» (`ia_valoraciones`, `ia_valorar`, 20261127) y aviso «no compartida» en Mis avisos (20261128) aplicados en producción el 31-oct; apagado | Cargar la clave y prueba real con tope de USD 10 |
@@ -46,7 +46,7 @@ autorización de Diego.
 | Administración | Auditoría de cambios y accesos | operativa (#87) | — |
 | Perfil | Preferencias, tus datos, eliminar cuenta | operativa | — |
 | Móvil | Revisión móvil del panel y Mi espacio (320 px, toques de 44 px, axe) | operativa (#89) | iPhone y Android reales |
-| Móvil | Mi espacio instalable | en PR (#39, desactualizado desde el 21-oct) | Actualizar con main y autorización |
+| Móvil | Mi espacio instalable | publicado (#92): manifiesto y service worker solo en /mi-espacio/, «Instalar Rumbo» en Preferencias y tarjeta en el teléfono | Probar en iPhone y Android reales |
 
 **Funciones internas, sin pantalla propia:**
 - `ping`: vigilancia.

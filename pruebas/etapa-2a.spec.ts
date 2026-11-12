@@ -128,7 +128,8 @@ test("Mi Rumbo: bienvenida cálida con la meta real y el H1 de la sección", asy
   await expect(bienvenida).toContainText("Martes 13 · Semana 2 de 4");
   // La frase nombra una meta real de la persona (no una frase genérica).
   await expect(bienvenida.locator(".me-bienvenida__frase")).toContainText("«Lanzar mi taller en línea»");
-  await expect(bienvenida.locator("svg.ilustracion")).toHaveAttribute("aria-hidden", "true");
+  // La foto del amanecer es decorativa: alt vacío.
+  await expect(bienvenida.locator(".me-bienvenida__foto img")).toHaveAttribute("alt", "");
 });
 
 test("Mi Rumbo: la meta principal es la primera meta, con sus hitos y enlace a Mis metas", async ({ page }) => {
@@ -150,7 +151,8 @@ test("Mi Rumbo: el foco de tu coach lleva a Mi acompañamiento (sin nombre ni fo
     await expect(page.locator(".me-acomp-hoy .me-foco--tarjeta")).toBeVisible();
   }
   await expect(page.locator(".me-acomp-hoy")).toContainText(T_HOY.acompanamiento.quien);
-  await expect(page.locator(".me-hoy img")).toHaveCount(0);
+  // Ninguna foto de persona: la única imagen es el paisaje decorativo de la bienvenida.
+  await expect(page.locator(".me-hoy img:not(.me-bienvenida__foto img)")).toHaveCount(0);
 });
 
 test("Mi Rumbo en el teléfono: la primera acción se ve sin desplazar y la barra no la tapa", async ({ page, isMobile }) => {

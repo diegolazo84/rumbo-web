@@ -30,6 +30,9 @@ export default defineConfig({
   use: {
     baseURL: URL_PRUEBA ?? `http://localhost:${PUERTO}${BASE}`,
     trace: "retain-on-failure",
+    // El service worker de Mi espacio (app instalable) haría que las peticiones a Supabase no pasen por
+    // page.route en WebKit, y las pruebas con datos simulados irían a la red. Solo su propia prueba lo permite.
+    serviceWorkers: "block",
   },
   projects: proyectos,
   grep: URL_PRUEBA ? /@produccion/ : undefined,
