@@ -132,11 +132,24 @@ export default function Contacto({ estado = "inicial" }: PropsPantalla) {
   const v = f.valores;
 
   // ?motivo=duda|solicitud|datos|problema|otro (al hidratar; lo demás se ignora).
-  const { search } = useLocation();
+  // ?tema= prepara el mensaje; desde Mi espacio llegan además nombre y correo en el estado de la
+  // navegación (nunca en la dirección), para que la persona solo revise y envíe.
+  const { search, state } = useLocation();
   useEffect(() => {
     if (estado !== "inicial") return;
-    const motivo = new URLSearchParams(search).get("motivo") ?? "";
-    if ((MOTIVOS_CONTACTO as readonly string[]).includes(motivo)) f.reiniciar({ ...VACIO, motivo });
+    const q = new URLSearchParams(search);
+    const motivo = q.get("motivo") ?? "";
+    const mensaje = CONTACTO.temas[q.get("tema") ?? ""] ?? "";
+    const quien = (state ?? {}) as { nombre?: unknown; correo?: unknown };
+    const texto = (x: unknown, max: number) => (typeof x === "string" ? x.slice(0, max) : "");
+    if ((MOTIVOS_CONTACTO as readonly string[]).includes(motivo) || mensaje)
+      f.reiniciar({
+        ...VACIO,
+        motivo: (MOTIVOS_CONTACTO as readonly string[]).includes(motivo) ? motivo : "",
+        mensaje,
+        nombre: mensaje ? texto(quien.nombre, CONTACTO.nombre.max) : "",
+        correo: mensaje ? texto(quien.correo, 254) : "",
+      });
     // Solo al montar.
   }, []);
   useEffect(() => {
