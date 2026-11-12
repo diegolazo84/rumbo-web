@@ -105,6 +105,10 @@
 .app__cuerpo { flex: 1; min-inline-size: 0; }
 @media (min-width: 1024px) {
   .app:not(.app--sin-navegacion) .app__cuerpo { display: grid; grid-template-columns: 240px minmax(0, 1fr); align-items: start; }
+  /* El fondo de la columna lateral llega hasta el pie aunque la navegación sea más corta. */
+  .app:not(.app--sin-navegacion) .app__cuerpo {
+    background: linear-gradient(to right, var(--papel-hondo) 239px, var(--linea) 239px, var(--linea) 240px, transparent 240px);
+  }
 }
 .app__main { min-inline-size: 0; padding-block: var(--e-5) var(--e-8); }
 @media (max-width: 1023.98px) {

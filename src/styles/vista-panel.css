@@ -102,6 +102,23 @@
    ======================================================================== */
 .pa-cola { list-style: none; display: grid; gap: var(--e-4); }
 .pa-cola { max-inline-size: 44rem; }
+/* Escritorio: cada pendiente es una fila (qué y de quién a la izquierda, botón a la derecha),
+   para ver más de la cola sin desplazar. El borde izquierdo marca lo vencido u hoy. */
+.pa-cola__tarjeta[data-urgencia="pasado"] { border-inline-start: 4px solid var(--terracota-texto); }
+.pa-cola__tarjeta[data-urgencia="hoy"] { border-inline-start: 4px solid var(--bosque); }
+@media (min-width: 768px) {
+  .pa-cola { max-inline-size: 56rem; gap: var(--e-3); }
+  .pa-cola__tarjeta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "que pie" "detalle pie";
+    column-gap: var(--e-5);
+    align-items: center;
+  }
+  .pa-cola__que { grid-area: que; }
+  .pa-cola__detalle { grid-area: detalle; }
+  .pa-cola__tarjeta .tarjeta-pie { grid-area: pie; margin: 0; padding: 0; }
+}
 .pa-cola__tarjeta { block-size: 100%; gap: 8px; }
 .pa-cola__que { font: 600 var(--t-s)/1.35 var(--sans); letter-spacing: 0; color: var(--tinta-suave); }
 .pa-cola__detalle { display: grid; gap: 6px; justify-items: start; }

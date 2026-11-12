@@ -86,7 +86,9 @@
   overflow: hidden;
   background: var(--crema);
 }
-.me-bienvenida__ilus { position: absolute; inset-block-end: 0; inset-inline-end: 0; inline-size: 46%; max-inline-size: 240px; block-size: auto; }
+/* Foto del amanecer a la derecha, fundida con el crema hacia el texto (nov-2026). */
+.me-bienvenida__foto { position: absolute; inset-block: 0; inset-inline-end: 0; inline-size: 46%; pointer-events: none; }
+.me-bienvenida__foto img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; object-position: 60% 50%; mask-image: linear-gradient(to right, transparent, black 65%); }
 .me-bienvenida__texto { position: relative; display: grid; gap: 4px; }
 .me-bienvenida__saludo, .me-bienvenida__frase { max-inline-size: 68%; }
 .me-bienvenida__ojo { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font: 600 var(--t-micro)/1.3 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--terracota-texto); }
@@ -96,7 +98,8 @@
 .me-bienvenida__frase { font-size: var(--t-s); line-height: 1.4; color: var(--tinta-suave); }
 @media (min-width: 1024px) {
   .me-bienvenida { margin-inline: 0; margin-block-start: 0; padding: var(--e-6) var(--e-6) var(--e-7); border-radius: var(--r-l); }
-  .me-bienvenida__ilus { inline-size: auto; block-size: 100%; max-inline-size: 48%; }
+  .me-bienvenida__foto { inline-size: 50%; }
+  .me-bienvenida__foto img { mask-image: linear-gradient(to right, transparent, black 40%); }
   .me-bienvenida__texto { gap: 6px; }
   .me-bienvenida__saludo, .me-bienvenida__frase { max-inline-size: 56%; }
   .me-bienvenida__frase { font-size: var(--t-base); }
@@ -974,6 +977,7 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
   color: var(--sobre-oscuro);
 }
 .me-acomp-portada__fondo { position: absolute; inset: 0; z-index: -2; inline-size: 100%; block-size: 100%; }
+.me-acomp-portada__fondo img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; object-position: 50% 55%; }
 .me-acomp-portada::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgb(22 54 40 / 0) 30%, rgb(22 54 40 / 0.55) 100%); }
 .me-acomp-portada__texto { display: grid; gap: var(--e-2); }
 .me-acomp-portada__h1 { margin: 0; font: 600 var(--t-saludo)/1.05 var(--serif); letter-spacing: -0.015em; color: var(--superficie); text-shadow: 0 1px 12px rgb(22 54 40 / 0.35); }
