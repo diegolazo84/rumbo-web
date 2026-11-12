@@ -234,13 +234,17 @@ const textoDe = (fragmento) =>
     .replace(/\u2060/g, "")
     .replace(/\s+/g, " ")
     .trim();
-function jsonLdPreguntas(html) {
+function conPreguntas(html) {
   const preguntas = [...html.matchAll(/<details data-faq="[^"]+"><summary><span>([\s\S]*?)<\/span>[\s\S]*?<div class="acordeon-respuesta">([\s\S]*?)<\/div><\/details>/g)]
     .map(([, q, r]) => ({ "@type": "Question", name: textoDe(q), acceptedAnswer: { "@type": "Answer", text: textoDe(r) } }))
     .filter((x) => x.name && x.acceptedAnswer.text);
   if (preguntas.length < 3) throw new Error(`postbuild: la portada solo tiene ${preguntas.length} preguntas para FAQPage.`);
-  const datos = { "@context": "https://schema.org", "@type": "FAQPage", inLanguage: "es-CL", mainEntity: preguntas };
-  return `<script type="application/ld+json">${JSON.stringify(datos).replaceAll("<", "\\u003c")}</script>`;
+  // Un solo bloque JSON-LD por página: la FAQPage se suma al @graph existente.
+  return html.replace(/<script type="application\/ld\+json">(.*?)<\/script>/s, (_, json) => {
+    const datos = JSON.parse(json.replaceAll("\\u003c", "<"));
+    datos["@graph"].push({ "@type": "FAQPage", "@id": `${SITE_URL}/#preguntas`, inLanguage: "es-CL", mainEntity: preguntas });
+    return `<script type="application/ld+json">${JSON.stringify(datos).replaceAll("<", "\\u003c")}</script>`;
+  });
 }
 
 // Todo HTML escrito pasa por el guardián antes de llegar a disco.
@@ -314,7 +318,7 @@ for (const p of paginas) {
   } else {
     html = pagina(url, p.id, head);
   }
-  if (p.id === "inicio") html = html.replace("</head>", `  ${jsonLdPreguntas(html)}\n  </head>`);
+  if (p.id === "inicio") html = conPreguntas(html);
   // Política de referrer propia (/estado/: no-referrer, plataforma 2.1): reemplaza la de la
   // plantilla, porque con dos <meta name="referrer"> manda la última.
   if (p.referrer) {
