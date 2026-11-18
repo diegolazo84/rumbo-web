@@ -30,7 +30,7 @@ export default function ParaQuien() {
           </blockquote>
         </div>
         {/* Párrafo con estilo h3 y no encabezado: así las tarjetas son h3. */}
-        <p className="subtitulo">El primer piloto se enfoca en tres caminos.</p>
+        <p className="subtitulo">Para empezar, el piloto abre estos caminos, y vienen más.</p>
         <div id="areas" className="caminos">
           {areasPiloto.map((a) => (
             <TarjetaCamino key={a.id} area={a} />
