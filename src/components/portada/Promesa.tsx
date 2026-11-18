@@ -9,6 +9,15 @@ import { EtiquetaEstado } from "../Etiqueta";
 import Foto from "../Foto";
 import { NOTA_SALIDA } from "./textos";
 
+const METAS = [
+  "Lanzar mi proyecto",
+  "Comer mejor",
+  "Terminar mi tesis",
+  "Moverme más",
+  "Dejar de postergar",
+  "Ordenar mi semana",
+];
+
 export default function Promesa() {
   return (
     <section className="portada" aria-labelledby="portada-titulo">
@@ -40,12 +49,23 @@ export default function Promesa() {
             items={["Postular es gratis", "No necesitas cuenta", "Una persona lee cada solicitud"]}
           />
         </div>
-        <Foto
-          foto={fotos.portada}
-          className="portada-foto"
-          sizes="(min-width: 1024px) 50vw, 100vw"
-          prioridad
-        />
+        <div className="portada-visual">
+          <Foto foto={fotos.portada} className="portada-foto" sizes="(min-width: 1024px) 50vw, 100vw" prioridad />
+          {/* Movimiento con propósito (Diego, 18-nov-2026: que la portada se vea viva): las metas que
+              acompañamos van rotando sobre la foto. Decorativo para lectores de pantalla (el texto
+              de arriba ya lo dice); con movimiento reducido queda fija la primera. */}
+          <div className="portada-metas" aria-hidden="true">
+            <span className="portada-metas__rotulo">Metas que acompañamos</span>
+            <span className="portada-metas__lista">
+              <span className="portada-metas__cinta">
+                {/* La primera se repite al final para que la vuelta no salte. */}
+                {[...METAS, METAS[0]].map((m, i) => (
+                  <span key={i}>{m}</span>
+                ))}
+              </span>
+            </span>
+          </div>
+        </div>
       </div>
     </section>
   );

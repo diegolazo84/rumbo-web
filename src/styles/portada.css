@@ -56,7 +56,8 @@
     padding-block: var(--e-8);
     padding-inline: max(var(--gutter), calc((100vw - var(--ancho-sitio)) / 2)) var(--e-8);
   }
-  .portada-foto { position: relative; }
+  .portada-visual { position: relative; border-end-start-radius: var(--r-l); }
+  .portada-foto { position: absolute; inset: 0; }
   .portada-foto img {
     position: absolute;
     inset: 0;
@@ -234,3 +235,46 @@
 .alma-puntos h3 { font: 600 var(--t-h3)/1.25 var(--serif); }
 .alma-puntos p { color: var(--tinta-suave); font-size: var(--t-s); line-height: 1.6; max-inline-size: 38rem; }
 @media (min-width: 768px) { .alma-puntos { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--e-8); } }
+
+/* ========================================================================
+   Portada viva: la foto respira (zoom muy lento) y las metas rotan sobre ella.
+   Solo transform y opacity; sin movimiento con prefers-reduced-motion.
+   ======================================================================== */
+.portada-visual { position: relative; overflow: hidden; min-inline-size: 0; }
+.portada-metas {
+  position: absolute;
+  inset-inline-start: var(--gutter);
+  inset-block-end: var(--e-5);
+  display: grid;
+  gap: var(--e-1);
+  max-inline-size: calc(100% - 2 * var(--gutter));
+  padding: var(--e-3) var(--e-4);
+  border-radius: var(--r-m);
+  background: var(--papel);
+  box-shadow: var(--sombra-2);
+}
+.portada-metas__rotulo { display: flex; align-items: center; gap: var(--e-2); font: 600 var(--t-xs)/1.3 var(--sans); color: var(--tinta-suave); }
+.portada-metas__rotulo::before { content: ""; inline-size: var(--e-2); block-size: var(--e-2); border-radius: var(--r-full); background: var(--terracota); }
+/* Ventana de una línea: la cinta con las metas sube de a una. Nada se oculta con opacidad. */
+.portada-metas__lista { --alto-meta: calc(var(--t-h3) * 1.25); display: block; block-size: var(--alto-meta); overflow: hidden; font: 600 var(--t-h3)/1.25 var(--serif); color: var(--tinta); }
+.portada-metas__cinta { display: grid; }
+.portada-metas__cinta > span { block-size: var(--alto-meta); white-space: nowrap; }
+@media (min-width: 1024px) { .portada-metas { inset-inline-start: var(--e-6); inset-block-end: var(--e-6); } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .portada-foto img { animation: respira 24s ease-in-out infinite alternate; }
+  .portada-metas__rotulo::before { animation: latido 2.4s ease-in-out infinite; }
+  .portada-metas__cinta { animation: rota-meta 18s var(--curva) infinite; }
+}
+@keyframes respira { from { transform: scale(1); } to { transform: scale(1.06); } }
+@keyframes latido { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.6); opacity: 0.45; } }
+@keyframes rota-meta {
+  0%, 14% { transform: translateY(0); }
+  17%, 31% { transform: translateY(calc(-1 * var(--alto-meta))); }
+  34%, 48% { transform: translateY(calc(-2 * var(--alto-meta))); }
+  51%, 64% { transform: translateY(calc(-3 * var(--alto-meta))); }
+  67%, 81% { transform: translateY(calc(-4 * var(--alto-meta))); }
+  84%, 97% { transform: translateY(calc(-5 * var(--alto-meta))); }
+  100% { transform: translateY(calc(-6 * var(--alto-meta))); }
+}
+
