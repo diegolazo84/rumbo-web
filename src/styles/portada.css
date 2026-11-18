@@ -224,3 +224,13 @@
   .planes-cabeza { grid-template-columns: minmax(0, 1fr) minmax(0, 24rem); align-items: center; column-gap: var(--e-8); }
   .planes-foto img { aspect-ratio: 4 / 3; }
 }
+
+/* ========================================================================
+   El alma de Rumbo: cuatro ideas en lista numerada, sin tarjetas iguales.
+   ======================================================================== */
+.alma-puntos { list-style: none; display: grid; gap: var(--e-6); counter-reset: alma; margin-block-start: var(--e-7); }
+.alma-puntos > li { counter-increment: alma; display: grid; gap: var(--e-2); padding-block-start: var(--e-4); border-block-start: 1px solid var(--linea); }
+.alma-puntos > li::before { content: counter(alma); font: 600 var(--t-h3)/1 var(--serif); color: var(--terracota-texto); }
+.alma-puntos h3 { font: 600 var(--t-h3)/1.25 var(--serif); }
+.alma-puntos p { color: var(--tinta-suave); font-size: var(--t-s); line-height: 1.6; max-inline-size: 38rem; }
+@media (min-width: 768px) { .alma-puntos { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--e-8); } }

@@ -19,13 +19,13 @@ export default function Promesa() {
             Tu meta, convertida en una semana posible.
           </h1>
           <p className="portada-nicho">
-            Un proyecto que no despega, tus estudios, el orden de tu semana o esos hábitos que te hacen bien y siempre
-            quedan para después. Te armamos un plan a tu medida, y cada semana una persona revisa contigo cómo te fue
-            y lo ajusta a tu vida.
+            Un proyecto, tus estudios, comer mejor, moverte más, dejar un mal hábito o, simplemente, ordenar tu semana.
+            Ordenamos tus ideas contigo, te armamos un plan a tu medida y una persona real te acompaña en todo el
+            proceso.
           </p>
           <p className="portada-foco">
-            Porque lo que cambia tu vida no suele ser un gran salto, sino lo que logras sostener semana a semana. En
-            línea y en español.
+            No necesitas saber por dónde partir ni hacerlo solo: lo que cambia tu vida es lo que logras sostener, semana
+            a semana. En línea y en español.
           </p>
           <div className="acciones">
             <BotonPostular ubicacion="portada" />

@@ -43,7 +43,7 @@ export default function ParaQuien() {
         <hr className="separador" />
         <div className="mas-adelante">
           <div className="mas-adelante-cabeza">
-            <h3>Áreas que queremos abrir con apoyo profesional.</h3>
+            <h3>Y también: alimentación, movimiento, bienestar y momentos de cambio.</h3>
             <p>
               {rayas(
                 "Las abriremos cuando contemos con el apoyo profesional que requieren, y siempre como complemento —nunca como reemplazo— de tu psicólogo, nutricionista, médico o entrenador. Todavía no tienen fecha.",

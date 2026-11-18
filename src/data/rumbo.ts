@@ -317,7 +317,7 @@ export const areas: Area[] = [
     nombre: "Organización y hábitos",
     frase: "No tienes que hacerlo perfecto para seguir.",
     texto:
-      "Para cuando tu semana se desordena y lo importante queda para después. Bloques de trabajo, rutinas cortas, menos postergación y un sistema que se ajusta cuando la semana cambia.",
+      "Para cuando tu semana se desordena y lo importante queda para después. Bloques de trabajo, rutinas cortas, dejar hábitos que te restan, como postergar o el celular a deshoras, y un sistema que se ajusta cuando la semana cambia.",
     categoria: "orden",
     icono: "list-checks",
     param: "organizacion",
