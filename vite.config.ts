@@ -15,6 +15,8 @@ export default defineConfig({
     __FORMULARIO_PROPIO__: JSON.stringify(process.env.FORMULARIO_PROPIO === "1"),
     // MI_ESPACIO_PROPIO=1 enciende operacion.miEspacioPropio (Mi espacio y panel, etapa 3).
     __MI_ESPACIO_PROPIO__: JSON.stringify(process.env.MI_ESPACIO_PROPIO === "1"),
+    // INGRESO_GOOGLE=1 muestra «Continuar con Google» sin tocar rumbo.ts (pruebas).
+    __INGRESO_GOOGLE__: JSON.stringify(process.env.INGRESO_GOOGLE === "1"),
   },
   // postbuild.mjs lee el manifiesto para enlazar en <head> el CSS de las páginas perezosas
   // (postular, estado y contacto) y lo borra después: no se publica.

@@ -515,6 +515,8 @@ export const ENTRAR = {
   ojo: "Mi espacio",
   titulo: "Entra a tu espacio.",
   bajada: "Escribe el correo con el que acordamos tu programa. Te enviaremos un código para entrar, sin contraseña.",
+  bajadaGoogle: "Entra con la cuenta de Google o el correo con que acordamos tu programa. Sin contraseñas.",
+  google: { boton: "Continuar con Google", abriendo: "Abriendo Google…", separador: "o recibe un código en tu correo" },
   correo: { etiqueta: "Tu correo", atributos: { type: "email", autoComplete: "email", inputMode: "email" } },
   compartido: { etiqueta: "Estoy en un computador compartido", ayuda: "Tu sesión se cierra al cerrar el navegador." },
   boton: "Enviarme el código",
@@ -526,6 +528,7 @@ export const ENTRAR = {
     formato: "Revisa tu correo: parece incompleto (falta la @ o lo que va después).",
     limite: "Pediste varios códigos seguidos. Espera unos minutos antes de pedir otro.",
     red: "No pudimos conectarnos. Revisa tu conexión e inténtalo de nuevo.",
+    google: "No pudimos abrir Google. Inténtalo de nuevo o recibe un código en tu correo.",
   },
 } as const;
 

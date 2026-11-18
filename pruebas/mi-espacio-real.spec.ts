@@ -253,6 +253,42 @@ test("sin sesión, Mi espacio lleva al ingreso; con el código entra a Hoy", asy
   await expect(page.getByText("Escribir 30 minutos").first()).toBeVisible();
 });
 
+test("con Google: abre Google con la vuelta a esta ruta, entra con los tokens y los borra de la URL", async ({ page }) => {
+  test.skip(!operacion.ingresoGoogle, "solo con el ingreso con Google encendido (INGRESO_GOOGLE=1)");
+  await simular(page, baseInicial());
+  // La ventana de Google no se abre en la prueba: se intercepta la navegación a /authorize.
+  let autorizar: URL | null = null;
+  await page.route(`${SUPABASE_URL}/auth/v1/authorize**`, (rt) => {
+    autorizar = new URL(rt.request().url());
+    return rt.fulfill({ status: 200, contentType: "text/html", body: "<p>Google</p>" });
+  });
+  await page.goto("mi-espacio/entrar/");
+  await hidratar(page);
+  await expect(page.getByText("o recibe un código en tu correo")).toBeVisible();
+  await sinViolaciones(page);
+  await page.getByRole("button", { name: "Continuar con Google" }).click();
+  await expect.poll(() => autorizar?.searchParams.get("provider")).toBe("google");
+  expect(autorizar!.searchParams.get("redirect_to")).toMatch(/\/mi-espacio\/entrar\/$/);
+
+  // Vuelta desde Google con la sesión en el fragmento.
+  const s = sesion();
+  // Firma en base64url válida: setSession decodifica el token completo.
+  const token = s.access_token.replace(/\.firma$/, ".ZmlybWFy");
+  await page.goto(`mi-espacio/entrar/#access_token=${token}&refresh_token=${s.refresh_token}&expires_in=3600&token_type=bearer`);
+  await page.waitForURL(/\/mi-espacio\/$/);
+  expect(page.url()).not.toContain("access_token");
+  await expect(page.getByText("Escribir 30 minutos").first()).toBeVisible();
+});
+
+test("con Google: si Google devuelve un error, se queda en el ingreso con un aviso claro", async ({ page }) => {
+  test.skip(!operacion.ingresoGoogle, "solo con el ingreso con Google encendido (INGRESO_GOOGLE=1)");
+  await simular(page, baseInicial());
+  await page.goto("mi-espacio/entrar/#error=access_denied&error_description=cancelado");
+  await expect(page.getByText("No pudimos abrir Google. Inténtalo de nuevo o recibe un código en tu correo.")).toBeVisible();
+  expect(page.url()).not.toContain("error=");
+  await expect(page.locator("#entrar-correo")).toBeVisible();
+});
+
 test("enlace del correo vencido: «Este enlace ya no sirve.» y el token sale de la URL", async ({ page }) => {
   const llamadas = await simular(page, baseInicial());
   await page.goto("mi-espacio/entrar/?th=pin-vencido&type=email");

@@ -38,6 +38,13 @@ const MI_ESPACIO_FORZADO =
     ? __MI_ESPACIO_PROPIO__ === true
     : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.MI_ESPACIO_PROPIO === "1";
 const ESPACIO_PROPIO = MI_ESPACIO_PROPIO || MI_ESPACIO_FORZADO;
+// «Continuar con Google»: apagado hasta que Diego active Google en Supabase (docs/ingreso-google.md).
+const INGRESO_GOOGLE_ACTIVO = false;
+const INGRESO_GOOGLE =
+  INGRESO_GOOGLE_ACTIVO ||
+  (typeof __INGRESO_GOOGLE__ !== "undefined"
+    ? __INGRESO_GOOGLE__ === true
+    : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.INGRESO_GOOGLE === "1");
 
 // Rutas de la web y, mientras existan, de la plataforma original. scripts/postbuild.mjs además
 // genera reenvíos con las mismas rutas en este dominio, para enlaces escritos a mano.
@@ -115,6 +122,10 @@ export const operacion = {
   formularioPropio: PROPIO, // D8: postular, estado y contacto en la web propia (arriba, FORMULARIO_PROPIO)
   miEspacioPropio: ESPACIO_PROPIO, // D8: Mi espacio y el panel en la web propia (arriba, MI_ESPACIO_PROPIO)
   responsable: { nombre: "Diego Alfonso Muñoz Abeleida", comuna: "Providencia" } as null | { nombre: string; rut?: string; comuna: string }, // bloquea el lanzamiento público
+  // «Continuar con Google» en el ingreso a Mi espacio. true SOLO cuando Diego haya activado el
+  // proveedor Google en Supabase (docs/ingreso-google.md); si no, el botón daría error.
+  // Variable de build INGRESO_GOOGLE=1 para verlo en pruebas.
+  ingresoGoogle: INGRESO_GOOGLE,
   correo: "rumbo.acompana@gmail.com" as string | null, // creado y aprobado por Diego el 8 de octubre de 2026
   acompanante: null as null | { nombre: string; rol: string; bio: string; foto?: string }, // foto: archivo en public/, p. ej. «acompanante.jpg» (la portada le antepone la base)
   // Decisión del 2 de octubre de 2026: se responde a todas las solicitudes, también a quien no avanza.

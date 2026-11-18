@@ -6,11 +6,16 @@
 // - ?salir=1 cierra la sesión de este dispositivo y muestra «Saliste de Mi espacio…».
 // - Con sesión abierta, entra directo. Cuenta del equipo → /equipo/; si no, /mi-espacio/ (o la
 //   ruta que se estaba abriendo cuando se pidió entrar).
+// - Con Google (operacion.ingresoGoogle): Supabase Auth abre Google y vuelve a esta misma ruta con
+//   los tokens en el fragmento (#access_token=…&refresh_token=…; flujo implícito, el fragmento no
+//   viaja a ningún servidor). Se guardan con setSession y se borran de la barra de direcciones.
+//   Si el correo de Google es el de un espacio ya creado, Supabase une ambas formas de entrar.
 // Nunca se registra en consola un correo, un código ni un token.
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase, usarComputadorCompartido, type Cliente } from "../../lib/supabase";
 import { operacion } from "../../data/rumbo";
+import { ENTRAR } from "../../data/formularios";
 import Carga from "../vista-previa/mi-espacio/Carga";
 import {
   EnlaceVencido,
@@ -40,6 +45,33 @@ async function pedir(correo: string, compartido: boolean): Promise<ResultadoPedi
   }
 }
 
+async function conGoogle(compartido: boolean): Promise<"red" | "ok"> {
+  try {
+    usarComputadorCompartido(compartido);
+    const sb = await supabase();
+    const vuelta = new URL("mi-espacio/entrar/", new URL(import.meta.env.BASE_URL, window.location.origin)).href;
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: vuelta, queryParams: { prompt: "select_account" } },
+    });
+    return error ? "red" : "ok";
+  } catch {
+    return "red";
+  }
+}
+
+// Fragmento con el que vuelve Google (#access_token=…&refresh_token=… o #error=…).
+function leerVueltaGoogle(): { tokens: { access_token: string; refresh_token: string } } | { error: true } | null {
+  const h = window.location.hash.replace(/^#/, "");
+  if (!h) return null;
+  const q = new URLSearchParams(h);
+  const access_token = q.get("access_token");
+  const refresh_token = q.get("refresh_token");
+  if (access_token && refresh_token) return { tokens: { access_token, refresh_token } };
+  if (q.get("error") || q.get("error_description")) return { error: true };
+  return null;
+}
+
 // Solo rutas de la plataforma, nunca la de ingreso (evita volver aquí).
 const destinoValido = (d: string | undefined) =>
   !!d && (d.startsWith("/mi-espacio/") || d.startsWith("/equipo/")) && !d.startsWith("/mi-espacio/entrar");
@@ -49,6 +81,7 @@ export default function EntrarReal() {
   const ubicacion = useLocation();
   const estadoNav = ubicacion.state as EstadoIngreso;
   const [paso, setPaso] = useState<"formulario" | "verificando" | "vencido">("formulario");
+  const [falloGoogle, setFalloGoogle] = useState(false);
 
   const entrar = async (sb: Cliente) => {
     if (destinoValido(estadoNav?.destino)) {
@@ -74,6 +107,25 @@ export default function EntrarReal() {
         await sb.auth.signOut({ scope: "local" }).catch(() => undefined);
         usarComputadorCompartido(false);
         if (vigente) navegar("/mi-espacio/entrar/", { replace: true, state: { aviso: "saliste" } });
+        return;
+      }
+      const google = leerVueltaGoogle();
+      if (google) {
+        // Los tokens no quedan en la barra de direcciones ni en el historial.
+        window.history.replaceState(window.history.state, "", window.location.pathname);
+        if ("error" in google) {
+          if (vigente) setFalloGoogle(true);
+          return;
+        }
+        setPaso("verificando");
+        const { error } = await sb.auth.setSession(google.tokens);
+        if (!vigente) return;
+        if (error) {
+          setPaso("formulario");
+          setFalloGoogle(true);
+          return;
+        }
+        await entrar(sb);
         return;
       }
       const th = q.get("th");
@@ -116,6 +168,19 @@ export default function EntrarReal() {
   if (paso === "vencido") return <EnlaceVencido />;
   if (estadoNav?.enviado && estadoNav.correo)
     return <RevisaCorreo key={ubicacion.key} alVerificar={verificar} alReenviar={(c) => pedir(c, !!estadoNav.compartido)} remitente={operacion.correo} />;
-  const aviso = estadoNav?.aviso === "terminada" ? SESION.terminada : estadoNav?.aviso === "saliste" ? SESION.saliste : undefined;
-  return <PedirCodigo key={ubicacion.key} aviso={aviso} alPedir={pedir} />;
+  const aviso = falloGoogle
+    ? ENTRAR.errores.google
+    : estadoNav?.aviso === "terminada"
+      ? SESION.terminada
+      : estadoNav?.aviso === "saliste"
+        ? SESION.saliste
+        : undefined;
+  return (
+    <PedirCodigo
+      key={`${ubicacion.key}-${falloGoogle}`}
+      aviso={aviso}
+      alPedir={pedir}
+      alGoogle={operacion.ingresoGoogle ? conGoogle : undefined}
+    />
+  );
 }
