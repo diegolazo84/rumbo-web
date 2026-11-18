@@ -100,6 +100,13 @@
 /* ========================================================================
    Hoy: cola por vencimiento
    ======================================================================== */
+.pa-cola__resumen { max-inline-size: 56rem; margin-block-end: var(--e-5); font-size: var(--t-s); color: var(--tinta-suave); }
+/* Tramos de la cola: un título corto con la cantidad, y la lista debajo. */
+.pa-tramo { max-inline-size: 56rem; }
+.pa-tramo + .pa-tramo { margin-block-start: var(--e-6); }
+.pa-tramo__titulo { display: flex; align-items: baseline; gap: var(--e-2); margin-block-end: var(--e-3); font: 600 var(--t-h3)/1.25 var(--serif); }
+.pa-tramo__cuenta { font: 600 var(--t-s)/1 var(--sans); color: var(--tinta-suave); }
+.pa-tramo[data-tramo="pasado"] .pa-tramo__titulo { color: var(--terracota-texto); }
 .pa-cola { list-style: none; display: grid; gap: var(--e-4); }
 .pa-cola { max-inline-size: 44rem; }
 /* Escritorio: cada pendiente es una fila (qué y de quién a la izquierda, botón a la derecha),

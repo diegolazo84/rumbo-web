@@ -37,6 +37,17 @@ export const HOY_PANEL = {
   ojo: "Panel",
   titulo: "Hoy.",
   vacio: "No tienes nada pendiente con plazo. Las solicitudes nuevas aparecerán aquí.",
+  tramos: [
+    { id: "pasado", titulo: "Con el plazo vencido" },
+    { id: "hoy", titulo: "Para hoy" },
+    { id: "manana", titulo: "Para mañana" },
+    { id: "despues", titulo: "Más adelante" },
+    { id: "sin", titulo: "Sin plazo" },
+  ],
+  resumen: (total: number, urgentes: number) =>
+    `${total === 1 ? "Tienes 1 pendiente" : `Tienes ${total} pendientes`}${
+      urgentes ? `; ${urgentes === 1 ? "1 no puede esperar a mañana" : `${urgentes} no pueden esperar a mañana`}` : ""
+    }.`,
   tipos: {
     solicitud: "Solicitud sin primera respuesta",
     revision: "Revisión semanal",
