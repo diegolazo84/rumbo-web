@@ -64,8 +64,8 @@ export default function DentroDeRumbo() {
         {/* «Lo que viene en Rumbo»: rotulado como no disponible, sin fechas ni botones de contratación. */}
         <div id="lo-que-viene">
           <Encabezado
-            titulo="Lo que estamos construyendo."
-            bajada="Nada de esto está disponible todavía. Cada parte se abre solo cuando funcione y esté probada."
+            titulo="Lo que viene en Rumbo."
+            bajada="Lo que estamos construyendo. Nada de esto está disponible todavía: cada parte se abre solo cuando funcione y esté probada."
           />
           <div className="transparencia transparencia--dos">
             <article className="tarjeta tarjeta--pronto">
