@@ -193,8 +193,16 @@ async function simular(page: Page, base: Base, rpc: Record<string, (c: Record<st
     const cuerpo = (req.postDataJSON() ?? {}) as Record<string, unknown>;
     llamadas.push({ tipo: "auth", nombre, url: req.url(), cuerpo });
     if (nombre === "otp") return rt.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+    if (nombre === "token" && new URL(req.url()).searchParams.get("grant_type") === "password") {
+      if (cuerpo.password === "clave-correcta-1") return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(sesion()) });
+      return rt.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ code: "invalid_credentials", message: "Invalid login credentials" }) });
+    }
+    // Con la confirmación de correo encendida, signUp devuelve el usuario sin sesión.
+    if (nombre === "signup")
+      return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...sesion().user, identities: [{ id: "i1", provider: "email" }] }) });
+    if (nombre === "recover" || nombre === "resend") return rt.fulfill({ status: 200, contentType: "application/json", body: "{}" });
     if (nombre === "verify") {
-      if (cuerpo.token === "123456") return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(sesion()) });
+      if (cuerpo.token === "123456" || cuerpo.token_hash === "pin-recuperar") return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(sesion()) });
       return rt.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ code: "otp_expired", message: "Token has expired or is invalid" }) });
     }
     if (nombre === "logout") return rt.fulfill({ status: 204, body: "" });
@@ -233,6 +241,8 @@ test("sin sesión, Mi espacio lleva al ingreso; con el código entra a Hoy", asy
   await page.goto("mi-espacio/plan/");
   await expect(page.locator("h1")).toHaveText("Entra a tu espacio.");
   await hidratar(page);
+  // Con contraseña encendida, el código queda como alternativa.
+  if (operacion.ingresoContrasena) await page.getByRole("button", { name: "Entrar con un código en mi correo" }).click();
   await page.locator("#entrar-correo").fill("ana@correo.cl");
   await page.getByRole("button", { name: "Enviarme el código" }).click();
   await expect(page.locator("h1")).toHaveText("Revisa tu correo.");
@@ -265,7 +275,8 @@ test("con Google: abre Google con la vuelta a esta ruta, entra con los tokens y 
   await page.goto("mi-espacio/entrar/");
   await hidratar(page);
   await expect(page.getByText("o con tu correo", { exact: true })).toBeVisible();
-  await expect(page.getByText("Te enviamos un código de 6 dígitos para entrar. No necesitas contraseña.")).toBeVisible();
+  if (operacion.ingresoContrasena) await expect(page.getByText("Entra con Google o con tu correo y tu contraseña.")).toBeVisible();
+  else await expect(page.getByText("Te enviamos un código de 6 dígitos para entrar. No necesitas contraseña.")).toBeVisible();
   await sinViolaciones(page);
   await page.getByRole("button", { name: "Continuar con Google" }).click();
   await expect.poll(() => autorizar?.searchParams.get("provider")).toBe("google");
@@ -283,6 +294,7 @@ test("con Google: abre Google con la vuelta a esta ruta, entra con los tokens y 
 
 test("cuenta gratis abierta: el ingreso ofrece «Ya tengo cuenta» y «Crear cuenta gratis», con el mismo código", async ({ page }) => {
   test.skip(!operacion.cuentaGratis, "solo con la cuenta gratis encendida (CUENTA_GRATIS=1)");
+  test.skip(operacion.ingresoContrasena, "con contraseña, la creación se prueba en «crear cuenta con contraseña»");
   const llamadas = await simular(page, baseInicial());
   await page.goto("mi-espacio/entrar/");
   await hidratar(page);
@@ -302,6 +314,88 @@ test("cuenta gratis abierta: el ingreso ofrece «Ya tengo cuenta» y «Crear cue
   await page.goto("mi-espacio/entrar/?crear=1");
   await hidratar(page);
   await expect(page.locator("h1")).toHaveText("Crea tu cuenta gratis.");
+});
+
+test("con contraseña: entra con correo y contraseña; si no coinciden lo dice sin revelar si el correo existe", async ({ page }) => {
+  test.skip(!operacion.ingresoContrasena, "solo con contraseña encendida (INGRESO_CONTRASENA=1)");
+  const llamadas = await simular(page, baseInicial());
+  await page.goto("mi-espacio/plan/");
+  await hidratar(page);
+  await expect(page.locator("#entrar-clave")).toHaveAttribute("type", "password");
+  await expect(page.locator("#entrar-clave")).toHaveAttribute("autocomplete", "current-password");
+  await sinViolaciones(page);
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/5-entrar-contrasena-${test.info().project.name}.png`, fullPage: true });
+  await page.locator("#entrar-correo").fill("ana@correo.cl");
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await expect(page.getByText("Escribe tu contraseña.")).toBeVisible();
+  await page.locator("#entrar-clave").fill("otra-clave");
+  await page.getByLabel("Mostrar contraseña").check();
+  await expect(page.locator("#entrar-clave")).toHaveAttribute("type", "text");
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await expect(page.getByText(/El correo o la contraseña no coinciden/)).toBeVisible();
+  await page.locator("#entrar-clave").fill("clave-correcta-1");
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await page.waitForURL(/\/mi-espacio\/plan\/$/);
+  const t = llamadas.filter((l) => l.nombre === "token");
+  expect(t.at(-1)!.cuerpo).toMatchObject({ email: "ana@correo.cl", password: "clave-correcta-1" });
+  // La contraseña nunca va en la URL.
+  expect(page.url()).not.toContain("clave");
+});
+
+test("con contraseña: «Olvidé mi contraseña» envía un código y lleva a crear una contraseña nueva", async ({ page }) => {
+  test.skip(!operacion.ingresoContrasena, "solo con contraseña encendida (INGRESO_CONTRASENA=1)");
+  const llamadas = await simular(page, baseInicial());
+  await page.goto("mi-espacio/entrar/");
+  await hidratar(page);
+  await page.getByRole("button", { name: "Olvidé mi contraseña" }).click();
+  await expect(page.getByText("Escribe tu correo arriba y vuelve a tocar «Olvidé mi contraseña».")).toBeVisible();
+  await page.locator("#entrar-correo").fill("ana@correo.cl");
+  await page.getByRole("button", { name: "Olvidé mi contraseña" }).click();
+  await expect(page.locator("h1")).toHaveText("Revisa tu correo.");
+  await expect(page.getByText(/te enviamos un código de 6 dígitos para crear una contraseña nueva/)).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "recover")!.cuerpo.email).toBe("ana@correo.cl");
+  await page.locator("#entrar-codigo").fill("123456");
+  await page.getByRole("button", { name: "Seguir" }).click();
+  await expect(page.locator("h1")).toHaveText("Crea tu contraseña nueva.");
+  expect(llamadas.filter((l) => l.nombre === "verify").at(-1)!.cuerpo.type).toBe("recovery");
+  await sinViolaciones(page);
+  await page.locator("#nueva-clave").fill("corta");
+  await page.getByRole("button", { name: "Guardar y entrar" }).click();
+  await expect(page.getByText("Usa al menos 8 caracteres.")).toBeVisible();
+  await page.locator("#nueva-clave").fill("mi-clave-nueva-1");
+  await page.getByRole("button", { name: "Guardar y entrar" }).click();
+  await page.waitForURL(/\/mi-espacio\/$/);
+  expect(llamadas.filter((l) => l.nombre === "user").some((l) => l.cuerpo.password === "mi-clave-nueva-1")).toBe(true);
+
+  // El botón del correo (?th=…&type=recovery) también lleva a la contraseña nueva.
+  await page.evaluate(() => window.localStorage.clear());
+  await page.goto("mi-espacio/entrar/?th=pin-recuperar&type=recovery");
+  await expect(page.locator("h1")).toHaveText("Crea tu contraseña nueva.");
+  expect(page.url()).not.toContain("pin-recuperar");
+});
+
+test("con contraseña: crear cuenta gratis pide confirmar el correo con un código", async ({ page }) => {
+  test.skip(!operacion.ingresoContrasena || !operacion.cuentaGratis, "solo con contraseña y cuenta gratis encendidas");
+  const llamadas = await simular(page, baseInicial());
+  await page.goto("mi-espacio/entrar/?crear=1");
+  await hidratar(page);
+  await expect(page.locator("h1")).toHaveText("Crea tu cuenta gratis.");
+  await expect(page.locator("#entrar-clave")).toHaveAttribute("autocomplete", "new-password");
+  await expect(page.getByRole("button", { name: "Olvidé mi contraseña" })).toHaveCount(0);
+  await sinViolaciones(page);
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/1-crear-cuenta-${test.info().project.name}.png`, fullPage: true });
+  await page.locator("#entrar-correo").fill("nueva@correo.cl");
+  await page.locator("#entrar-clave").fill("corta");
+  await page.getByRole("button", { name: "Crear mi cuenta" }).click();
+  await expect(page.getByText("Usa al menos 8 caracteres.")).toBeVisible();
+  await page.locator("#entrar-clave").fill("mi-clave-larga-1");
+  await page.getByRole("button", { name: "Crear mi cuenta" }).click();
+  await expect(page.locator("h1")).toHaveText("Confirma tu correo.");
+  expect(llamadas.find((l) => l.nombre === "signup")!.cuerpo).toMatchObject({ email: "nueva@correo.cl", password: "mi-clave-larga-1" });
+  await page.locator("#entrar-codigo").fill("123456");
+  await page.getByRole("button", { name: "Confirmar" }).click();
+  await page.waitForURL(/\/mi-espacio\/$/);
+  expect(llamadas.filter((l) => l.nombre === "verify").at(-1)!.cuerpo.type).toBe("signup");
 });
 
 test("con Google: si Google devuelve un error, se queda en el ingreso con un aviso claro", async ({ page }) => {

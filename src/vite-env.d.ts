@@ -8,6 +8,7 @@ declare const __FORMULARIO_PROPIO__: boolean | undefined;
 declare const __MI_ESPACIO_PROPIO__: boolean | undefined;
 declare const __INGRESO_GOOGLE__: boolean | undefined;
 declare const __CUENTA_GRATIS__: boolean | undefined;
+declare const __INGRESO_CONTRASENA__: boolean | undefined;
 
 // Variables de compilación que lee el código (solo desde el entorno, no desde .env).
 interface ImportMetaEnv {

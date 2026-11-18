@@ -54,6 +54,15 @@ const INGRESO_GOOGLE =
     ? __INGRESO_GOOGLE__ === true
     : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.INGRESO_GOOGLE === "1");
 
+// Entrar y crear cuenta con correo y contraseña: apagado hasta que Diego ajuste en Supabase las
+// plantillas «Confirm signup» y «Reset password» y el largo mínimo (docs/ingreso-contrasena.md).
+const INGRESO_CONTRASENA_ACTIVO = false;
+const INGRESO_CONTRASENA =
+  INGRESO_CONTRASENA_ACTIVO ||
+  (typeof __INGRESO_CONTRASENA__ !== "undefined"
+    ? __INGRESO_CONTRASENA__ === true
+    : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.INGRESO_CONTRASENA === "1");
+
 // Rutas de la web y, mientras existan, de la plataforma original. scripts/postbuild.mjs además
 // genera reenvíos con las mismas rutas en este dominio, para enlaces escritos a mano.
 // Con el formulario propio, postular y contacto son páginas de esta web (con barra final).
@@ -134,6 +143,9 @@ export const operacion = {
   // proveedor Google en Supabase (docs/ingreso-google.md); si no, el botón daría error.
   // Variable de build INGRESO_GOOGLE=1 para verlo en pruebas.
   ingresoGoogle: INGRESO_GOOGLE,
+  // Correo + contraseña como camino principal (el código queda como alternativa y para recuperar).
+  // Build INGRESO_CONTRASENA=1 para pruebas.
+  ingresoContrasena: INGRESO_CONTRASENA,
   // Ingreso con dos caminos (entrar / crear cuenta gratis). Build CUENTA_GRATIS=1 para pruebas.
   cuentaGratis: CUENTA_GRATIS,
   correo: "rumbo.acompana@gmail.com" as string | null, // creado y aprobado por Diego el 8 de octubre de 2026

@@ -10,7 +10,11 @@
 //   los tokens en el fragmento (#access_token=…&refresh_token=…; flujo implícito, el fragmento no
 //   viaja a ningún servidor). Se guardan con setSession y se borran de la barra de direcciones.
 //   Si el correo de Google es el de un espacio ya creado, Supabase une ambas formas de entrar.
-// Nunca se registra en consola un correo, un código ni un token.
+// - Con contraseña (operacion.ingresoContrasena): correo + contraseña es el camino principal.
+//   Crear cuenta (signUp) pide confirmar el correo con el mismo código de 6 dígitos (type signup);
+//   «Olvidé mi contraseña» envía un código (type recovery) que abre la sesión y lleva a «Crea tu
+//   contraseña nueva». Los enlaces de esos correos usan ?th=…&type=signup|recovery.
+// Nunca se registra en consola un correo, un código, una contraseña ni un token.
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase, usarComputadorCompartido, type Cliente } from "../../lib/supabase";
@@ -19,10 +23,14 @@ import { ENTRAR } from "../../data/formularios";
 import Carga from "../vista-previa/mi-espacio/Carga";
 import {
   EnlaceVencido,
+  NuevaClave,
   PedirCodigo,
   RevisaCorreo,
   SESION,
+  type AccionesClave,
   type EstadoIngreso,
+  type ResultadoClave,
+  type TipoCodigo,
   type ResultadoPedir,
   type ResultadoVerificar,
 } from "../vista-previa/mi-espacio/Entrar";
@@ -45,11 +53,52 @@ async function pedir(correo: string, compartido: boolean): Promise<ResultadoPedi
   }
 }
 
+const vueltaEntrar = () => new URL("mi-espacio/entrar/", new URL(import.meta.env.BASE_URL, window.location.origin)).href;
+
+// Errores de contraseña de Supabase Auth (códigos de GoTrue).
+function deClave(error: { status?: number; name?: string; code?: string } | null): ResultadoClave | null {
+  if (!error) return null;
+  if (error.status === 429 || error.code === "over_request_rate_limit" || error.code === "over_email_send_rate_limit") return "limite";
+  if (error.code === "weak_password") return "debil";
+  if (error.code === "email_not_confirmed") return "confirmar";
+  if (error.code === "user_already_exists" || error.code === "email_exists") return "existe";
+  if (esDeRed(error)) return "red";
+  return "noCoincide";
+}
+
+async function olvide(correo: string, compartido: boolean): Promise<ResultadoPedir> {
+  try {
+    usarComputadorCompartido(compartido);
+    const sb = await supabase();
+    const { error } = await sb.auth.resetPasswordForEmail(correo, { redirectTo: vueltaEntrar() });
+    if (!error) return "ok";
+    if (error.status === 429) return "limite";
+    if (esDeRed(error)) return "red";
+    return "ok"; // correo sin cuenta: misma respuesta
+  } catch {
+    return "red";
+  }
+}
+
+async function reenviar(correo: string, tipo: TipoCodigo, compartido: boolean): Promise<ResultadoPedir> {
+  if (tipo === "recovery") return olvide(correo, compartido);
+  if (tipo === "email") return pedir(correo, compartido);
+  try {
+    const sb = await supabase();
+    const { error } = await sb.auth.resend({ type: "signup", email: correo, options: { emailRedirectTo: vueltaEntrar() } });
+    if (!error) return "ok";
+    if (error.status === 429) return "limite";
+    return esDeRed(error) ? "red" : "ok";
+  } catch {
+    return "red";
+  }
+}
+
 async function conGoogle(compartido: boolean): Promise<"red" | "ok"> {
   try {
     usarComputadorCompartido(compartido);
     const sb = await supabase();
-    const vuelta = new URL("mi-espacio/entrar/", new URL(import.meta.env.BASE_URL, window.location.origin)).href;
+    const vuelta = vueltaEntrar();
     const { error } = await sb.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: vuelta, queryParams: { prompt: "select_account" } },
@@ -80,7 +129,7 @@ export default function EntrarReal() {
   const navegar = useNavigate();
   const ubicacion = useLocation();
   const estadoNav = ubicacion.state as EstadoIngreso;
-  const [paso, setPaso] = useState<"formulario" | "verificando" | "vencido">("formulario");
+  const [paso, setPaso] = useState<"formulario" | "verificando" | "vencido" | "nueva">("formulario");
   const [falloGoogle, setFalloGoogle] = useState(false);
 
   const entrar = async (sb: Cliente) => {
@@ -131,12 +180,18 @@ export default function EntrarReal() {
       const th = q.get("th");
       if (th) {
         setPaso("verificando");
-        const { error } = await sb.auth.verifyOtp({ token_hash: th, type: "email" });
+        const tipoEnlace = q.get("type");
+        const tipo = tipoEnlace === "recovery" || tipoEnlace === "signup" ? tipoEnlace : "email";
+        const { error } = await sb.auth.verifyOtp({ token_hash: th, type: tipo });
         // El token no queda en la barra de direcciones ni en el historial.
         window.history.replaceState(window.history.state, "", window.location.pathname);
         if (!vigente) return;
         if (error) {
           setPaso("vencido");
+          return;
+        }
+        if (tipo === "recovery") {
+          setPaso("nueva");
           return;
         }
         await entrar(sb);
@@ -152,11 +207,61 @@ export default function EntrarReal() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const verificar = async (correo: string, codigo: string): Promise<ResultadoVerificar> => {
+  const verificar = async (correo: string, codigo: string, tipo: TipoCodigo): Promise<ResultadoVerificar> => {
     try {
       const sb = await supabase();
-      const { error } = await sb.auth.verifyOtp({ email: correo, token: codigo, type: "email" });
+      const { error } = await sb.auth.verifyOtp({ email: correo, token: codigo, type: tipo });
       if (error) return esDeRed(error) ? "red" : "noCoincide";
+      if (tipo === "recovery") {
+        setPaso("nueva");
+        return "ok";
+      }
+      await entrar(sb);
+      return "ok";
+    } catch {
+      return "red";
+    }
+  };
+
+  const clave: AccionesClave = {
+    entrar: async (correo, contrasena, compartido) => {
+      try {
+        usarComputadorCompartido(compartido);
+        const sb = await supabase();
+        const { error } = await sb.auth.signInWithPassword({ email: correo, password: contrasena });
+        const r = deClave(error);
+        if (r === "confirmar") await reenviar(correo, "signup", compartido);
+        if (r) return r === "existe" || r === "debil" ? "noCoincide" : r;
+        await entrar(sb);
+        return "ok";
+      } catch {
+        return "red";
+      }
+    },
+    crear: async (correo, contrasena, compartido) => {
+      try {
+        usarComputadorCompartido(compartido);
+        const sb = await supabase();
+        const { data, error } = await sb.auth.signUp({ email: correo, password: contrasena, options: { emailRedirectTo: vueltaEntrar() } });
+        const r = deClave(error);
+        if (r) return r === "noCoincide" ? "red" : r;
+        // Con la confirmación de correo encendida, un correo ya registrado vuelve sin identidades.
+        if (data.user && data.user.identities?.length === 0) return "existe";
+        if (!data.session) return "confirmar";
+        await entrar(sb);
+        return "ok";
+      } catch {
+        return "red";
+      }
+    },
+    olvide,
+  };
+
+  const guardarNueva = async (contrasena: string): Promise<"ok" | "debil" | "red"> => {
+    try {
+      const sb = await supabase();
+      const { error } = await sb.auth.updateUser({ password: contrasena });
+      if (error) return error.code === "weak_password" ? "debil" : "red";
       await entrar(sb);
       return "ok";
     } catch {
@@ -165,9 +270,10 @@ export default function EntrarReal() {
   };
 
   if (paso === "verificando") return <Carga estado="cargando" />;
+  if (paso === "nueva") return <NuevaClave alGuardar={guardarNueva} />;
   if (paso === "vencido") return <EnlaceVencido />;
   if (estadoNav?.enviado && estadoNav.correo)
-    return <RevisaCorreo key={ubicacion.key} alVerificar={verificar} alReenviar={(c) => pedir(c, !!estadoNav.compartido)} remitente={operacion.correo} />;
+    return <RevisaCorreo key={ubicacion.key} alVerificar={verificar} alReenviar={(c, t) => reenviar(c, t, !!estadoNav.compartido)} remitente={operacion.correo} />;
   const aviso = falloGoogle
     ? ENTRAR.errores.google
     : estadoNav?.aviso === "terminada"
@@ -182,6 +288,7 @@ export default function EntrarReal() {
       alPedir={pedir}
       alGoogle={operacion.ingresoGoogle ? conGoogle : undefined}
       conCuentaGratis={operacion.cuentaGratis}
+      clave={operacion.ingresoContrasena ? clave : undefined}
     />
   );
 }

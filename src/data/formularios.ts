@@ -538,6 +538,33 @@ export const ENTRAR = {
     nota: "¿Todavía no tienes cuenta? ",
     notaBoton: "Crea tu cuenta gratis",
   },
+  // Con contraseña (operacion.ingresoContrasena): camino principal. El código queda como
+  // alternativa («Entrar con un código») y para crear una contraseña nueva.
+  clave: {
+    bajada: "Entra con tu correo y tu contraseña.",
+    bajadaGoogle: "Entra con Google o con tu correo y tu contraseña.",
+    bajadaCrear: "Ordena tu semana con una meta y hasta 3 acciones diarias. Sin tarjeta.",
+    etiqueta: "Contraseña",
+    etiquetaNueva: "Crea una contraseña",
+    ayudaNueva: "Al menos 8 caracteres. Úsala solo en Rumbo.",
+    mostrar: "Mostrar contraseña",
+    boton: "Entrar",
+    enviando: "Entrando…",
+    creando: "Creando tu cuenta…",
+    olvide: "Olvidé mi contraseña",
+    conCodigo: "Entrar con un código en mi correo",
+    conClave: "Entrar con mi contraseña",
+    primeraVez: "¿Tu programa ya está acordado y nunca creaste una contraseña? Usa «Olvidé mi contraseña» o entra con un código.",
+    errores: {
+      vacia: "Escribe tu contraseña.",
+      corta: "Usa al menos 8 caracteres.",
+      noCoincide: "El correo o la contraseña no coinciden. Si nunca creaste una contraseña, usa «Olvidé mi contraseña».",
+      debil: "Esa contraseña es muy fácil de adivinar. Prueba con una más larga o distinta.",
+      existe: "Ya hay una cuenta con ese correo. Entra con tu contraseña o usa «Olvidé mi contraseña».",
+      limite: "Hiciste varios intentos seguidos. Espera unos minutos y vuelve a intentarlo.",
+      olvideSinCorreo: "Escribe tu correo arriba y vuelve a tocar «Olvidé mi contraseña».",
+    },
+  },
   correo: { etiqueta: "Tu correo", atributos: { type: "email", autoComplete: "email", inputMode: "email" } },
   compartido: { etiqueta: "Estoy en un computador compartido", ayuda: "Tu sesión se cierra al cerrar el navegador." },
   boton: "Enviarme el código",
@@ -560,6 +587,14 @@ export const REVISA_CORREO = {
   // Con la cuenta gratis abierta, todo correo recibe su código (si no tiene cuenta, se crea al entrar).
   textoAbierto: (correo: string) =>
     `Te enviamos un código de 6 dígitos a ${correo}. Llega en unos minutos y sirve una sola vez durante 1 hora.`,
+  // Confirmar una cuenta nueva con contraseña y crear una contraseña nueva: mismo código de 6 dígitos.
+  tituloConfirmar: "Confirma tu correo.",
+  textoConfirmar: (correo: string) =>
+    `Te enviamos un código de 6 dígitos a ${correo} para confirmar tu cuenta. Llega en unos minutos y sirve durante 1 hora.`,
+  textoRecuperar: (correo: string) =>
+    `Si ${correo} tiene una cuenta en Rumbo, te enviamos un código de 6 dígitos para crear una contraseña nueva. Sirve durante 1 hora.`,
+  botonConfirmar: "Confirmar",
+  botonRecuperar: "Seguir",
   cambiar: "¿No es tu correo? Cambiarlo",
   codigo: {
     etiqueta: "Código de 6 dígitos",
@@ -580,6 +615,14 @@ export const REVISA_CORREO = {
     noCoincide: "Ese código no coincide. Revísalo o pide uno nuevo.",
     vencido: "Ese código venció. Pide uno nuevo; tu programa sigue aquí.",
   },
+} as const;
+
+export const NUEVA_CLAVE = {
+  titulo: "Crea tu contraseña nueva.",
+  bajada: "La usarás desde ahora para entrar con tu correo.",
+  boton: "Guardar y entrar",
+  enviando: "Guardando…",
+  error: "No pudimos guardar tu contraseña. Revisa tu conexión e inténtalo de nuevo.",
 } as const;
 
 export const ENLACE_VENCIDO = {

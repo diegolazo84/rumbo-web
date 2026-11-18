@@ -13,7 +13,7 @@ import { Icono, Tostada } from "../../../components/app";
 import { CampoTexto, Casilla, Envio, Formulario } from "../../../components/form";
 import { participante } from "../../../data/ejemplo-app";
 import { operacion } from "../../../data/rumbo";
-import { ENLACE_VENCIDO, ENTRAR, LIMITES, REVISA_CORREO } from "../../../data/formularios";
+import { ENLACE_VENCIDO, ENTRAR, LIMITES, NUEVA_CLAVE, REVISA_CORREO } from "../../../data/formularios";
 import type { PropsPantalla } from "../registro";
 import { Cabeza, EtiquetaEjemplo, useEspacio } from "./comun";
 
@@ -47,7 +47,25 @@ export default function Entrar({ estado = "correo" }: PropsPantalla) {
 export type ResultadoPedir = "ok" | "limite" | "red";
 export type ResultadoVerificar = "ok" | "noCoincide" | "vencido" | "red";
 // Estado de la navegación entre «Entrar» y «Revisa tu correo» (nunca en la URL).
-export type EstadoIngreso = { correo?: string; compartido?: boolean; enviado?: boolean; aviso?: string; destino?: string } | null;
+// tipo: qué confirma el código (entrar, confirmar una cuenta nueva o crear una contraseña nueva).
+export type TipoCodigo = "email" | "signup" | "recovery";
+export type EstadoIngreso = {
+  correo?: string;
+  compartido?: boolean;
+  enviado?: boolean;
+  aviso?: string;
+  destino?: string;
+  tipo?: TipoCodigo;
+} | null;
+// Con contraseña (operacion.ingresoContrasena). «confirmar»: la cuenta existe pero falta confirmar
+// el correo (se envió un código). «existe»: al crear, ese correo ya tiene cuenta.
+export type ResultadoClave = "ok" | "noCoincide" | "confirmar" | "existe" | "debil" | "limite" | "red";
+export type AccionesClave = {
+  entrar: (correo: string, clave: string, compartido: boolean) => Promise<ResultadoClave>;
+  crear: (correo: string, clave: string, compartido: boolean) => Promise<ResultadoClave>;
+  olvide: (correo: string, compartido: boolean) => Promise<ResultadoPedir>;
+};
+const LARGO_CLAVE = 8;
 
 type PropsPedir = {
   aviso?: string;
@@ -59,6 +77,8 @@ type PropsPedir = {
   // Técnicamente es lo mismo (sin contraseña, el código o Google crean la cuenta si no existe):
   // cambian los textos para que cada persona sepa dónde está.
   conCuentaGratis?: boolean;
+  // Correo + contraseña como camino principal; sin esto, solo código (o Google).
+  clave?: AccionesClave;
 };
 
 // Logo oficial de Google para el botón de ingreso (pautas de marca de Google Identity).
@@ -73,7 +93,7 @@ function LogoGoogle() {
   );
 }
 
-export function PedirCodigo({ aviso, alPedir, alGoogle, conCuentaGratis }: PropsPedir) {
+export function PedirCodigo({ aviso, alPedir, alGoogle, conCuentaGratis, clave: accionesClave }: PropsPedir) {
   const { R } = useEspacio();
   const [tostada, setTostada] = useState<string | null>(aviso ?? null);
   const navegar = useNavigate();
@@ -87,13 +107,51 @@ export function PedirCodigo({ aviso, alPedir, alGoogle, conCuentaGratis }: Props
   const [enviando, setEnviando] = useState(false);
   const [abriendoGoogle, setAbriendoGoogle] = useState(false);
   const [modo, setModo] = useState<"entrar" | "crear">("entrar");
+  const [clave, setClave] = useState("");
+  const [errorClave, setErrorClave] = useState<string | null>(null);
+  const [verClave, setVerClave] = useState(false);
+  // «Entrar con un código en mi correo»: deja la contraseña de lado en esta visita.
+  const [conCodigo, setConCodigo] = useState(false);
+  const campoClave = useRef<HTMLInputElement>(null);
   // ?crear=1 abre directo «Crear cuenta gratis» (enlaces desde la portada). Se lee al hidratar.
   useEffect(() => {
     if (conCuentaGratis && new URLSearchParams(window.location.search).get("crear") === "1") setModo("crear");
   }, [conCuentaGratis]);
   const crear = conCuentaGratis && modo === "crear";
+  const usaClave = !!accionesClave && (crear || !conCodigo);
   const titulo = crear ? ENTRAR.crear.titulo : ENTRAR.titulo;
-  const bajada = crear ? ENTRAR.crear.bajada : conCuentaGratis ? ENTRAR.entrarAbierto.bajada : alGoogle ? ENTRAR.bajadaGoogle : ENTRAR.bajada;
+  const bajada = usaClave
+    ? crear
+      ? ENTRAR.clave.bajadaCrear
+      : alGoogle
+        ? ENTRAR.clave.bajadaGoogle
+        : ENTRAR.clave.bajada
+    : crear
+      ? ENTRAR.crear.bajada
+      : conCuentaGratis
+        ? ENTRAR.entrarAbierto.bajada
+        : alGoogle
+          ? ENTRAR.bajadaGoogle
+          : ENTRAR.bajada;
+  const aRevisar = (tipo: TipoCodigo) =>
+    navegar(R.revisaCorreo, { state: { correo: correo.trim(), compartido, enviado: true, destino: estadoNav?.destino, tipo } });
+  const olvide = () => {
+    if (!accionesClave || enviando) return;
+    setAlerta(null);
+    setErrorClave(null);
+    if (!correoValido(correo)) {
+      setError(ENTRAR.clave.errores.olvideSinCorreo);
+      campo.current?.focus();
+      return;
+    }
+    setError(null);
+    setEnviando(true);
+    accionesClave.olvide(correo.trim(), compartido).then((r) => {
+      setEnviando(false);
+      if (r === "ok") return aRevisar("recovery");
+      setAlerta(r === "limite" ? ENTRAR.errores.limite : ENTRAR.errores.red);
+    });
+  };
   const campo = useRef<HTMLInputElement>(null);
   const temporizador = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(temporizador.current), []);
@@ -148,6 +206,28 @@ export function PedirCodigo({ aviso, alPedir, alGoogle, conCuentaGratis }: Props
           }
           setError(null);
           setAlerta(null);
+          if (usaClave && accionesClave) {
+            const corta = crear && clave.length < LARGO_CLAVE;
+            if (!clave || corta) {
+              setErrorClave(!clave ? ENTRAR.clave.errores.vacia : ENTRAR.clave.errores.corta);
+              campoClave.current?.focus();
+              return;
+            }
+            setErrorClave(null);
+            setEnviando(true);
+            (crear ? accionesClave.crear : accionesClave.entrar)(correo.trim(), clave, compartido).then((r) => {
+              if (r === "ok") return; // la pantalla real navega
+              setEnviando(false);
+              if (r === "confirmar") return aRevisar("signup");
+              if (r === "noCoincide" || r === "debil") {
+                setErrorClave(r === "debil" ? ENTRAR.clave.errores.debil : ENTRAR.clave.errores.noCoincide);
+                campoClave.current?.focus();
+                return;
+              }
+              setAlerta(r === "existe" ? ENTRAR.clave.errores.existe : r === "limite" ? ENTRAR.clave.errores.limite : ENTRAR.errores.red);
+            });
+            return;
+          }
           setEnviando(true);
           const siguiente = () =>
             navegar(R.revisaCorreo, { state: { correo: correo.trim(), compartido, enviado: true, destino: estadoNav?.destino } });
@@ -166,7 +246,7 @@ export function PedirCodigo({ aviso, alPedir, alGoogle, conCuentaGratis }: Props
           id="entrar-correo"
           ref={campo}
           etiqueta={ENTRAR.correo.etiqueta}
-          ayuda={ENTRAR.ayudaCodigo}
+          ayuda={usaClave ? undefined : ENTRAR.ayudaCodigo}
           {...ENTRAR.correo.atributos}
           spellCheck={false}
           autoCapitalize="none"
@@ -177,6 +257,29 @@ export function PedirCodigo({ aviso, alPedir, alGoogle, conCuentaGratis }: Props
             if (error && correoValido(e.target.value)) setError(null);
           }}
         />
+        {usaClave && (
+          <>
+            <CampoTexto
+              id="entrar-clave"
+              ref={campoClave}
+              etiqueta={crear ? ENTRAR.clave.etiquetaNueva : ENTRAR.clave.etiqueta}
+              ayuda={crear ? ENTRAR.clave.ayudaNueva : undefined}
+              type={verClave ? "text" : "password"}
+              autoComplete={crear ? "new-password" : "current-password"}
+              spellCheck={false}
+              autoCapitalize="none"
+              value={clave}
+              error={errorClave}
+              onChange={(e) => {
+                setClave(e.target.value);
+                if (errorClave && (!crear || e.target.value.length >= LARGO_CLAVE)) setErrorClave(null);
+              }}
+            />
+            <Casilla id="entrar-ver-clave" opcional checked={verClave} onChange={(e) => setVerClave(e.target.checked)}>
+              {ENTRAR.clave.mostrar}
+            </Casilla>
+          </>
+        )}
         <Casilla
           id="entrar-compartido"
           opcional
@@ -186,8 +289,34 @@ export function PedirCodigo({ aviso, alPedir, alGoogle, conCuentaGratis }: Props
         >
           {ENTRAR.compartido.etiqueta}
         </Casilla>
-        <Envio className="me-envio-ancho" texto={crear ? ENTRAR.crear.boton : ENTRAR.boton} textoEnviando={ENTRAR.enviando} enviando={enviando} alerta={alerta} />
+        <Envio
+          className="me-envio-ancho"
+          texto={crear ? ENTRAR.crear.boton : usaClave ? ENTRAR.clave.boton : ENTRAR.boton}
+          textoEnviando={usaClave ? (crear ? ENTRAR.clave.creando : ENTRAR.clave.enviando) : ENTRAR.enviando}
+          enviando={enviando}
+          alerta={alerta}
+        />
       </Formulario>
+      {accionesClave && !crear && (
+        <div className="me-ingreso__otras">
+          {usaClave && (
+            <button type="button" className="me-ingreso__enlace" onClick={olvide}>
+              {ENTRAR.clave.olvide}
+            </button>
+          )}
+          <button
+            type="button"
+            className="me-ingreso__enlace"
+            onClick={() => {
+              setAlerta(null);
+              setErrorClave(null);
+              setConCodigo(!conCodigo);
+            }}
+          >
+            {usaClave ? ENTRAR.clave.conCodigo : ENTRAR.clave.conClave}
+          </button>
+        </div>
+      )}
 
       <div className="me-ingreso__notas">
         {crear ? (
@@ -210,6 +339,7 @@ export function PedirCodigo({ aviso, alPedir, alGoogle, conCuentaGratis }: Props
             {ENTRAR.nota.despues}
           </p>
         )}
+        {accionesClave && !crear && <p>{ENTRAR.clave.primeraVez}</p>}
         <p>{ENTRAR.nota2}</p>
       </div>
       <Aviso icono="lock">{ENTRAR.avisoLock}</Aviso>
@@ -222,8 +352,8 @@ export function PedirCodigo({ aviso, alPedir, alGoogle, conCuentaGratis }: Props
 // 4.2.2 «Revisa tu correo»
 
 type PropsRevisa = {
-  alVerificar?: (correo: string, codigo: string) => Promise<ResultadoVerificar>;
-  alReenviar?: (correo: string) => Promise<ResultadoPedir>;
+  alVerificar?: (correo: string, codigo: string, tipo: TipoCodigo) => Promise<ResultadoVerificar>;
+  alReenviar?: (correo: string, tipo: TipoCodigo) => Promise<ResultadoPedir>;
   remitente?: string | null; // null: el texto va sin remitente (Mi espacio real, mientras no se fije)
 };
 
@@ -233,6 +363,7 @@ export function RevisaCorreo({ alVerificar, alReenviar, remitente = REMITENTE_EJ
   const ubicacion = useLocation();
   const estadoNav = ubicacion.state as EstadoIngreso;
   const correo = estadoNav?.correo ?? participante.correo;
+  const tipo: TipoCodigo = estadoNav?.tipo ?? "email";
   const [codigo, setCodigo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -245,7 +376,7 @@ export function RevisaCorreo({ alVerificar, alReenviar, remitente = REMITENTE_EJ
   return (
     <div className="me-pantalla me-ingreso">
       <Cabeza
-        titulo={REVISA_CORREO.titulo}
+        titulo={tipo === "signup" ? REVISA_CORREO.tituloConfirmar : REVISA_CORREO.titulo}
         tamaño="titulo"
         antes={
           <span className="icono-mosaico me-ingreso__mosaico" aria-hidden="true">
@@ -255,7 +386,13 @@ export function RevisaCorreo({ alVerificar, alReenviar, remitente = REMITENTE_EJ
         bajada={
           <>
             <p>
-              {(operacion.cuentaGratis ? REVISA_CORREO.textoAbierto : REVISA_CORREO.texto)("\u0000")
+              {(tipo === "signup"
+                ? REVISA_CORREO.textoConfirmar
+                : tipo === "recovery"
+                  ? REVISA_CORREO.textoRecuperar
+                  : operacion.cuentaGratis
+                    ? REVISA_CORREO.textoAbierto
+                    : REVISA_CORREO.texto)("\u0000")
                 .split("\u0000")
                 .flatMap((parte, i) => (i === 0 ? [parte] : [<strong key="correo" className="me-ingreso__correo">{correo}</strong>, parte]))}
             </p>
@@ -284,7 +421,7 @@ export function RevisaCorreo({ alVerificar, alReenviar, remitente = REMITENTE_EJ
             temporizadores.current.push(window.setTimeout(() => navegar(R.hoy), RETARDO_ENVIO));
             return;
           }
-          alVerificar(correo, codigo).then((r) => {
+          alVerificar(correo, codigo, tipo).then((r) => {
             if (r === "ok") return; // la pantalla real navega
             setEnviando(false);
             setError(r === "vencido" ? REVISA_CORREO.errores.vencido : r === "red" ? ENTRAR.errores.red : REVISA_CORREO.errores.noCoincide);
@@ -316,7 +453,11 @@ export function RevisaCorreo({ alVerificar, alReenviar, remitente = REMITENTE_EJ
             if (error && limpio.length === largo) setError(null);
           }}
         />
-        <Envio className="me-envio-ancho" texto={REVISA_CORREO.boton} enviando={enviando} />
+        <Envio
+          className="me-envio-ancho"
+          texto={tipo === "signup" ? REVISA_CORREO.botonConfirmar : tipo === "recovery" ? REVISA_CORREO.botonRecuperar : REVISA_CORREO.boton}
+          enviando={enviando}
+        />
         <p className="microcopia">{REVISA_CORREO.ayuda}</p>
       </Formulario>
 
@@ -337,7 +478,7 @@ export function RevisaCorreo({ alVerificar, alReenviar, remitente = REMITENTE_EJ
             onClick={() => {
               if (espera) return;
               setEspera(true);
-              void alReenviar?.(correo);
+              void alReenviar?.(correo, tipo);
               temporizadores.current.push(window.setTimeout(() => setEspera(false), ESPERA_REENVIO));
             }}
           >
@@ -348,6 +489,76 @@ export function RevisaCorreo({ alVerificar, alReenviar, remitente = REMITENTE_EJ
           </p>
         </div>
       </section>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Contraseña nueva (después del código de «Olvidé mi contraseña»: la sesión ya está abierta)
+
+export function NuevaClave({ alGuardar }: { alGuardar: (clave: string) => Promise<"ok" | "debil" | "red"> }) {
+  const [clave, setClave] = useState("");
+  const [ver, setVer] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [alerta, setAlerta] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const campo = useRef<HTMLInputElement>(null);
+  return (
+    <div className="me-pantalla me-ingreso">
+      <Cabeza
+        titulo={NUEVA_CLAVE.titulo}
+        tamaño="titulo"
+        antes={
+          <span className="icono-mosaico me-ingreso__mosaico" aria-hidden="true">
+            <Icono nombre="shield" tamaño={24} />
+          </span>
+        }
+        bajada={NUEVA_CLAVE.bajada}
+      />
+      <Formulario
+        className="me-ingreso__form"
+        enviando={enviando}
+        onSubmit={() => {
+          if (enviando) return;
+          if (clave.length < LARGO_CLAVE) {
+            setError(clave ? ENTRAR.clave.errores.corta : ENTRAR.clave.errores.vacia);
+            campo.current?.focus();
+            return;
+          }
+          setError(null);
+          setAlerta(null);
+          setEnviando(true);
+          alGuardar(clave).then((r) => {
+            if (r === "ok") return; // la pantalla real navega
+            setEnviando(false);
+            if (r === "debil") {
+              setError(ENTRAR.clave.errores.debil);
+              campo.current?.focus();
+            } else setAlerta(NUEVA_CLAVE.error);
+          });
+        }}
+      >
+        <CampoTexto
+          id="nueva-clave"
+          ref={campo}
+          etiqueta={ENTRAR.clave.etiquetaNueva}
+          ayuda={ENTRAR.clave.ayudaNueva}
+          type={ver ? "text" : "password"}
+          autoComplete="new-password"
+          spellCheck={false}
+          autoCapitalize="none"
+          value={clave}
+          error={error}
+          onChange={(e) => {
+            setClave(e.target.value);
+            if (error && e.target.value.length >= LARGO_CLAVE) setError(null);
+          }}
+        />
+        <Casilla id="nueva-clave-ver" opcional checked={ver} onChange={(e) => setVer(e.target.checked)}>
+          {ENTRAR.clave.mostrar}
+        </Casilla>
+        <Envio className="me-envio-ancho" texto={NUEVA_CLAVE.boton} textoEnviando={NUEVA_CLAVE.enviando} enviando={enviando} alerta={alerta} />
+      </Formulario>
     </div>
   );
 }

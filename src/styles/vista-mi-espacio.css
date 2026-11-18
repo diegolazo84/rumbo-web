@@ -2073,8 +2073,10 @@ a.as-linea__numero { display: inline-flex; min-block-size: 44px; align-items: ce
 .me-app__acciones { display: flex; flex-wrap: wrap; gap: var(--e-2); }
 .me-app__acciones .boton { min-block-size: 44px; }
 /* Ingreso con la cuenta gratis abierta: «Ya tengo cuenta» / «Crear cuenta gratis» */
-.me-modos { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 999px; background: var(--papel-hondo); }
-.me-modos__boton { min-block-size: 44px; padding: 8px 12px; border: 0; border-radius: 999px; background: transparent; color: var(--tinta-suave); font: 600 var(--t-s)/1.2 var(--sans); cursor: pointer; }
-.me-modos__boton[aria-pressed="true"] { background: var(--superficie); color: var(--bosque); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
+.me-modos { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: var(--r-full); background: var(--papel-hondo); }
+.me-modos__boton { min-block-size: 44px; padding: 8px 12px; border: 0; border-radius: var(--r-full); background: transparent; color: var(--tinta-suave); font: 600 var(--t-s)/1.2 var(--sans); cursor: pointer; }
+.me-modos__boton[aria-pressed="true"] { background: var(--superficie); color: var(--bosque); box-shadow: var(--sombra-1); }
 .me-modos__boton:focus-visible { outline: 3px solid var(--bosque); outline-offset: 2px; }
 .me-ingreso__enlace { padding: 0; border: 0; background: none; color: var(--bosque); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.me-ingreso__otras { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--e-3) var(--e-5); margin-block-start: var(--e-4); font-size: var(--t-s); }
+.me-ingreso__otras .me-ingreso__enlace { min-block-size: 44px; }
