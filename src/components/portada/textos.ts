@@ -1,9 +1,11 @@
 // Textos de la portada (5.2) que se repiten entre capítulos o que cambian según
 // `operacion`. Con los datos actuales se publica siempre la versión «sin dato».
-import { operacion, rayas, t, type Operacion } from "../../data/rumbo";
+import { FORMULARIO_EXTERNO, operacion, rayas, t, type Operacion } from "../../data/rumbo";
 
-// Nota bajo los CTA de los capítulos 1 y 6.
-export const NOTA_SALIDA = "El formulario se abre en la plataforma de Rumbo, en otra dirección web.";
+// Nota bajo los CTA de los capítulos 1 y 6: con el formulario propio ya no se sale a otra dirección.
+export const NOTA_SALIDA = FORMULARIO_EXTERNO
+  ? "El formulario se abre en la plataforma de Rumbo, en otra dirección web."
+  : "Al enviarla verás un enlace privado para seguir tu solicitud o retirarla cuando quieras.";
 
 // Paso 2 del método: según plazo de primera respuesta y si se responde a todas las solicitudes.
 export function textoRevision(op: Operacion = operacion) {

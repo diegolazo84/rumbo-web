@@ -3,113 +3,88 @@
    Orden: capítulos 1 a 6 y, al final, los recortes en móvil de la aceptación 19. */
 
 /* ========================================================================
-   Capítulo 1: Promesa (papel con cuadrícula de agenda, 2.7)
+   Capítulo 1: Promesa. Rediseño nov-2026: texto sobre papel y una sola fotografía real,
+   grande, a sangre. Móvil: texto y debajo la foto de borde a borde. Desde 1024 px: dos
+   mitades; la foto llena la mitad derecha hasta el borde de la ventana.
    ======================================================================== */
-.portada {
-  position: relative;
-  isolation: isolate;
-  padding-block: clamp(2.5rem, 1.5rem + 4vw, 5rem) var(--seccion-y);
+.portada { background: var(--papel); }
+.portada-grilla { display: grid; }
+.portada-texto {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: clamp(2rem, 1.25rem + 3vw, 3.5rem) var(--gutter) var(--bloque);
 }
-.portada::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background-image:
-    linear-gradient(to right, rgb(29 38 33 / .045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(29 38 33 / .045) 1px, transparent 1px);
-  background-size: 32px 32px;
-  mask-image: radial-gradient(60% 70% at 75% 45%, black, transparent 70%);
-  pointer-events: none;
+.portada-texto > .h1--display { margin-block-start: var(--e-5); max-inline-size: 15ch; }
+.portada-nicho {
+  margin-block-start: var(--e-5);
+  max-inline-size: 34rem;
+  font-size: var(--t-lead);
+  line-height: 1.5;
+  color: var(--tinta);
 }
-
-/* En móvil y tableta: primero el texto y después el calendario. */
-.portada-grilla { display: grid; row-gap: var(--bloque); }
-.portada-texto { display: flex; flex-direction: column; align-items: flex-start; }
-.portada-texto > .h1--display,
-.portada-texto > .bajada { margin-block-start: var(--e-5); }
 .portada-foco {
-  display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
-  gap: var(--e-2);
-  margin-block-start: var(--e-4);
-  max-inline-size: var(--medida);
+  margin-block-start: var(--e-3);
+  max-inline-size: 34rem;
   font-size: var(--t-s);
   line-height: 1.55;
   color: var(--tinta-suave);
 }
-.portada-foco .icono { margin-block-start: 4px; }
 /* Ancho completo: por debajo de 480 px los botones se apilan al 100 %. */
 .portada-texto > .acciones { align-self: stretch; margin-block-start: var(--e-6); }
-.portada-salida { margin-block-start: var(--e-3); }
+.portada-salida { margin-block-start: var(--e-3); max-inline-size: 34rem; }
 .portada-confianza { margin-block-start: var(--e-4); }
-.portada-ruta { display: none; }
 
-/* Foto y calendario: la foto es apaisada en su caja y el calendario sube sobre su borde
-   inferior, con margen a los lados para que la foto se vea como marco. */
-.portada-visual { display: grid; min-inline-size: 0; }
-.portada-foto { display: block; overflow: hidden; border-radius: var(--r-l); box-shadow: var(--sombra-1); }
-.portada-foto img { display: block; inline-size: 100%; block-size: auto; aspect-ratio: 4 / 3; object-fit: cover; object-position: 50% 42%; }
-.portada-visual > .calendario {
-  position: relative;
-  margin-block-start: calc(-1 * clamp(3rem, 2rem + 6vw, 5.5rem));
-  margin-inline: var(--e-3);
-  box-shadow: var(--sombra-2);
+.portada-foto { display: block; min-inline-size: 0; }
+.portada-foto img {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  aspect-ratio: 4 / 5;
+  max-block-size: 34rem;
+  object-fit: cover;
+  object-position: 50% 30%;
 }
 @media (min-width: 600px) and (max-width: 1023.98px) {
-  .portada-visual { max-inline-size: 640px; }
-  .portada-visual > .calendario { margin-inline: var(--e-5); }
+  .portada-texto { padding-inline: max(var(--gutter), calc((100vw - var(--ancho-medio)) / 2)); }
+  .portada-foto img { aspect-ratio: 16 / 10; max-block-size: none; object-position: 50% 32%; }
 }
 @media (min-width: 1024px) {
-  .portada-foto img { aspect-ratio: 16 / 11; }
-  .portada-visual > .calendario { margin-inline: calc(-1 * var(--e-5)) var(--e-5); }
-}
-
-/* Desde 1024 px: texto a la izquierda, calendario a la derecha y la ruta de puntos
-   bajo el texto, entrando en la separación hacia el calendario. */
-@media (min-width: 1024px) {
-  .portada-grilla {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-    grid-template-rows: auto 1fr;
-    column-gap: var(--e-8);
-    row-gap: 0;
+  .portada-grilla { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-block-size: min(46rem, calc(100svh - var(--cabecera-alto))); }
+  .portada-texto {
+    justify-content: center;
+    padding-block: var(--e-8);
+    padding-inline: max(var(--gutter), calc((100vw - var(--ancho-sitio)) / 2)) var(--e-8);
   }
-  .portada-texto { grid-column: 1; grid-row: 1; padding-block-start: var(--e-4); }
-  .portada-visual { grid-column: 2; grid-row: 1 / -1; align-self: start; }
-  .portada-ruta {
-    display: block;
-    grid-column: 1;
-    grid-row: 2;
-    align-self: end;
-    inline-size: calc(100% + var(--e-7));
-    max-inline-size: none;
-    block-size: auto;
-    margin-block-start: var(--e-6);
-    opacity: 0.6;
+  .portada-foto { position: relative; }
+  .portada-foto img {
+    position: absolute;
+    inset: 0;
+    block-size: 100%;
+    aspect-ratio: auto;
+    max-block-size: none;
+    border-end-start-radius: var(--r-l);
+    object-position: 50% 28%;
   }
-}
-
-/* Entre 1024 y 1279 px el H1 no cabe en 3 líneas en su columna y dejaría «posible.»
-   sola (aceptación 20): la insignia y el H1 ocupan las dos columnas, y el resto del
-   texto queda a la izquierda del calendario. */
-@media (min-width: 1024px) and (max-width: 1279.98px) {
-  .portada-grilla { grid-template-rows: repeat(7, auto) 1fr; }
-  .portada-texto { display: contents; }
-  .portada-texto > * { grid-column: 1; }
-  .portada-texto > .etiqueta { grid-row: 1; grid-column: 1 / -1; justify-self: start; }
-  .portada-texto > .h1--display { grid-row: 2; grid-column: 1 / -1; }
-  .portada-texto > .bajada { grid-row: 3; }
-  .portada-foco { grid-row: 4; }
-  .portada-texto > .acciones { grid-row: 5; }
-  .portada-salida { grid-row: 6; }
-  .portada-confianza { grid-row: 7; }
-  .portada-visual { grid-row: 3 / -1; margin-block-start: var(--e-5); }
-  .portada-ruta { grid-row: 8; }
 }
 
 /* ========================================================================
    Capítulo 2: Para quién (papel hondo)
    ======================================================================== */
+/* Encabezado y, desde 1024 px, la diferencia con una app o un chat a su lado. */
+.para-quien-cabeza { display: grid; gap: var(--e-6); margin-block-end: var(--bloque); }
+.para-quien-cabeza > .encabezado { margin-block-end: 0; }
+.diferencia {
+  align-self: end;
+  padding-inline-start: var(--e-5);
+  border-inline-start: 3px solid var(--terracota);
+  font: 400 var(--t-h3)/1.4 var(--serif);
+  color: var(--tinta);
+  max-inline-size: 28rem;
+}
+@media (min-width: 1024px) {
+  .para-quien-cabeza { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); column-gap: var(--e-8); align-items: end; }
+}
 .mas-adelante { display: grid; gap: var(--e-5); }
 .mas-adelante-cabeza { max-inline-size: var(--medida); }
 .mas-adelante-cabeza > h3 { margin-block-end: var(--e-3); }
@@ -164,26 +139,41 @@
 /* ========================================================================
    Capítulo 4: Dentro de Rumbo (papel)
    ======================================================================== */
-.que-recibes-nota { margin-block-start: var(--e-4); max-inline-size: var(--medida); }
-.comunidad { display: grid; gap: var(--bloque); }
-.comunidad-texto { display: grid; gap: var(--e-5); align-content: start; }
-.comunidad-texto .encabezado { margin-block-end: 0; }
-.comunidad-intro { margin-block-start: var(--e-4); max-inline-size: var(--medida); }
-/* Tableta: medida de lectura para el texto y el ranking al ancho del calendario. */
-@media (min-width: 600px) and (max-width: 1023.98px) {
-  .comunidad-texto { max-inline-size: var(--medida); }
-  .comunidad-ranking { max-inline-size: 640px; }
+/* Cómo se ve una semana: tres ideas y, al lado, el calendario de ejemplo. */
+.recibes { display: grid; gap: var(--bloque); margin-block-end: var(--subseccion); }
+.recibes-texto > .encabezado { margin-block-end: var(--e-6); }
+.recibes-pasos { list-style: none; display: grid; gap: var(--e-5); counter-reset: recibe; }
+.recibes-pasos > li {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  column-gap: var(--e-3);
+  counter-increment: recibe;
 }
-/* Desde 1024 px: texto en 6 columnas y ranking en 5, desplazado 1 columna. */
+.recibes-pasos > li::before {
+  content: counter(recibe);
+  grid-row: span 2;
+  font: 500 var(--t-h3)/1.25 var(--serif);
+  color: var(--terracota-texto);
+  font-variant-numeric: tabular-nums;
+}
+.recibes-pasos h3 { font-size: var(--t-base); font-family: var(--sans); font-weight: 600; line-height: 1.4; }
+.recibes-pasos p { color: var(--tinta-suave); font-size: var(--t-s); line-height: 1.55; }
+.recibes-demo { min-inline-size: 0; }
+@media (min-width: 600px) and (max-width: 1023.98px) { .recibes-demo { max-inline-size: 640px; } }
 @media (min-width: 1024px) {
-  .comunidad { grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--e-5); align-items: start; }
-  .comunidad-texto { grid-column: 1 / span 6; }
-  .comunidad-ranking { grid-column: 8 / span 5; }
+  .recibes { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); column-gap: var(--e-8); align-items: center; }
 }
-
+.recibes-claridad { margin-block-end: var(--e-5); }
+.que-recibes-nota { margin-block-start: var(--e-4); max-inline-size: var(--medida); }
 /* ========================================================================
    Capítulo 5: Decidir (papel hondo)
    ======================================================================== */
+/* Oferta del grupo fundador: solo aparece con sus datos en rumbo.ts. */
+.oferta { display: grid; gap: var(--e-5); margin-block-end: var(--bloque); }
+.oferta-item { display: grid; gap: var(--e-2); justify-items: start; padding-block-start: var(--e-4); border-block-start: 2px solid var(--bosque); }
+.oferta-item p { color: var(--tinta-suave); max-inline-size: var(--medida); }
+.oferta-item .boton { margin-block-start: var(--e-2); }
+@media (min-width: 1024px) { .oferta { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--e-7); } }
 .planes-ayuda { margin-block-start: var(--e-5); max-inline-size: var(--medida); font-size: var(--t-s); line-height: 1.55; }
 .preguntas-contacto { display: grid; justify-items: start; gap: var(--e-1); margin-block-start: var(--e-5); }
 .preguntas { display: grid; gap: var(--bloque); }
@@ -211,11 +201,9 @@
   .fila-futura-cuerpo { display: contents; }
   .fila-futura-cuerpo > :not(.fila-futura-etiquetas) { grid-column: 1 / -1; }
 
-  .comunidad-ranking .ranking-tarjeta { gap: var(--e-3); }
 
   /* Aire que no fija la especificación. */
-  .portada-texto > .h1--display,
-  .portada-texto > .bajada { margin-block-start: var(--e-4); }
+  .portada-texto > .h1--display { margin-block-start: var(--e-4); }
   .mas-adelante { gap: var(--e-4); }
 }
 

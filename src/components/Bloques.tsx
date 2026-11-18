@@ -18,15 +18,14 @@ type EncabezadoProps = {
   acciones?: ReactNode;
   children?: ReactNode; // contenido extra bajo las acciones (notas, enlaces)
   variante?: "partido" | "centrado";
-  revelar?: boolean; // [data-revelar]: solo bajo el primer pantallazo
   className?: string;
 };
 
-export function Encabezado({ ojo, titulo, nivel = 2, bajada, acciones, children, variante, revelar, className }: EncabezadoProps) {
+export function Encabezado({ ojo, titulo, nivel = 2, bajada, acciones, children, variante, className }: EncabezadoProps) {
   const Titulo = nivel === 1 ? "h1" : "h2";
   const clases = ["encabezado", variante && `encabezado--${variante}`, className].filter(Boolean).join(" ");
   return (
-    <div className={clases} data-revelar={revelar ? "" : undefined}>
+    <div className={clases}>
       {ojo && <p className="ojo">{ojo}</p>}
       <Titulo>{titulo}</Titulo>
       {bajada && <p className="bajada">{bajada}</p>}

@@ -25,10 +25,12 @@ export function TarjetaCamino({ area }: { area: Area }) {
       {foto && (
         <Foto foto={foto} decorativa className="camino-foto" sizes="(min-width: 1024px) 540px, (min-width: 600px) 45vw, calc(100vw - 32px)" />
       )}
-      <div className="camino-cabeza">
-        <Mosaico area={area} />
-        {area.categoria && <EtiquetaCategoria cat={area.categoria} />}
-      </div>
+      {/* Con foto, el mosaico de icono sobra: la categoría basta como rótulo. */}
+      {area.categoria && (
+        <div className="camino-cabeza">
+          <EtiquetaCategoria cat={area.categoria} />
+        </div>
+      )}
       <h3>{area.nombre}</h3>
       <p className="voz">{area.frase}</p>
       <p className="camino-texto">{area.texto}</p>

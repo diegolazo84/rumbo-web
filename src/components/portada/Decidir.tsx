@@ -13,7 +13,7 @@ import { bajadaPlanes } from "./textos";
 // dato ausente no se publican (preguntasVisibles).
 function Preguntas() {
   return (
-    <div className="partido-contenido preguntas" data-revelar="">
+    <div className="partido-contenido preguntas">
       {preguntasPorGrupo().map((g) => (
         <div key={g.id} className="preguntas-grupo">
           <h3>{g.titulo}</h3>
@@ -41,6 +41,32 @@ function Preguntas() {
   );
 }
 
+// Oferta del grupo fundador: cada pieza aparece solo cuando su dato existe en rumbo.ts
+// (conversación de encaje con su agenda; garantía cuando la revisión legal la apruebe).
+function OfertaFundador() {
+  const { conversacionEncaje: c, garantiaPrimeraSemana } = operacion;
+  if (!c && !garantiaPrimeraSemana) return null;
+  return (
+    <div className="oferta">
+      {c && (
+        <div className="oferta-item">
+          <h3>{t("Conversa {m} minutos antes de pagar.", { m: c.minutos })}</h3>
+          <p>Una conversación gratis con quien te acompañaría, para ver si Rumbo calza con tu meta y tu semana.</p>
+          <Enlace href={c.agenda} evento="conversacion" ubicacion="planes" className="boton boton--secundario">
+            {t("Agendar {m} minutos", { m: c.minutos })}
+          </Enlace>
+        </div>
+      )}
+      {garantiaPrimeraSemana && (
+        <div className="oferta-item">
+          <h3>Primera semana sin riesgo.</h3>
+          <p>Si después de tu primera revisión sientes que no te sirve, te devolvemos el 100 % de lo que pagaste.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Decidir() {
   const grupo = operacion.tamanoPrimerGrupo;
   return (
@@ -49,8 +75,6 @@ export default function Decidir() {
         <div id="planes">
           <div className="planes-cabeza">
             <Encabezado
-              revelar
-              ojo="Planes"
               titulo="Ciclos de 4 semanas, con revisión humana cada semana."
               bajada={bajadaPlanes()}
             >
@@ -60,13 +84,12 @@ export default function Decidir() {
                 </p>
               )}
             </Encabezado>
-            <div className="planes-foto" data-revelar="">
+            <div className="planes-foto">
               <Foto foto={fotos.planes} sizes="(min-width: 1024px) 420px, calc(100vw - 32px)" />
             </div>
           </div>
-          <div data-revelar="">
-            <GrillaPlanes />
-          </div>
+          <OfertaFundador />
+          <GrillaPlanes />
           <p className="planes-ayuda">
             ¿No sabes cuál elegir?{" "}
             <strong>
@@ -84,9 +107,7 @@ export default function Decidir() {
         {/* 5 columnas, como el método: con 4, «postular.» quedaría sola en su línea (aceptación 20). */}
         <div id="preguntas" className="partido">
           <Encabezado
-            revelar
             variante="partido"
-            ojo="Preguntas"
             titulo="Antes de postular."
             bajada="Lo que conviene saber antes de enviar tu solicitud."
           >

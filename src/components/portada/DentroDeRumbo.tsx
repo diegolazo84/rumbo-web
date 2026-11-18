@@ -1,69 +1,73 @@
-// Capítulo 4: Dentro de Rumbo (5.2). Papel: qué existe hoy y qué no (transparencia) y,
-// tras el separador, progreso y «Lo que viene en Rumbo». Sin CTA: los planes vienen a continuación.
-import { loQueViene, reglasCreditosTextos } from "../../data/rumbo";
+// Capítulo 4: Dentro de Rumbo. Papel: cómo se ve tu semana (calendario de ejemplo, sin créditos),
+// qué existe hoy y qué no (transparencia) y «Lo que viene en Rumbo». Niveles, créditos y rachas
+// salieron de la portada en nov-2026 (decisión de Diego): siguen intactos dentro de Mi espacio.
+import { loQueViene } from "../../data/rumbo";
 import { Encabezado, ListaCheck } from "../Bloques";
+import CalendarioEjemplo from "../CalendarioEjemplo";
 import { EtiquetaEstado } from "../Etiqueta";
-import TarjetaRanking from "../TarjetaRanking";
 import Transparencia from "../Transparencia";
+
+const semana = [
+  {
+    titulo: "Cada acción tiene su momento.",
+    texto: "Qué hacer, cuándo y cuánto dura, con instrucciones simples. Algunas tienen hora fija y otras las haces cuando puedas.",
+  },
+  {
+    titulo: "Marcas lo que hiciste.",
+    texto: "Basta un toque. Quien te acompaña ve tu avance y también lo que costó, para que cada conversación tenga contexto.",
+  },
+  {
+    titulo: "Cada semana, una revisión.",
+    texto: "Por escrito o en videollamada, según tu plan. Si algo no funcionó, se ajusta la carga de la semana siguiente.",
+  },
+];
 
 export default function DentroDeRumbo() {
   return (
     <section className="capitulo">
       <div className="contenedor">
         <div id="que-recibes">
-          <Encabezado
-            revelar
-            ojo="Qué recibes"
-            titulo={
-              // «Una persona» junta: que la segunda oración no empiece al final de la primera línea.
-              <>
-                Un calendario claro. <span className="nowrap-amplio">Una persona</span> que lo revisa contigo.
-              </>
-            }
-            bajada="Tu espacio mantiene visible el programa entre una revisión y otra, y quien te acompaña ve tus avances y tus dificultades para que cada conversación tenga contexto. Aquí está, con claridad, qué existe hoy y qué no."
-          />
-          <div data-revelar="">
-            <Transparencia />
+          <div className="recibes">
+            <div className="recibes-texto">
+              <Encabezado
+                titulo={
+                  // «Una persona» junta: que la segunda oración no empiece al final de la primera línea.
+                  <>
+                    Un calendario claro. <span className="nowrap-amplio">Una persona</span> que lo revisa contigo.
+                  </>
+                }
+                bajada="Tu programa vive en Mi espacio, en esta misma web. Así se ve una semana:"
+              />
+              <ol className="recibes-pasos">
+                {semana.map((p) => (
+                  <li key={p.titulo}>
+                    <h3>{p.titulo}</h3>
+                    <p>{p.texto}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <div className="recibes-demo">
+              <CalendarioEjemplo sinCreditos />
+            </div>
           </div>
-          <p className="microcopia que-recibes-nota">
-            Mi espacio está en esta misma web. Entras con un código que te llega al correo que nos diste, sin contraseñas
-            ni cuentas de otras empresas.
-          </p>
-        </div>
 
-        <hr className="separador" />
-        <div id="comunidad" className="comunidad">
-          <div className="comunidad-texto" data-revelar="">
-            <Encabezado
-              ojo="Progreso"
-              titulo={
-                <>
-                  Cada paso cuenta. <span className="frase">Y lo ves avanzar.</span>
-                </>
-              }
-            >
-              <p className="comunidad-intro">
-                Cada acción que registras suma créditos, y completar un día programado suma más. Así subes de nivel a tu
-                ritmo. <strong>Los créditos muestran tu avance: no son dinero, no se canjean y no miden tu valor.</strong>
-              </p>
-            </Encabezado>
-            <ListaCheck items={reglasCreditosTextos()} />
-          </div>
-          <div className="comunidad-ranking" data-revelar="">
-            <TarjetaRanking />
-          </div>
+          <h3 className="subtitulo recibes-claridad">Con claridad: qué existe hoy y qué no.</h3>
+          <Transparencia />
+          <p className="microcopia que-recibes-nota">
+            Entras a Mi espacio con un código que te llega al correo que nos diste, sin contraseñas ni cuentas de otras
+            empresas.
+          </p>
         </div>
 
         <hr className="separador" />
         {/* «Lo que viene en Rumbo»: rotulado como no disponible, sin fechas ni botones de contratación. */}
         <div id="lo-que-viene">
           <Encabezado
-            revelar
-            ojo="Lo que viene en Rumbo"
             titulo="Lo que estamos construyendo."
             bajada="Nada de esto está disponible todavía. Cada parte se abre solo cuando funcione y esté probada."
           />
-          <div className="transparencia transparencia--dos" data-revelar="">
+          <div className="transparencia transparencia--dos">
             <article className="tarjeta tarjeta--pronto">
               <EtiquetaEstado estado="noDisponible" />
               <h3>Para el lanzamiento</h3>
