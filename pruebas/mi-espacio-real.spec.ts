@@ -253,6 +253,91 @@ test("sin sesión, Mi espacio lleva al ingreso; con el código entra a Hoy", asy
   await expect(page.getByText("Escribir 30 minutos").first()).toBeVisible();
 });
 
+// Cuenta gratis «Rumbo Inicial» (20261204): sin ficha, con el módulo abierto.
+function cuentaLibre(acciones: string[], registros: { accion_id: string; fecha: string }[] = [], pedido: string | null = null) {
+  return {
+    hoy: HOY,
+    abierta: true,
+    cuenta: { nombre: "Fran", correo: "ana@correo.cl", origen: "google", area_id: "proyectos", meta: "Terminar el primer capítulo de mi tesis.", dias: [1, 2, 3, 4, 5], creada_en: "2026-10-12T12:00:00Z", acceso_pedido_en: pedido, apoyo_pedido: null },
+    acciones: acciones.map((t, i) => ({ id: `al${i + 1}`, titulo: t, desde: HOY, hasta: null })),
+    registros,
+    progreso: { creditos: registros.length, nivel: 1, racha: 0, bono_siguiente: 2 },
+  };
+}
+
+test("cuenta gratis: sin programa y con el módulo abierto, arma su punto de partida y entra a su semana", async ({ page }) => {
+  let cuenta: ReturnType<typeof cuentaLibre> | null = null;
+  const llamadas = await simular(page, { ...baseInicial(), participantes: [] }, {
+    mi_cuenta_libre: () => cuenta,
+    modulo_visible: (c) => c.p_clave === "cuenta_gratis",
+    crear_cuenta_libre: (c) => {
+      const p = c.p as { acciones: string[] };
+      cuenta = cuentaLibre(p.acciones);
+      return cuenta;
+    },
+  });
+  await conSesion(page);
+  await page.goto("mi-espacio/");
+  await expect(page.locator("h1")).toHaveText("Tu punto de partida.");
+  await hidratar(page);
+  await sinViolaciones(page);
+  if (process.env.CAPTURAS) {
+    await page.getByRole("radio", { name: /Proyectos y emprendimiento/ }).check();
+    await page.screenshot({ path: `${process.env.CAPTURAS}/2-punto-de-partida-${test.info().project.name}.png`, fullPage: true });
+    await page.reload();
+    await hidratar(page);
+  }
+  await page.getByRole("button", { name: "Empezar mi semana" }).click();
+  await expect(page.getByText("Elige un área.")).toBeVisible();
+  await page.locator("#cg-nombre").fill("Fran");
+  await page.getByRole("radio", { name: /Proyectos y emprendimiento/ }).check();
+  await page.locator("#cg-meta").fill("Terminar el primer capítulo de mi tesis.");
+  await page.getByRole("checkbox", { name: "Trabajar 30 minutos en mi proyecto" }).check();
+  await page.locator("#cg-propia").fill("Leer un artículo");
+  await page.getByRole("button", { name: "Agregar" }).click();
+  await page.getByRole("checkbox", { name: "Escribir la siguiente tarea concreta" }).check();
+  // Tope de 3: la cuarta queda deshabilitada.
+  await expect(page.getByRole("checkbox", { name: "Conversar con una persona sobre mi idea" })).toBeDisabled();
+  await page.getByRole("checkbox", { name: "Tengo 18 años o más" }).check();
+  await page.locator("#cg-acepto").check();
+  await page.getByRole("button", { name: "Empezar mi semana" }).click();
+  await expect(page.locator("h1")).toHaveText("Hola, Fran.");
+  const crear = llamadas.find((l) => l.nombre === "crear_cuenta_libre")!;
+  expect((crear.cuerpo.p as { acciones: string[] }).acciones).toEqual(["Trabajar 30 minutos en mi proyecto", "Leer un artículo", "Escribir la siguiente tarea concreta"]);
+  expect((crear.cuerpo.p as { dias: number[] }).dias).toEqual([1, 2, 3, 4, 5]);
+  await expect(page.getByRole("button", { name: "Marcar «Leer un artículo» como hecha" })).toBeVisible();
+  // Sin la navegación de participantes (Mi plan, Comunidad…): lo gratis no la usa.
+  await expect(page.getByRole("link", { name: "Mi plan" })).toHaveCount(0);
+});
+
+test("cuenta gratis: marca lo de hoy, ve sus créditos y pide acompañamiento", async ({ page }) => {
+  const llamadas = await simular(page, { ...baseInicial(), participantes: [] }, {
+    mi_cuenta_libre: () => cuentaLibre(["Escribir 20 minutos", "Ordenar el escritorio"]),
+    marcar_libre: (c) => ({ creditos: c.p_accion === "al2" ? 4 : 1, nivel: 1, racha: c.p_accion === "al2" ? 1 : 0, bono_siguiente: 2 }),
+    pedir_acompanamiento_libre: () => null,
+  });
+  await conSesion(page);
+  await page.goto("mi-espacio/");
+  await expect(page.locator("h1")).toHaveText("Hola, Fran.");
+  await hidratar(page);
+  await sinViolaciones(page);
+  const primera = page.getByRole("button", { name: "Marcar «Escribir 20 minutos» como hecha" });
+  await primera.click();
+  await expect(page.getByRole("button", { name: "Desmarcar «Escribir 20 minutos»" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Marcar «Ordenar el escritorio» como hecha" }).click();
+  await expect(page.getByText("¡Día completo! Sumaste el bono del día.")).toBeVisible();
+  await expect(page.locator(".cg-cifras dd").first()).toHaveText("4");
+  const m = llamadas.filter((l) => l.nombre === "marcar_libre").map((l) => l.cuerpo);
+  expect(m[0]).toEqual({ p_accion: "al1", p_fecha: HOY, p_hecha: true });
+
+  await page.getByRole("button", { name: "Quiero acompañamiento" }).click();
+  await page.getByRole("radio", { name: /Acompañamiento cercano/ }).check();
+  await page.getByRole("button", { name: "Avisar a Rumbo" }).click();
+  await expect(page.getByText(/Te escribiremos a tu correo en hasta/)).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "pedir_acompanamiento_libre")!.cuerpo).toEqual({ p_apoyo: "cercano" });
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/3-espacio-gratis-${test.info().project.name}.png`, fullPage: true });
+});
+
 test("enlace del correo vencido: «Este enlace ya no sirve.» y el token sale de la URL", async ({ page }) => {
   const llamadas = await simular(page, baseInicial());
   await page.goto("mi-espacio/entrar/?th=pin-vencido&type=email");
