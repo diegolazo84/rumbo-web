@@ -2088,7 +2088,7 @@ a.as-linea__numero { display: inline-flex; min-block-size: 44px; align-items: ce
 .cg-accion__estado { font-size: var(--t-xs); font-weight: 600; color: var(--bosque); }
 .cg-accion:disabled { cursor: progress; opacity: .7; }
 .cg-semana { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin: 0; padding: 0; list-style: none; }
-.cg-dia { display: grid; justify-items: center; gap: 6px; padding-block: 8px; border-radius: var(--r-s, 8px); font-size: var(--t-xs); color: var(--tinta-suave); }
+.cg-dia { display: grid; justify-items: center; gap: 6px; padding-block: 8px; border-radius: var(--r-s); font-size: var(--t-xs); color: var(--tinta-suave); }
 .cg-dia--actual { background: var(--niebla); color: var(--tinta); font-weight: 600; }
 .cg-dia__punto { inline-size: 14px; block-size: 14px; border-radius: 50%; border: 2px solid var(--linea); }
 .cg-dia--completo .cg-dia__punto { background: var(--bosque); border-color: var(--bosque); }
