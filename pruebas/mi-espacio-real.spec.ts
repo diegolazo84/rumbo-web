@@ -264,7 +264,8 @@ test("con Google: abre Google con la vuelta a esta ruta, entra con los tokens y 
   });
   await page.goto("mi-espacio/entrar/");
   await hidratar(page);
-  await expect(page.getByText("o recibe un código en tu correo")).toBeVisible();
+  await expect(page.getByText("o con tu correo", { exact: true })).toBeVisible();
+  await expect(page.getByText("Te enviamos un código de 6 dígitos para entrar. No necesitas contraseña.")).toBeVisible();
   await sinViolaciones(page);
   await page.getByRole("button", { name: "Continuar con Google" }).click();
   await expect.poll(() => autorizar?.searchParams.get("provider")).toBe("google");
@@ -278,6 +279,29 @@ test("con Google: abre Google con la vuelta a esta ruta, entra con los tokens y 
   await page.waitForURL(/\/mi-espacio\/$/);
   expect(page.url()).not.toContain("access_token");
   await expect(page.getByText("Escribir 30 minutos").first()).toBeVisible();
+});
+
+test("cuenta gratis abierta: el ingreso ofrece «Ya tengo cuenta» y «Crear cuenta gratis», con el mismo código", async ({ page }) => {
+  test.skip(!operacion.cuentaGratis, "solo con la cuenta gratis encendida (CUENTA_GRATIS=1)");
+  const llamadas = await simular(page, baseInicial());
+  await page.goto("mi-espacio/entrar/");
+  await hidratar(page);
+  await expect(page.getByRole("button", { name: "Ya tengo cuenta" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("h1")).toHaveText("Entra a tu espacio.");
+  await sinViolaciones(page);
+  await page.getByRole("button", { name: "Crear cuenta gratis" }).first().click();
+  await expect(page.locator("h1")).toHaveText("Crea tu cuenta gratis.");
+  await expect(page.getByText("Sin tarjeta y sin contraseña.", { exact: false })).toBeVisible();
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/1-crear-cuenta-${test.info().project.name}.png`, fullPage: true });
+  await page.locator("#entrar-correo").fill("nueva@correo.cl");
+  await page.getByRole("button", { name: "Crear mi cuenta" }).click();
+  await expect(page.locator("h1")).toHaveText("Revisa tu correo.");
+  await expect(page.getByText(/Te enviamos un código de 6 dígitos a nueva@correo.cl/)).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "otp")!.cuerpo.create_user).toBe(true);
+  // ?crear=1 abre directo la creación (enlaces desde la portada).
+  await page.goto("mi-espacio/entrar/?crear=1");
+  await hidratar(page);
+  await expect(page.locator("h1")).toHaveText("Crea tu cuenta gratis.");
 });
 
 test("con Google: si Google devuelve un error, se queda en el ingreso con un aviso claro", async ({ page }) => {

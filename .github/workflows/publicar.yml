@@ -74,6 +74,7 @@ jobs:
     env:
       MI_ESPACIO_PROPIO: "1"
       INGRESO_GOOGLE: "1"
+      CUENTA_GRATIS: "1"
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6

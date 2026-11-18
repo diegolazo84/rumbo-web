@@ -181,6 +181,7 @@ export default function EntrarReal() {
       aviso={aviso}
       alPedir={pedir}
       alGoogle={operacion.ingresoGoogle ? conGoogle : undefined}
+      conCuentaGratis={operacion.cuentaGratis}
     />
   );
 }

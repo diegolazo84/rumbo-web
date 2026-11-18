@@ -12,6 +12,7 @@ import { Aviso } from "../../../components/Bloques";
 import { Icono, Tostada } from "../../../components/app";
 import { CampoTexto, Casilla, Envio, Formulario } from "../../../components/form";
 import { participante } from "../../../data/ejemplo-app";
+import { operacion } from "../../../data/rumbo";
 import { ENLACE_VENCIDO, ENTRAR, LIMITES, REVISA_CORREO } from "../../../data/formularios";
 import type { PropsPantalla } from "../registro";
 import { Cabeza, EtiquetaEjemplo, useEspacio } from "./comun";
@@ -54,6 +55,10 @@ type PropsPedir = {
   // Con Google: solo cuando el proveedor está activo en Supabase (operacion.ingresoGoogle).
   // Devuelve "red" si no se pudo abrir Google; si se abre, el navegador sale de la página.
   alGoogle?: (compartido: boolean) => Promise<"red" | "ok">;
+  // Cuenta gratis abierta: dos caminos al llegar («Ya tengo cuenta» / «Crear cuenta gratis»).
+  // Técnicamente es lo mismo (sin contraseña, el código o Google crean la cuenta si no existe):
+  // cambian los textos para que cada persona sepa dónde está.
+  conCuentaGratis?: boolean;
 };
 
 // Logo oficial de Google para el botón de ingreso (pautas de marca de Google Identity).
@@ -68,7 +73,7 @@ function LogoGoogle() {
   );
 }
 
-export function PedirCodigo({ aviso, alPedir, alGoogle }: PropsPedir) {
+export function PedirCodigo({ aviso, alPedir, alGoogle, conCuentaGratis }: PropsPedir) {
   const { R } = useEspacio();
   const [tostada, setTostada] = useState<string | null>(aviso ?? null);
   const navegar = useNavigate();
@@ -81,13 +86,30 @@ export function PedirCodigo({ aviso, alPedir, alGoogle }: PropsPedir) {
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [abriendoGoogle, setAbriendoGoogle] = useState(false);
+  const [modo, setModo] = useState<"entrar" | "crear">("entrar");
+  // ?crear=1 abre directo «Crear cuenta gratis» (enlaces desde la portada). Se lee al hidratar.
+  useEffect(() => {
+    if (conCuentaGratis && new URLSearchParams(window.location.search).get("crear") === "1") setModo("crear");
+  }, [conCuentaGratis]);
+  const crear = conCuentaGratis && modo === "crear";
+  const titulo = crear ? ENTRAR.crear.titulo : ENTRAR.titulo;
+  const bajada = crear ? ENTRAR.crear.bajada : conCuentaGratis ? ENTRAR.entrarAbierto.bajada : alGoogle ? ENTRAR.bajadaGoogle : ENTRAR.bajada;
   const campo = useRef<HTMLInputElement>(null);
   const temporizador = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(temporizador.current), []);
 
   return (
     <div className="me-pantalla me-ingreso">
-      <Cabeza ojo={ENTRAR.ojo} titulo={ENTRAR.titulo} tamaño="titulo" bajada={alGoogle ? ENTRAR.bajadaGoogle : ENTRAR.bajada} />
+      {conCuentaGratis && (
+        <div className="me-modos" role="group" aria-label={ENTRAR.modos.leyenda}>
+          {(["entrar", "crear"] as const).map((m) => (
+            <button key={m} type="button" className="me-modos__boton" aria-pressed={modo === m} onClick={() => setModo(m)}>
+              {ENTRAR.modos[m]}
+            </button>
+          ))}
+        </div>
+      )}
+      <Cabeza ojo={ENTRAR.ojo} titulo={titulo} tamaño="titulo" bajada={bajada} />
       {alGoogle && (
         <div className="me-google">
           <button
@@ -107,7 +129,7 @@ export function PedirCodigo({ aviso, alPedir, alGoogle }: PropsPedir) {
             }}
           >
             <LogoGoogle />
-            <span>{abriendoGoogle ? ENTRAR.google.abriendo : ENTRAR.google.boton}</span>
+            <span>{abriendoGoogle ? ENTRAR.google.abriendo : crear ? ENTRAR.crear.google : ENTRAR.google.boton}</span>
           </button>
           <p className="me-google__o" aria-hidden="true">
             <span>{ENTRAR.google.separador}</span>
@@ -144,6 +166,7 @@ export function PedirCodigo({ aviso, alPedir, alGoogle }: PropsPedir) {
           id="entrar-correo"
           ref={campo}
           etiqueta={ENTRAR.correo.etiqueta}
+          ayuda={ENTRAR.ayudaCodigo}
           {...ENTRAR.correo.atributos}
           spellCheck={false}
           autoCapitalize="none"
@@ -163,15 +186,30 @@ export function PedirCodigo({ aviso, alPedir, alGoogle }: PropsPedir) {
         >
           {ENTRAR.compartido.etiqueta}
         </Casilla>
-        <Envio className="me-envio-ancho" texto={ENTRAR.boton} textoEnviando={ENTRAR.enviando} enviando={enviando} alerta={alerta} />
+        <Envio className="me-envio-ancho" texto={crear ? ENTRAR.crear.boton : ENTRAR.boton} textoEnviando={ENTRAR.enviando} enviando={enviando} alerta={alerta} />
       </Formulario>
 
       <div className="me-ingreso__notas">
-        <p>
-          {ENTRAR.nota.antes}
-          <Link to={R.postular}>{ENTRAR.nota.enlace}</Link>
-          {ENTRAR.nota.despues}
-        </p>
+        {crear ? (
+          <p>
+            {ENTRAR.crear.nota}
+            <Link to={R.postular}>{ENTRAR.crear.notaEnlace}</Link>.
+          </p>
+        ) : conCuentaGratis ? (
+          <p>
+            {ENTRAR.entrarAbierto.nota}
+            <button type="button" className="me-ingreso__enlace" onClick={() => setModo("crear")}>
+              {ENTRAR.entrarAbierto.notaBoton}
+            </button>
+            .
+          </p>
+        ) : (
+          <p>
+            {ENTRAR.nota.antes}
+            <Link to={R.postular}>{ENTRAR.nota.enlace}</Link>
+            {ENTRAR.nota.despues}
+          </p>
+        )}
         <p>{ENTRAR.nota2}</p>
       </div>
       <Aviso icono="lock">{ENTRAR.avisoLock}</Aviso>
@@ -217,7 +255,7 @@ export function RevisaCorreo({ alVerificar, alReenviar, remitente = REMITENTE_EJ
         bajada={
           <>
             <p>
-              {REVISA_CORREO.texto("\u0000")
+              {(operacion.cuentaGratis ? REVISA_CORREO.textoAbierto : REVISA_CORREO.texto)("\u0000")
                 .split("\u0000")
                 .flatMap((parte, i) => (i === 0 ? [parte] : [<strong key="correo" className="me-ingreso__correo">{correo}</strong>, parte]))}
             </p>

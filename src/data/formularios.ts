@@ -516,7 +516,28 @@ export const ENTRAR = {
   titulo: "Entra a tu espacio.",
   bajada: "Escribe el correo con el que acordamos tu programa. Te enviaremos un código para entrar, sin contraseña.",
   bajadaGoogle: "Entra con la cuenta de Google o el correo con que acordamos tu programa. Sin contraseñas.",
-  google: { boton: "Continuar con Google", abriendo: "Abriendo Google…", separador: "o recibe un código en tu correo" },
+  google: { boton: "Continuar con Google", abriendo: "Abriendo Google…", separador: "o con tu correo" },
+  // El código reemplaza a la contraseña: se explica bajo el campo del correo.
+  ayudaCodigo: "Te enviamos un código de 6 dígitos para entrar. No necesitas contraseña.",
+  // Cuenta gratis abierta (operacion.cuentaGratis): dos caminos claros al llegar.
+  modos: {
+    leyenda: "¿Ya tienes cuenta en Rumbo?",
+    entrar: "Ya tengo cuenta",
+    crear: "Crear cuenta gratis",
+  },
+  crear: {
+    titulo: "Crea tu cuenta gratis.",
+    bajada: "Ordena tu semana con una meta y hasta 3 acciones diarias. Sin tarjeta y sin contraseña.",
+    google: "Registrarme con Google",
+    boton: "Crear mi cuenta",
+    nota: "¿Prefieres empezar con un coach desde el primer día? ",
+    notaEnlace: "Cuéntanos tu meta",
+  },
+  entrarAbierto: {
+    bajada: "Entra con Google o con tu correo.",
+    nota: "¿Todavía no tienes cuenta? ",
+    notaBoton: "Crea tu cuenta gratis",
+  },
   correo: { etiqueta: "Tu correo", atributos: { type: "email", autoComplete: "email", inputMode: "email" } },
   compartido: { etiqueta: "Estoy en un computador compartido", ayuda: "Tu sesión se cierra al cerrar el navegador." },
   boton: "Enviarme el código",
@@ -536,6 +557,9 @@ export const REVISA_CORREO = {
   titulo: "Revisa tu correo.",
   texto: (correo: string) =>
     `Si ${correo} tiene un espacio en Rumbo, te enviamos un código de 6 dígitos. Llega en unos minutos y sirve una sola vez durante 1 hora.`,
+  // Con la cuenta gratis abierta, todo correo recibe su código (si no tiene cuenta, se crea al entrar).
+  textoAbierto: (correo: string) =>
+    `Te enviamos un código de 6 dígitos a ${correo}. Llega en unos minutos y sirve una sola vez durante 1 hora.`,
   cambiar: "¿No es tu correo? Cambiarlo",
   codigo: {
     etiqueta: "Código de 6 dígitos",

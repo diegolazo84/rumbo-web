@@ -38,6 +38,14 @@ const MI_ESPACIO_FORZADO =
     ? __MI_ESPACIO_PROPIO__ === true
     : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.MI_ESPACIO_PROPIO === "1";
 const ESPACIO_PROPIO = MI_ESPACIO_PROPIO || MI_ESPACIO_FORZADO;
+// Cuenta gratis «Rumbo Inicial»: el ingreso muestra «Ya tengo cuenta» y «Crear cuenta gratis».
+// true SOLO cuando el módulo «cuenta_gratis» esté habilitado (docs/cuenta-gratis.md).
+const CUENTA_GRATIS_ACTIVA = false;
+const CUENTA_GRATIS =
+  CUENTA_GRATIS_ACTIVA ||
+  (typeof __CUENTA_GRATIS__ !== "undefined"
+    ? __CUENTA_GRATIS__ === true
+    : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.CUENTA_GRATIS === "1");
 // «Continuar con Google»: apagado hasta que Diego active Google en Supabase (docs/ingreso-google.md).
 const INGRESO_GOOGLE_ACTIVO = false;
 const INGRESO_GOOGLE =
@@ -126,6 +134,8 @@ export const operacion = {
   // proveedor Google en Supabase (docs/ingreso-google.md); si no, el botón daría error.
   // Variable de build INGRESO_GOOGLE=1 para verlo en pruebas.
   ingresoGoogle: INGRESO_GOOGLE,
+  // Ingreso con dos caminos (entrar / crear cuenta gratis). Build CUENTA_GRATIS=1 para pruebas.
+  cuentaGratis: CUENTA_GRATIS,
   correo: "rumbo.acompana@gmail.com" as string | null, // creado y aprobado por Diego el 8 de octubre de 2026
   acompanante: null as null | { nombre: string; rol: string; bio: string; foto?: string }, // foto: archivo en public/, p. ej. «acompanante.jpg» (la portada le antepone la base)
   // Decisión del 2 de octubre de 2026: se responde a todas las solicitudes, también a quien no avanza.
