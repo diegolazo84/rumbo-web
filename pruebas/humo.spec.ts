@@ -190,7 +190,7 @@ for (const p of paginas) {
       const page = await ctx.newPage();
       await page.goto(relativa(p.ruta));
       await expect(page.locator("h1")).toBeVisible();
-      await expect(page.locator("footer")).toContainText("Rumbo no es un servicio de salud ni de urgencias.");
+      await expect(page.locator("footer")).toContainText("Rumbo no es un servicio de urgencias.");
       if (p.id === "inicio") {
         // Contado desde los datos: 4 caminos, 2 precios y las preguntas que se publican hoy.
         await expect(page.locator("#areas .camino")).toHaveCount(areasPiloto.length);
@@ -739,9 +739,11 @@ test.describe("medidas de la portada", () => {
   // 19.800 px. La Etapa 0 de Rumbo 2.0 (12 de octubre) agregó «Lo que viene en Rumbo», pedido por
   // Diego, y el rótulo del ranking (19.923 px en CI): la meta pasó a 20.200 px. Ver docs/pendientes.md.
   // 21.200 px desde las fotos de la portada (nov-2026): inicio, caminos, cómo funciona y planes.
-  const META_19 = { alto: 21200, planes: 0.685 };
+  // 22.200 px desde el capítulo «No vas a estar solo en esto» (Diego, 18-nov-2026: el alma de
+  // Rumbo debe verse en la portada): medido 21.464 px, #planes al 69,0 %; la meta pasa al 70,5 %.
+  const META_19 = { alto: 22200, planes: 0.705 };
 
-  test("a 390 px la portada no pasa de 21.200 px y #planes empieza antes del 68,5 % (aceptación 19)", async ({ page }) => {
+  test("a 390 px la portada no pasa de 22.200 px y #planes empieza antes del 70,5 % (aceptación 19)", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("./");
     await esperarHidratacion(page);
@@ -816,7 +818,7 @@ for (const ruta of [...paginas.map((p) => p.ruta), "/no-existe/"]) {
   test(`el aviso de crisis está completo en ${ruta}`, async ({ page }) => {
     await page.goto(relativa(ruta));
     const pie = page.locator("footer");
-    await expect(pie).toContainText("Rumbo no es un servicio de salud ni de urgencias.");
+    await expect(pie).toContainText("Rumbo no es un servicio de urgencias.");
     // El *4141 va destacado y sin enlace: iOS no marca enlaces tel: con «*».
     await expect(pie.locator("strong", { hasText: "*4141" }).first()).toBeVisible();
     await expect(pie.locator('a:has-text("*4141")')).toHaveCount(0);

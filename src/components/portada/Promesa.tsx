@@ -1,7 +1,7 @@
 // Capítulo 1: Promesa. Rediseño de nov-2026: la audacia de la portada está aquí, en una sola
-// fotografía real, grande y cálida, a sangre hacia el borde derecho desde 1024 px. El texto le
-// habla primero al nicho del grupo fundador (tesis o emprendimiento detenido) sin cerrar los
-// otros caminos. Sin revelado al desplazar: es el primer pantallazo.
+// fotografía real, grande y cálida, a sangre hacia el borde derecho desde 1024 px. El texto es
+// general (Diego, 18-nov-2026): Rumbo sirve para metas de muchos tipos, también las cotidianas y
+// los hábitos que hacen bien, sin recalcar un nicho ni insistir en lo que no es. Sin revelado al desplazar: es el primer pantallazo.
 import { fotos } from "../../data/fotos";
 import { ListaCheck } from "../Bloques";
 import { Boton, BotonPostular } from "../Enlaces";
@@ -19,12 +19,13 @@ export default function Promesa() {
             Tu meta, convertida en una semana posible.
           </h1>
           <p className="portada-nicho">
-            ¿Llevas meses con la tesis o el emprendimiento detenido? Te armamos el plan, y cada semana una persona
-            revisa contigo cómo te fue y lo ajusta a tu vida.
+            Un proyecto, tus estudios, comer mejor, moverte más, dejar un mal hábito o, simplemente, ordenar tu semana.
+            Ordenamos tus ideas contigo, te armamos un plan a tu medida y una persona real te acompaña en todo el
+            proceso.
           </p>
           <p className="portada-foco">
-            También acompañamos metas de estudio y el orden de tu semana. Es en línea, en español y no es un servicio de
-            salud.
+            No necesitas saber por dónde partir ni hacerlo solo: lo que cambia tu vida es lo que logras sostener, semana
+            a semana. En línea y en español.
           </p>
           <div className="acciones">
             <BotonPostular ubicacion="portada" />
