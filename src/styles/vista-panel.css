@@ -107,6 +107,8 @@
 .pa-tramo__titulo { display: flex; align-items: baseline; gap: var(--e-2); margin-block-end: var(--e-3); font: 600 var(--t-h3)/1.25 var(--serif); }
 .pa-tramo__cuenta { font: 600 var(--t-s)/1 var(--sans); color: var(--tinta-suave); }
 .pa-tramo[data-tramo="pasado"] .pa-tramo__titulo { color: var(--terracota-texto); }
+/* En el tramo «Sin plazo» el título ya lo dice: no se repite en cada tarjeta. */
+.pa-tramo[data-tramo="sin"] .pa-vence--sin { display: none; }
 .pa-cola { list-style: none; display: grid; gap: var(--e-4); }
 .pa-cola { max-inline-size: 44rem; }
 /* Escritorio: cada pendiente es una fila (qué y de quién a la izquierda, botón a la derecha),
