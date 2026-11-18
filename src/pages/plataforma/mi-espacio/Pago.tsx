@@ -207,7 +207,6 @@ export function TarjetaPago() {
       <p>{pago.aviso_en ? T_PAGO.tarjetaAvisado : T_PAGO.tarjeta(`$${miles(pago.monto_clp)}`, diaMes(pago.vence))}</p>
       <Link to={R_PAGO} className="boton boton--primario">
         {T_PAGO.tarjetaVer}
-        <Icono nombre="arrow-right" tamaño={16} />
       </Link>
     </section>
     </div>

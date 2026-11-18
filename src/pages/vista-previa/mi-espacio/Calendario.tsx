@@ -282,7 +282,6 @@ function TuDiaDeHoy({ hoy, lista, enPrograma, empieza, onVer }: { hoy: Iso; list
           <BarraProgreso valor={hechas} maximo={del.length} etiqueta={T.barra} textoValor={T.valor(hechas, del.length)} />
           <button type="button" className="boton boton--primario me-plan-hoy__boton" onClick={onVer}>
             {T.ver}
-            <Icono nombre="arrow-right" tamaño={16} />
           </button>
         </>
       ) : (
@@ -304,7 +303,6 @@ function LoQueConstruyes({ metas }: { metas: Meta[] }) {
         </h2>
         <Link to={R.metas} className="enlace-flecha me-construyendo__ver">
           {T.ver}
-          <Icono nombre="arrow-right" tamaño={16} />
         </Link>
       </div>
       {metas.length ? (

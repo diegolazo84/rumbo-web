@@ -162,15 +162,16 @@ type PasosProps = {
   lectura?: boolean; // páginas de lectura: número en terracota-texto y sin ruta
   nivelTitulo?: "h2" | "h3"; // h2 con estilo h3 en Privacidad y Condiciones
   className?: string;
+  indice?: string; // documentos largos: índice «En esta página» con anclas a cada sección (prefijo de id)
 };
 
-export function Pasos({ pasos, lectura, nivelTitulo = "h3", className }: PasosProps) {
+export function Pasos({ pasos, lectura, nivelTitulo = "h3", className, indice }: PasosProps) {
   const Titulo = nivelTitulo;
   const clases = ["pasos", lectura && "pasos--lectura", className].filter(Boolean).join(" ");
-  return (
+  const lista = (
     <ol className={clases}>
       {pasos.map((p, i) => (
-        <li key={i}>
+        <li key={i} id={indice ? `${indice}-${i + 1}` : undefined}>
           <span className="paso-numero" aria-hidden="true">
             {i + 1}
           </span>
@@ -186,5 +187,22 @@ export function Pasos({ pasos, lectura, nivelTitulo = "h3", className }: PasosPr
         </li>
       ))}
     </ol>
+  );
+  if (!indice) return lista;
+  // Rediseño nov-2026: en documentos largos, un índice plegable para ir directo a una sección.
+  return (
+    <>
+      <details className="indice">
+        <summary>En esta página: {pasos.length} secciones</summary>
+        <ol>
+          {pasos.map((p, i) => (
+            <li key={i}>
+              <a href={`#${indice}-${i + 1}`}>{p.titulo}</a>
+            </li>
+          ))}
+        </ol>
+      </details>
+      {lista}
+    </>
   );
 }

@@ -323,7 +323,6 @@ function Logros({ lista, ruta }: { lista: Reconocimiento[]; ruta: string }) {
       )}
       <Link to={ruta} className="ml-enlace ic-logros__ver">
         {T.logros.ver}
-        <Icono nombre="arrow-right" tamaño={16} />
       </Link>
     </section>
   );

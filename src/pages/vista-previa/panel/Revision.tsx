@@ -203,7 +203,6 @@ export function FormularioRevision(d: DatosRevision) {
               />
               <Link to={d.constructor} className="enlace-flecha">
                 {REVISION.ajustamos.constructor}
-                <Icono nombre="arrow-right" tamaño={16} />
               </Link>
             </div>
             <CampoArea

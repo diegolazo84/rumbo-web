@@ -351,7 +351,6 @@ function ListaSolicitudes({ lista }: { lista: SolicitudAjuste[] }) {
                 {s.estado === "respondida" && (
                   <Link to={R.calendario} className="enlace-flecha">
                     {T_AJUSTE.lista.verCambios}
-                    <Icono nombre="arrow-right" tamaño={16} />
                   </Link>
                 )}
               </li>
