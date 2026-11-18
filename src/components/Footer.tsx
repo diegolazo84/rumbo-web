@@ -95,9 +95,9 @@ export default function Footer() {
           </nav>
         </div>
 
-        <Aviso icono="phone" titulo="Rumbo no es un servicio de salud ni de urgencias." className="pie-aviso">
+        <Aviso icono="phone" titulo="Si necesitas ayuda urgente" className="pie-aviso">
           <p>
-            No diagnostica ni reemplaza a profesionales.{" "}
+            Rumbo no es un servicio de urgencias.{" "}
             <strong>Si piensas en hacerte daño o en quitarte la vida, llama gratis al *4141 desde tu celular</strong>{" "}
             (Línea de Prevención del Suicidio, 24 horas). En una emergencia médica, llama al{" "}
             <strong>

@@ -65,12 +65,14 @@ export default function ParaQuien() {
           </p>
         </div>
 
-        {/* Aviso de salud: siempre visible, sin revelado. */}
-        <Aviso icono="shield-check" titulo="Rumbo no es un servicio de salud." className="aviso-salud">
+        {/* Aviso de salud: siempre visible. Dice en positivo cómo aporta Rumbo y deja claro el límite
+            (sin diagnóstico ni tratamiento), con las líneas de crisis siempre a la vista. */}
+        <Aviso icono="shield-check" titulo="Hábitos que te hacen bien, junto a tu profesional de salud." className="aviso-salud">
           <p>
-            Es un servicio de organización personal y acompañamiento: no diagnostica, no indica tratamientos ni dietas y
-            no reemplaza a psicólogos, médicos, nutricionistas ni otros profesionales. Si tienes indicaciones de un
-            profesional, te ayudamos a llevarlas a tu semana sin modificarlas.{" "}
+            Ordenar tu semana, dormir a tu hora y hacerte tiempo para lo que te hace bien también cuida tu salud
+            física y mental, y en Rumbo te ayudamos a sostenerlo. No diagnosticamos ni indicamos tratamientos o dietas, y no reemplazamos a
+            psicólogos, médicos ni nutricionistas: si tienes indicaciones de un profesional, las llevamos a tu semana
+            tal como te las dieron.{" "}
             <strong>
               Si hoy te sientes en peligro o sin salida, no esperes a postular: llama gratis al *4141 desde tu celular
               (24 horas) o al <a href="tel:131">131</a>.

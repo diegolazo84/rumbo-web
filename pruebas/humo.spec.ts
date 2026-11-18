@@ -190,7 +190,7 @@ for (const p of paginas) {
       const page = await ctx.newPage();
       await page.goto(relativa(p.ruta));
       await expect(page.locator("h1")).toBeVisible();
-      await expect(page.locator("footer")).toContainText("Rumbo no es un servicio de salud ni de urgencias.");
+      await expect(page.locator("footer")).toContainText("Rumbo no es un servicio de urgencias.");
       if (p.id === "inicio") {
         // Contado desde los datos: 4 caminos, 2 precios y las preguntas que se publican hoy.
         await expect(page.locator("#areas .camino")).toHaveCount(areasPiloto.length);
@@ -816,7 +816,7 @@ for (const ruta of [...paginas.map((p) => p.ruta), "/no-existe/"]) {
   test(`el aviso de crisis está completo en ${ruta}`, async ({ page }) => {
     await page.goto(relativa(ruta));
     const pie = page.locator("footer");
-    await expect(pie).toContainText("Rumbo no es un servicio de salud ni de urgencias.");
+    await expect(pie).toContainText("Rumbo no es un servicio de urgencias.");
     // El *4141 va destacado y sin enlace: iOS no marca enlaces tel: con «*».
     await expect(pie.locator("strong", { hasText: "*4141" }).first()).toBeVisible();
     await expect(pie.locator('a:has-text("*4141")')).toHaveCount(0);

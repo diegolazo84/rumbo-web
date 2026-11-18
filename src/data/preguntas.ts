@@ -142,7 +142,7 @@ const fabricas: Fabrica[] = [
     grupo: "precio",
     pregunta: "¿Qué plan me conviene?",
     respuesta: [
-      "Con acompañamiento, si prefieres escribir, tienes horarios variables o vives en otro huso horario: revisamos tu semana por escrito. Acompañamiento cercano, si prefieres conversarlo o tus semanas cambian mucho: hablamos 20 minutos cada semana por videollamada. Ninguno de los dos es atención de salud. Si no lo tienes claro, postula sin elegir plan y lo vemos contigo.",
+      "Con acompañamiento, si prefieres escribir, tienes horarios variables o vives en otro huso horario: revisamos tu semana por escrito. Acompañamiento cercano, si prefieres conversarlo o tus semanas cambian mucho: hablamos 20 minutos cada semana por videollamada. Si no lo tienes claro, postula sin elegir plan y lo vemos contigo.",
     ],
   }),
   (op) =>
