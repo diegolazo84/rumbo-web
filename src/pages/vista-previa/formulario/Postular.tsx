@@ -23,7 +23,6 @@ import {
   Opcion,
   ResumenErrores,
 } from "../../../components/form";
-import { Icono } from "../../../components/app";
 import {
   APOYO_POR_PARAM,
   AREA_POR_PARAM,
@@ -685,7 +684,6 @@ export default function Postular({ estado = "solicitud" }: PropsPantalla) {
               {POSTULAR.interes.volver.slice(0, POSTULAR.interes.volver.lastIndexOf(" ") + 1)}
               <span className="nowrap">
                 {POSTULAR.interes.volver.slice(POSTULAR.interes.volver.lastIndexOf(" ") + 1)}
-                <Icono nombre="arrow-right" tamaño={16} />
               </span>
             </span>
           </Link>

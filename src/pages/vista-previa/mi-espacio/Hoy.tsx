@@ -440,7 +440,6 @@ function SinAccionesHoy() {
         <p className="me-bloque__bajada">{T_HOY.vacio.texto}</p>
         <Link to={R.calendario} className="enlace-flecha">
           {T_HOY.vacio.verPlan}
-          <Icono nombre="arrow-right" tamaño={16} />
         </Link>
       </div>
     </div>
@@ -552,7 +551,6 @@ function Novedades() {
                 <span>{n.texto}</span>{" "}
                 <span className="me-novedades__enlace">
                   {n.enlace}
-                  <Icono nombre="arrow-right" tamaño={16} />
                 </span>
               </Link>
             </li>
@@ -569,7 +567,6 @@ function Novedades() {
             <p>{n.texto}</p>
             <Link to={n.ruta ?? DESTINO_NOVEDAD[n.destino]} className="enlace-flecha" onClick={() => servidor?.verNovedad(n.id)}>
               {n.enlace}
-              <Icono nombre="arrow-right" tamaño={16} />
             </Link>
           </div>
         </div>
@@ -860,7 +857,6 @@ export function ResumenAvance({ progreso }: { progreso: Progreso }) {
       </div>
       <Link to={R.progreso} className="enlace-flecha">
         {T_HOY.resumen.enlace}
-        <Icono nombre="arrow-right" tamaño={16} />
       </Link>
     </section>
   );

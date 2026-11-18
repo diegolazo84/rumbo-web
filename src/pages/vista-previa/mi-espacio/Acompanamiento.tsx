@@ -304,7 +304,6 @@ function EstaSemana({ hoy, esc }: { hoy: Iso; esc: Escenario }) {
       </ol>
       <Link to={R.calendario} className="enlace-flecha me-acomp-semana__plan">
         {S.verPlan}
-        <Icono nombre="arrow-right" tamaño={16} />
       </Link>
     </section>
   );
@@ -413,7 +412,6 @@ function Historial({ hoy, esc }: { hoy: Iso; esc: Escenario }) {
                 {it.ruta && it.enlace && (
                   <Link to={it.ruta} className="enlace-flecha">
                     {it.enlace}
-                    <Icono nombre="arrow-right" tamaño={16} />
                   </Link>
                 )}
               </div>

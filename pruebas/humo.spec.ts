@@ -22,7 +22,6 @@ import {
   planes,
   planesIncluyen,
   reglasCreditos,
-  reglasCreditosTextos,
 } from "../src/data/rumbo";
 import { buscarMarcadores } from "../scripts/marcadores.mjs";
 import { MI_ESPACIO } from "../src/data/formularios";
@@ -318,17 +317,17 @@ test("accesibilidad con estados abiertos: menú, detalles y acciones marcadas", 
 test("el calendario de ejemplo es interactivo tras hidratar", async ({ page }) => {
   await page.goto("./");
   await esperarHidratacion(page);
-  const creditos = page.locator(".calendario-creditos");
+  // Desde nov-2026 la portada no muestra créditos, niveles ni rachas (quedan en Mi espacio).
+  const cuenta = page.locator(".calendario-creditos");
   const anuncio = page.locator('.calendario [aria-live="polite"]');
-  await expect(creditos).toHaveText("9 créditos");
-  await expect(page.locator(".calendario")).not.toContainText("Día completo");
+  await expect(cuenta).toHaveText("0 de 5 hechas");
+  await expect(page.locator(".calendario")).not.toContainText(/crédito|Nivel|Día completo/);
   const antes = await anuncio.textContent();
   await page.getByLabel(/Reservar 2 bloques de trabajo/).check();
-  // 1 por la acción + 2 por día completo (martes tiene una sola acción).
-  await expect(creditos).toHaveText("12 créditos");
-  await expect(page.locator(".calendario")).toContainText("Día completo · +2");
-  await expect(anuncio).toHaveText("12 créditos. Nivel 2, Impulso.");
+  await expect(cuenta).toHaveText("1 de 5 hechas");
+  await expect(anuncio).toHaveText("1 de 5 acciones marcadas.");
   expect(await anuncio.textContent()).not.toBe(antes);
+  await expect(page.locator(".calendario .accion-ficha")).toHaveCount(0);
 });
 
 test("menú móvil: abre, Escape, toque fuera y Tab fuera lo cierran", async ({ page, isMobile }) => {
@@ -675,19 +674,13 @@ test.describe("coherencia de datos", () => {
     expect(await listaTras(encabezado(page.locator("main"), "Quién puede participar"))).toEqual(noEsParaTi.map(normal));
   });
 
-  test("reglas de créditos: portada, calendario y Condiciones usan reglasCreditos", async ({ page }) => {
+  test("reglas de créditos: fuera de la portada y completas en Condiciones", async ({ page }) => {
     const r = reglasCreditos;
+    // Decisión de Diego (18-nov-2026): niveles, créditos y rachas no se venden en la portada.
     await page.goto("./");
-    const reglas = await page
-      .locator("#comunidad li")
-      .evaluateAll((lis) => lis.map((li) => li.textContent ?? ""));
-    const esperadas = reglasCreditosTextos().map(normal);
-    const inicio = reglas.map(normal).indexOf(esperadas[0]);
-    expect(inicio, "las reglas de créditos no están en #comunidad").toBeGreaterThanOrEqual(0);
-    expect(reglas.map(normal).slice(inicio, inicio + esperadas.length)).toEqual(esperadas);
-    await expect(page.locator(".calendario")).toContainText(
-      `+${r.porAccion} crédito por acción y +${r.bonoDiaCompleto} si completas el día; con ${r.diasRachaMedia} días completos seguidos, ese bono sube a ${r.bonoRacha3}.`,
-    );
+    // Solo queda la mención factual en las listas de lo incluido (igual que en Condiciones).
+    await expect(page.locator("main")).not.toContainText(/Nivel \d|crédito por acción|días completos seguidos|no se canjean/);
+    await expect(page.locator("#comunidad, .ranking-tarjeta, .calendario-nivel, .calendario-progreso")).toHaveCount(0);
 
     await page.goto("condiciones/");
     const main = page.locator("main");
@@ -844,24 +837,21 @@ test("404: axe y objetivos táctiles", async ({ page, isMobile }) => {
   if (isMobile) expect(await objetivosChicos(page)).toEqual([]);
 });
 
-test("cursivas de titular solo donde van y encabezados de la portada a la izquierda", async ({ page }) => {
+test("sin palabras destacadas en los titulares y encabezados de la portada a la izquierda", async ({ page }) => {
+  // Rediseño de nov-2026: ningún titular destaca una palabra en cursiva o en otro color.
   const cursivas = () => page.locator("main").locator("h1 em, h2 em, h3 em").allTextContents();
   await page.goto("./");
-  expect(await cursivas()).toEqual(["semana posible.", "empezar."]);
-  await expect(page.locator("main h1 em")).toHaveText("semana posible.");
-  await expect(page.locator("main .cierre h2 em")).toHaveText("empezar.");
+  expect(await cursivas()).toEqual([]);
   const alineados = await page
     .locator("main section h2")
     .evaluateAll((hs) => hs.map((h) => [h.textContent, !!h.closest(".cierre"), getComputedStyle(h).textAlign]));
   for (const [texto, enCierre, alineacion] of alineados) {
     expect(alineacion, `alineación de «${texto}»`).toBe(enCierre ? "center" : "start");
   }
-  for (const ruta of ["privacidad/", "condiciones/", "ayuda/"]) {
+  for (const ruta of ["privacidad/", "condiciones/", "ayuda/", "no-existe/"]) {
     await page.goto(ruta);
     expect(await cursivas(), ruta).toEqual([]);
   }
-  await page.goto("no-existe/");
-  expect(await page.locator("main h1 em").allTextContents()).toEqual(["página."]);
 });
 
 test("Condiciones: «Imprimir o guardar» aparece al hidratar e imprime", async ({ browser, page, baseURL }) => {
@@ -931,7 +921,7 @@ test.describe("Etapa 0: proveedores reales y funciones futuras rotuladas", () =>
     await expect(viene.locator(".etiqueta")).toHaveText(["Todavía no disponible", "Más adelante"]);
     await expect(viene.locator("a, button")).toHaveCount(0); // sin botones de contratación
     await expect(viene).not.toContainText(/\b20\d\d\b/); // sin fechas de lanzamiento
-    await expect(page.locator(".ranking-tarjeta")).toContainText("Todavía no disponible");
+    await expect(page.locator(".ranking-tarjeta")).toHaveCount(0); // el ranking ya no se muestra en la portada
     const recibes = page.locator(".transparencia").first();
     await expect(recibes).not.toContainText(/foro|ranking|foto/i);
     await expect(page.locator("main")).not.toContainText(/comunidad es opcional|comunidad solo muestra/);

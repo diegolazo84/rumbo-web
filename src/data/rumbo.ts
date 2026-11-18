@@ -145,6 +145,12 @@ export const operacion = {
   } as null | { encaje: string; respuesta: string; condiciones: string },
   alojamientoVerificado: false, // true cuando Diego confirme qué infraestructura usa ChatGPT Sites (Privacidad §6)
   tamanoPrimerGrupo: 5 as number | null,
+  // Oferta del grupo fundador (aprobada por Diego el 18-nov-2026). Cada parte se publica SOLO con su dato:
+  // · conversacionEncaje: enlace de agenda (p. ej. Google Calendar) para conversar antes de pagar.
+  // · garantiaPrimeraSemana: se enciende cuando la revisión legal la apruebe y Condiciones la incluya
+  //   (hoy las condiciones devuelven el 100 % solo antes del inicio).
+  conversacionEncaje: null as null | { minutos: number; agenda: string },
+  garantiaPrimeraSemana: false,
   preseleccionVerificada: false, // ?area= y ?apoyo= preseleccionan el formulario (probado)
   // Valores de ?area= que solo entiende el formulario propio (plataforma 2.4 y 3.10).
   paramEstudio: (PROPIO ? "estudio" : null) as string | null, // valor de ?area= para «Estudio y aprendizaje»

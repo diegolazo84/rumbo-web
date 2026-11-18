@@ -735,7 +735,7 @@ a.accion__abrir, button.accion__abrir { cursor: pointer; }
 .hoja--celebracion .hoja__cabeza .boton-icono { position: absolute; inset-inline-end: 0; }
 .me-celebracion { display: grid; justify-items: center; gap: var(--e-3); }
 .me-celebracion__ilus { order: -2; inline-size: 120px; block-size: 120px; }
-.me-celebracion__ojo { order: -1; font: 600 var(--t-micro)/1.2 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--terracota-texto); }
+.me-celebracion__ojo { order: -1; font: 600 var(--t-micro)/1.2 var(--sans); color: var(--terracota-texto); }
 .me-celebracion__siguiente { inline-size: 100%; padding: 12px 16px; border-radius: var(--r-m); background: var(--superficie); }
 .me-celebracion__botones { display: grid; gap: 8px; inline-size: 100%; }
 @media (min-width: 1024px) {

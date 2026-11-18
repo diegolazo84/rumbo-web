@@ -2,7 +2,6 @@
 // su «para qué» y sus hitos (los mismos datos que ya lee Mi espacio). Reutiliza la tarjeta de
 // meta de Mis logros sin la barra de avance, para no repetir lo que se mide allá.
 import { Link } from "react-router-dom";
-import { Icono } from "../../../components/app";
 import { prepararLista, useEspacio } from "./comun";
 import { TarjetaMeta } from "./Progreso";
 import { AjustePlan, PestanasPlan, TituloSeccion } from "./Seccion";
@@ -35,7 +34,6 @@ export default function MisMetas() {
         <p>
           <Link to={R.progreso} className="enlace-flecha">
             {T_PLAN.verAvance}
-            <Icono nombre="arrow-right" tamaño={16} />
           </Link>
         </p>
       </section>

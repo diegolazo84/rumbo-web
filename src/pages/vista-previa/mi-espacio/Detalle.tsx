@@ -319,7 +319,6 @@ export default function Detalle({ o, hoy, enHoja, onRegistrar, fotoInicial, sinC
           </div>
           <Link to={rutaAjuste(o.id)} className="boton boton--secundario me-ajuste-tarjeta__boton">
             {T_DETALLE.ajusteCard.boton}
-            <Icono nombre="arrow-right" tamaño={16} />
           </Link>
         </section>
         <NoEsChat className="me-detalle__no-chat" />

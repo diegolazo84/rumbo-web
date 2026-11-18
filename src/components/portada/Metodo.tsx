@@ -94,14 +94,12 @@ export default function Metodo() {
   return (
     <section id="como-funciona" className="capitulo capitulo--oscuro">
       <div className="contenedor">
-        <div className="metodo-foto" data-revelar="">
+        <div className="metodo-foto">
           <Foto foto={fotos.comoFunciona} sizes="(min-width: 1184px) 1120px, calc(100vw - 32px)" />
         </div>
         <div className="partido">
           <Encabezado
-            revelar
             variante="partido"
-            ojo="Cómo funciona"
             titulo={
               // Grupos sin corte: ninguna línea queda con una sola palabra (aceptación 20).
               <>
@@ -112,7 +110,7 @@ export default function Metodo() {
             bajada="Ordenar, hacer y revisar. Así funciona el piloto, desde tu solicitud hasta el cierre de cada ciclo."
             acciones={<BotonPostular ubicacion="metodo" />}
           />
-          <div className="partido-contenido metodo" data-revelar="">
+          <div className="partido-contenido metodo">
             <Pasos pasos={pasos} />
             <Aviso icono="info">
               <p>
@@ -124,7 +122,7 @@ export default function Metodo() {
         </div>
 
         <hr className="separador" />
-        <div className="esperar" data-revelar="">
+        <div className="esperar">
           <h3 className="esperar-titulo">Lo que puedes esperar del piloto</h3>
           <ul className="esperar-lista">
             {esperar.map((e) => (

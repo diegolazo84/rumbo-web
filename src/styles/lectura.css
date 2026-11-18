@@ -78,3 +78,27 @@ a.recurso-numero { display: inline-flex; align-items: center; align-self: flex-s
   .paso-titulo { break-after: avoid; }
   .recurso, .lectura-plan { break-inside: avoid; }
 }
+
+/* 404: atajos a lo que más se busca (nov-2026). */
+.atajos { margin-block-start: var(--bloque); padding-block-start: var(--e-6); border-block-start: 1px solid var(--linea); text-align: center; }
+.atajos-titulo { font: 600 var(--t-s)/1.4 var(--sans); color: var(--tinta-suave); }
+.atajos ul { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: var(--e-1) var(--e-5); margin-block-start: var(--e-2); }
+.atajos a { display: inline-flex; align-items: center; min-block-size: 44px; font-weight: 600; }
+
+/* Índice de Privacidad y Condiciones (nov-2026): plegable para no empujar el contenido. */
+.indice { margin-block-end: var(--bloque); border: 1px solid var(--linea); border-radius: var(--r-m); background: var(--superficie); }
+.indice summary {
+  display: flex;
+  align-items: center;
+  min-block-size: 48px;
+  padding: var(--e-3) var(--e-5);
+  font: 600 var(--t-s)/1.4 var(--sans);
+  color: var(--bosque);
+  cursor: pointer;
+  border-radius: var(--r-m);
+}
+.indice ol { margin: 0; padding: 0 var(--e-5) var(--e-4) calc(var(--e-5) + 1.5em); display: grid; gap: 0; }
+.indice li::marker { color: var(--terracota-texto); font-variant-numeric: tabular-nums; }
+.indice a { display: inline-flex; min-block-size: 44px; align-items: center; font-size: var(--t-s); }
+@media (min-width: 600px) { .indice ol { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--e-6); } }
+@media print { .indice { display: none; } }

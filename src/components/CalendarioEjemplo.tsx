@@ -31,6 +31,8 @@ const semana: Dia[] = [
   },
 ];
 
+const TOTAL = semana.reduce((t, d) => t + d.acciones.length, 0);
+
 // Créditos acumulados en la semana 1 del ejemplo.
 const CREDITOS_PREVIOS = 9;
 
@@ -63,7 +65,14 @@ const PIE = t(
 const HOJA = { marcar: "Marcar como hecha", desmarcar: "Desmarcar", cerrar: "Cerrar", flexible: "Flexible" } as const;
 const nombreControl = (titulo: string) => `Marcar “${titulo}” como hecha`;
 
-export default function CalendarioEjemplo() {
+// Sin créditos (portada desde nov-2026, decisión de Diego): niveles, créditos y rachas se ven solo
+// dentro de Mi espacio. El ejemplo muestra la semana, las acciones y la nota de quien acompaña.
+const PIE_SIN_CREDITOS =
+  "Ejemplo interactivo con datos ficticios: toca una acción para ver su detalle y márcala cuando la harías.";
+
+type Props = { sinCreditos?: boolean };
+
+export default function CalendarioEjemplo({ sinCreditos }: Props = {}) {
   const [hechas, setHechas] = useState<Set<string>>(() => new Set());
   // Hoja de ejemplo abierta: la acción y su día. Al cerrarla, el foco vuelve a la fila.
   const [abierta, setAbierta] = useState<{ accion: Accion; dia: string } | null>(null);
@@ -99,8 +108,9 @@ export default function CalendarioEjemplo() {
     setHechas(nuevo);
     const c = calcular(nuevo).creditos;
     const n = nivelPara(c).actual;
-    setAviso(`${c} créditos. Nivel ${n.nivel}, ${n.nombre}.`);
-    setFicha(marca ? { id, clave: Date.now() } : null);
+    const marcadas = nuevo.size;
+    setAviso(sinCreditos ? `${marcadas} de ${TOTAL} acciones marcadas.` : `${c} créditos. Nivel ${n.nivel}, ${n.nombre}.`);
+    setFicha(marca && !sinCreditos ? { id, clave: Date.now() } : null);
     if (n.nivel > actual.nivel) setDestello((d) => d + 1);
     if (marca && !interactuo.current) {
       interactuo.current = true;
@@ -117,6 +127,11 @@ export default function CalendarioEjemplo() {
         </div>
         <div className="calendario-fila">
           <p className="calendario-titulo">Lanzar mi taller en línea</p>
+          {sinCreditos ? (
+            <p className="calendario-creditos">
+              {hechas.size} de {TOTAL} hechas
+            </p>
+          ) : (
           <p className="calendario-nivel">
             <Etiqueta
               key={destello}
@@ -129,6 +144,7 @@ export default function CalendarioEjemplo() {
             </Etiqueta>
             <span className="calendario-creditos">{creditos} créditos</span>
           </p>
+          )}
         </div>
       </div>
 
@@ -138,6 +154,7 @@ export default function CalendarioEjemplo() {
         ))}
       </div>
 
+      {!sinCreditos && (
       <div className="calendario-progreso">
         <div
           className="barra"
@@ -155,13 +172,14 @@ export default function CalendarioEjemplo() {
           {siguiente ? `${creditos} de ${hasta} créditos para llegar a ${siguiente.nombre}` : "Nivel máximo"}
         </p>
       </div>
+      )}
 
       <div className="calendario-dias">
         {semana.map((dia, d) => (
           <fieldset key={dia.nombre} className="dia">
             <legend>
               <span>{dia.nombre}</span>
-              {bonos[d] !== null && (
+              {!sinCreditos && bonos[d] !== null && (
                 <Etiqueta variante="activo">
                   Día completo · +{bonos[d]}
                 </Etiqueta>
@@ -228,7 +246,7 @@ export default function CalendarioEjemplo() {
       <p className="sr-only" aria-live="polite">
         {aviso}
       </p>
-      <figcaption className="calendario-pie">{PIE}</figcaption>
+      <figcaption className="calendario-pie">{sinCreditos ? PIE_SIN_CREDITOS : PIE}</figcaption>
 
       <dialog
         ref={hoja}

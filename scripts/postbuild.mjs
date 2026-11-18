@@ -194,6 +194,15 @@ function cabeza({
     .join("\n    ");
 }
 
+// Rediseño nov-2026: la foto de la portada es el elemento más grande del primer pantallazo.
+// Desde 1024 px se precarga (AVIF, mismo srcset que <Foto>) para que el LCP no espere al CSS; en
+// móvil va bajo el texto y no compite con las tipografías del H1, que es ahí el LCP.
+function precargaFotoPortada() {
+  const anchos = [640, 960, 1280];
+  const srcset = anchos.map((w) => `${BASE}fotos/portada-${w}.avif ${w}w`).join(", ");
+  return `<link rel="preload" as="image" type="image/avif" imagesrcset="${srcset}" imagesizes="50vw" media="(min-width: 1024px)" fetchpriority="high" />`;
+}
+
 // 6.5 Datos estructurados: solo hechos verificables. Sin precios (Offer), sin reseñas
 // ni valoraciones, sin dirección física, sin tipos médicos: Rumbo no es un prestador de salud.
 function jsonLd() {
@@ -307,7 +316,7 @@ for (const p of paginas) {
     indexable,
     sinAnalitica: p.analitica === false,
     supabase: Boolean(p.formulario),
-    extra: p.id === "inicio" ? jsonLd() : "",
+    extra: p.id === "inicio" ? precargaFotoPortada() + "\n    " + jsonLd() : "",
   });
   let html;
   if (p.formulario || p.perezosa) {

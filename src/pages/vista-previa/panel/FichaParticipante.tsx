@@ -407,7 +407,6 @@ function Ajustes({ p }: { p: Ficha }) {
             <p className="microcopia">{AJUSTES.enviadaEl(diaCorto(a.enviadaEl))}</p>
             <Link to={R.ajustes} className="enlace-flecha">
               {AJUSTES.responder}
-              <Icono nombre="arrow-right" tamaño={16} />
             </Link>
           </li>
         ))}
@@ -444,7 +443,6 @@ function Fotos({ p }: { p: Ficha }) {
           <p className="microcopia">{e.foto ? mayuscula(fechaLarga(e.fecha)) : `${FOTOS.sinFoto} · ${fechaLarga(e.fecha)}`}</p>
           <Link to={R.revisar} className="enlace-flecha">
             {FOTOS.aprobar} / {FOTOS.noAprobar}
-            <Icono nombre="arrow-right" tamaño={16} />
           </Link>
         </li>
       ))}

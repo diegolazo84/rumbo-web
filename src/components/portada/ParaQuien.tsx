@@ -11,34 +11,38 @@ export default function ParaQuien() {
   return (
     <section id="para-quien" className="capitulo capitulo--hondo">
       <div className="contenedor">
-        <Encabezado
-          revelar
-          ojo="Para quién"
-          titulo={
-            // Dos oraciones: la segunda empieza en su propia línea (.frase).
-            <>
-              Sabes lo que quieres cambiar. <span className="frase">Lo difícil es sostenerlo.</span>
-            </>
-          }
-          bajada="Muchas personas tienen clara la intención, pero les cuesta aterrizarla, ordenar prioridades y mantener el ritmo de una semana a otra. Otras todavía no tienen una meta clara. En los dos casos no tienes que armar el programa por tu cuenta ni volverte especialista en planificación: te lo entregamos hecho y te acompañamos a sostenerlo."
-        />
+        <div className="para-quien-cabeza">
+          <Encabezado
+            titulo={
+              // Dos oraciones: la segunda empieza en su propia línea (.frase).
+              <>
+                Sabes lo que quieres cambiar. <span className="frase">Lo difícil es sostenerlo.</span>
+              </>
+            }
+            bajada="Muchas personas tienen clara la intención, pero les cuesta aterrizarla, ordenar prioridades y mantener el ritmo de una semana a otra. Otras todavía no tienen una meta clara. En los dos casos no tienes que armar el programa por tu cuenta ni volverte especialista en planificación: te lo entregamos hecho y te acompañamos a sostenerlo."
+          />
+          {/* Posicionamiento (análisis de negocio, nov-2026): la diferencia con una app o un chat. */}
+          <blockquote className="diferencia">
+            <p>
+              Un plan te lo puede armar una app o un chat. Lo que no hacen es darse cuenta cuando lo dejas. En Rumbo,
+              una persona lo nota, te pregunta qué pasó y lo ajusta contigo.
+            </p>
+          </blockquote>
+        </div>
         {/* Párrafo con estilo h3 y no encabezado: así las tarjetas son h3. */}
         <p className="subtitulo">El primer piloto se enfoca en tres caminos.</p>
-        <div id="areas" className="caminos" data-revelar="">
+        <div id="areas" className="caminos">
           {areasPiloto.map((a) => (
             <TarjetaCamino key={a.id} area={a} />
           ))}
         </div>
 
         <hr className="separador" />
-        <div data-revelar="">
-          <Encaje />
-        </div>
+        <Encaje />
 
         <hr className="separador" />
         <div className="mas-adelante">
-          <div className="mas-adelante-cabeza" data-revelar="">
-            <p className="ojo">Más adelante</p>
+          <div className="mas-adelante-cabeza">
             <h3>Áreas que queremos abrir con apoyo profesional.</h3>
             <p>
               {rayas(
@@ -50,7 +54,7 @@ export default function ParaQuien() {
             <Icono nombre="lock" tamaño={16} />
             <span>{avisoMasAdelante()}</span>
           </p>
-          <div className="filas-futuras" data-revelar="">
+          <div className="filas-futuras">
             {areasMasAdelante.map((a) => (
               <FilaFutura key={a.id} area={a} />
             ))}

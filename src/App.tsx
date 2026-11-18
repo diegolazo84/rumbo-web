@@ -8,7 +8,6 @@ import Condiciones from "./pages/Condiciones";
 import Ayuda from "./pages/Ayuda";
 import NoEncontrada from "./pages/NoEncontrada";
 import { PAGINA_404, paginaPorRuta, paginas, type PaginaId } from "./data/paginas";
-import { useRevelar } from "./revelar";
 import { esVistaPrevia } from "./vista-previa";
 import { esPlataforma } from "./plataforma";
 
@@ -76,7 +75,6 @@ function AlCambiarDeRuta() {
 
 export default function App() {
   const { pathname } = useLocation();
-  useRevelar();
   // Ayuda inmediata no lleva llamado comercial en la cabecera; /postular/ tampoco (plataforma 3.2).
   const id = paginaPorRuta(pathname)?.id;
   const conCta = id !== "ayuda" && id !== "postular";
