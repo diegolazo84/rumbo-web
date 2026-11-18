@@ -31,6 +31,7 @@ import { ModulosReal, R_MODULOS } from "./modulos";
 import { PagosReal, R_PAGOS } from "./pagos";
 import { RecompensasReal, R_RECOMPENSAS } from "./recompensas";
 import { NegocioReal, R_NEGOCIO } from "./negocio";
+import { CuentasReal, R_CUENTAS, T_CUENTAS } from "./cuentas";
 import { AuditoriaReal, R_AUDITORIA } from "./auditoria";
 import { EquipoReal, R_EQUIPO } from "./equipo";
 import { PerfilEquipo } from "./perfil";
@@ -73,6 +74,8 @@ export default function Pantallas({ ruta }: { ruta: RutaPlataforma }) {
       return <NegocioReal />;
     case "/equipo/auditoria/":
       return <AuditoriaReal />;
+    case "/equipo/cuentas/":
+      return <CuentasReal />;
     case "/equipo/equipo/":
       return <EquipoReal />;
     case "/equipo/asistente/":
@@ -564,6 +567,11 @@ function MasReal() {
       <Link to={R_MODULOS} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
         <Icono nombre="sliders-horizontal" tamaño={20} />
         <span>{MODULOS_PANEL.enlace}</span>
+        <Icono nombre="arrow-right" tamaño={20} />
+      </Link>
+      <Link to={R_CUENTAS} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
+        <Icono nombre="users" tamaño={20} />
+        <span>{T_CUENTAS.enlace}</span>
         <Icono nombre="arrow-right" tamaño={20} />
       </Link>
       <Link to={R_NEGOCIO} className="tarjeta tarjeta--enlazada pa-enlace-tarjeta">
