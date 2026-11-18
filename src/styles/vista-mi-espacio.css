@@ -788,8 +788,8 @@
 .me-ingreso__form { display: grid; gap: var(--e-4); }
 /* Ingreso con Google: botón con la apariencia que piden las pautas de Google (fondo claro, logo a color). */
 .me-google { display: grid; gap: var(--e-4); }
-.me-google__boton { display: inline-flex; align-items: center; justify-content: center; gap: 12px; inline-size: 100%; min-block-size: 48px; padding: 10px 16px; border: 1px solid #747775; border-radius: var(--r-m); background: #fff; color: #1f1f1f; font: 500 var(--t-s)/1.2 var(--sans); cursor: pointer; transition: background-color .15s, box-shadow .15s; }
-.me-google__boton:hover:not(:disabled) { background: #f8faf8; box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
+.me-google__boton { display: inline-flex; align-items: center; justify-content: center; gap: 12px; inline-size: 100%; min-block-size: 48px; padding: 10px 16px; border: 1px solid var(--linea-fuerte); border-radius: var(--r-m); background: var(--superficie); color: var(--tinta); font: 500 var(--t-s)/1.2 var(--sans); cursor: pointer; transition: background-color .15s, box-shadow .15s; }
+.me-google__boton:hover:not(:disabled) { background: var(--niebla); box-shadow: var(--sombra-1); }
 .me-google__boton:focus-visible { outline: 3px solid var(--bosque); outline-offset: 2px; }
 .me-google__boton:disabled { opacity: .7; cursor: progress; }
 .me-google__logo { flex: none; }
