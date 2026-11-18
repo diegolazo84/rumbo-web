@@ -101,6 +101,10 @@ const TABLAS = {
   metas: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // solo de programas publicados
   revisiones: { leer: "propio-filtrado", escribir: "equipo", coach: { leer: "suyos", escribir: "suyos" } }, // solo publicadas
   asignaciones_coach: { leer: "equipo", escribir: "funciones", coach: { leer: "suyos", escribir: "nada" } },
+  // Cuenta gratis (20261204): solo la persona; el dueño las ve con cuentas_creadas(), nunca un coach.
+  cuentas_libres: { leer: "partes", escribir: "funciones", dueno: "user_id", coach: { leer: "nada", escribir: "nada" } },
+  acciones_libres: { leer: "partes", escribir: "funciones", dueno: "user_id", coach: { leer: "nada", escribir: "nada" } },
+  registros_libres: { leer: "partes", escribir: "funciones", dueno: "user_id", coach: { leer: "nada", escribir: "nada" } },
 };
 const PRIVADAS = ["correos_equipo", "limites", "sales", "depuracion_fotos", "depuracion_fotos_fallos", "depuracion_reservas", "depuracion_firmas"];
 
@@ -122,6 +126,7 @@ const FUNCIONES = {
     "mis_reconocimientos", "mis_beneficios", "mi_beneficio_renovacion", "mi_pago", "avisar_pago",
     "ia_guardar_consentimiento", "ia_retirar_consentimiento", "ia_preguntar", "mis_consultas_ia", "ia_valorar",
     "autorizar_especialista", "retirar_especialista", "pedir_reserva", "cancelar_reserva", "enviar_mensaje_especialista",
+    "crear_cuenta_libre", "mi_cuenta_libre", "marcar_libre", "ajustar_cuenta_libre", "pedir_acompanamiento_libre", "borrar_mi_cuenta_libre",
   ],
   "equipo-error": [
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
@@ -135,6 +140,7 @@ const FUNCIONES = {
     "responder_reserva", "agendar_reserva", "anotar_reserva", "mis_participantes_especialista", "especialista_seguimiento",
     "recomendar", "comisiones_especialistas",
     "estado_depuracion_fotos", "pedir_depuracion_fotos",
+    "cuentas_creadas", "dar_acceso_completo",
   ],
   equipo: ["mi_rol_equipo", "actualizar_mi_perfil", "guardar_plantilla"],
   "con-sesion": ["aceptar_invitacion_especialista", "especialistas_publicados", "ia_disponible", "modulo_visible", "marcar_avisos_leidos", "aceptar_invitacion_equipo"],
@@ -206,6 +212,16 @@ for (const r of Object.values(ROLES)) if ("uid" in r) assert.ok(r.uid, `falta la
 const ficha = (r) => sql(`select id from public.participantes where user_id = '${r.uid}'`);
 ROLES.A.ficha = ficha(ROLES.A);
 ROLES.B.ficha = ficha(ROLES.B);
+// Cuenta gratis de A y de B (directo en la base, para la prueba de lectura): idempotente.
+sql(`insert into public.cuentas_libres (user_id, correo, nombre, area_id, meta, dias, mayor_edad, consentimiento)
+     select id, lower(email), 'Cuenta gratis CI', 'proyectos', 'Meta de prueba de la cuenta gratis en CI.', '{1,2,3,4,5,6,7}', true, '{}'
+       from auth.users where id in ('${ROLES.A.uid}', '${ROLES.B.uid}') on conflict do nothing;
+     insert into public.acciones_libres (id, user_id, titulo, desde)
+     select md5('libre' || id::text)::uuid, id, 'Acción gratis CI', current_date - 3
+       from auth.users where id in ('${ROLES.A.uid}', '${ROLES.B.uid}') on conflict do nothing;
+     insert into public.registros_libres (accion_id, user_id, fecha)
+     select md5('libre' || id::text)::uuid, id, current_date - 3
+       from auth.users where id in ('${ROLES.A.uid}', '${ROLES.B.uid}') on conflict do nothing`);
 
 // Equipo: X e Y entran como coaches; el dueño asigna A a X y B a Y con asignar_coach.
 sql(`insert into public.equipo (user_id, nombre, rol) values ('${ROLES.X.uid}', 'Coach X', 'coach'), ('${ROLES.Y.uid}', 'Coach Y', 'coach')
@@ -383,8 +399,9 @@ for (const [t, regla] of Object.entries(TABLAS)) {
     } else if (clave === "aal2") exigir(n === total, `${que}: ve ${n} de ${total} (el equipo con TOTP ve todo)`);
     else if (regla.leer === "equipo" || clave === "anon" || clave === "aal1" || clave === "Xaal1") exigir(n === 0, `${que}: ve ${n} filas (debe ver 0)`);
     else {
-      const propias = Number(sql(`select count(*) from public.${t} where ${col} = '${rol.ficha}'`));
-      const ajenas = contar(rol, `public.${t} where ${col} is distinct from '${rol.ficha}'`).n ?? 0;
+      const suyo = col === "user_id" ? rol.uid : rol.ficha;
+      const propias = Number(sql(`select count(*) from public.${t} where ${col} = '${suyo}'`));
+      const ajenas = contar(rol, `public.${t} where ${col} is distinct from '${suyo}'`).n ?? 0;
       exigir(ajenas === 0, `${que}: ve ${ajenas} filas ajenas`);
       if (regla.leer === "propio") exigir(n === propias, `${que}: ve ${n} de sus ${propias} filas`);
       else exigir(n <= propias, `${que}: ve ${n} filas, más que sus ${propias}`);
@@ -2118,6 +2135,77 @@ paso("desafíos C15: propuestas solo propias y con alias para el equipo; activid
 paso("fotos de desafíos C16: solo moderación con TOTP sube, pone, cambia y borra; se ve solo la foto vigente de un desafío activo con Comunidad abierta");
 
 paso("ranking: voluntario, solo con alias, por % de la semana; con menos de 3 no se muestra; quien sale deja de verlo");
+
+
+// Cuenta gratis «Rumbo Inicial» (20261204): cerrada por defecto; con el módulo habilitado una cuenta
+// nueva crea su cuenta gratis, marca hoy o ayer con las mismas reglas de créditos, ajusta sus acciones
+// sin perder lo hecho y pide acompañamiento. Solo el dueño con TOTP ve las cuentas y da acceso completo
+// (una solicitud ya llena). Los participantes no crean cuenta gratis y nadie marca acciones ajenas.
+{
+  const F = { nombre: "cuenta gratis F", uid: "f0000000-0000-4000-8000-0000000000f1" };
+  const crearF = `reset role; insert into auth.users (id, email, aud, role, created_at, raw_app_meta_data)
+      values ('${F.uid}', 'libre-f@example.com', 'authenticated', 'authenticated', now(), '{"provider":"google"}');
+    set local role authenticated;`;
+  const abrir = "reset role; update public.modulos set estado = 'habilitado', probado_en = now() where clave = 'cuenta_gratis'; set local role authenticated;";
+  const datos = `'{"nombre":"Fran","area":"proyectos","meta":"Quiero terminar mi proyecto en cuatro semanas.","dias":[1,2,3,4,5,6,7],
+      "acciones":["Escribir 20 minutos","Ordenar el escritorio","Escribir 20 minutos"],"mayor_edad":true,
+      "version_privacidad":"1.3","texto_consentimiento":"Acepto las Condiciones y la Privacidad (prueba de CI).","avisos":false}'::jsonb`;
+  const crear = `select public.crear_cuenta_libre(${datos}) \\g /dev/null\n`;
+  const accion = (n) => `(select id from public.acciones_libres where user_id = '${F.uid}' order by titulo offset ${n} limit 1)`;
+
+  const cerrada = como(F, `${crearF} select public.crear_cuenta_libre(${datos})`);
+  exigir(!cerrada.ok && /modulo:cerrado/.test(cerrada.error), `se crea una cuenta gratis con el módulo cerrado: ${cerrada.error ?? "funcionó"}`);
+  const hook = psql(`select privado.antes_de_crear_usuario('{"user":{"email":"desconocido@example.com"}}')->'error'->>'message';
+    begin; update public.modulos set estado = 'habilitado', probado_en = now() where clave = 'cuenta_gratis';
+    select coalesce(privado.antes_de_crear_usuario('{"user":{"email":"desconocido@example.com"}}')::text, 'null'); rollback;`);
+  exigir(hook.ok && hook.salida.split("\n").join(" ") === "no_invitado {}", `registro abierto mal controlado: ${hook.error ?? hook.salida}`);
+
+  const creada = como(F, `${crearF} ${abrir} ${crear} select jsonb_array_length(public.mi_cuenta_libre()->'acciones') || ' ' || (select origen from public.cuentas_libres)`);
+  exigir(creada.ok && ultima(creada) === "2 google", `crear la cuenta gratis (acciones sin repetir, origen Google): ${creada.error ?? ultima(creada)}`);
+  const participante = como(ROLES.A, `${abrir} select public.crear_cuenta_libre(${datos})`);
+  exigir(!participante.ok && /tiene_programa/.test(participante.error), `un participante crea cuenta gratis: ${participante.error ?? "funcionó"}`);
+
+  const r = sql("select por_accion || ' ' || (2 * por_accion + bono_dia_completo) from public.reglas_creditos").split(" ");
+  const marcar = como(F, `${crearF} ${abrir} ${crear}
+    select public.marcar_libre(${accion(0)}, privado.hoy_chile(), true)->>'creditos';
+    select public.marcar_libre(${accion(1)}, privado.hoy_chile(), true)->>'creditos';
+    select public.marcar_libre(${accion(1)}, privado.hoy_chile(), true)->>'racha'`);
+  const [c1, c2, racha] = (marcar.salida ?? "").split("\n").slice(-3);
+  exigir(marcar.ok && c1 === r[0] && c2 === r[1] && racha === "1", `créditos de la cuenta gratis no siguen las reglas (${r.join("/")}): ${marcar.error ?? [c1, c2, racha].join(" ")}`);
+  const tarde = como(F, `${crearF} ${abrir} ${crear} select public.marcar_libre(${accion(0)}, privado.hoy_chile() - 2, true)`);
+  exigir(!tarde.ok && /fuera_de_plazo/.test(tarde.error), `se marca una acción de hace 2 días: ${tarde.error ?? "funcionó"}`);
+  const ajena = como(F, `${crearF} ${abrir} ${crear} reset role; ${reclamosDe(ROLES.B)} set local role authenticated;
+    select public.marcar_libre(${accion(0)}, privado.hoy_chile(), true)`);
+  exigir(!ajena.ok && /no_encontrada/.test(ajena.error), `B marca una acción de la cuenta gratis de F: ${ajena.error ?? "funcionó"}`);
+
+  const ajuste = como(F, `${crearF} ${abrir} ${crear}
+    select public.marcar_libre(${accion(0)}, privado.hoy_chile(), true) \\g /dev/null
+    select public.ajustar_cuenta_libre('{"acciones":["Caminar 15 minutos"]}'::jsonb) \\g /dev/null
+    select (select count(*) from public.acciones_libres where hasta is null) || ' ' || (select count(*) from public.registros_libres) || ' ' || (select count(*) from public.acciones_libres)`);
+  exigir(ajuste.ok && ultima(ajuste) === "1 1 2", `ajustar acciones pierde lo hecho o deja acciones de más: ${ajuste.error ?? ultima(ajuste)}`);
+  const muchas = como(F, `${crearF} ${abrir} ${crear} select public.ajustar_cuenta_libre('{"acciones":["Uno uno","Dos dos","Tres tres","Cuatro"]}'::jsonb)`);
+  exigir(!muchas.ok && /entre_1_y_3/.test(muchas.error), `se aceptan más de 3 acciones: ${muchas.error ?? "funcionó"}`);
+
+  const dueno = como(F, `${crearF} ${abrir} ${crear} select public.pedir_acompanamiento_libre('coach') \\g /dev/null
+    reset role; ${reclamosDe(ROLES.aal2)} set local role authenticated;
+    select (select f->>'plan' || ' ' || (f->>'acceso_pedido_en' is not null)::text from jsonb_array_elements(public.cuentas_creadas()) f where f->>'user_id' = '${F.uid}')
+      || ' ' || (select f->>'plan' from jsonb_array_elements(public.cuentas_creadas()) f where f->>'user_id' = '${ROLES.A.uid}')
+      || ' ' || (select count(*) from jsonb_array_elements(public.cuentas_creadas()) f where f->>'user_id' = '${ROLES.aal2.uid}');
+    select public.dar_acceso_completo('${F.uid}', 'coach', '${"a".repeat(43)}') \\g /dev/null
+    select s.estado || ' ' || s.apoyo || ' ' || (s.origen->>'desde') || ' ' || (s.meta = c.meta)::text
+      from public.solicitudes s join public.cuentas_libres c on c.solicitud_id = s.id where c.user_id = '${F.uid}'`);
+  const [lista, sol] = (dueno.salida ?? "").split("\n").slice(-2);
+  exigir(dueno.ok && lista === "gratis true programa 0", `cuentas_creadas no muestra bien las cuentas: ${dueno.error ?? lista}`);
+  exigir(dueno.ok && sol === "en_revision coach cuenta_gratis true", `dar_acceso_completo no crea la solicitud llena: ${dueno.error ?? sol}`);
+  const doble = como(F, `${crearF} ${abrir} ${crear} reset role; ${reclamosDe(ROLES.aal2)} set local role authenticated;
+    select public.dar_acceso_completo('${F.uid}', 'coach', '${"a".repeat(43)}') \\g /dev/null
+    select public.dar_acceso_completo('${F.uid}', 'coach', '${"b".repeat(43)}')`);
+  exigir(!doble.ok && /solicitud:abierta/.test(doble.error), `se crean dos solicitudes abiertas para la misma cuenta: ${doble.error ?? "funcionó"}`);
+  const borrar = como(F, `${crearF} ${abrir} ${crear} select public.borrar_mi_cuenta_libre() \\g /dev/null
+    reset role; select count(*) from public.acciones_libres where user_id = '${F.uid}'`);
+  exigir(borrar.ok && ultima(borrar) === "0", `borrar la cuenta gratis deja datos: ${borrar.error ?? ultima(borrar)}`);
+}
+paso("cuenta gratis: cerrada por defecto; crear, marcar con las mismas reglas, ajustar sin perder lo hecho, pedir acompañamiento; solo el dueño ve las cuentas y da acceso completo");
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
 
