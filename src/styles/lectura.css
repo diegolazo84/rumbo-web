@@ -97,8 +97,8 @@ a.recurso-numero { display: inline-flex; align-items: center; align-self: flex-s
   cursor: pointer;
   border-radius: var(--r-m);
 }
-.indice ol { margin: 0; padding: 0 var(--e-5) var(--e-4) calc(var(--e-5) + 1.5em); display: grid; gap: var(--e-1); }
+.indice ol { margin: 0; padding: 0 var(--e-5) var(--e-4) calc(var(--e-5) + 1.5em); display: grid; gap: 0; }
 .indice li::marker { color: var(--terracota-texto); font-variant-numeric: tabular-nums; }
-.indice a { display: inline-flex; min-block-size: 36px; align-items: center; font-size: var(--t-s); }
+.indice a { display: inline-flex; min-block-size: 44px; align-items: center; font-size: var(--t-s); }
 @media (min-width: 600px) { .indice ol { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--e-6); } }
 @media print { .indice { display: none; } }
