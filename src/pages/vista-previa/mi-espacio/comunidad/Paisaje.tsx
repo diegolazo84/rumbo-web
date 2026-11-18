@@ -8,10 +8,11 @@ import { useId } from "react";
 import { BASENAME } from "../../../../base";
 import type { Ilustracion } from "./fuente";
 
-// Fotografía de la portada (ChatGPT, nov-2026: persona de espalda mirando los cerros al atardecer).
-// Comunidad, Mis logros, Mis avisos, Recordatorios y el informe de cierre la usan en lugar de la
-// ilustración; la ilustración queda como respaldo si se vuelve a null.
-export const FOTO_PORTADA: string | null = `${BASENAME}fotos/camino-sin-claridad-1440.webp`;
+// Fotografía real de la portada (Christopher Politano, Unsplash: dos personas caminan un sendero en
+// Torres del Paine; créditos en docs/creditos-fotos.md). Comunidad, Mis logros, Mis avisos,
+// Recordatorios y el informe de cierre la usan en lugar de la ilustración; la ilustración queda
+// como respaldo si se vuelve a null.
+export const FOTO_PORTADA: string | null = `${BASENAME}fotos/sendero-1440.webp`;
 
 export function PaisajePortada({ className }: { className?: string }) {
   const id = useId().replace(/:/g, "");
