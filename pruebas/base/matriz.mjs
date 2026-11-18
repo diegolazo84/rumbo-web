@@ -212,6 +212,7 @@ for (const r of Object.values(ROLES)) if ("uid" in r) assert.ok(r.uid, `falta la
 const ficha = (r) => sql(`select id from public.participantes where user_id = '${r.uid}'`);
 ROLES.A.ficha = ficha(ROLES.A);
 ROLES.B.ficha = ficha(ROLES.B);
+const HOY_CL = sql("select privado.hoy_chile()"); // fecha de Chile, leída como postgres
 // Cuenta gratis de A y de B (directo en la base, para la prueba de lectura): idempotente.
 sql(`insert into public.cuentas_libres (user_id, correo, nombre, area_id, meta, dias, mayor_edad, consentimiento)
      select id, lower(email), 'Cuenta gratis CI', 'proyectos', 'Meta de prueba de la cuenta gratis en CI.', '{1,2,3,4,5,6,7}', true, '{}'
@@ -757,7 +758,7 @@ paso("coaches: solo el dueño invita y cambia permisos; la invitación sirve una
 
 // C1 · Foto opcional en cualquier acción: la persona la adjunta a una acción suya sin evidencia obligatoria.
 const ocLibre = sql(`select o.id from public.ocurrencias o where o.participante_id = '${ROLES.A.ficha}' and not o.requiere_foto
-  and o.vigente and o.fecha between '${HOY_CL}'::date - (select dias_registro_tardio from public.ajustes_operacion) and '${HOY_CL}'::date
+  and o.vigente and o.fecha between privado.hoy_chile() - (select dias_registro_tardio from public.ajustes_operacion) and privado.hoy_chile()
   order by o.fecha desc limit 1`);
 exigir(Boolean(ocLibre), "no hay una acción de A sin evidencia obligatoria para probar la foto opcional");
 if (ocLibre) {
@@ -980,7 +981,7 @@ paso("recordatorios completos: interruptor general, días, horario, videollamada
 {
   const cicloA = deA.p_ciclo;
   const enBase = sql(`select coalesce(sum(d.hechas), 0) || ' ' || coalesce(sum(d.programadas), 0) from public.progreso_diario d
-    join public.ciclos c on c.id = '${cicloA}' where d.participante_id = '${ROLES.A.ficha}' and d.fecha between c.inicio and least(c.fin, '${HOY_CL}'::date)`);
+    join public.ciclos c on c.id = '${cicloA}' where d.participante_id = '${ROLES.A.ficha}' and d.fecha between c.inicio and least(c.fin, privado.hoy_chile())`);
   exigir(enBase !== "0 0", "A no tiene progreso diario en su ciclo: la prueba de evolución quedó vacía");
   const suma = "select coalesce(sum(hechas), 0) || ' ' || coalesce(sum(programadas), 0) from";
   const propia = como(ROLES.A, `${suma} public.evolucion_semanal() where ciclo_id = '${cicloA}'`);
@@ -1010,7 +1011,7 @@ paso("evolución: semanas e informe de ciclo cuadran con la base; solo los ven l
   const cerrar = `reset role; set session_replication_role = replica;
     update public.ciclos set estado = 'cerrado' where id = '${cicloA}';
     set session_replication_role = origin; set local role authenticated;\n`;
-  const abierto = sql(`select (estado <> 'cerrado' and '${HOY_CL}'::date < fin - 6)::int from public.ciclos where id = '${cicloA}'`);
+  const abierto = sql(`select (estado <> 'cerrado' and privado.hoy_chile() < fin - 6)::int from public.ciclos where id = '${cicloA}'`);
   if (abierto === "1") {
     const antes = como(ROLES.X, `select public.guardar_mensaje_cierre('${cicloA}', 'Un mensaje antes de tiempo.')`);
     exigir(!antes.ok && /no_termina/.test(antes.error), `se escribió el mensaje de cierre a mitad de ciclo: ${antes.error ?? "funcionó"}`);
@@ -1379,10 +1380,10 @@ paso("comunidad C8: tipos, guardadas solo mías, bloqueo en ambos sentidos, tema
     update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
     update public.alias set reglas_comunidad_en = now(); set local role authenticated;`;
   const d1 = "'00000000-0000-0000-0000-0000000000d1'";
-  const dias = (inicio) => `reset role; update public.desafios set inicio = '${HOY_CL}'::date - ${inicio}, dias = 7 where id = ${d1};
-    delete from public.progreso_diario where participante_id = '${ROLES.A.ficha}' and fecha >= '${HOY_CL}'::date - 10;`;
+  const dias = (inicio) => `reset role; update public.desafios set inicio = privado.hoy_chile() - ${inicio}, dias = 7 where id = ${d1};
+    delete from public.progreso_diario where participante_id = '${ROLES.A.ficha}' and fecha >= privado.hoy_chile() - 10;`;
   const fila = (n, prog, hechas, susp = false) => `insert into public.progreso_diario (participante_id, fecha, programadas, hechas, en_revision,
-      creditos_acciones, bono, racha, en_suspenso) values ('${ROLES.A.ficha}', '${HOY_CL}'::date - ${n}, ${prog}, ${hechas}, 0, 0, 0, 0, ${susp});`;
+      creditos_acciones, bono, racha, en_suspenso) values ('${ROLES.A.ficha}', privado.hoy_chile() - ${n}, ${prog}, ${hechas}, 0, 0, 0, 0, ${susp});`;
   const crearPersona = como(ROLES.A, `${abrir} select public.guardar_desafio('{"titulo":"Mío","reglas":"Reglas suficientes","dias":7,"inicio":"2030-01-01"}')`);
   exigir(!crearPersona.ok && /no_autorizado/.test(crearPersona.error), "una persona creó un desafío");
   const crea = como(ROLES.aal2, `select public.guardar_desafio('{"titulo":"28 días de constancia","reglas":"Completa todas tus acciones del día.","dias":28,"inicio":"2030-01-01"}') is not null`);
@@ -1415,7 +1416,7 @@ paso("comunidad C8: tipos, guardadas solo mías, bloqueo en ambos sentidos, tema
   const reglas = como(ROLES.aal2, `select public.guardar_desafio(jsonb_build_object('id', ${d1}, 'titulo', 'Desafío de CI',
     'reglas', 'Semilla de CI: completar las acciones del día.', 'dias', 10, 'inicio', current_date - 3))`);
   exigir(!reglas.ok && /con_participantes/.test(reglas.error), "se cambiaron los días de un desafío con participantes");
-  const terminado = como(ROLES.B, `${abrir} reset role; update public.desafios set inicio = '${HOY_CL}'::date - 30 where id = ${d1};
+  const terminado = como(ROLES.B, `${abrir} reset role; update public.desafios set inicio = privado.hoy_chile() - 30 where id = ${d1};
     set local role authenticated; select public.unirme_a_desafio(${d1})`);
   exigir(!terminado.ok && /no_disponible/.test(terminado.error), "alguien se unió a un desafío terminado");
   const cerrado = como(ROLES.B, `select public.unirme_a_desafio(${d1})`);
@@ -2056,9 +2057,9 @@ paso("especialistas, trabajo: solo con vínculo y lo autorizado; reservas con co
 
   // Actividad: solo la mía; unirme, cada día cumplido y completar, con el cálculo de C9.
   const fila = (n) => `insert into public.progreso_diario (participante_id, fecha, programadas, hechas, en_revision,
-      creditos_acciones, bono, racha, en_suspenso) values ('${ROLES.A.ficha}', '${HOY_CL}'::date - ${n}, 1, 1, 0, 0, 0, 0, false);`;
-  const preparar = `reset role; update public.desafios set inicio = '${HOY_CL}'::date - 6, dias = 7 where id = ${d1};
-    delete from public.progreso_diario where participante_id = '${ROLES.A.ficha}' and fecha >= '${HOY_CL}'::date - 10;
+      creditos_acciones, bono, racha, en_suspenso) values ('${ROLES.A.ficha}', privado.hoy_chile() - ${n}, 1, 1, 0, 0, 0, 0, false);`;
+  const preparar = `reset role; update public.desafios set inicio = privado.hoy_chile() - 6, dias = 7 where id = ${d1};
+    delete from public.progreso_diario where participante_id = '${ROLES.A.ficha}' and fecha >= privado.hoy_chile() - 10;
     insert into public.participaciones_desafio (desafio_id, participante_id) values (${d1}, '${ROLES.A.ficha}') on conflict do nothing;`;
   const tipos = `select string_agg(tipo || coalesce(':' || dia, ''), ',' order by fecha desc, dia desc nulls last) from public.mi_actividad_desafios() where desafio_id = ${d1}`;
   const parcial = como(ROLES.A, `${abrir} ${preparar} ${fila(6)} ${fila(4)} set local role authenticated; ${tipos}`);
@@ -2151,7 +2152,6 @@ paso("ranking: voluntario, solo con alias, por % de la semana; con menos de 3 no
       "acciones":["Escribir 20 minutos","Ordenar el escritorio","Escribir 20 minutos"],"mayor_edad":true,
       "version_privacidad":"1.3","texto_consentimiento":"Acepto las Condiciones y la Privacidad (prueba de CI).","avisos":false}'::jsonb`;
   const crear = `select public.crear_cuenta_libre(${datos}) \\g /dev/null\n`;
-  const HOY_CL = sql("select '${HOY_CL}'::date");
   const accion = (n) => `(select id from public.acciones_libres where user_id = '${F.uid}' order by titulo offset ${n} limit 1)`;
 
   const cerrada = como(F, `${crearF} select public.crear_cuenta_libre(${datos})`);
