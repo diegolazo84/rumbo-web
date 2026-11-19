@@ -54,9 +54,9 @@ const INGRESO_GOOGLE =
     ? __INGRESO_GOOGLE__ === true
     : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.INGRESO_GOOGLE === "1");
 
-// Entrar y crear cuenta con correo y contraseña: apagado hasta que Diego ajuste en Supabase las
+// Entrar y crear cuenta con correo y contraseña. Diego ajustó en Supabase (19-nov-2026) las
 // plantillas «Confirm signup» y «Reset password» y el largo mínimo (docs/ingreso-contrasena.md).
-const INGRESO_CONTRASENA_ACTIVO = false;
+const INGRESO_CONTRASENA_ACTIVO = true; // Supabase listo (Diego, 19-nov-2026)
 const INGRESO_CONTRASENA =
   INGRESO_CONTRASENA_ACTIVO ||
   (typeof __INGRESO_CONTRASENA__ !== "undefined"

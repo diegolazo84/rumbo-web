@@ -347,8 +347,11 @@ test("con contraseña: «Olvidé mi contraseña» envía un código y lleva a cr
   const llamadas = await simular(page, baseInicial());
   await page.goto("mi-espacio/entrar/");
   await hidratar(page);
-  await page.getByRole("button", { name: "Olvidé mi contraseña" }).click();
-  await expect(page.getByText("Escribe tu correo arriba y vuelve a tocar «Olvidé mi contraseña».")).toBeVisible();
+  // La página viene prerenderizada: un clic antes de que React tome el botón se pierde. Se reintenta.
+  await expect(async () => {
+    await page.getByRole("button", { name: "Olvidé mi contraseña" }).click();
+    await expect(page.getByText("Escribe tu correo arriba y vuelve a tocar «Olvidé mi contraseña».")).toBeVisible({ timeout: 1000 });
+  }).toPass();
   await page.locator("#entrar-correo").fill("ana@correo.cl");
   await page.getByRole("button", { name: "Olvidé mi contraseña" }).click();
   await expect(page.locator("h1")).toHaveText("Revisa tu correo.");
