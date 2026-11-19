@@ -20,23 +20,28 @@ estos pasos en Supabase. No hay que copiar ni pegar ninguna clave.
    - «Confirm email»: **encendido**.
    - «Minimum password length»: **8**.
    - Guardar.
-2. **Authentication → Emails → Templates → «Confirm signup»**. Asunto: `Confirma tu correo en Rumbo`.
-   Cuerpo (en español, con el código y el botón):
+2. **Authentication → Emails → Templates → «Confirm signup»**. Ojo: Supabase usa esta misma
+   plantilla cuando alguien entra con código por primera vez, así que sirve para las dos cosas.
+   Asunto: `Tu código para Rumbo`. Cuerpo:
 
    ```html
-   <h2>Confirma tu correo</h2>
-   <p>Tu código para confirmar tu cuenta en Rumbo es:</p>
+   <h2>Tu código para Rumbo</h2>
+   <p>Usa este código para entrar o para confirmar tu correo en Rumbo:</p>
    <p style="font-size:28px;letter-spacing:4px"><strong>{{ .Token }}</strong></p>
-   <p>O toca este botón: <a href="{{ .RedirectTo }}?th={{ .TokenHash }}&type=signup">Confirmar mi correo</a></p>
+   <p>O toca este botón: <a href="https://diegolazo84.github.io/rumbo-web/mi-espacio/entrar/?th={{ .TokenHash }}&type=email">Entrar a Rumbo</a></p>
    <p>Sirve durante 1 hora. Si no fuiste tú, ignora este correo.</p>
    ```
+
+   (`type=email` verifica tanto la confirmación de una cuenta nueva como el primer ingreso con código.
+   La dirección va completa: el correo del código no lleva dirección de vuelta y `{{ .RedirectTo }}`
+   sería la portada.)
 3. **Templates → «Reset password»**. Asunto: `Crea tu contraseña nueva en Rumbo`.
 
    ```html
    <h2>Crea tu contraseña nueva</h2>
    <p>Tu código para crear una contraseña nueva en Rumbo es:</p>
    <p style="font-size:28px;letter-spacing:4px"><strong>{{ .Token }}</strong></p>
-   <p>O toca este botón: <a href="{{ .RedirectTo }}?th={{ .TokenHash }}&type=recovery">Crear mi contraseña</a></p>
+   <p>O toca este botón: <a href="https://diegolazo84.github.io/rumbo-web/mi-espacio/entrar/?th={{ .TokenHash }}&type=recovery">Crear mi contraseña</a></p>
    <p>Sirve durante 1 hora. Si no lo pediste, ignora este correo: tu contraseña no cambia.</p>
    ```
 4. **Authentication → URL Configuration → Redirect URLs**: debe estar

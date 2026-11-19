@@ -13,7 +13,7 @@
 // - Con contraseña (operacion.ingresoContrasena): correo + contraseña es el camino principal.
 //   Crear cuenta (signUp) pide confirmar el correo con el mismo código de 6 dígitos (type signup);
 //   «Olvidé mi contraseña» envía un código (type recovery) que abre la sesión y lleva a «Crea tu
-//   contraseña nueva». Los enlaces de esos correos usan ?th=…&type=signup|recovery.
+//   contraseña nueva». Los enlaces de esos correos usan ?th=…&type=email|recovery (email también confirma una cuenta nueva).
 // Nunca se registra en consola un correo, un código, una contraseña ni un token.
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
