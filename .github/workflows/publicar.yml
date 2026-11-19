@@ -30,7 +30,7 @@ jobs:
     # veces seguidas y las pruebas no alcanzaban a terminar dentro de 30.
     timeout-minutes: 50
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: 22
@@ -77,7 +77,7 @@ jobs:
       CUENTA_GRATIS: "1"
       INGRESO_CONTRASENA: "1"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: 22
@@ -125,7 +125,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: 22
