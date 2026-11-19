@@ -786,6 +786,15 @@
 .me-ingreso .me-h1 { max-inline-size: 14ch; }
 .me-ingreso__mosaico { inline-size: 56px; block-size: 56px; border-radius: var(--r-m); background: var(--niebla); color: var(--bosque); }
 .me-ingreso__form { display: grid; gap: var(--e-4); }
+/* Ingreso con Google: botón con la apariencia que piden las pautas de Google (fondo claro, logo a color). */
+.me-google { display: grid; gap: var(--e-4); }
+.me-google__boton { display: inline-flex; align-items: center; justify-content: center; gap: 12px; inline-size: 100%; min-block-size: 48px; padding: 10px 16px; border: 1px solid var(--linea-fuerte); border-radius: var(--r-m); background: var(--superficie); color: var(--tinta); font: 500 var(--t-s)/1.2 var(--sans); cursor: pointer; transition: background-color .15s, box-shadow .15s; }
+.me-google__boton:hover:not(:disabled) { background: var(--niebla); box-shadow: var(--sombra-1); }
+.me-google__boton:focus-visible { outline: 3px solid var(--bosque); outline-offset: 2px; }
+.me-google__boton:disabled { opacity: .7; cursor: progress; }
+.me-google__logo { flex: none; }
+.me-google__o { display: flex; align-items: center; gap: 12px; margin: 0; font-size: var(--t-xs); color: var(--tinta-suave); }
+.me-google__o::before, .me-google__o::after { content: ""; flex: 1; border-block-start: 1px solid var(--linea); }
 .me-envio-ancho .envio__boton { inline-size: 100%; }
 .me-boton-ancho { inline-size: 100%; justify-content: center; }
 .me-ingreso__correo { color: var(--tinta); font-weight: 600; overflow-wrap: anywhere; }
@@ -2108,3 +2117,12 @@ a.as-linea__numero { display: inline-flex; min-block-size: 44px; align-items: ce
 .cg-borrar[open] { display: grid; gap: var(--e-3); }
 .cg-peligro { border-color: var(--terracota-texto); color: var(--terracota-texto); justify-self: start; }
 @media (max-width: 380px) { .cg-cifras { grid-template-columns: 1fr; } }
+
+/* Ingreso con la cuenta gratis abierta: «Ya tengo cuenta» / «Crear cuenta gratis» */
+.me-modos { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: var(--r-full); background: var(--papel-hondo); }
+.me-modos__boton { min-block-size: 44px; padding: 8px 12px; border: 0; border-radius: var(--r-full); background: transparent; color: var(--tinta-suave); font: 600 var(--t-s)/1.2 var(--sans); cursor: pointer; }
+.me-modos__boton[aria-pressed="true"] { background: var(--superficie); color: var(--bosque); box-shadow: var(--sombra-1); }
+.me-modos__boton:focus-visible { outline: 3px solid var(--bosque); outline-offset: 2px; }
+.me-ingreso__enlace { padding: 0; border: 0; background: none; color: var(--bosque); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.me-ingreso__otras { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--e-3) var(--e-5); margin-block-start: var(--e-4); font-size: var(--t-s); }
+.me-ingreso__otras .me-ingreso__enlace { min-block-size: 44px; }
