@@ -73,6 +73,9 @@ jobs:
     timeout-minutes: 30
     env:
       MI_ESPACIO_PROPIO: "1"
+      INGRESO_GOOGLE: "1"
+      CUENTA_GRATIS: "1"
+      INGRESO_CONTRASENA: "1"
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6

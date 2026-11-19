@@ -38,6 +38,30 @@ const MI_ESPACIO_FORZADO =
     ? __MI_ESPACIO_PROPIO__ === true
     : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.MI_ESPACIO_PROPIO === "1";
 const ESPACIO_PROPIO = MI_ESPACIO_PROPIO || MI_ESPACIO_FORZADO;
+// Cuenta gratis «Rumbo Inicial»: el ingreso muestra «Ya tengo cuenta» y «Crear cuenta gratis».
+// true SOLO cuando el módulo «cuenta_gratis» esté habilitado (docs/cuenta-gratis.md).
+const CUENTA_GRATIS_ACTIVA = false;
+const CUENTA_GRATIS =
+  CUENTA_GRATIS_ACTIVA ||
+  (typeof __CUENTA_GRATIS__ !== "undefined"
+    ? __CUENTA_GRATIS__ === true
+    : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.CUENTA_GRATIS === "1");
+// «Continuar con Google»: apagado hasta que Diego active Google en Supabase (docs/ingreso-google.md).
+const INGRESO_GOOGLE_ACTIVO = false;
+const INGRESO_GOOGLE =
+  INGRESO_GOOGLE_ACTIVO ||
+  (typeof __INGRESO_GOOGLE__ !== "undefined"
+    ? __INGRESO_GOOGLE__ === true
+    : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.INGRESO_GOOGLE === "1");
+
+// Entrar y crear cuenta con correo y contraseña. Diego ajustó en Supabase (19-nov-2026) las
+// plantillas «Confirm signup» y «Reset password» y el largo mínimo (docs/ingreso-contrasena.md).
+const INGRESO_CONTRASENA_ACTIVO = true; // Supabase listo (Diego, 19-nov-2026)
+const INGRESO_CONTRASENA =
+  INGRESO_CONTRASENA_ACTIVO ||
+  (typeof __INGRESO_CONTRASENA__ !== "undefined"
+    ? __INGRESO_CONTRASENA__ === true
+    : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.INGRESO_CONTRASENA === "1");
 
 // Rutas de la web y, mientras existan, de la plataforma original. scripts/postbuild.mjs además
 // genera reenvíos con las mismas rutas en este dominio, para enlaces escritos a mano.
@@ -115,6 +139,15 @@ export const operacion = {
   formularioPropio: PROPIO, // D8: postular, estado y contacto en la web propia (arriba, FORMULARIO_PROPIO)
   miEspacioPropio: ESPACIO_PROPIO, // D8: Mi espacio y el panel en la web propia (arriba, MI_ESPACIO_PROPIO)
   responsable: { nombre: "Diego Alfonso Muñoz Abeleida", comuna: "Providencia" } as null | { nombre: string; rut?: string; comuna: string }, // bloquea el lanzamiento público
+  // «Continuar con Google» en el ingreso a Mi espacio. true SOLO cuando Diego haya activado el
+  // proveedor Google en Supabase (docs/ingreso-google.md); si no, el botón daría error.
+  // Variable de build INGRESO_GOOGLE=1 para verlo en pruebas.
+  ingresoGoogle: INGRESO_GOOGLE,
+  // Correo + contraseña como camino principal (el código queda como alternativa y para recuperar).
+  // Build INGRESO_CONTRASENA=1 para pruebas.
+  ingresoContrasena: INGRESO_CONTRASENA,
+  // Ingreso con dos caminos (entrar / crear cuenta gratis). Build CUENTA_GRATIS=1 para pruebas.
+  cuentaGratis: CUENTA_GRATIS,
   correo: "rumbo.acompana@gmail.com" as string | null, // creado y aprobado por Diego el 8 de octubre de 2026
   acompanante: null as null | { nombre: string; rol: string; bio: string; foto?: string }, // foto: archivo en public/, p. ej. «acompanante.jpg» (la portada le antepone la base)
   // Decisión del 2 de octubre de 2026: se responde a todas las solicitudes, también a quien no avanza.
