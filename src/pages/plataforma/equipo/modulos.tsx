@@ -8,6 +8,7 @@ import Etiqueta from "../../../components/Etiqueta";
 import { Icono } from "../../../components/app";
 import { CampoArea, CampoSelect } from "../../../components/form";
 import { fechaLarga, mayuscula, type Iso } from "../../../lib/fechas";
+import { SIEMPRE_PRESENTES } from "../../../lib/modulos";
 import { datos } from "../../../lib/supabase";
 import Carga from "../../vista-previa/mi-espacio/Carga";
 import { Cabeza, Datos } from "../../vista-previa/panel/comun";
@@ -63,17 +64,47 @@ export function ModulosReal() {
     );
   if (!lista) return <Carga estado="cargando" />;
 
-  const abiertos = lista.filter((m) => visible(m.estado)).length;
+  const siempre = lista.filter((m) => SIEMPRE_PRESENTES.has(m.clave));
+  const decide = lista.filter((m) => !SIEMPRE_PRESENTES.has(m.clave));
+  const abiertos = decide.filter((m) => visible(m.estado)).length;
   return (
     <div className="pa-pantalla">
       <Cabeza ojo={T.ojo} titulo={T.titulo} bajada={T.bajada} />
-      <p className="microcopia">{T.resumen(abiertos, lista.length)}</p>
       <p role="status" className="microcopia">
         {aviso}
       </p>
-      {lista.length ? (
+      {siempre.length > 0 && (
+        <section className="pa-bloque" aria-labelledby="modulos-siempre">
+          <h2 id="modulos-siempre" className="pa-h2">
+            {T.siempreTitulo}
+          </h2>
+          <p className="microcopia">{T.siempreBajada}</p>
+          <ul className="pa-filas pa-modulos-siempre">
+            {siempre.map((m) => {
+              const d = T.siempre[m.clave];
+              return (
+                <li key={m.clave} className="tarjeta pa-fila" aria-labelledby={`modulo-${m.clave}-titulo`}>
+                  <div className="pa-fila__cabeza">
+                    <h3 id={`modulo-${m.clave}-titulo`} className="pa-h3">
+                      {d?.nombre ?? m.nombre}
+                    </h3>
+                    <Etiqueta variante="activo">{T.siempreEtiqueta}</Etiqueta>
+                  </div>
+                  <Datos
+                    className="pa-datos--apilada"
+                    filas={[[T.incluye, d?.incluye ?? m.respaldo ?? T.nada], ...(d?.depende ? ([[T.depende, d.depende]] as [string, string][]) : [])]}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+      <h2 className="pa-h2">{T.abrenTitulo}</h2>
+      <p className="microcopia">{T.resumen(abiertos, decide.length)}</p>
+      {decide.length ? (
         <ul className="pa-filas">
-          {lista.map((m) => (
+          {decide.map((m) => (
             <ItemModulo
               key={m.clave}
               m={m}

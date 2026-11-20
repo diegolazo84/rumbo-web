@@ -2144,3 +2144,27 @@ a.as-linea__numero { display: inline-flex; min-block-size: 44px; align-items: ce
 .me-ingreso__enlace { padding: 0; border: 0; background: none; color: var(--bosque); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
 .me-ingreso__otras { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--e-3) var(--e-5); margin-block-start: var(--e-4); font-size: var(--t-s); }
 .me-ingreso__otras .me-ingreso__enlace { min-block-size: 44px; }
+
+/* Resumen de avance con sensación de premio (20-nov-2026): medalla del nivel, franja cálida
+   arriba y el bono del día completo como un pequeño premio por ganar. */
+.me-resumen { position: relative; overflow: hidden; }
+.me-resumen::before {
+  content: ""; position: absolute; inset: 0 0 auto; block-size: 4px;
+  background: linear-gradient(90deg, var(--bosque), var(--proyecto) 55%, var(--ambar));
+}
+.me-resumen__medalla {
+  inline-size: 44px; block-size: 44px; border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, var(--superficie), var(--terracota-suave) 70%);
+  color: var(--terracota-texto); font: 700 var(--t-h3)/1 var(--serif); font-variant-numeric: lining-nums;
+  border: 2px solid var(--ambar); box-shadow: var(--sombra-1);
+}
+.me-resumen__bono {
+  padding: 10px 12px; border-radius: var(--r-s);
+  background: linear-gradient(135deg, var(--terracota-suave), var(--papel));
+}
+.me-resumen__bono > p:first-child { display: flex; align-items: center; gap: 6px; color: var(--tinta); }
+.me-resumen__chispa { color: var(--terracota-texto); flex: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .me-resumen__medalla { transition: transform 0.3s ease; }
+  .me-resumen:hover .me-resumen__medalla { transform: rotate(-8deg) scale(1.05); }
+}

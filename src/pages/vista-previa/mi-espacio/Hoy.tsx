@@ -831,8 +831,9 @@ export function ResumenAvance({ progreso }: { progreso: Progreso }) {
   return (
     <section className="tarjeta me-resumen" aria-labelledby="resumen-nivel">
       <div className="me-resumen__fila">
-        <span className="me-resumen__icono" aria-hidden="true">
-          <Icono nombre="leaf" tamaño={20} />
+        {/* Medalla con el número del nivel: lo ganado se ve como un premio, no como un dato. */}
+        <span className="me-resumen__icono me-resumen__medalla" aria-hidden="true">
+          {nivel.nivel}
         </span>
         <Etiqueta key={destello} variante="activo" grande nowrap className={destello ? "destello" : undefined}>
           <span id="resumen-nivel">{T_HOY.resumen.nivel(nivel.nivel, nivel.nombre)}</span>
@@ -852,7 +853,10 @@ export function ResumenAvance({ progreso }: { progreso: Progreso }) {
         <p className="barra-texto">{T_HOY.resumen.maximo}</p>
       )}
       <div className="me-resumen__bono">
-        <p>{T_HOY.resumen.bono(bonoSiguiente)}</p>
+        <p>
+          <Icono nombre="sparkles" tamaño={16} className="me-resumen__chispa" />
+          {T_HOY.resumen.bono(bonoSiguiente)}
+        </p>
         {racha > 0 && <p className="microcopia">{T_HOY.resumen.racha(racha)}</p>}
       </div>
       <Link to={R.progreso} className="enlace-flecha">

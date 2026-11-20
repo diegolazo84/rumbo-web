@@ -925,7 +925,8 @@ test.describe("Etapa 0: proveedores reales y funciones futuras rotuladas", () =>
     await expect(viene).not.toContainText(/\b20\d\d\b/); // sin fechas de lanzamiento
     await expect(page.locator(".ranking-tarjeta")).toHaveCount(0); // el ranking ya no se muestra en la portada
     const recibes = page.locator(".transparencia").first();
-    await expect(recibes).not.toContainText(/foro|ranking|foto/i);
+    // Fotos, reconocimientos y ranking ya existen (siempre presentes desde el 20-nov); el foro no.
+    await expect(recibes).not.toContainText(/foro|comunidad/i);
     await expect(page.locator("main")).not.toContainText(/comunidad es opcional|comunidad solo muestra/);
   });
 });

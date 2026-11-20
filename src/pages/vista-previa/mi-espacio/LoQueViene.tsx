@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import Etiqueta from "../../../components/Etiqueta";
 import { Icono } from "../../../components/app";
+import { SIEMPRE_PRESENTES } from "../../../lib/modulos";
 import { datos, supabase } from "../../../lib/supabase";
 import { useEspacio } from "./espacio";
 import { TituloSeccion } from "./Seccion";
@@ -18,12 +19,12 @@ const DISPONIBLE = new Set(["habilitado", "operativo"]);
 export async function modulosDisponibles(): Promise<Set<string>> {
   const sb = await supabase();
   const filas = datos(await sb.from("modulos").select("clave,estado")) as { clave: string; estado: string }[] | null;
-  return new Set((filas ?? []).filter((f) => DISPONIBLE.has(f.estado)).map((f) => f.clave));
+  return new Set([...SIEMPRE_PRESENTES, ...(filas ?? []).filter((f) => DISPONIBLE.has(f.estado)).map((f) => f.clave)]);
 }
 
 export default function LoQueViene() {
   const { real } = useEspacio();
-  const [disponibles, setDisponibles] = useState<Set<string>>(new Set());
+  const [disponibles, setDisponibles] = useState<Set<string>>(new Set(SIEMPRE_PRESENTES));
 
   useEffect(() => {
     if (!real) return;

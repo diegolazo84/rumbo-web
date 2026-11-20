@@ -1,7 +1,7 @@
 # Inventario de funciones de Rumbo
 
 Lista única de las funciones del producto y su estado real. Se actualiza en cada PR que cambia
-una función. Última revisión: 10 de noviembre de 2026 (`main` en
+una función. Última revisión: 20 de noviembre de 2026 (`main` en
 c3f6813).
 
 **Estados:**
@@ -35,9 +35,9 @@ autorización de Diego.
 | Comunidad | Comunidad, crear publicación, grupos, panel de moderación | apagada (módulo «comunidad») | Revisión legal |
 | Comunidad | Interior de grupo, desafíos, foto por desafío | apagada (módulo «comunidad»; #63 y migraciones 20261129–20261201 aplicadas el 10-nov) | Revisión legal; 20261126 al abrir la Comunidad |
 | Gamificación | Niveles, créditos, rachas, Mis logros | operativa | — |
-| Gamificación | Reconocimientos y ranking | apagada (módulos «reconocimientos» y «ranking») | Revisión legal del ranking |
+| Gamificación | Reconocimientos y ranking | siempre presentes (20-nov, migración 20261206): el ranking es voluntario, con alias | — |
 | Gamificación | 10 % en una renovación (`guardar_beneficio`, `aplicar_beneficio`) y ajuste de reconocimientos (`guardar_reconocimiento`) | publicado (#93): pantalla «Reconocimientos y beneficio» del dueño (/equipo/recompensas/) y descuento aplicado en Pagos; descuento apagado | Diego decide si lo activa; la tarjeta en Mis logros necesita 20261120 |
-| Fotos | Subida privada en las acciones | apagada (módulo «fotos», #67) | Revisión legal, iPhone real |
+| Fotos | Subida privada en cualquier acción, con miniatura | siempre presente (20-nov, migración 20261206) | iPhone real |
 | Fotos | Borrado a los 30 días y Mantención | apagada (#68 y migración 20261202 aplicadas el 10-nov; tarea `fotos-depurar` inactiva, función sin desplegar, sin `depurar_fotos_url`) | Política de privacidad publicada, iPhone real y `docs/borrado-fotos.md` |
 | IA | Asistente con consentimiento y aprobación del coach (`ia_*`, `mis_consultas_ia`, `guardar_ia_config`) | pantalla del participante con la maqueta definitiva (#75): 8 estados, acceso desde Apoyo, «Crear plan» como pregunta revisada, ilustraciones definitivas, móvil compacto; bandeja de revisión del coach (#76) y administración del dueño: interruptor, topes y gasto (#77); «Me sirvió»/«No me sirvió» (`ia_valoraciones`, `ia_valorar`, 20261127) y aviso «no compartida» en Mis avisos (20261128) aplicados en producción el 31-oct; apagado | Cargar la clave y prueba real con tope de USD 10 |
 | Administración | Módulos | operativa | — |

@@ -85,7 +85,7 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
     await sb.from("ciclos").select(COLUMNAS.ciclo).eq("participante_id", participante.id).order("numero", { ascending: false }).limit(1).maybeSingle(),
   ) as Filas["ciclo"] | null;
   if (!ciclo) return "sin-ficha";
-  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas, moduloFotos, avisos, moduloComunidad, medibles, notas, recordatorios, correo, asistente] =
+  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas, avisos, moduloComunidad, medibles, notas, recordatorios, correo, asistente] =
     await Promise.all([
       sb.from("programas").select(COLUMNAS.programa).eq("ciclo_id", ciclo.id).neq("estado", "borrador").order("version"),
       sb.from("ocurrencias").select(COLUMNAS.ocurrencia).eq("ciclo_id", ciclo.id).order("fecha").limit(5000),
@@ -101,8 +101,6 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
       // A3 y C2: si la migración todavía no está en la base, «Tu coach» queda genérico y sin videollamadas.
       sb.rpc("mi_coach"),
       sb.from("videollamadas").select("semana,programada_para,enlace,estado").eq("ciclo_id", ciclo.id).order("semana"),
-      // Módulo «fotos» (A4): mientras el dueño no lo habilite, la subida no se muestra.
-      sb.rpc("modulo_visible", { p_clave: "fotos" }),
       // Mis avisos (A5): los propios, por RLS. Si no se pueden leer, la pantalla lo dice.
       leerAvisos(sb),
       sb.rpc("modulo_visible", { p_clave: "comunidad" }),
@@ -144,7 +142,8 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
     ausencia: armarAusencia(aus),
     coach: armarCoach(coach.error ? null : coach.data),
     videollamadas: llamadas.error ? [] : armarVideollamadas(llamadas.data),
-    fotos: !moduloFotos.error && moduloFotos.data === true,
+    // Fotos: siempre presentes (20261206). La foto es opcional en cualquier acción.
+    fotos: true,
     avisos,
     comunidad: !moduloComunidad.error && moduloComunidad.data === true,
     recordatorios: armarRecordatorios(recordatorios),
