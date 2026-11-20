@@ -20,8 +20,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Etiqueta from "../../../components/Etiqueta";
-import Foto from "../../../components/Foto";
-import { fotos } from "../../../data/fotos";
+import Amanecer from "../../../components/app/Amanecer";
 import { AnilloDia, BarraProgreso, ErrorBloque, Hoja, HojaAyuda, Icono, Ilustracion, Tostada } from "../../../components/app";
 import { ESCENARIO_CERCANO, HOY, cuentaComoHecha, ocurrenciasDel, type Escenario, type EstadoRegistro, type Meta, type Ocurrencia } from "../../../data/ejemplo-app";
 import { niveles } from "../../../data/rumbo";
@@ -189,7 +188,7 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
 
   return (
     <div className="me-pantalla me-hoy">
-      <Bienvenida hoy={hoy} semana={semana} progreso={progreso} esc={esc} deHoy={deHoy} principal={principal} conCoach={conCoach} total={ciclo.semanas} />
+      <Bienvenida hoy={hoy} semana={semana} progreso={progreso} esc={esc} deHoy={deHoy} principal={principal} conCoach={conCoach} total={ciclo.semanas} hechas={hechas} programadas={programadas} ocultarCreditos={!!variante.ocultarCreditos} />
 
       {principal && <MetaPrincipal meta={principal} metas={esc.metas} />}
 
@@ -343,9 +342,12 @@ type PropsBienvenida = {
   deHoy: Ocurrencia[];
   principal: Meta | null;
   conCoach: boolean;
+  hechas: number;
+  programadas: number;
+  ocultarCreditos: boolean;
 };
 
-function Bienvenida({ hoy, semana, total, progreso, esc, deHoy, principal, conCoach }: PropsBienvenida) {
+function Bienvenida({ hoy, semana, total, progreso, esc, deHoy, principal, conCoach, hechas, programadas, ocultarCreditos }: PropsBienvenida) {
   const { fechaRevision, metaPorId } = useEspacio();
   const tituloMeta = (o?: Ocurrencia) => (o ? metaPorId(o.metaId).titulo || o.metaTitulo || "" : "") || principal?.titulo || "";
   const pendiente = deHoy.find((o) => o.registro === null);
@@ -373,7 +375,7 @@ function Bienvenida({ hoy, semana, total, progreso, esc, deHoy, principal, conCo
 
   return (
     <header className="me-bienvenida me-hoy__cabeza">
-      <Foto foto={fotos.miEspacio} decorativa prioridad className="me-bienvenida__foto" sizes="(min-width: 1024px) 520px, 60vw" />
+      <Amanecer hechas={hechas} programadas={programadas} className="me-bienvenida__paisaje" />
       <div className="me-bienvenida__texto">
         <div className="me-bienvenida__ojo">
           <h1 className="me-bienvenida__h1">{T_SECCIONES.rumbo}</h1>
@@ -386,6 +388,23 @@ function Bienvenida({ hoy, semana, total, progreso, esc, deHoy, principal, conCo
           {frase}
           {esRevision && ` ${textoRevision}`}
         </p>
+        {/* Lo ganado, a la vista (escritorio): racha y nivel. Sin créditos si la persona los ocultó. */}
+        {(progreso.racha > 0 || !ocultarCreditos) && (
+          <ul className="me-bienvenida__logros" aria-label={T_HOY.bienvenida.logros}>
+            {progreso.racha > 0 && (
+              <li>
+                <Icono nombre="flame" tamaño={16} />
+                {T_HOY.resumen.racha(progreso.racha)}
+              </li>
+            )}
+            {!ocultarCreditos && (
+              <li>
+                <Icono nombre="crown" tamaño={16} />
+                {T_HOY.resumen.nivel(progreso.nivel.nivel, progreso.nivel.nombre)}
+              </li>
+            )}
+          </ul>
+        )}
       </div>
     </header>
   );

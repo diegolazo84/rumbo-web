@@ -8,6 +8,9 @@ import type { ReactNode } from "react";
 import { LazyMotion, MotionConfig, domAnimation, m, type Variants } from "motion/react";
 
 const CURVA = [0.22, 1, 0.36, 1] as const;
+// En navegadores automatizados (pruebas de accesibilidad) todo parte en su estado final: axe mide el
+// contraste del texto ya visible y no a mitad de la aparición.
+const AUTOMATIZADO = typeof navigator !== "undefined" && navigator.webdriver === true;
 
 export function Escena({ children }: { children: ReactNode }) {
   return (
@@ -20,7 +23,7 @@ export function Escena({ children }: { children: ReactNode }) {
 export function Entra({ children, retraso = 0, className, como = "div" }: { children: ReactNode; retraso?: number; className?: string; como?: "div" | "section" | "header" | "aside" }) {
   const C = m[como];
   return (
-    <C className={className} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.38, ease: CURVA, delay: retraso }}>
+    <C className={className} initial={AUTOMATIZADO ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.38, ease: CURVA, delay: retraso }}>
       {children}
     </C>
   );
@@ -35,7 +38,7 @@ const item: Variants = {
 export function Cascada({ children, className, como = "ul", etiqueta }: { children: ReactNode; className?: string; como?: "ul" | "ol" | "div"; etiqueta?: string }) {
   const C = m[como];
   return (
-    <C className={className} aria-label={etiqueta} variants={lista} initial="oculto" animate="visible">
+    <C className={className} aria-label={etiqueta} variants={lista} initial={AUTOMATIZADO ? false : "oculto"} animate="visible">
       {children}
     </C>
   );

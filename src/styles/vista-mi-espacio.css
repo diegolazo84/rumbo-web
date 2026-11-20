@@ -86,24 +86,60 @@
   overflow: hidden;
   background: var(--crema);
 }
-/* Foto del amanecer a la derecha, fundida con el crema hacia el texto (nov-2026). */
-.me-bienvenida__foto { position: absolute; inset-block: 0; inset-inline-end: 0; inline-size: 46%; pointer-events: none; }
-.me-bienvenida__foto img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; object-position: 60% 50%; mask-image: linear-gradient(to right, transparent, black 65%); }
+/* Amanecer del día (nov-2026): paisaje dibujado a la derecha, fundido con el crema hacia el
+   texto. Crece con lo hecho hoy: el sol sube, el camino se ilumina y los brotes crecen. */
+.me-bienvenida__paisaje { position: absolute; inset-block: 0; inset-inline-end: 0; inline-size: 52%; block-size: 100%; pointer-events: none; mask-image: linear-gradient(to right, transparent, black 55%); }
 .me-bienvenida__texto { position: relative; display: grid; gap: 4px; }
-.me-bienvenida__saludo, .me-bienvenida__frase { max-inline-size: 68%; }
+.me-bienvenida__saludo, .me-bienvenida__frase { max-inline-size: 64%; }
 .me-bienvenida__ojo { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font: 600 var(--t-micro)/1.3 var(--sans); color: var(--terracota-texto); }
 .me-bienvenida__h1 { margin: 0; font: inherit; letter-spacing: inherit; color: var(--bosque); }
 .me-bienvenida__ojo .etiqueta { letter-spacing: 0; text-transform: none; }
 .me-bienvenida__saludo { font: 600 var(--t-saludo)/1.08 var(--serif); letter-spacing: -0.015em; color: var(--bosque); }
 .me-bienvenida__frase { font-size: var(--t-s); line-height: 1.4; color: var(--tinta-suave); }
+/* Lo que llevas: solo en escritorio (en el teléfono, la primera acción debe verse sin desplazar). */
+.me-bienvenida__logros { display: none; margin: var(--e-3) 0 0; padding: 0; list-style: none; flex-wrap: wrap; gap: 8px; }
+.me-bienvenida__logros li { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--r-full); background: color-mix(in srgb, var(--papel) 80%, transparent); border: 1px solid color-mix(in srgb, var(--bosque) 14%, transparent); font: 600 var(--t-micro)/1.2 var(--sans); color: var(--bosque); backdrop-filter: blur(6px); }
+.me-bienvenida__logros li:first-child svg { color: var(--terracota); }
+.me-bienvenida__logros li svg { color: var(--salvia-honda); }
 @media (min-width: 1024px) {
   .me-bienvenida { margin-inline: 0; margin-block-start: 0; padding: var(--e-6) var(--e-6) var(--e-7); border-radius: var(--r-l); }
-  .me-bienvenida__foto { inline-size: 50%; }
-  .me-bienvenida__foto img { mask-image: linear-gradient(to right, transparent, black 40%); }
+  .me-bienvenida__paisaje { inline-size: 58%; mask-image: linear-gradient(to right, transparent, black 50%); }
   .me-bienvenida__texto { gap: 6px; }
-  .me-bienvenida__saludo, .me-bienvenida__frase { max-inline-size: 56%; }
+  .me-bienvenida__saludo, .me-bienvenida__frase { max-inline-size: 52%; }
   .me-bienvenida__frase { font-size: var(--t-base); }
+  .me-bienvenida__logros { display: flex; }
 }
+
+/* Dibujo del amanecer: solo tokens. */
+.amanecer { display: block; overflow: hidden; }
+.amanecer .am-cielo-alto { stop-color: var(--crema); }
+.amanecer .am-cielo-bajo { stop-color: var(--terracota-suave); }
+.amanecer .am-resplandor { fill: var(--sol); filter: blur(28px); }
+.amanecer .am-halo-centro { stop-color: var(--sol); stop-opacity: 0.55; }
+.amanecer .am-halo-borde { stop-color: var(--sol); stop-opacity: 0; }
+.amanecer .am-sol { fill: var(--sol); }
+.amanecer .am-rayos line { stroke: var(--sol); stroke-width: 3; stroke-linecap: round; opacity: 0; transition: opacity var(--dur-4) var(--curva); }
+.amanecer.es-completo .am-rayos line, .amanecer.es-libre .am-rayos line { opacity: 0.8; }
+.amanecer .am-lejos { fill: var(--salvia-suave); }
+.amanecer .am-medio { fill: var(--salvia); }
+.amanecer .am-cerca { fill: var(--salvia-honda); }
+.amanecer .am-camino { fill: none; stroke: var(--arena); stroke-width: 9; stroke-linecap: round; }
+.amanecer .am-camino-luz { fill: none; stroke: var(--sol); stroke-width: 4; stroke-linecap: round; }
+.amanecer .am-hito { fill: var(--papel); stroke: var(--bosque); stroke-width: 2; transform-box: fill-box; transform-origin: center; }
+.amanecer .am-hito.es-hecho { fill: var(--sol); stroke: var(--bosque); }
+.amanecer .am-bandera line { stroke: var(--bosque); stroke-width: 2.5; stroke-linecap: round; }
+.amanecer .am-bandera path { fill: var(--arena); stroke: var(--bosque); stroke-width: 1.5; stroke-linejoin: round; transform-box: fill-box; transition: fill var(--dur-4) var(--curva); }
+.amanecer.es-completo .am-bandera path { fill: var(--terracota); }
+.amanecer .am-tallo { fill: none; stroke: var(--bosque); stroke-width: 2.5; stroke-linecap: round; }
+.amanecer .am-hoja { fill: var(--salvia); }
+.amanecer .am-hoja--b { fill: var(--niebla); }
+.amanecer .am-brote { transform-box: fill-box; }
+@media (prefers-reduced-motion: no-preference) {
+  .amanecer .am-halo { transform-box: fill-box; transform-origin: center; animation: am-respira 6s var(--curva) infinite alternate; }
+  .amanecer.es-completo .am-rayos { transform-box: view-box; transform-origin: 300px 128px; animation: am-gira 40s linear infinite; }
+}
+@keyframes am-respira { from { transform: scale(0.92); opacity: 0.75; } to { transform: scale(1.08); opacity: 1; } }
+@keyframes am-gira { to { transform: rotate(360deg); } }
 
 /* Meta principal: ¿qué quiero conseguir? Sube sobre el borde de la bienvenida. */
 .me-meta-principal {

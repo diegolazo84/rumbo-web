@@ -102,6 +102,7 @@ export const T_HOY = {
   // Frase de la bienvenida: elegida por el estado real del día y nombrando la meta real a la que
   // aporta (nunca una frase motivacional al azar ni números que no existen). Sin culpa.
   bienvenida: {
+    logros: "Lo que llevas",
     // Varias frases por estado: se elige una por fecha (fraseDelDia), para no repetir la misma.
     ninguna: [
       (m: string) => `Hoy das un paso más hacia «${m}».`,
