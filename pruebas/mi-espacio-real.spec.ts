@@ -1024,7 +1024,7 @@ test("Desafíos real (C16): la foto que subió el equipo se ve en portada, tarje
       firmadas.push(ruta.replace(/^sign\//, ""));
       return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ signedURL: `/object/${ruta}?token=t` }) });
     }
-    // La de «Leer cada noche» no carga: debe volver a la ilustración.
+    // La de «Leer cada noche» no carga: debe volver a la foto de paisaje.
     if (ruta.includes("f030")) return rt.fulfill({ status: 404, body: "" });
     return rt.fulfill({ status: 200, contentType: "image/png", body: png });
   });
@@ -1033,10 +1033,10 @@ test("Desafíos real (C16): la foto que subió el equipo se ve en portada, tarje
   await expect(page.locator(".de-portada img.de-portada__fondo.de-foto")).toHaveAttribute("src", /desafios\/de1\/.*token=t/);
   const tarjeta = (t: string) => page.locator("li.de-tarjeta", { hasText: t }).locator(".de-tarjeta__img");
   await expect(tarjeta("Semana de constancia").locator("img.de-foto")).toBeVisible();
-  await expect(tarjeta("Pausa activa").locator("img")).toHaveCount(0);
-  await expect(tarjeta("Pausa activa").locator("svg")).toHaveCount(1);
-  await expect(tarjeta("Leer cada noche").locator("svg")).toHaveCount(1);
-  await expect(tarjeta("Leer cada noche").locator("img")).toHaveCount(0);
+  await expect(tarjeta("Pausa activa").locator("img.de-foto")).toHaveCount(0);
+  await expect(tarjeta("Pausa activa").locator("img.paisaje-foto")).toHaveCount(1);
+  await expect(tarjeta("Leer cada noche").locator("img.paisaje-foto")).toHaveCount(1);
+  await expect(tarjeta("Leer cada noche").locator("img.de-foto")).toHaveCount(0);
   await expect(page.locator(".de-mia", { hasText: "Semana de constancia" }).locator("img.de-mia__img.de-foto")).toBeVisible();
   // La foto de verdad se cargó (no quedó un recuadro roto).
   await expect.poll(() => page.locator(".de-portada img.de-foto").evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth)).toBeGreaterThan(0);

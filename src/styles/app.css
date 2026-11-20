@@ -696,7 +696,11 @@ a.accion__abrir, button.accion__abrir { cursor: pointer; }
    Referencia visual (21-oct-2026): ilustraciones, avatar y celebración
    ======================================================================== */
 /* Ilustraciones propias (components/app/Ilustracion.tsx): solo decoración, en la paleta. */
-.ilustracion { display: block; pointer-events: none; }
+.ilustracion { display: block; pointer-events: none; object-fit: cover; max-inline-size: 100%; border-radius: var(--r-m); background: var(--salvia-suave); }
+.ilustracion--paisaje, .ilustracion--atardecer { aspect-ratio: 16 / 7; }
+.ilustracion--colinas { aspect-ratio: 5 / 1; }
+.ilustracion--cuaderno { aspect-ratio: 8 / 7; }
+.ilustracion--brote { aspect-ratio: 1; border-radius: 50%; }
 .il-sol { fill: var(--sol); }
 .il-destello { fill: var(--terracota); }
 .il-lejos, .il-fondo { fill: var(--salvia-suave); }
@@ -713,7 +717,6 @@ a.accion__abrir, button.accion__abrir { cursor: pointer; }
 .il-asa { fill: none; }
 .il-renglon { fill: none; stroke: var(--linea-fuerte); stroke-width: 2.5; stroke-linecap: round; }
 .il-cafe { fill: var(--tinta-suave); opacity: 0.55; }
-@media (forced-colors: active) { .ilustracion { display: none; } }
 
 /* Avatar de quien acompaña: genérico (icono) hasta la etapa 4A; después, iniciales o foto. */
 .me-avatar {

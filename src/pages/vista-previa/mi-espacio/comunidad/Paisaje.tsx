@@ -57,81 +57,27 @@ export function PaisajePortada({ className }: { className?: string }) {
   );
 }
 
-const CIELO: Record<Ilustracion, [string, string]> = {
-  sendero: ["#E9C9A0", "#F6E7CF"],
-  lago: ["#C9D8D2", "#F3E6CF"],
-  montana: ["#D9B49B", "#F5DDBF"],
-  colinas: ["#DCE6DA", "#F6EEDF"],
-  brote: ["#E7E2CC", "#F6F0E1"],
-  atardecer: ["#C99A86", "#F6DEBF"],
+// Miniaturas con fotografías reales (nov-2026, pedido de Diego: fotos reales en vez de dibujos).
+// Cada tema usa un encuadre distinto de las fotos de la web (créditos en docs/creditos-fotos.md).
+const FOTO_MINI: Record<Ilustracion, { src: string; pos: string }> = {
+  sendero: { src: "sendero-1440", pos: "34% 85%" },
+  montana: { src: "sendero-1440", pos: "48% 8%" },
+  colinas: { src: "camino-organizacion-480", pos: "50% 50%" },
+  lago: { src: "camino-sin-claridad-480", pos: "50% 45%" },
+  brote: { src: "mi-espacio-800", pos: "8% 55%" },
+  atardecer: { src: "sendero-1440", pos: "12% 40%" },
 };
 
 export function PaisajeMini({ nombre, className }: { nombre: Ilustracion | null; className?: string }) {
-  const id = useId().replace(/:/g, "");
-  const n = nombre ?? "colinas";
-  const [arriba, abajo] = CIELO[n];
+  const f = FOTO_MINI[nombre ?? "colinas"];
   return (
-    <svg className={className} viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
-      <defs>
-        <linearGradient id={`${id}c`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={arriba} />
-          <stop offset="1" stopColor={abajo} />
-        </linearGradient>
-      </defs>
-      <rect width="160" height="100" fill={`url(#${id}c)`} />
-      {n === "sendero" && (
-        <>
-          <circle cx="118" cy="30" r="10" fill="#F7D79C" />
-          <path fill="#8FA58F" d="M0 56 C30 40 60 44 90 52 S140 40 160 46 V100 H0Z" />
-          <path fill="#56735F" d="M0 70 C40 58 90 62 160 66 V100 H0Z" />
-          <path fill="#E7D3B0" d="M70 100 C76 86 86 76 104 70 L112 70 C98 78 92 88 92 100Z" />
-          <path fill="#2F4A3A" d="M18 72 l8 -22 l8 22z M30 74 l7 -18 l7 18z M130 70 l7 -20 l7 20z M142 72 l6 -16 l6 16z" />
-        </>
-      )}
-      {n === "lago" && (
-        <>
-          <path fill="#9AA6A8" d="M0 54 L30 34 L52 46 L80 26 L108 44 L132 32 L160 46 V100 H0Z" />
-          <path fill="#6E8C86" d="M0 62 C40 54 110 56 160 60 V100 H0Z" />
-          <path fill="#A9C6C4" d="M0 70 C50 64 110 66 160 70 V88 C110 84 50 86 0 90Z" />
-          <path fill="#3F5A4C" d="M0 90 C50 86 110 84 160 88 V100 H0Z" />
-          <circle cx="60" cy="74" r="3" fill="#F6E7CF" opacity="0.7" />
-        </>
-      )}
-      {n === "montana" && (
-        <>
-          <circle cx="40" cy="30" r="9" fill="#F7D79C" />
-          <path fill="#9C7A80" d="M0 64 L36 30 L60 50 L96 16 L132 50 L160 38 V100 H0Z" />
-          <path fill="#F4E2DC" d="M96 16 L106 26 L100 28 L110 32 L96 30 L88 24Z" />
-          <path fill="#5E5257" d="M0 76 C40 64 100 66 160 70 V100 H0Z" />
-          <circle cx="112" cy="62" r="3" fill="#262224" />
-          <path fill="#262224" d="M109 65 h6 l2 10 h-10z" />
-        </>
-      )}
-      {n === "colinas" && (
-        <>
-          <circle cx="124" cy="28" r="10" fill="#F2C46D" />
-          <path fill="#C9DACB" d="M0 58 C30 42 70 44 100 52 S140 40 160 46 V100 H0Z" />
-          <path fill="#94B49D" d="M0 72 C40 60 100 62 160 66 V100 H0Z" />
-          <path fill="none" stroke="#E7D3B0" strokeWidth="5" strokeLinecap="round" d="M60 100 C70 88 96 80 130 76" />
-        </>
-      )}
-      {n === "brote" && (
-        <>
-          <path fill="#D9C7A6" d="M0 76 C50 70 110 70 160 74 V100 H0Z" />
-          <path fill="none" stroke="#3B6E58" strokeWidth="4" strokeLinecap="round" d="M80 76 V48" />
-          <path fill="#94B49D" d="M80 58 C66 58 58 48 58 38 C72 38 80 46 80 58Z" />
-          <path fill="#5F8E74" d="M80 52 C94 52 102 42 102 30 C88 30 80 38 80 52Z" />
-          <circle cx="40" cy="30" r="3" fill="#F2C46D" />
-          <circle cx="124" cy="24" r="2.5" fill="#F2C46D" />
-        </>
-      )}
-      {n === "atardecer" && (
-        <>
-          <circle cx="96" cy="54" r="16" fill="#FFE3B0" opacity="0.9" />
-          <path fill="#8C6E72" d="M0 60 L30 44 L56 54 L86 36 L118 52 L160 42 V100 H0Z" />
-          <path fill="#3B3B3C" d="M0 78 C40 70 100 72 160 76 V100 H0Z" />
-        </>
-      )}
-    </svg>
+    <img
+      className={className ? `paisaje-foto ${className}` : "paisaje-foto"}
+      src={`${BASENAME}fotos/${f.src}.webp`}
+      style={{ objectPosition: f.pos }}
+      alt=""
+      loading="lazy"
+      decoding="async"
+    />
   );
 }

@@ -1079,7 +1079,7 @@
 .de-grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: var(--e-4); margin: 0; padding: 0; list-style: none; }
 .co-tarjeta.de-tarjeta { display: grid; grid-template-rows: auto 1fr auto; gap: var(--e-4); padding: 0 0 var(--e-5); overflow: hidden; }
 .de-tarjeta__img { position: relative; overflow: hidden; aspect-ratio: 16 / 10; }
-.de-tarjeta__img > svg { display: block; inline-size: 100%; block-size: 100%; }
+.de-tarjeta__img > svg, .de-tarjeta__img > .paisaje-foto { display: block; inline-size: 100%; block-size: 100%; }
 /* C16: foto del desafío en el mismo recorte que la ilustración. */
 .de-foto { display: block; object-fit: cover; }
 .de-tarjeta__img > .de-foto,
@@ -1203,6 +1203,9 @@
 
 /* Detalle */
 .de-detalle__img { position: relative; overflow: hidden; border-radius: var(--r-s); aspect-ratio: 16 / 7; }
-.de-detalle__img > svg { display: block; inline-size: 100%; block-size: 100%; }
+.de-detalle__img > svg, .de-detalle__img > .paisaje-foto { display: block; inline-size: 100%; block-size: 100%; }
 .de-detalle__fechas { font-size: var(--t-xs); color: var(--tinta-suave); }
 .de-detalle__parte { display: grid; gap: var(--e-2); }
+
+/* Miniaturas con fotografías reales (nov-2026): mismo tamaño que la ilustración que reemplazan. */
+.paisaje-foto { display: block; object-fit: cover; max-inline-size: 100%; }
