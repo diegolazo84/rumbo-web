@@ -40,7 +40,7 @@ const MI_ESPACIO_FORZADO =
 const ESPACIO_PROPIO = MI_ESPACIO_PROPIO || MI_ESPACIO_FORZADO;
 // Cuenta gratis «Rumbo Inicial»: el ingreso muestra «Ya tengo cuenta» y «Crear cuenta gratis».
 // true SOLO cuando el módulo «cuenta_gratis» esté habilitado (docs/cuenta-gratis.md).
-const CUENTA_GRATIS_ACTIVA = false;
+const CUENTA_GRATIS_ACTIVA = true; // módulo habilitado y migraciones 20261204 y 20261205 aplicadas (Diego, 19-nov-2026)
 const CUENTA_GRATIS =
   CUENTA_GRATIS_ACTIVA ||
   (typeof __CUENTA_GRATIS__ !== "undefined"
