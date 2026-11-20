@@ -38,6 +38,11 @@ const MI_ESPACIO_FORZADO =
     ? __MI_ESPACIO_PROPIO__ === true
     : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.MI_ESPACIO_PROPIO === "1";
 const ESPACIO_PROPIO = MI_ESPACIO_PROPIO || MI_ESPACIO_FORZADO;
+const LEGAL_13 = true; // Privacidad y Condiciones 1.3 publicadas con autorización de Diego (20-nov-2026)
+const LEGAL_13_FORZADO =
+  typeof __LEGAL_13__ !== "undefined"
+    ? __LEGAL_13__ === true
+    : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.LEGAL_13 === "1";
 // Cuenta gratis «Rumbo Inicial»: el ingreso muestra «Ya tengo cuenta» y «Crear cuenta gratis».
 // true SOLO cuando el módulo «cuenta_gratis» esté habilitado (docs/cuenta-gratis.md).
 const CUENTA_GRATIS_ACTIVA = true; // módulo habilitado y migraciones 20261204 y 20261205 aplicadas (Diego, 19-nov-2026)
@@ -138,6 +143,10 @@ export type EstadoId = keyof typeof estados;
 export const operacion = {
   formularioPropio: PROPIO, // D8: postular, estado y contacto en la web propia (arriba, FORMULARIO_PROPIO)
   miEspacioPropio: ESPACIO_PROPIO, // D8: Mi espacio y el panel en la web propia (arriba, MI_ESPACIO_PROPIO)
+  // Rumbo 1.0: Privacidad y Condiciones 1.3 (comunidad, ranking, fotos, reconocimientos y pago en Mi
+  // espacio). APAGADO hasta la revisión legal y la autorización escrita de Diego para publicar;
+  // se enciende siguiendo docs/publicar-versiones-legales.md (mismo commit: fecha de VERSION_PUBLICADA).
+  legal13: LEGAL_13 || LEGAL_13_FORZADO,
   responsable: { nombre: "Diego Alfonso Muñoz Abeleida", comuna: "Providencia" } as null | { nombre: string; rut?: string; comuna: string }, // bloquea el lanzamiento público
   // «Continuar con Google» en el ingreso a Mi espacio. true SOLO cuando Diego haya activado el
   // proveedor Google en Supabase (docs/ingreso-google.md); si no, el botón daría error.
