@@ -2595,3 +2595,37 @@ test("Mi espacio se instala como app: manifiesto propio, service worker solo en 
   expect(await page.evaluate(() => navigator.serviceWorker.controller)).toBeNull();
 });
 });
+
+test("Mis logros: galería «Cómo empezaste y cómo vas»: cada foto con su acción, su día y su meta", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  const reg = (fecha: string) => ({ ocurrencia_id: `o-${fecha}`, participante_id: "p1", estado: "hecha", version: "completa", explicacion: null, nota_revision: null, revisado_en: null, foto_ruta: `p1/o-${fecha}/foto.webp` });
+  base.registros = [reg("2026-10-12"), reg("2026-10-06"), reg("2026-10-14")];
+  const orden: string[] = [];
+  await simular(page, base, { mis_reconocimientos: () => [], mis_beneficios: () => [], mi_beneficio_renovacion: () => [] });
+  await simularEvidencias(page, orden);
+  await page.goto("mi-espacio/logros/");
+  await hidratar(page);
+  const galeria = page.locator("section", { has: page.getByRole("heading", { name: "Cómo empezaste y cómo vas" }) });
+  const par = galeria.locator(".ml-fotos__par .ml-foto");
+  await expect(par).toHaveCount(2);
+  await expect(par.first()).toContainText("Así empezaste");
+  await expect(par.first()).toContainText("Día 2");
+  await expect(par.first()).toContainText("Escribir 30 minutos");
+  await expect(par.first()).toContainText("Martes 6 de octubre");
+  await expect(par.first()).toContainText("Terminar mi tesis");
+  await expect(par.first()).toHaveAttribute("href", /o-2026-10-06/);
+  await expect(par.last()).toContainText("Así vas, 8 días después");
+  await expect(par.last()).toContainText("Día 10");
+  // Recorrido agrupado por semana del ciclo.
+  await expect(galeria.getByRole("heading", { name: "Tu recorrido en fotos (3)" })).toBeVisible();
+  await expect(galeria.locator(".ml-fotos__semana")).toHaveCount(2);
+  await expect(galeria.locator(".ml-fotos__semana").first().locator(".ml-foto")).toHaveCount(1);
+  await expect(galeria.locator(".ml-fotos__semana").last().locator(".ml-foto")).toHaveCount(2);
+  await sinViolaciones(page);
+  // Sin fotos, la galería no aparece (nunca se muestran fotos de ejemplo).
+  base.registros = [];
+  await page.reload();
+  await hidratar(page);
+  await expect(page.getByRole("heading", { name: "Cómo empezaste y cómo vas" })).toHaveCount(0);
+});
