@@ -1829,9 +1829,9 @@ paso("mis logros C17: la persona sabe si el 10 % está activo, sin leer el catá
 
   const crisis = como(ROLES.A, `${encender} select public.ia_preguntar('A veces siento que quiero morir')->>'estado';
     reset role; select ${colaIA} || ' ' || (select count(*) from public.avisos where tipo = 'ia_alerta' and destinatario = '${ROLES.X.uid}')`);
-  const [estadoC, colaC] = (crisis.salida ?? "").split("\n").slice(-2);
-  exigir(crisis.ok && estadoC === "crisis", `una consulta con riesgo no se trató como crisis: ${crisis.error ?? estadoC}`);
-  exigir(crisis.ok && colaC === `${antes} 1`, `en crisis se envió a la IA o el coach no recibió la alerta: ${colaC}`);
+  const [estadoK, colaK] = (crisis.salida ?? "").split("\n").slice(-2);
+  exigir(crisis.ok && estadoK === "crisis", `una consulta con riesgo no se trató como crisis: ${crisis.error ?? estadoK}`);
+  exigir(crisis.ok && colaK === `${antes} 1`, `en crisis se envió a la IA o el coach no recibió la alerta: ${colaK}`);
   const retira = como(ROLES.B, `${encender} select public.ia_retirar_consentimiento() \\g /dev/null
     select public.ia_preguntar('¿Qué hago hoy?')`);
   exigir(!retira.ok && /sin_consentimiento/.test(retira.error), `se envió sin consentimiento: ${retira.error ?? "funcionó"}`);
