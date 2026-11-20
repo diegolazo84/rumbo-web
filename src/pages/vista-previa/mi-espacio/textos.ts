@@ -471,6 +471,21 @@ export const T_PROGRESO = {
 
 // Mis logros (maqueta de ChatGPT, 29-oct-2026). Cifras, fechas y beneficios salen de la base.
 export const T_LOGROS = {
+  // Galería de fotos (20-nov-2026, decisión de Diego: las fotos se guardan como recuerdo).
+  fotos: {
+    titulo: "Cómo empezaste y cómo vas",
+    bajada: "Cada foto queda junto a la acción y el día en que la hiciste. Solo las ven tú y quien te acompaña.",
+    comparacion: "Tu primera foto y la más reciente",
+    primera: "Así empezaste",
+    reciente: (dias: number) => (dias === 1 ? "Así vas, 1 día después" : `Así vas, ${dias} días después`),
+    una: "Es tu primera foto del ciclo. Cada nueva foto se suma aquí, junto a su acción.",
+    recorrido: (n: number) => `Tu recorrido en fotos (${n})`,
+    semana: (n: number) => `Semana ${n}`,
+    dia: (n: number) => `Día ${n}`,
+    alt: (titulo: string, dia: string) => `Foto de «${titulo}», ${dia}`,
+    borrar: "Toca una foto para ver su acción. Desde ahí también puedes quitarla.",
+  },
+
   portada: {
     ojo: "Mis logros",
     titulo: "Cada paso cuenta",

@@ -14,7 +14,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import { AnilloDia, BarraProgreso, ChipMeta, Hoja, Icono, Ilustracion, MetaTarjeta, type NombreIconoApp } from "../../../components/app";
 import { calcularProgreso, cuentaComoHecha, type Meta, type Ocurrencia } from "../../../data/ejemplo-app";
 import { bonoDiario, niveles, reglasCreditos, reglasCreditosTextos } from "../../../data/rumbo";
-import { diaCorto, diaMes, inicialDia, lunesDe, mayuscula, miles, semanaDesde, sumarDias, type Iso } from "../../../lib/fechas";
+import { diaCorto, diaMes, diasEntre, fechaLarga, inicialDia, lunesDe, mayuscula, miles, semanaDesde, sumarDias, type Iso } from "../../../lib/fechas";
+import MiniaturaPrivada from "../../../components/MiniaturaPrivada";
 import { ErrorBase } from "../../../lib/supabase";
 import { EtiquetaEjemplo, prepararLista, useEspacio } from "./comun";
 import { FOTO_PORTADA, PaisajePortada } from "./comunidad/Paisaje";
@@ -90,6 +91,8 @@ export default function Progreso() {
         {conRanking && <Ranking datos={ranking as RankingEstado} fuente={fuente} alCambiar={recargarRanking} />}
       </div>
 
+      <MisFotos />
+
       <section className="me-bloque ml-metas" aria-labelledby="ml-metas">
         <h2 id="ml-metas" className="me-h2">
           {T.metas}
@@ -101,6 +104,73 @@ export default function Progreso() {
         </div>
       </section>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Galería «Cómo empezaste y cómo vas»: las fotos privadas de las acciones del ciclo, de la primera
+// a la más reciente. Solo en Mi espacio real y solo si hay fotos (nunca se inventan).
+
+function MisFotos() {
+  const { real, servidor, esc, ciclo, R } = useEspacio();
+  if (!real || !servidor) return null;
+  const fotos = esc.ocurrencias
+    .filter((o) => o.fotoRuta && !o.fotoDepurada)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha) || (a.hora ?? "").localeCompare(b.hora ?? ""));
+  if (!fotos.length) return null;
+  const F = T.fotos;
+  const metaDe = (o: Ocurrencia) => esc.metas.find((m) => m.id === o.metaId)?.titulo ?? o.metaTitulo;
+  const dia = (o: Ocurrencia) => diasEntre(ciclo.inicio, o.fecha) + 1;
+  const enlace = (o: Ocurrencia) => `${R.accion}?id=${encodeURIComponent(o.id)}`;
+  const imagen = (o: Ocurrencia, clase: string) => (
+    <MiniaturaPrivada ruta={o.fotoRuta!} pedirUrl={servidor.urlFoto} alt={F.alt(o.titulo, fechaLarga(o.fecha))} clase={clase} />
+  );
+  // Tarjeta de una foto: la imagen con su día encima, y debajo la acción y su meta.
+  const tarjeta = (o: Ocurrencia, rotulo?: string) => (
+    <Link to={enlace(o)} className="ml-foto" data-cat={o.categoria}>
+      <span className="ml-foto__marco">
+        {imagen(o, "ml-foto__img")}
+        <span className="ml-foto__dia">{F.dia(dia(o))}</span>
+      </span>
+      <span className="ml-foto__texto">
+        {rotulo && <span className="ml-foto__rotulo">{rotulo}</span>}
+        <span className="ml-foto__titulo">{o.titulo}</span>
+        <span className="ml-foto__fecha">{mayuscula(fechaLarga(o.fecha))}</span>
+        <ChipMeta cat={o.categoria} meta={metaDe(o)} className="ml-foto__meta" />
+      </span>
+    </Link>
+  );
+  const primera = fotos[0];
+  const reciente = fotos[fotos.length - 1];
+  const semanas = [...new Set(fotos.map((o) => o.semana))];
+  return (
+    <Tarjeta id="ml-fotos" icono="camera" titulo={F.titulo} bajada={F.bajada} className="ml-fotos">
+      <ul className={fotos.length > 1 ? "ml-fotos__par" : "ml-fotos__par ml-fotos__par--una"} aria-label={F.comparacion}>
+        <li>{tarjeta(primera, F.primera)}</li>
+        {fotos.length > 1 && <li>{tarjeta(reciente, F.reciente(dia(reciente) - dia(primera)))}</li>}
+      </ul>
+      {fotos.length === 1 && <p className="microcopia">{F.una}</p>}
+      {fotos.length > 2 && (
+        <div className="ml-fotos__recorrido">
+          <h3 className="ml-fotos__h3">{F.recorrido(fotos.length)}</h3>
+          {semanas.map((n) => (
+            <section key={n} className="ml-fotos__semana" aria-labelledby={`ml-fotos-s${n}`}>
+              <h4 id={`ml-fotos-s${n}`} className="ml-fotos__h4">
+                {F.semana(n)}
+              </h4>
+              <ul className="ml-fotos__grilla">
+                {fotos
+                  .filter((o) => o.semana === n)
+                  .map((o) => (
+                    <li key={o.id}>{tarjeta(o)}</li>
+                  ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
+      <p className="microcopia">{F.borrar}</p>
+    </Tarjeta>
   );
 }
 

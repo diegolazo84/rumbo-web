@@ -41,5 +41,5 @@ export default function MiniaturaPrivada({
       </div>
     );
   if (!url) return <div className={`${clase} ${clase}--cargando`} role="img" aria-label={TEXTOS_MINIATURA.cargando} aria-busy="true" />;
-  return <img className={clase} src={url} alt={alt} width={120} height={120} decoding="async" onError={() => setFallo(true)} />;
+  return <img className={clase} src={url} alt={alt} width={120} height={120} loading="lazy" decoding="async" onError={() => setFallo(true)} />;
 }
