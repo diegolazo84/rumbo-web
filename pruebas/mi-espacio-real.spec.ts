@@ -356,6 +356,25 @@ test("cuenta gratis: marca lo de hoy, ve sus créditos y pide acompañamiento", 
   if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/3-espacio-gratis-${test.info().project.name}.png`, fullPage: true });
 });
 
+test("prueba completa: Mi Rumbo muestra los días que quedan y avisa que quiere seguir con acompañamiento", async ({ page }) => {
+  const llamadas = await simular(page, baseInicial(), {
+    mi_prueba: () => ({ desde: HOY, hasta: HOY, quedan: 10, acceso_pedido: false }),
+    pedir_acompanamiento_libre: () => null,
+  });
+  await conSesion(page);
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  const tarjeta = page.getByRole("region", { name: "Estás probando Rumbo completo" });
+  await expect(tarjeta).toBeVisible();
+  await expect(tarjeta.getByText(/Te quedan 10 días de prueba/)).toBeVisible();
+  await expect(tarjeta.getByText(/revisión escrita de un coach/)).toBeVisible();
+  await sinViolaciones(page);
+  if (process.env.CAPTURAS) { await tarjeta.scrollIntoViewIfNeeded(); await page.screenshot({ path: `${process.env.CAPTURAS}/6-prueba-${test.info().project.name}.png` }); }
+  await tarjeta.getByRole("button", { name: "Quiero seguir con acompañamiento" }).click();
+  await expect(tarjeta.getByText("Listo. Te escribiremos a tu correo para conversar los planes.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "pedir_acompanamiento_libre")!.cuerpo).toEqual({ p_apoyo: "nose" });
+});
+
 test("con Google: abre Google con la vuelta a esta ruta, entra con los tokens y los borra de la URL", async ({ page }) => {
   test.skip(!operacion.ingresoGoogle, "solo con el ingreso con Google encendido (INGRESO_GOOGLE=1)");
   await simular(page, baseInicial());

@@ -15,7 +15,7 @@ import { useDatosPanel } from "./comun";
 
 export const R_CUENTAS = "/equipo/cuentas/";
 
-type Plan = "gratis" | "programa" | "sin_completar";
+type Plan = "prueba" | "gratis" | "programa" | "sin_completar";
 type FilaCuenta = {
   user_id: string;
   correo: string;
@@ -24,6 +24,7 @@ type FilaCuenta = {
   creada_en: string;
   ultima_entrada: string | null;
   plan: Plan;
+  prueba_hasta?: string | null;
   participante_id: string | null;
   meta: string | null;
   area: string | null;
@@ -45,8 +46,9 @@ export const T_CUENTAS = {
   buscar: "Buscar por correo o nombre",
   filtro: "Plan",
   todos: "Todos",
-  planes: { gratis: "Gratis", programa: "Con programa", sin_completar: "Sin completar" } as Record<Plan, string>,
+  planes: { prueba: "En prueba de 14 días", gratis: "Gratis", programa: "Con programa", sin_completar: "Sin completar" } as Record<Plan, string>,
   pidieron: "Pidieron acompañamiento",
+  pruebaHasta: (fecha: string) => `Prueba completa hasta el ${fecha}. Al final de su primera semana le toca una revisión escrita (aparece en tu bandeja).`,
   lista: "Cuentas",
   vacio: "Todavía no hay cuentas con estos filtros.",
   origen: { google: "Google", correo: "Código al correo" },
@@ -112,7 +114,7 @@ export function CuentasReal() {
     return (filas ?? []).filter(
       (f) =>
         (!q || f.correo.includes(q) || (f.nombre ?? "").toLowerCase().includes(q)) &&
-        (!plan || (plan === "pidieron" ? !!f.acceso_pedido_en && f.plan === "gratis" : f.plan === plan)),
+        (!plan || (plan === "pidieron" ? !!f.acceso_pedido_en && (f.plan === "gratis" || f.plan === "prueba") : f.plan === plan)),
     );
   }, [filas, buscar, plan]);
   const cuenta = (p: Plan) => (filas ?? []).filter((f) => f.plan === p).length;
@@ -137,7 +139,7 @@ export function CuentasReal() {
             {(Object.keys(T_CUENTAS.planes) as Plan[]).map((p) => (
               <option key={p} value={p}>{`${T_CUENTAS.planes[p]} (${cuenta(p)})`}</option>
             ))}
-            <option value="pidieron">{`${T_CUENTAS.pidieron} (${(filas ?? []).filter((f) => f.acceso_pedido_en && f.plan === "gratis").length})`}</option>
+            <option value="pidieron">{`${T_CUENTAS.pidieron} (${(filas ?? []).filter((f) => f.acceso_pedido_en && (f.plan === "gratis" || f.plan === "prueba")).length})`}</option>
           </CampoSelect>
         </div>
       </Cabeza>
@@ -164,6 +166,7 @@ function FilaCuentaVista({ f, sb, alCrear }: { f: FilaCuenta; sb: ReturnType<typ
   const [apoyo, setApoyo] = useState<string>(f.apoyo_pedido ?? "coach");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const libre = f.plan === "gratis" || f.plan === "prueba";
   const abiertaSol = f.solicitud_id && ["recibida", "en_revision", "respondida", "acordada"].includes(f.solicitud_estado ?? "");
   const titulo = f.nombre ?? f.correo;
   return (
@@ -179,7 +182,8 @@ function FilaCuentaVista({ f, sb, alCrear }: { f: FilaCuenta; sb: ReturnType<typ
         {T_CUENTAS.origen[f.origen]} · {T_CUENTAS.creada} <time dateTime={f.creada_en}>{fecha.format(new Date(f.creada_en))}</time> · {T_CUENTAS.ultima}{" "}
         {f.ultima_entrada ? <time dateTime={f.ultima_entrada}>{fechaHora.format(new Date(f.ultima_entrada))}</time> : T_CUENTAS.nunca}
       </p>
-      {f.plan === "gratis" && (
+      {f.plan === "prueba" && f.prueba_hasta && <p className="pa-cuenta__pidio">{T_CUENTAS.pruebaHasta(fecha.format(new Date(`${f.prueba_hasta}T12:00:00`)))}</p>}
+      {libre && (
         <>
           {f.meta && <p className="pa-cuenta__meta">«{f.meta}»</p>}
           <p className="microcopia">{T_CUENTAS.actividad(f.dias_con_acciones_7, f.acciones_hechas)}</p>
@@ -188,12 +192,12 @@ function FilaCuentaVista({ f, sb, alCrear }: { f: FilaCuenta; sb: ReturnType<typ
       )}
       {f.plan === "sin_completar" && <p className="microcopia">{T_CUENTAS.sinCompletar}</p>}
       <div className="acciones">
-        {f.plan === "programa" && f.participante_id && (
+        {(f.plan === "programa" || f.plan === "prueba") && f.participante_id && (
           <Link to={`/equipo/participante/?id=${f.participante_id}`} className="boton boton--secundario me-boton-chico">
             {T_CUENTAS.verFicha}
           </Link>
         )}
-        {f.plan === "gratis" && abiertaSol && (
+        {libre && abiertaSol && (
           <>
             <span className="microcopia">{T_CUENTAS.estadoSolicitud[f.solicitud_estado ?? ""]}</span>
             <Link to={`/equipo/solicitud/?id=${f.solicitud_id}`} className="boton boton--secundario me-boton-chico">
@@ -201,7 +205,7 @@ function FilaCuentaVista({ f, sb, alCrear }: { f: FilaCuenta; sb: ReturnType<typ
             </Link>
           </>
         )}
-        {f.plan === "gratis" && !abiertaSol && !abierto && (
+        {libre && !abiertaSol && !abierto && (
           <button type="button" className="boton boton--primario me-boton-chico" onClick={() => setAbierto(true)}>
             {T_CUENTAS.dar}
           </button>

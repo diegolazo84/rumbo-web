@@ -2061,6 +2061,13 @@ a.as-linea__numero { display: inline-flex; min-block-size: 44px; align-items: ce
 .me-pago__form { display: grid; gap: var(--e-3); inline-size: 100%; }
 .me-pago__form .campo { inline-size: 100%; }
 .me-pago__inicio { margin-block-start: var(--e-4); }
+.me-prueba__inicio { margin-block-start: var(--e-4); }
+.me-prueba { display: grid; gap: var(--e-3); justify-items: start; border-color: var(--bosque); background: var(--salvia-suave); }
+.me-prueba > * { margin: 0; }
+.me-prueba__ojo { display: inline-flex; align-items: center; gap: var(--e-2); font-size: var(--t-s); font-weight: 600; color: var(--bosque); }
+.me-prueba__despues { font-size: var(--t-s); color: var(--tinta-suave); line-height: 1.5; }
+.me-prueba__ok { font-size: var(--t-s); font-weight: 600; color: var(--bosque); }
+.me-prueba__error { font-size: var(--t-s); color: var(--error); }
 
 /* Mi espacio instalable: sección en Preferencias y tarjeta en Mi Rumbo (solo teléfono). */
 .me-app { display: grid; gap: var(--e-3); justify-items: start; }

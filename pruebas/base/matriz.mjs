@@ -126,7 +126,7 @@ const FUNCIONES = {
     "mis_reconocimientos", "mis_beneficios", "mi_beneficio_renovacion", "mi_pago", "avisar_pago",
     "ia_guardar_consentimiento", "ia_retirar_consentimiento", "ia_preguntar", "mis_consultas_ia", "ia_valorar",
     "autorizar_especialista", "retirar_especialista", "pedir_reserva", "cancelar_reserva", "enviar_mensaje_especialista",
-    "crear_cuenta_libre", "mi_cuenta_libre", "marcar_libre", "ajustar_cuenta_libre", "pedir_acompanamiento_libre", "borrar_mi_cuenta_libre",
+    "crear_cuenta_libre", "mi_cuenta_libre", "marcar_libre", "ajustar_cuenta_libre", "pedir_acompanamiento_libre", "borrar_mi_cuenta_libre", "mi_prueba",
   ],
   "equipo-error": [
     "publicar_programa", "nuevo_borrador", "revisar_evidencia", "pausar_ciclo", "reanudar_ciclo", "crear_espacio",
@@ -2147,7 +2147,8 @@ paso("ranking: voluntario, solo con alias, por % de la semana; con menos de 3 no
   const crearF = `reset role; insert into auth.users (id, email, aud, role, created_at, raw_app_meta_data)
       values ('${F.uid}', 'libre-f@example.com', 'authenticated', 'authenticated', now(), '{"provider":"google"}');
     set local role authenticated;`;
-  const abrir = "reset role; update public.modulos set estado = 'habilitado', probado_en = now() where clave = 'cuenta_gratis'; set local role authenticated;";
+  // Estas pruebas son de la cuenta gratis sola: sin la prueba completa de 14 días (20261205, abajo).
+  const abrir = "reset role; update public.modulos set estado = 'habilitado', probado_en = now() where clave = 'cuenta_gratis'; update public.ajustes_operacion set dias_prueba = 0; set local role authenticated;";
   const datos = `'{"nombre":"Fran","area":"proyectos","meta":"Quiero terminar mi proyecto en cuatro semanas.","dias":[1,2,3,4,5,6,7],
       "acciones":["Escribir 20 minutos","Ordenar el escritorio","Escribir 20 minutos"],"mayor_edad":true,
       "version_privacidad":"1.3","texto_consentimiento":"Acepto las Condiciones y la Privacidad (prueba de CI).","avisos":false}'::jsonb`;
@@ -2208,6 +2209,61 @@ paso("ranking: voluntario, solo con alias, por % de la semana; con menos de 3 no
   exigir(borrar.ok && ultima(borrar) === "0", `borrar la cuenta gratis deja datos: ${borrar.error ?? ultima(borrar)}`);
 }
 paso("cuenta gratis: cerrada por defecto; crear, marcar con las mismas reglas, ajustar sin perder lo hecho, pedir acompañamiento; solo el dueño ve las cuentas y da acceso completo");
+
+// Prueba completa de 14 días (20261205): al crear la cuenta gratis parte una ficha con un ciclo de
+// prueba sin precio, con las acciones elegidas solo desde hoy hasta el día 14. El dueño la ve como
+// «prueba» y puede dar acceso completo. Al vencer, la ficha se cierra, vuelve la cuenta gratis con
+// los créditos ganados y sus acciones parten al día siguiente. Una sola prueba por correo.
+{
+  const G = { nombre: "prueba completa G", uid: "f0000000-0000-4000-8000-0000000000f2" };
+  const crearG = `reset role; insert into auth.users (id, email, aud, role, created_at, raw_app_meta_data)
+      values ('${G.uid}', 'prueba-g@example.com', 'authenticated', 'authenticated', now(), '{"provider":"email"}');
+    update public.modulos set estado = 'habilitado', probado_en = now() where clave = 'cuenta_gratis';
+    set local role authenticated;`;
+  const datos = `'{"nombre":"Gabi","area":"estudio","meta":"Quiero estudiar todos los días para mi examen de diciembre.","dias":[1,2,3,4,5,6,7],
+      "acciones":["Estudiar 30 minutos","Repasar apuntes"],"mayor_edad":true,
+      "version_privacidad":"1.3","texto_consentimiento":"Acepto las Condiciones y la Privacidad (prueba de CI).","avisos":false}'::jsonb`;
+  const crear = `select public.crear_cuenta_libre(${datos})->'prueba'->>'quedan';\n`;
+  const creada = como(G, `${crearG} ${crear}
+    select (select count(*) from public.ciclos c join public.participantes p on p.id = c.participante_id
+             where p.user_id = '${G.uid}' and c.prueba_hasta = '${HOY_CL}'::date + 13 and c.precio_acordado_clp is null and p.estado = 'activo')
+      || ' ' || (select count(*) from public.ocurrencias o join public.participantes p on p.id = o.participante_id
+                  where p.user_id = '${G.uid}' and (o.fecha < '${HOY_CL}'::date or o.fecha > '${HOY_CL}'::date + 13))
+      || ' ' || (select count(*) from public.ocurrencias o join public.participantes p on p.id = o.participante_id where p.user_id = '${G.uid}')
+      || ' ' || (public.mi_cuenta_libre() is not null)::text`);
+  const [quedan, filaG] = (creada.salida ?? "").split("\n").slice(-2);
+  exigir(creada.ok && quedan === "14" && filaG === "1 0 28 true", `la prueba de 14 días no parte bien: ${creada.error ?? [quedan, filaG].join(" | ")}`);
+
+  const panel = como(G, `${crearG} ${crear} reset role; ${reclamosDe(ROLES.aal2)} set local role authenticated;
+    select f->>'plan' || ' ' || (f->>'prueba_hasta') from jsonb_array_elements(public.cuentas_creadas()) f where f->>'user_id' = '${G.uid}';
+    select public.dar_acceso_completo('${G.uid}', 'cercano', '${"c".repeat(43)}') is not null`);
+  exigir(panel.ok && ultima(panel) === "t" && (panel.salida ?? "").includes(`prueba `), `el dueño no ve la prueba o no puede dar acceso completo: ${panel.error ?? panel.salida}`);
+
+  const vence = como(G, `${crearG} ${crear}
+    reset role;
+    insert into public.registros (ocurrencia_id, participante_id, estado, version)
+      select o.id, o.participante_id, 'hecha', 'completa' from public.ocurrencias o join public.participantes p on p.id = o.participante_id
+       where p.user_id = '${G.uid}' and o.fecha = '${HOY_CL}'::date;
+    select privado.recalcular_progreso((select id from public.participantes where user_id = '${G.uid}'));
+    update public.ciclos c set prueba_desde = '${HOY_CL}'::date - 14, prueba_hasta = '${HOY_CL}'::date - 1, fin = '${HOY_CL}'::date - 1,
+           inicio = ('${HOY_CL}'::date - 14) - (extract(isodow from '${HOY_CL}'::date - 14)::int - 1), semanas = 3
+      from public.participantes p where p.id = c.participante_id and p.user_id = '${G.uid}';
+    select privado.cerrar_pruebas() \\g /dev/null
+    select (select estado from public.participantes where user_id = '${G.uid}')
+      || ' ' || (select (creditos_prueba = (select creditos from public.progreso g join public.participantes p on p.id = g.participante_id where p.user_id = '${G.uid}') and creditos_prueba > 0)::text from public.cuentas_libres where user_id = '${G.uid}')
+      || ' ' || (select bool_and(desde = '${HOY_CL}'::date)::text from public.acciones_libres where user_id = '${G.uid}' and hasta is null);
+    set local role authenticated; ${reclamosDe(G)}
+    select (public.mi_prueba() is null)::text || ' ' || ((public.mi_cuenta_libre()->'progreso'->>'creditos')::int > 0)::text`);
+  const [estadoG, despues] = (vence.salida ?? "").split("\n").slice(-2);
+  exigir(vence.ok && estadoG === "cerrado true true" && despues === "true true", `al vencer la prueba no vuelve bien a la cuenta gratis: ${vence.error ?? [estadoG, despues].join(" | ")}`);
+
+  const otra = como(G, `${crearG} reset role;
+    insert into public.participantes (correo, nombre, estado) values ('prueba-g@example.com', 'Gabi antes', 'cerrado');
+    set local role authenticated; ${crear}
+    reset role; select count(*) from public.ciclos c join public.participantes p on p.id = c.participante_id where p.correo = 'prueba-g@example.com'`);
+  exigir(otra.ok && ultima(otra) === "0", `un correo que ya tuvo ficha recibe otra prueba: ${otra.error ?? ultima(otra)}`);
+}
+paso("prueba completa de 14 días: parte con la cuenta gratis, sin precio y solo hasta el día 14; el dueño la ve y da acceso completo; al vencer vuelve a la cuenta gratis con sus créditos; una sola por correo");
 
 paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equipo-vacio"].length} rechazan a las personas y al equipo sin TOTP`);
 

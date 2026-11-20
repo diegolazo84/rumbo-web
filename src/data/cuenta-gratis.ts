@@ -45,7 +45,7 @@ export const T_GRATIS = {
   partida: {
     ojo: "Rumbo Inicial · gratis",
     titulo: "Tu punto de partida.",
-    bajada: "En dos minutos armamos tu primera semana. Es gratis y puedes cambiarlo cuando quieras.",
+    bajada: "En dos minutos armamos tu primera semana. Los primeros 14 días tienes Rumbo completo, con una revisión escrita de un coach; después sigues gratis con lo básico.",
     nombre: "¿Cómo quieres que te llamemos?",
     area: "¿En qué quieres avanzar?",
     meta: "¿Qué quieres lograr en las próximas 4 semanas?",

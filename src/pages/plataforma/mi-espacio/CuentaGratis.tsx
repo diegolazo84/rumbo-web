@@ -16,6 +16,8 @@ import type { Cliente } from "../../../lib/supabase";
 
 export type DatosLibre = {
   hoy: string;
+  // Solo al crear la cuenta, si partió la prueba completa de 14 días (20261205).
+  prueba?: { hasta: string; quedan: number } | null;
   abierta: boolean;
   cuenta: {
     nombre: string;
