@@ -177,7 +177,7 @@ function baseInicial(): Base {
     ],
     videollamadas: [],
     modulos: [
-      { clave: "comunidad", nombre: "Comunidad con foro moderado", estado: "probado", probado_en: "2026-10-21T12:00:00Z", respaldo: null, que_falta: "Reglas y privacidad", orden: 1, cambiado_en: "2026-10-21T12:00:00Z" },
+      { clave: "convenios", nombre: "Premios por convenio", estado: "probado", probado_en: "2026-10-21T12:00:00Z", respaldo: null, que_falta: "Reglas y privacidad", orden: 1, cambiado_en: "2026-10-21T12:00:00Z" },
       { clave: "whatsapp", nombre: "Avisos por WhatsApp", estado: "planificado", probado_en: null, respaldo: null, que_falta: "Servicio pagado", orden: 2, cambiado_en: "2026-10-21T12:00:00Z" },
       { clave: "fotos", nombre: "Fotografías opcionales y privadas", estado: "planificado", probado_en: null, respaldo: null, que_falta: "Subida", orden: 3, cambiado_en: "2026-10-21T12:00:00Z" },
     ],
@@ -1300,7 +1300,7 @@ test("Módulos: el dueño ve el estado real y lo cambia con las reglas de la bas
   await expect(fotos.getByText("Siempre presente")).toBeVisible();
   await expect(fotos.getByRole("button")).toHaveCount(0);
   const ranking = page.locator("li", { has: page.getByRole("heading", { name: "Avisos por WhatsApp" }) });
-  const comunidad = page.locator("li", { has: page.getByRole("heading", { name: "Comunidad con foro moderado" }) });
+  const comunidad = page.locator("li", { has: page.getByRole("heading", { name: "Premios por convenio" }) });
   await expect(ranking.getByText("Servicio pagado")).toBeVisible();
   // Sin «probado» no se puede habilitar: la opción está apagada y se explica.
   await ranking.getByRole("button", { name: "Cambiar estado" }).click();
@@ -1316,8 +1316,8 @@ test("Módulos: el dueño ve el estado real y lo cambia con las reglas de la bas
   expect(llamadas.some((l) => l.nombre === "cambiar_modulo")).toBe(false);
   await comunidad.getByLabel("Estado").selectOption("habilitado");
   await comunidad.getByRole("button", { name: "Guardar" }).click();
-  await expect(page.getByText("«Comunidad con foro moderado» quedó guardado.")).toBeVisible();
-  expect(llamadas.find((l) => l.nombre === "cambiar_modulo")!.cuerpo).toEqual({ p_clave: "comunidad", p_estado: "habilitado", p_respaldo: null, p_que_falta: null });
+  await expect(page.getByText("«Premios por convenio» quedó guardado.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "cambiar_modulo")!.cuerpo).toEqual({ p_clave: "convenios", p_estado: "habilitado", p_respaldo: null, p_que_falta: null });
   expect(base.modulos[0].estado).toBe("habilitado");
   await expect(page.getByText("1 de 2 módulos están a la vista de las personas.")).toBeVisible();
   await expect(comunidad.getByText("Las personas lo ven.")).toBeVisible();
@@ -1780,7 +1780,7 @@ test("Asistente: aprobar tal cual, aprobar corregida y no compartir; alertas y r
   await page.goto("equipo/mas/");
   await hidratar(page);
   await page.getByRole("link", { name: "Asistente: respuestas por revisar" }).click();
-  await expect(page.locator("h1")).toHaveText("Asistente: por revisar.");
+  await expect(page.locator("h1")).toHaveText("Asistente: por responder.");
   await expect(page.getByText("2 respuestas esperan tu revisión.")).toBeVisible();
   // Alerta reciente visible con la ficha; el error de hace más de 7 días no.
   const alertas = page.locator("section", { has: page.getByRole("heading", { name: "Alertas" }) });
