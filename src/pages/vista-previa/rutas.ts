@@ -20,7 +20,7 @@ export const RUTAS_MI_ESPACIO = {
   ajuste: rutaPrevia("mi-espacio/plan/ajuste/"),
   preferencias: rutaPrevia("mi-espacio/preferencias/"),
   misDatos: rutaPrevia("mi-espacio/preferencias/#mis-datos"),
-  loQueViene: rutaPrevia("mi-espacio/lo-que-viene/"),
+  especialistas: rutaPrevia("mi-espacio/especialistas/"),
   salir: rutaPrevia("mi-espacio/entrar/saliste/"),
   avisos: rutaPrevia("mi-espacio/avisos/"),
   asistente: rutaPrevia("mi-espacio/asistente/"),

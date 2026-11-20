@@ -15,7 +15,6 @@ import {
   ayuda,
   categorias,
   esParaTi,
-  loQueViene,
   noEsParaTi,
   noIncluyeEn,
   operacion,
@@ -916,19 +915,13 @@ test.describe("Etapa 0: proveedores reales y funciones futuras rotuladas", () =>
     await expect(main).not.toContainText("Las publicaciones, de 10 a 400");
   });
 
-  test("portada: «Lo que viene en Rumbo» rotulado y sin promesas en lo que existe", async ({ page }) => {
+  test("portada: todo presente, sin «Lo que viene» ni «Próximamente»", async ({ page }) => {
     await page.goto("./");
-    const viene = page.locator("#lo-que-viene");
-    await expect(viene).toContainText("Lo que viene en Rumbo");
-    for (const item of [...loQueViene.lanzamiento, ...loQueViene.despues]) await expect(viene).toContainText(item);
-    await expect(viene.locator(".etiqueta")).toHaveText(["Todavía no disponible", "Más adelante"]);
-    await expect(viene.locator("a, button")).toHaveCount(0); // sin botones de contratación
-    await expect(viene).not.toContainText(/\b20\d\d\b/); // sin fechas de lanzamiento
-    await expect(page.locator(".ranking-tarjeta")).toHaveCount(0); // el ranking ya no se muestra en la portada
+    await expect(page.locator("#lo-que-viene")).toHaveCount(0);
+    await expect(page.locator("main")).not.toContainText(/Lo que viene en Rumbo|Próximamente/);
+    await expect(page.locator(".ranking-tarjeta")).toHaveCount(0); // el ranking no se muestra en la portada
     const recibes = page.locator(".transparencia").first();
-    // Fotos, reconocimientos y ranking ya existen (siempre presentes desde el 20-nov); el foro no.
-    await expect(recibes).not.toContainText(/foro|comunidad/i);
-    await expect(page.locator("main")).not.toContainText(/comunidad es opcional|comunidad solo muestra/);
+    for (const item of ["Comunidad con alias", "Asistente de Rumbo", "Especialistas Rumbo"]) await expect(recibes).toContainText(item);
   });
 });
 

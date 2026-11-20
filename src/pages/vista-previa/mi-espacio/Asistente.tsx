@@ -11,7 +11,7 @@
 // Sin «Me sirvió» ni «No me sirvió» (no hay dónde guardarlo sin una migración). En la vista previa
 // nada se envía.
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Icono, type NombreIconoApp } from "../../../components/app";
 import { recursosAyuda } from "../../../data/rumbo";
 import { diaCorto, fechaLarga, mayuscula } from "../../../lib/fechas";
@@ -51,7 +51,9 @@ export default function Asistente({ estado }: PropsPantalla) {
   const k = a?.consentimiento;
   const autorizado = !!k?.aceptadoEn && !k.retiradoEn;
   const enCurso = esp.ciclo.estado === "en_curso";
-  const puedePreguntar = !!a?.disponible && autorizado && enCurso && !cambiando;
+  // Sin IA conectada, la pregunta la responde el coach: no hace falta autorizar datos para la IA.
+  const modoCoach = !!a && !a.disponible;
+  const puedePreguntar = !!a && (modoCoach || autorizado) && enCurso && !cambiando;
   const abrirAutorizacion = () => {
     setComenzar(true);
     setCambiando(false);
@@ -75,14 +77,14 @@ export default function Asistente({ estado }: PropsPantalla) {
         }
       />
     );
-  else if (!a.disponible)
-    // Apagado por el equipo (dueño, clave o módulo): la persona no puede activarlo.
-    principal = (
-      <>
-        <Desactivado titulo={T.apagado.titulo} texto={T.apagado.texto} accion={<Link to={esp.R.semana} className="boton boton--secundario">{T.apagado.ir}</Link>} />
-        {a.consultas.length > 0 && <Conversacion consultas={a.consultas} />}
-      </>
-    );
+  else if (modoCoach)
+    // Sin IA conectada: misma conversación, y cada pregunta la responde el coach en persona.
+    principal =
+      vista === "conversaciones" ? (
+        <Historial consultas={a.consultas} alVolver={() => irA("chat")} />
+      ) : (
+        <Chat datos={a} puedePreguntar={puedePreguntar} enCurso={enCurso} irA={irA} sinConfiguracion />
+      );
   else if (cambiando || (!autorizado && comenzar))
     principal = (
       <Consentimiento
@@ -163,11 +165,11 @@ export default function Asistente({ estado }: PropsPantalla) {
         <div className="rc-portada__texto">
           <h1 className="rc-portada__h1">{T.titulo}</h1>
           <p className="as-sellos">
-            <span className="as-beta">{T.beta}</span>
+            {!modoCoach && <span className="as-beta">{T.beta}</span>}
             <span className="as-supervision">{T.supervision}</span>
             <EtiquetaEjemplo />
           </p>
-          <p className="rc-portada__bajada">{T.bajada}</p>
+          <p className="rc-portada__bajada">{modoCoach ? T.coach.bajada : T.bajada}</p>
         </div>
       </header>
 
@@ -191,7 +193,7 @@ export default function Asistente({ estado }: PropsPantalla) {
       )}
 
       <ul className="as-claves" aria-label={T.titulo}>
-        {T.claves.map((c, i) => (
+        {(modoCoach ? T.coach.claves : T.claves).map((c, i) => (
           <li key={c.texto} className={`as-clave as-clave--${i + 1}`}>
             <span className="as-clave__icono" aria-hidden="true">
               <Icono nombre={c.icono as NombreIconoApp} tamaño={22} />
@@ -205,7 +207,7 @@ export default function Asistente({ estado }: PropsPantalla) {
           <Icono nombre="user-round" tamaño={22} />
         </span>
         <span>
-          {T.revisaCoach}{" "}
+          {modoCoach ? T.coach.revisa : T.revisaCoach}{" "}
           <a href="#as-info" className="enlace-flecha">
             {T.saberMas}
           </a>
@@ -264,7 +266,7 @@ function asistenteDe(real: boolean, base: DatosAsistente | null, estado: string 
   }
 }
 
-function Chat({ datos, puedePreguntar, enCurso, irA }: { datos: DatosAsistente; puedePreguntar: boolean; enCurso: boolean; irA: (v: Vista) => void }) {
+function Chat({ datos, puedePreguntar, enCurso, irA, sinConfiguracion }: { datos: DatosAsistente; puedePreguntar: boolean; enCurso: boolean; irA: (v: Vista) => void; sinConfiguracion?: boolean }) {
   const [texto, setTexto] = useState("");
   const campo = useRef<HTMLTextAreaElement>(null);
   const preparar = (t: string) => {
@@ -290,10 +292,12 @@ function Chat({ datos, puedePreguntar, enCurso, irA }: { datos: DatosAsistente; 
               <Icono nombre="clock" tamaño={16} />
               {T.historial.abrir}
             </button>
-            <button type="button" className="enlace-util" onClick={() => irA("configuracion")}>
-              <Icono nombre="settings" tamaño={16} />
-              {T.configuracion.abrir}
-            </button>
+            {!sinConfiguracion && (
+              <button type="button" className="enlace-util" onClick={() => irA("configuracion")}>
+                <Icono nombre="settings" tamaño={16} />
+                {T.configuracion.abrir}
+              </button>
+            )}
           </nav>
         }
       />
@@ -540,7 +544,7 @@ function Respuesta({ c, onSeguir, onNueva }: { c: ConsultaAsistente; onSeguir?: 
         </div>
       </>
     );
-  const e = T.estados[c.estado];
+  const e = c.estado === "en_revision" && esp.asistente && !esp.asistente.disponible ? T.coach.enRevision : T.estados[c.estado];
   if (c.estado === "en_revision")
     return (
       <div className="as-enviada" role="status">

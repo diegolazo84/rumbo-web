@@ -177,6 +177,20 @@ export default function Calendario({ estado = "semana" }: PropsPantalla) {
         />
         <LoQueConstruyes metas={metas} />
       </div>
+      {ciclo?.inicio && (
+        <RutaCiclo
+          hoy={hoy}
+          lista={lista}
+          inicio={ciclo.inicio}
+          semanas={ciclo.semanas}
+          esRevision={esRevision}
+          onAbrir={(f) => {
+            moverFoco.current = true;
+            setFecha(f);
+            setVista("dia");
+          }}
+        />
+      )}
       <div className="me-calendario__barra" id="me-calendario">
         <Segmentado
           leyenda={T_CALENDARIO.leyendaVistas}
@@ -516,5 +530,71 @@ function VistaMes({ fecha, hoy, lista, progreso, onAbrirDia }: { fecha: Iso; hoy
         {registradas ? T_CALENDARIO.mes.pie(mesDe(primero), registradas, completos) : T_CALENDARIO.mes.vacio}
       </p>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tu ciclo (nov-2026): los 28 días como un camino de piedras, una fila por semana. Cada piedra es un
+// botón que abre ese día: hecho (sol), hoy (late), con acciones pendientes o por venir. El día de
+// revisión lleva su marca. Nada de rojo ni de «fallaste»: un día sin hacer queda solo en blanco.
+
+function RutaCiclo({ hoy, lista, inicio, semanas, esRevision, onAbrir }: { hoy: Iso; lista: Ocurrencia[]; inicio: Iso; semanas: number; esRevision: (f: Iso) => boolean; onAbrir: (f: Iso) => void }) {
+  const T = T_PLAN.ruta;
+  const dias = Array.from({ length: semanas * 7 }, (_, i) => {
+    const f = sumarDias(inicio, i);
+    const del = ocurrenciasDel(f, lista);
+    const hechas = del.filter((o) => cuentaComoHecha(o.registro)).length;
+    const estado = !del.length ? "libre" : hechas === del.length ? "completo" : f === hoy ? "hoy" : f < hoy ? (hechas ? "parcial" : "pendiente") : "futuro";
+    return { f, n: i + 1, programadas: del.length, hechas, estado };
+  });
+  const completos = dias.filter((d) => d.estado === "completo").length;
+  const nHoy = dias.find((d) => d.f === hoy)?.n;
+  return (
+    <section className="me-ruta" aria-labelledby="me-ruta-t">
+      <div className="me-ruta__cabeza">
+        <h2 id="me-ruta-t" className="me-ruta__titulo">
+          {T.titulo}
+        </h2>
+        <p className="me-ruta__cifras">
+          {nHoy && <span>{T.dia(nHoy, dias.length)}</span>}
+          <span>
+            <Icono nombre="sun" tamaño={16} />
+            {T.completos(completos)}
+          </span>
+        </p>
+      </div>
+      <ol className="me-ruta__semanas">
+        {Array.from({ length: semanas }, (_, s) => (
+          <li key={s} className="me-ruta__semana">
+            <span className="me-ruta__s" aria-hidden="true">
+              {T.semanaCorta(s + 1)}
+            </span>
+            <ol className="me-ruta__dias" aria-label={T.semana(s + 1)}>
+              {dias.slice(s * 7, s * 7 + 7).map((d) => (
+                <li key={d.f} className="me-ruta__dia">
+                  <button
+                    type="button"
+                    className={`me-piedra es-${d.estado}${d.f === hoy ? " es-hoy" : ""}`}
+                    aria-current={d.f === hoy ? "date" : undefined}
+                    aria-label={T.aria(mayuscula(fechaLarga(d.f)), d.hechas, d.programadas, esRevision(d.f))}
+                    onClick={() => onAbrir(d.f)}
+                  >
+                    <span className="me-piedra__ini" aria-hidden="true">{inicialDia(d.f)}</span>
+                    <span className="me-piedra__forma" aria-hidden="true">
+                      {d.estado === "completo" ? <Icono nombre="check" tamaño={16} /> : numeroDia(d.f)}
+                    </span>
+                    {esRevision(d.f) && (
+                      <span className="me-piedra__rev" aria-hidden="true">
+                        <Icono nombre="message-circle" tamaño={12} />
+                      </span>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }

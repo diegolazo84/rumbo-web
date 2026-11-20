@@ -23,13 +23,13 @@ export const TEXTOS_ESTRUCTURA = {
   ajuste: "Pedir un ajuste",
   preferencias: "Preferencias",
   misDatos: "Mis datos",
-  loQueViene: "Lo que viene en Rumbo",
+  especialistas: "Especialistas Rumbo",
   asistente: "Asistente de Rumbo",
   salir: "Salir",
 } as const;
 
 // Rutas de cada destino. Mi espacio: rumbo, plan, acompanamiento, comunidad, logros, ajuste,
-// preferencias, misDatos, loQueViene, salir. Panel: hoy, solicitudes, participantes, revisar, mas.
+// preferencias, misDatos, especialistas, asistente, salir. Panel: hoy, solicitudes, participantes, revisar, mas.
 export type RutasApp = Record<string, string>;
 
 type Props = {
@@ -50,7 +50,7 @@ type Props = {
 
 // Raíces de las cinco secciones de Mi espacio (Rumbo 2.0): su nombre ya es el H1 de la pantalla,
 // así que la cabecera móvil no lo repite. En las subpáginas (Acción, Créditos…) sí se muestra.
-const SECCIONES_RAIZ = new Set(["Mi Rumbo", "Mi plan", "Mi acompañamiento", "Comunidad", "Mis logros", "Mis avisos", "Lo que viene en Rumbo", "Asistente de Rumbo"]);
+const SECCIONES_RAIZ = new Set(["Mi Rumbo", "Mi plan", "Mi acompañamiento", "Comunidad", "Mis logros", "Mis avisos", "Especialistas Rumbo", "Asistente de Rumbo"]);
 
 const ES_TEXTO = "textarea, input:not([type]), input[type=text], input[type=email], input[type=search]";
 
@@ -97,9 +97,11 @@ export default function EstructuraApp({
   const destinosLateral: DestinoNav[] = conAvisos
     ? [...destinos, { id: "avisos", texto: TEXTOS_CABECERA.avisos, icono: "bell", href: conAvisos.href, contador: conAvisos.sinLeer, contadorTexto: TEXTOS_CABECERA.sinLeer(conAvisos.sinLeer) }]
     : [...destinos];
-  // Asistente de Rumbo: solo cuando está disponible (rutas.asistente). En el móvil, en el menú.
+  // Asistente y Especialistas: siempre presentes (20261207). En el móvil, en el menú.
   if (miEspacio && !sinNavegacion && rutas.asistente)
     destinosLateral.push({ id: "asistente", texto: TEXTOS_ESTRUCTURA.asistente, icono: "sprout", href: rutas.asistente });
+  if (miEspacio && !sinNavegacion && rutas.especialistas)
+    destinosLateral.push({ id: "especialistas", texto: TEXTOS_ESTRUCTURA.especialistas, icono: "stethoscope", href: rutas.especialistas });
   const etiqueta = miEspacio ? TEXTOS_ESTRUCTURA.miEspacio : TEXTOS_ESTRUCTURA.panel;
 
   // Menú de la cabecera de Mi espacio (Rumbo 2.0, etapa 2): lo que antes era «Más» en la barra.
@@ -108,7 +110,7 @@ export default function EstructuraApp({
     { id: "ajuste", texto: TEXTOS_ESTRUCTURA.ajuste, icono: "sliders-horizontal", href: rutas.ajuste },
     { id: "preferencias", texto: TEXTOS_ESTRUCTURA.preferencias, icono: "settings", href: rutas.preferencias },
     { id: "datos", texto: TEXTOS_ESTRUCTURA.misDatos, icono: "download", href: rutas.misDatos },
-    { id: "lo-que-viene", texto: TEXTOS_ESTRUCTURA.loQueViene, icono: "sparkles", href: rutas.loQueViene },
+    { id: "especialistas", texto: TEXTOS_ESTRUCTURA.especialistas, icono: "stethoscope", href: rutas.especialistas },
     { id: "ayuda", texto: TEXTOS_FORM.ayudaInmediata, icono: "phone", onClick: () => setAyuda(true) },
     { id: "web", texto: TEXTOS_CABECERA.volver, icono: "arrow-up-right", href: rutaWeb, separadorAntes: true },
     { id: "salir", texto: TEXTOS_ESTRUCTURA.salir, icono: "log-out", href: rutas.salir },
@@ -126,12 +128,6 @@ export default function EstructuraApp({
         <Link to={rutas.preferencias} className="enlace-util">
           <Icono nombre="settings" tamaño={16} />
           {TEXTOS_ESTRUCTURA.preferencias}
-        </Link>
-      )}
-      {rutas.loQueViene && (
-        <Link to={rutas.loQueViene} className="enlace-util">
-          <Icono nombre="sparkles" tamaño={16} />
-          {TEXTOS_ESTRUCTURA.loQueViene}
         </Link>
       )}
       <button type="button" className="enlace-util" aria-haspopup="dialog" onClick={() => setAyuda(true)}>

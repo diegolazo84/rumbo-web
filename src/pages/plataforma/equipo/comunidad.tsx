@@ -123,20 +123,13 @@ export function ComunidadReal() {
     );
   if (!d) return <Carga estado="cargando" />;
 
-  const abierta = d.modulo && ["habilitado", "operativo"].includes(d.modulo.estado);
   return (
     <div className="pa-pantalla">
       <Cabeza ojo={T.ojo} titulo={T.titulo} bajada={T.bajada} />
       <Seccion titulo={T.modulo.titulo} id="co-modulo" className="tarjeta pa-tarjeta">
         <p>
-          {d.modulo ? (
-            <>
-              <Etiqueta variante={abierta ? "activo" : "pronto"}>{T.modulo.estados[d.modulo.estado] ?? d.modulo.estado}</Etiqueta>{" "}
-              {abierta ? T.modulo.abierta : T.modulo.cerrada}
-            </>
-          ) : (
-            T.modulo.sinFila
-          )}
+          {/* Todo presente (20261207): la Comunidad está siempre abierta para participantes. */}
+          <Etiqueta variante="activo">{T.modulo.siempre}</Etiqueta> {T.modulo.abierta}
         </p>
       </Seccion>
       <Reportes d={d} alCambiar={cargar} />

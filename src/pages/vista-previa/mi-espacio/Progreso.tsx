@@ -30,6 +30,7 @@ import {
   type Recompensas,
 } from "./logros/fuente";
 import { T_LOGROS, T_PROGRESO } from "./textos";
+import Montana from "./logros/Montana";
 
 const T = T_LOGROS;
 const hechaHasta = (o: Ocurrencia, hoy: Iso) => o.vigente && o.fecha <= hoy;
@@ -72,7 +73,7 @@ export default function Progreso() {
 
   return (
     <div className="me-pantalla ml">
-      <Portada />
+      <Portada progreso={progreso} />
 
       <div className="ml-fila ml-fila--tres">
         <MiNivel progreso={progreso} />
@@ -177,10 +178,12 @@ function MisFotos() {
 // ---------------------------------------------------------------------------
 // Portada
 
-function Portada() {
+function Portada({ progreso }: { progreso: Progreso }) {
+  const siguiente = niveles.find((n) => n.nivel === progreso.nivel.nivel + 1);
   return (
-    <header className="ml-portada">
+    <header className="ml-portada ml-portada--montana">
       {FOTO_PORTADA ? <img className="ml-portada__fondo" src={FOTO_PORTADA} alt="" /> : <PaisajePortada className="ml-portada__fondo" />}
+      <Montana creditos={progreso.creditos} nivel={progreso.nivel.nivel} />
       <div className="ml-portada__texto">
         <div className="ml-portada__fila">
           <h1 className="ml-portada__h1">{T.portada.ojo}</h1>
@@ -191,6 +194,10 @@ function Portada() {
           {T.portada.bajada.map((l, i) => (
             <span key={i}>{l} </span>
           ))}
+        </p>
+        <p className="ml-portada__falta" aria-hidden="true">
+          <Icono nombre="mountain" tamaño={16} />
+          {siguiente ? T.montana.bajada(siguiente.minimo - progreso.creditos, siguiente.nombre) : T.montana.cima}
         </p>
       </div>
     </header>

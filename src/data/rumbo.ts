@@ -257,9 +257,9 @@ export const noIncluye: { id: string; texto: string; en: ContextoNoIncluye[] }[]
   { id: "especialistas", texto: "Consultas de psicología, nutrición, medicina, kinesiología o entrenamiento personal", en: ["transparencia", "planes", "condiciones"] },
   { id: "inmediata", texto: "Chat en vivo o respuesta inmediata", en: ["transparencia", "planes", "condiciones"] },
   { id: "urgencia", texto: "Atención de urgencia", en: ["planes", "condiciones"] },
-  { id: "ia", texto: "Guía con inteligencia artificial (en preparación)", en: ["transparencia", "planes", "condiciones"] },
+  { id: "ia", texto: "Guía con inteligencia artificial (en preparación)", en: ["condiciones"] },
   { id: "recordatorios", texto: "Recordatorios por WhatsApp o SMS", en: ["transparencia", "condiciones"] },
-  { id: "reservas", texto: "Reservas o videollamadas dentro de la plataforma", en: ["transparencia", "condiciones"] },
+  { id: "reservas", texto: "Reservas o videollamadas dentro de la plataforma", en: ["condiciones"] },
   { id: "pagos", texto: "Pagos en línea", en: ["transparencia", "condiciones"] },
   { id: "premios", texto: "Premios, canjes o recompensas materiales", en: ["condiciones"] },
   { id: "garantia", texto: "Resultados garantizados", en: ["condiciones"] },
@@ -295,14 +295,11 @@ export const enMiEspacio = [
   "Reconocimientos por tu constancia y un ranking semanal voluntario, con alias",
   "Avisos en tu espacio y recordatorios que tú decides cuándo recibir",
   "Mi espacio instalable en tu teléfono",
+  "Comunidad con alias, grupos y desafíos, moderada por el equipo",
+  "Asistente de Rumbo para tus preguntas, siempre con tu coach",
+  "Especialistas Rumbo con credenciales revisadas, cuando tu meta pide algo más",
 ];
 
-// «Lo que viene en Rumbo» (portada): nada de esto existe todavía. Sin fechas ni botones de
-// contratación; cada ítem pasa a enMiEspacio solo cuando funcione y esté probado.
-export const loQueViene = {
-  lanzamiento: ["Comunidad con foro moderado", "Asistente con inteligencia artificial"],
-  despues: ["Marketplace de especialistas", "Premios por convenio con tiendas y especialistas", "Inteligencia artificial avanzada", "Aplicación en las tiendas de iOS y Android"],
-};
 export const seAcuerdaContigo = [
   "El día de tu revisión semanal, de lunes a viernes, y, en Acompañamiento cercano, la hora de tu videollamada (en hora de Chile)",
   "La duración del programa según tu meta: 4, 8 o 12 semanas. En el piloto empezamos con un ciclo de 4 semanas; continuar se acuerda al cerrarlo.",

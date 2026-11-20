@@ -86,24 +86,40 @@
   overflow: hidden;
   background: var(--crema);
 }
-/* Foto del amanecer a la derecha, fundida con el crema hacia el texto (nov-2026). */
+/* Foto que se ilumina con el día (nov-2026): la foto real a la derecha, fundida con el crema; con
+   cada acción hecha gana luz y color (--avance de 0 a 1) y un resplandor de sol. Con el día
+   completo, el resplandor llega a su máximo. Encima, una píldora con un punto por acción. */
 .me-bienvenida__foto { position: absolute; inset-block: 0; inset-inline-end: 0; inline-size: 46%; pointer-events: none; }
-.me-bienvenida__foto img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; object-position: 60% 50%; mask-image: linear-gradient(to right, transparent, black 65%); }
+.me-bienvenida__foto img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; object-position: 60% 50%; mask-image: linear-gradient(to right, transparent, black 65%); filter: saturate(calc(0.7 + 0.4 * var(--avance, 1))) brightness(calc(0.86 + 0.18 * var(--avance, 1))); transition: filter var(--dur-4) var(--curva); }
+.me-bienvenida__luz { position: absolute; inset-block: 0; inset-inline-end: 0; inline-size: 46%; pointer-events: none; background: radial-gradient(circle at 78% 18%, color-mix(in srgb, var(--sol) 70%, transparent), transparent 60%); mix-blend-mode: soft-light; opacity: var(--avance, 0); transition: opacity var(--dur-4) var(--curva); }
+.me-bienvenida.es-completo .me-bienvenida__luz { mix-blend-mode: screen; opacity: 0.55; }
+.me-bienvenida__dia { position: absolute; inset-block-end: calc(var(--e-6) + 6px); inset-inline-end: var(--e-3); display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: var(--r-full); background: color-mix(in srgb, var(--bosque) 70%, transparent); backdrop-filter: blur(8px); color: var(--sol); }
+.me-bienvenida__hito { inline-size: 8px; block-size: 8px; border-radius: 50%; border: 1.5px solid var(--papel); transition: background var(--dur-3) var(--curva), transform var(--dur-3) var(--curva); }
+.me-bienvenida__hito.es-hecho { background: var(--sol); border-color: var(--sol); transform: scale(1.15); }
 .me-bienvenida__texto { position: relative; display: grid; gap: 4px; }
-.me-bienvenida__saludo, .me-bienvenida__frase { max-inline-size: 68%; }
+.me-bienvenida__saludo, .me-bienvenida__frase { max-inline-size: 64%; }
 .me-bienvenida__ojo { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font: 600 var(--t-micro)/1.3 var(--sans); color: var(--terracota-texto); }
 .me-bienvenida__h1 { margin: 0; font: inherit; letter-spacing: inherit; color: var(--bosque); }
 .me-bienvenida__ojo .etiqueta { letter-spacing: 0; text-transform: none; }
 .me-bienvenida__saludo { font: 600 var(--t-saludo)/1.08 var(--serif); letter-spacing: -0.015em; color: var(--bosque); }
 .me-bienvenida__frase { font-size: var(--t-s); line-height: 1.4; color: var(--tinta-suave); }
+/* Lo que llevas: solo en escritorio (en el teléfono, la primera acción debe verse sin desplazar). */
+.me-bienvenida__logros { display: none; margin: var(--e-3) 0 0; padding: 0; list-style: none; flex-wrap: wrap; gap: 8px; }
+.me-bienvenida__logros li { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--r-full); background: color-mix(in srgb, var(--papel) 80%, transparent); border: 1px solid color-mix(in srgb, var(--bosque) 14%, transparent); font: 600 var(--t-micro)/1.2 var(--sans); color: var(--bosque); backdrop-filter: blur(6px); }
+.me-bienvenida__logros li:first-child svg { color: var(--terracota); }
+.me-bienvenida__logros li svg { color: var(--salvia-honda); }
 @media (min-width: 1024px) {
   .me-bienvenida { margin-inline: 0; margin-block-start: 0; padding: var(--e-6) var(--e-6) var(--e-7); border-radius: var(--r-l); }
-  .me-bienvenida__foto { inline-size: 50%; }
+  .me-bienvenida__foto, .me-bienvenida__luz { inline-size: 50%; }
   .me-bienvenida__foto img { mask-image: linear-gradient(to right, transparent, black 40%); }
+  .me-bienvenida__dia { inset-block-end: var(--e-5); inset-inline-end: var(--e-5); gap: 7px; padding: 8px 14px; }
+  .me-bienvenida__hito { inline-size: 10px; block-size: 10px; }
   .me-bienvenida__texto { gap: 6px; }
-  .me-bienvenida__saludo, .me-bienvenida__frase { max-inline-size: 56%; }
+  .me-bienvenida__saludo, .me-bienvenida__frase { max-inline-size: 52%; }
   .me-bienvenida__frase { font-size: var(--t-base); }
+  .me-bienvenida__logros { display: flex; }
 }
+
 
 /* Meta principal: ¿qué quiero conseguir? Sube sobre el borde de la bienvenida. */
 .me-meta-principal {
@@ -540,6 +556,48 @@
 .me-camino__semana { margin: 0 0 var(--e-1); padding: 4px 12px; border-radius: var(--r-full); background: var(--niebla); font: 600 var(--t-xs)/1.3 var(--sans); color: var(--bosque); }
 .me-camino__titulo { margin: 0; font: 600 var(--t-h2)/1.15 var(--serif); letter-spacing: -0.01em; color: var(--bosque); text-wrap: balance; }
 .me-camino__bajada { margin: 0; font-size: var(--t-s); line-height: 1.45; color: var(--tinta-suave); }
+/* Tu ciclo (nov-2026): 28 días como camino de piedras, una fila por semana sobre un sendero. */
+.me-ruta { display: grid; gap: var(--e-3); padding: var(--e-5); border-radius: var(--r-l); background: linear-gradient(160deg, var(--crema), color-mix(in srgb, var(--salvia-suave) 55%, var(--crema))); box-shadow: var(--sombra-1); }
+.me-ruta__cabeza { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--e-2) var(--e-4); }
+.me-ruta__titulo { margin: 0; font: 600 var(--t-h3)/1.15 var(--serif); color: var(--bosque); }
+.me-ruta__cifras { display: flex; flex-wrap: wrap; gap: var(--e-2); margin: 0; }
+.me-ruta__cifras span { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: var(--r-full); background: var(--papel); font: 600 var(--t-micro)/1.3 var(--sans); color: var(--bosque); }
+.me-ruta__cifras svg { color: var(--terracota); }
+.me-ruta__semanas { display: grid; gap: var(--e-2); margin: 0; padding: 0; list-style: none; }
+.me-ruta__semana { display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: var(--e-2); }
+.me-ruta__s { font: 700 var(--t-micro)/1 var(--sans); color: var(--terracota-texto); }
+.me-ruta__dias { position: relative; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; }
+/* El sendero: una línea de arena que une las piedras de la semana. */
+.me-ruta__dias::before { content: ""; position: absolute; inset-inline: 7%; inset-block-start: calc(50% + 7px); block-size: 4px; border-radius: var(--r-full); background: color-mix(in srgb, var(--arena) 85%, var(--bosque)); opacity: 0.6; }
+.me-ruta__dia { position: relative; display: grid; place-items: center; }
+.me-piedra { position: relative; display: grid; justify-items: center; gap: 2px; inline-size: 100%; min-inline-size: 0; min-block-size: 56px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--bosque); }
+.me-piedra__ini { font: 600 var(--t-micro)/1 var(--sans); color: var(--tinta-suave); }
+.me-piedra__forma { display: grid; place-items: center; inline-size: 36px; block-size: 36px; border-radius: 50%; background: var(--papel); border: 2px solid color-mix(in srgb, var(--bosque) 25%, transparent); font: 600 var(--t-s)/1 var(--sans); transition: transform var(--dur-2) var(--curva), background var(--dur-2) var(--curva); }
+.me-piedra:hover .me-piedra__forma { transform: translateY(-2px); }
+.me-piedra:focus-visible { outline: none; }
+.me-piedra:focus-visible .me-piedra__forma { outline: 3px solid var(--terracota); outline-offset: 2px; }
+.me-piedra.es-completo .me-piedra__forma { background: var(--sol); border-color: var(--bosque); color: var(--bosque); }
+.me-piedra.es-parcial .me-piedra__forma { background: linear-gradient(to top, color-mix(in srgb, var(--sol) 60%, var(--papel)) 50%, var(--papel) 50%); }
+.me-piedra.es-libre .me-piedra__forma { background: transparent; border-style: dashed; color: var(--tinta-suave); }
+.me-piedra.es-futuro .me-piedra__forma { background: color-mix(in srgb, var(--papel) 70%, transparent); color: var(--tinta-suave); }
+.me-piedra.es-hoy .me-piedra__forma { inline-size: 42px; block-size: 42px; background: var(--bosque); border-color: var(--papel); color: var(--papel); box-shadow: var(--sombra-2); }
+.me-piedra.es-hoy.es-completo .me-piedra__forma { background: var(--sol); color: var(--bosque); border-color: var(--bosque); }
+.me-piedra.es-hoy .me-piedra__ini { color: var(--bosque); }
+.me-piedra.es-hoy .me-piedra__forma::after { content: ""; position: absolute; inline-size: 42px; block-size: 42px; border-radius: 50%; border: 2px solid var(--sol); }
+@media (prefers-reduced-motion: no-preference) {
+  .me-piedra.es-hoy .me-piedra__forma::after { animation: mm-late 2.4s var(--curva) infinite; }
+}
+.me-piedra__rev { position: absolute; inset-block-start: 10px; inset-inline-end: 0; display: grid; place-items: center; inline-size: 20px; block-size: 20px; border-radius: 50%; background: var(--terracota-suave); color: var(--terracota-texto); }
+@media (max-width: 379.98px) {
+  .me-ruta { padding: var(--e-4); }
+  .me-piedra__forma { inline-size: 30px; block-size: 30px; }
+  .me-piedra.es-hoy .me-piedra__forma, .me-piedra.es-hoy .me-piedra__forma::after { inline-size: 34px; block-size: 34px; }
+}
+@media (min-width: 1024px) {
+  .me-ruta { padding: var(--e-5) var(--e-6); }
+  .me-ruta__semanas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--e-3) var(--e-6); }
+}
+
 .me-plan-tarjetas { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--e-4); }
 .me-plan-hoy, .me-construyendo, .me-construyendo__meta, .me-construyendo__nombre, .me-construyendo__para { min-inline-size: 0; }
 @media (min-width: 900px) { .me-plan-tarjetas { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); align-items: stretch; } }
@@ -1194,6 +1252,43 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 }
 
 /* Tarjetas */
+/* Tu montaña (nov-2026): los 10 niveles suben en zigzag sobre la foto real de la portada.
+   La capa ocupa la misma caja que la foto; los puntos son HTML y no se deforman. */
+.ml-portada--montana .ml-montana { position: absolute; inset: 0 0 auto; z-index: 0; block-size: 170px; pointer-events: none; }
+.ml-montana__dibujo { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; display: block; overflow: visible; }
+.ml-montana .mm-sendero-sombra { fill: none; stroke: var(--tinta); stroke-width: 7; stroke-linecap: round; opacity: 0.35; vector-effect: non-scaling-stroke; }
+.ml-montana .mm-sendero { fill: none; stroke: var(--papel); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 1 8; opacity: 0.9; vector-effect: non-scaling-stroke; }
+.ml-montana .mm-sendero-luz { fill: none; stroke: var(--sol); stroke-width: 4; stroke-linecap: round; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 6px var(--sol)); }
+.ml-montana__estaciones { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; }
+.ml-estacion { position: absolute; inline-size: 0; block-size: 0; }
+.ml-estacion__punto { position: absolute; inset-inline-start: -8px; inset-block-start: -8px; display: grid; place-items: center; inline-size: 16px; block-size: 16px; border-radius: 50%; background: color-mix(in srgb, var(--papel) 85%, transparent); border: 2px solid var(--papel); color: var(--bosque); font: 700 var(--t-micro)/1 var(--sans); box-shadow: var(--sombra-1); }
+.ml-estacion.es-logrado .ml-estacion__punto { background: var(--sol); border-color: var(--papel); }
+.ml-estacion.es-futuro .ml-estacion__punto { background: color-mix(in srgb, var(--bosque) 55%, transparent); border-color: color-mix(in srgb, var(--papel) 80%, transparent); }
+.ml-estacion.es-futuro .ml-estacion__punto svg { color: var(--sol); }
+.ml-estacion.es-actual .ml-estacion__punto { inset-inline-start: -14px; inset-block-start: -14px; inline-size: 28px; block-size: 28px; background: var(--bosque); color: var(--papel); border-color: var(--sol); box-shadow: var(--sombra-2); }
+.ml-estacion.es-actual .ml-estacion__punto::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid var(--sol); }
+@media (prefers-reduced-motion: no-preference) {
+  .ml-estacion.es-actual .ml-estacion__punto::after { animation: mm-late 2.4s var(--curva) infinite; }
+}
+@keyframes mm-late { 0% { transform: scale(0.85); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
+.ml-estacion__rotulo { position: absolute; inset-block-end: 0; inset-inline-start: 20px; transform: translateY(50%); display: grid; padding: 3px 10px; border-radius: var(--r-m); background: var(--papel); box-shadow: var(--sombra-2); white-space: nowrap; }
+.ml-estacion.es-actual .ml-estacion__rotulo { inset-inline-start: 24px; background: var(--bosque); }
+.ml-estacion.es-actual .ml-estacion__n, .ml-estacion.es-actual .ml-estacion__nombre { color: var(--papel); }
+.ml-estacion.es-actual .ml-estacion__n { color: var(--sol); }
+.ml-estacion__n { font: 600 var(--t-micro)/1.2 var(--sans); color: var(--terracota-texto); }
+.ml-estacion__nombre { font: 600 var(--t-s)/1.15 var(--serif); color: var(--bosque); }
+/* En el teléfono, solo tu nivel lleva rótulo (el siguiente y la cima quedan para lectores de pantalla y en la frase). */
+.ml-estacion:not(.es-actual) .ml-estacion__rotulo.ml-estacion__rotulo { position: absolute; inline-size: 1px; block-size: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; box-shadow: none; }
+.ml-portada__falta { display: inline-flex; align-items: center; gap: 8px; justify-self: start; margin: var(--e-2) 0 0; padding: 8px 14px; border-radius: var(--r-full); background: var(--bosque); font: 600 var(--t-s)/1.35 var(--sans); color: var(--papel); }
+.ml-portada__falta svg { flex: none; color: var(--sol); }
+@media (min-width: 1024px) {
+  .ml-portada--montana .ml-montana { inset: 0 0 0 30%; block-size: auto; }
+  .ml-estacion__punto { inset-inline-start: -10px; inset-block-start: -10px; inline-size: 20px; block-size: 20px; }
+  .ml-estacion.es-actual .ml-estacion__punto { inset-inline-start: -18px; inset-block-start: -18px; inline-size: 36px; block-size: 36px; font-size: var(--t-s); }
+  .ml-estacion.es-actual .ml-estacion__rotulo { inset-inline-start: 30px; }
+  .ml-estacion:not(.es-actual):not(.es-logrado) .ml-estacion__rotulo.ml-estacion__rotulo { position: absolute; inline-size: auto; block-size: auto; padding: 3px 10px; overflow: visible; clip-path: none; box-shadow: var(--sombra-2); }
+}
+
 .ml-tarjeta { display: grid; align-content: start; gap: var(--e-4); min-inline-size: 0; padding: var(--e-5); border-radius: var(--r-l); background: var(--superficie); box-shadow: var(--sombra-1); }
 .ml-tarjeta__cabeza { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--e-3); }
 .ml-recompensas .ml-tarjeta__cabeza, .ml-ranking .ml-tarjeta__cabeza { grid-template-columns: auto minmax(0, 1fr); }

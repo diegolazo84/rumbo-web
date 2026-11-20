@@ -17,7 +17,7 @@
 // coach como acceso al acompañamiento, «Tus acciones de hoy» con el anillo, y una celebración
 // solo al subir de nivel. Todo lo que nombra a un coach depende de que el plan lo incluya
 // (incluyeCoach). La primera acción sigue visible sin desplazar en un celular habitual.
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import Etiqueta from "../../../components/Etiqueta";
 import Foto from "../../../components/Foto";
@@ -189,7 +189,7 @@ export function PantallaHoy({ variante }: { variante: Variante }) {
 
   return (
     <div className="me-pantalla me-hoy">
-      <Bienvenida hoy={hoy} semana={semana} progreso={progreso} esc={esc} deHoy={deHoy} principal={principal} conCoach={conCoach} total={ciclo.semanas} />
+      <Bienvenida hoy={hoy} semana={semana} progreso={progreso} esc={esc} deHoy={deHoy} principal={principal} conCoach={conCoach} total={ciclo.semanas} hechas={hechas} programadas={programadas} ocultarCreditos={!!variante.ocultarCreditos} />
 
       {principal && <MetaPrincipal meta={principal} metas={esc.metas} />}
 
@@ -343,9 +343,12 @@ type PropsBienvenida = {
   deHoy: Ocurrencia[];
   principal: Meta | null;
   conCoach: boolean;
+  hechas: number;
+  programadas: number;
+  ocultarCreditos: boolean;
 };
 
-function Bienvenida({ hoy, semana, total, progreso, esc, deHoy, principal, conCoach }: PropsBienvenida) {
+function Bienvenida({ hoy, semana, total, progreso, esc, deHoy, principal, conCoach, hechas, programadas, ocultarCreditos }: PropsBienvenida) {
   const { fechaRevision, metaPorId } = useEspacio();
   const tituloMeta = (o?: Ocurrencia) => (o ? metaPorId(o.metaId).titulo || o.metaTitulo || "" : "") || principal?.titulo || "";
   const pendiente = deHoy.find((o) => o.registro === null);
@@ -372,8 +375,21 @@ function Bienvenida({ hoy, semana, total, progreso, esc, deHoy, principal, conCo
   const textoRevision = esc.plan === "cercano" ? T_HOY.bajada.videollamada(esc.horaVideollamada) : T_HOY.bajada.revision;
 
   return (
-    <header className="me-bienvenida me-hoy__cabeza">
+    <header
+      className={`me-bienvenida me-hoy__cabeza${programadas > 0 && hechas >= programadas ? " es-completo" : ""}`}
+      style={{ "--avance": programadas > 0 ? Math.min(hechas, programadas) / programadas : 0.6 } as CSSProperties}
+    >
+      {/* Foto real que se ilumina con lo hecho hoy: más luz y color con cada acción marcada. */}
       <Foto foto={fotos.miEspacio} decorativa prioridad className="me-bienvenida__foto" sizes="(min-width: 1024px) 520px, 60vw" />
+      <span className="me-bienvenida__luz" aria-hidden="true" />
+      {programadas > 0 && (
+        <span className="me-bienvenida__dia" aria-hidden="true">
+          <Icono nombre="sun" tamaño={16} />
+          {Array.from({ length: Math.min(programadas, 8) }, (_, i) => (
+            <span key={i} className={i < hechas ? "me-bienvenida__hito es-hecho" : "me-bienvenida__hito"} />
+          ))}
+        </span>
+      )}
       <div className="me-bienvenida__texto">
         <div className="me-bienvenida__ojo">
           <h1 className="me-bienvenida__h1">{T_SECCIONES.rumbo}</h1>
@@ -386,6 +402,23 @@ function Bienvenida({ hoy, semana, total, progreso, esc, deHoy, principal, conCo
           {frase}
           {esRevision && ` ${textoRevision}`}
         </p>
+        {/* Lo ganado, a la vista (escritorio): racha y nivel. Sin créditos si la persona los ocultó. */}
+        {(progreso.racha > 0 || !ocultarCreditos) && (
+          <ul className="me-bienvenida__logros" aria-label={T_HOY.bienvenida.logros}>
+            {progreso.racha > 0 && (
+              <li>
+                <Icono nombre="flame" tamaño={16} />
+                {T_HOY.resumen.racha(progreso.racha)}
+              </li>
+            )}
+            {!ocultarCreditos && (
+              <li>
+                <Icono nombre="crown" tamaño={16} />
+                {T_HOY.resumen.nivel(progreso.nivel.nivel, progreso.nivel.nombre)}
+              </li>
+            )}
+          </ul>
+        )}
       </div>
     </header>
   );

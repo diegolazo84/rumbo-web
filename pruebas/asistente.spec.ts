@@ -116,12 +116,12 @@ test("autorización: explica qué hace, qué se envía, la revisión del coach y
   await expect(page.getByLabel(T.escribir)).toBeVisible();
 });
 
-test("apagado: lo dice, lleva a Mi acompañamiento y la ayuda en crisis sigue a la vista", async ({ page }) => {
+test("sin IA conectada: se puede preguntar igual, responde tu coach y la ayuda en crisis sigue a la vista", async ({ page }) => {
   await page.goto("vista-previa/mi-espacio/asistente/apagado/");
   await page.waitForFunction(() => document.documentElement.classList.contains("hidratado"));
-  await expect(page.getByRole("heading", { name: T.apagado.titulo })).toBeVisible();
-  await expect(page.getByRole("link", { name: T.apagado.ir })).toBeVisible();
-  await expect(page.getByLabel(T.escribir)).toHaveCount(0);
+  await expect(page.getByText(T.coach.bajada)).toBeVisible();
+  await expect(page.getByLabel(T.escribir)).toBeVisible();
+  await expect(page.getByRole("button", { name: T.configuracion.abrir })).toHaveCount(0);
   await expect(page.locator(".as-crisis")).toContainText("*4141");
 });
 

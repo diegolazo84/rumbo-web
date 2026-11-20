@@ -102,6 +102,7 @@ export const T_HOY = {
   // Frase de la bienvenida: elegida por el estado real del día y nombrando la meta real a la que
   // aporta (nunca una frase motivacional al azar ni números que no existen). Sin culpa.
   bienvenida: {
+    logros: "Lo que llevas",
     // Varias frases por estado: se elige una por fecha (fraseDelDia), para no repetir la misma.
     ninguna: [
       (m: string) => `Hoy das un paso más hacia «${m}».`,
@@ -471,6 +472,16 @@ export const T_PROGRESO = {
 
 // Mis logros (maqueta de ChatGPT, 29-oct-2026). Cifras, fechas y beneficios salen de la base.
 export const T_LOGROS = {
+  // «Tu montaña» (nov-2026): los 10 niveles reales como un sendero a la cima.
+  montana: {
+    titulo: "Tu montaña",
+    bajada: (faltan: number, nombre: string) => `Te ${faltan === 1 ? "falta 1 crédito" : `faltan ${faltan} créditos`} para llegar a ${nombre}. Cada acción hecha te sube un poco más.`,
+    cima: "Llegaste a la cima: Legado. Lo que construiste ya es parte de ti.",
+    nivel: (n: number) => `Nivel ${n}`,
+    logrado: "conseguido",
+    actual: "tu nivel actual",
+    desde: (c: string) => `desde ${c} créditos`,
+  },
   // Galería de fotos (20-nov-2026, decisión de Diego: las fotos se guardan como recuerdo).
   fotos: {
     titulo: "Cómo empezaste y cómo vas",
@@ -856,6 +867,16 @@ export const T_PLAN = {
   metasVacio: "Tus metas aparecerán aquí cuando tu programa esté publicado.",
   verAvance: "Ver mi avance",
   // Encabezado y tarjetas de la mejora visual (textos exactos de Diego, 29-oct-2026).
+  // Tu ciclo como camino de piedras (nov-2026).
+  ruta: {
+    titulo: "Tu ciclo, día a día",
+    dia: (n: number, total: number) => `Día ${n} de ${total}`,
+    completos: (n: number) => `${n} ${n === 1 ? "día completo" : "días completos"}`,
+    semana: (n: number) => `Semana ${n}`,
+    semanaCorta: (n: number) => `S${n}`,
+    aria: (fecha: string, h: number, p: number, rev: boolean) =>
+      `${fecha}: ${p ? `${h} de ${p} ${p === 1 ? "acción hecha" : "acciones hechas"}` : "sin acciones"}${rev ? ", día de revisión" : ""}. Ver el día`,
+  },
   camino: {
     titulo: "Tu camino, paso a paso",
     bajada: "Cada pequeña acción te acerca a lo que quieres construir.",
@@ -976,31 +997,6 @@ export const T_COMUNIDAD = {
     "La estamos diseñando para que participes solo si quieres, con un alias y con moderación de nuestro equipo. Tu plan y tus registros seguirán siendo privados.",
   cuando: "Abriremos la comunidad cuando haya participantes y moderación suficientes. Mientras tanto, tu acompañamiento sigue igual.",
   verMas: "Ver todo lo que viene en Rumbo",
-} as const;
-
-// Tarjetas de «Lo que viene en Rumbo» en Mi espacio. Coinciden con loQueViene de data/rumbo.ts
-// (la portada); aquí van con su descripción. Ninguna es un enlace ni tiene fecha.
-export const T_LO_QUE_VIENE = {
-  bajada: "Funciones en las que estamos trabajando. Todavía no están disponibles: las verás en tu espacio cuando funcionen y estén probadas.",
-  grupos: [
-    {
-      titulo: "Para el lanzamiento",
-      items: [
-        { clave: "comunidad", titulo: "Comunidad con foro moderado", texto: "Comparte avances con un alias, solo si quieres." },
-        { clave: "asistente_ia", titulo: "Asistente con inteligencia artificial", texto: "Propone ideas para tu plan y tu registro. Tu coach revisa y aprueba." },
-      ],
-    },
-    {
-      titulo: "Más adelante",
-      items: [
-        { clave: "especialistas", titulo: "Marketplace de especialistas", texto: "Sesiones con profesionales verificados de distintas áreas." },
-        { clave: "convenios", titulo: "Premios por convenio con tiendas y especialistas", texto: "Beneficios con tiendas y especialistas, además de tus reconocimientos." },
-        { clave: "ia_avanzada", titulo: "Inteligencia artificial avanzada", texto: "Análisis más profundos de tus patrones y tu evolución." },
-        { clave: "app_tiendas", titulo: "Aplicación en las tiendas de iOS y Android", texto: "Rumbo en App Store y Google Play. Hoy ya puedes instalar Mi espacio desde tu navegador." },
-      ],
-    },
-  ],
-  nota: "No tienen fecha todavía. No necesitas hacer nada para recibirlas.",
 } as const;
 
 // Mis avisos (maqueta de ChatGPT, 30-oct-2026). El título de cada aviso lo escribe la base con un
@@ -1210,6 +1206,17 @@ export const T_ASISTENTE = {
     { icono: "sprout", texto: "Te apoya a reflexionar y avanzar en tu proceso." },
   ],
   revisaCoach: "Tu coach revisa y aprueba cada respuesta antes de que la veas.",
+  // Sin IA conectada (20261207): la pregunta la responde el coach en persona, desde la misma bandeja.
+  coach: {
+    claves: [
+      { icono: "user-round", texto: "Tu coach responde cada pregunta en persona." },
+      { icono: "shield-check", texto: "Lo que escribes queda entre tú y tu equipo de Rumbo." },
+      { icono: "sprout", texto: "Te ayuda a reflexionar y a dar el siguiente paso." },
+    ],
+    revisa: "Escribe con calma: tu coach lee tu pregunta y te responde aquí mismo.",
+    bajada: "Un espacio para hacer tus preguntas y pensar en voz alta. Tu coach te responde aquí, con lo que sabe de tu plan.",
+    enRevision: { etiqueta: "Tu pregunta llegó a tu coach", texto: "Te avisaremos en Mis avisos cuando te responda." },
+  },
   saberMas: "Saber más",
   // Conversación
   conversacion: "Tu conversación con el asistente",

@@ -1,10 +1,8 @@
 // Capítulo 4: Dentro de Rumbo. Papel: cómo se ve tu semana (calendario de ejemplo, sin créditos),
-// qué existe hoy y qué no (transparencia) y «Lo que viene en Rumbo». Niveles, créditos y rachas
+// y qué existe hoy y qué no (transparencia). «Lo que viene» salió el 20-nov-2026: todo está presente. Niveles, créditos y rachas
 // salieron de la portada en nov-2026 (decisión de Diego): siguen intactos dentro de Mi espacio.
-import { loQueViene } from "../../data/rumbo";
-import { Encabezado, ListaCheck } from "../Bloques";
+import { Encabezado } from "../Bloques";
 import CalendarioEjemplo from "../CalendarioEjemplo";
-import { EtiquetaEstado } from "../Etiqueta";
 import Transparencia from "../Transparencia";
 
 const semana = [
@@ -60,26 +58,6 @@ export default function DentroDeRumbo() {
           </p>
         </div>
 
-        <hr className="separador" />
-        {/* «Lo que viene en Rumbo»: rotulado como no disponible, sin fechas ni botones de contratación. */}
-        <div id="lo-que-viene">
-          <Encabezado
-            titulo="Lo que viene en Rumbo."
-            bajada="Lo que estamos construyendo. Nada de esto está disponible todavía: cada parte se abre solo cuando funcione y esté probada."
-          />
-          <div className="transparencia transparencia--dos">
-            <article className="tarjeta tarjeta--pronto">
-              <EtiquetaEstado estado="noDisponible" />
-              <h3>Para el lanzamiento</h3>
-              <ListaCheck tipo="neutra" items={loQueViene.lanzamiento} />
-            </article>
-            <article className="tarjeta tarjeta--pronto">
-              <EtiquetaEstado estado="masAdelante" />
-              <h3>En etapas posteriores</h3>
-              <ListaCheck tipo="neutra" items={loQueViene.despues} />
-            </article>
-          </div>
-        </div>
       </div>
     </section>
   );

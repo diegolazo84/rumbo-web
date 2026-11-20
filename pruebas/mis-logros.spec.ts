@@ -140,3 +140,15 @@ test("accesible y sin desborde; en móvil la barra no tapa nada", async ({ page,
     if (test.info().project.name !== "iphone") await revisarBarra(page);
   }
 });
+
+test("tu montaña: los 10 niveles reales como estaciones, con tu nivel marcado y lo que falta", async ({ page }) => {
+  await abrir(page);
+  const montana = page.getByRole("region", { name: T.montana.titulo });
+  const estaciones = montana.locator(".ml-estacion");
+  await expect(estaciones).toHaveCount(niveles.length);
+  const actual = montana.locator('[aria-current="step"]');
+  await expect(actual).toHaveCount(1);
+  await expect(actual).toContainText(/Nivel \d+/);
+  await expect(montana.locator(".ml-estacion.es-logrado")).toHaveCount(Number(await actual.locator(".ml-estacion__punto").textContent()) - 1);
+  await expect(montana).toContainText(/Te faltan? \d+ créditos?/);
+});

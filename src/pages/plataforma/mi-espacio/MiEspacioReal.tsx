@@ -32,7 +32,7 @@ import Comunidad from "../../vista-previa/mi-espacio/Comunidad";
 import CrearPublicacion from "../../vista-previa/mi-espacio/CrearPublicacion";
 import GruposComunidad from "../../vista-previa/mi-espacio/GruposComunidad";
 import DesafiosComunidad from "../../vista-previa/mi-espacio/DesafiosComunidad";
-import LoQueViene from "../../vista-previa/mi-espacio/LoQueViene";
+import Especialistas from "../../vista-previa/mi-espacio/Especialistas";
 import MisMetas from "../../vista-previa/mi-espacio/MisMetas";
 import { T_SIN_FICHA } from "../../vista-previa/mi-espacio/textos";
 import { EspacioGratis, PuntoDePartida, type DatosLibre } from "./CuentaGratis";
@@ -85,7 +85,7 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
     await sb.from("ciclos").select(COLUMNAS.ciclo).eq("participante_id", participante.id).order("numero", { ascending: false }).limit(1).maybeSingle(),
   ) as Filas["ciclo"] | null;
   if (!ciclo) return "sin-ficha";
-  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas, avisos, moduloComunidad, medibles, notas, recordatorios, correo, asistente] =
+  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas, avisos, medibles, notas, recordatorios, correo, asistente] =
     await Promise.all([
       sb.from("programas").select(COLUMNAS.programa).eq("ciclo_id", ciclo.id).neq("estado", "borrador").order("version"),
       sb.from("ocurrencias").select(COLUMNAS.ocurrencia).eq("ciclo_id", ciclo.id).order("fecha").limit(5000),
@@ -103,7 +103,6 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
       sb.from("videollamadas").select("semana,programada_para,enlace,estado").eq("ciclo_id", ciclo.id).order("semana"),
       // Mis avisos (A5): los propios, por RLS. Si no se pueden leer, la pantalla lo dice.
       leerAvisos(sb),
-      sb.rpc("modulo_visible", { p_clave: "comunidad" }),
       ...leerMedibles(sb, participante.id, ciclo),
       // Recordatorios (R1): sin la migración de recordatorios completos, la pantalla lo dice.
       sb.from("recordatorios").select(COLUMNAS_RECORDATORIOS).maybeSingle(),
@@ -145,7 +144,8 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
     // Fotos: siempre presentes (20261206). La foto es opcional en cualquier acción.
     fotos: true,
     avisos,
-    comunidad: !moduloComunidad.error && moduloComunidad.data === true,
+    // Comunidad: siempre presente (20261207).
+    comunidad: true,
     recordatorios: armarRecordatorios(recordatorios),
     correoDisponible: correo.error ? null : correo.data === true,
     asistente,
@@ -657,7 +657,7 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
       <EstructuraApp
         tipo="mi-espacio"
         sinNavegacion={estado.tipo === "partida" || estado.tipo === "libre"}
-        rutas={espacio?.asistente?.disponible ? { ...RUTAS_NAV, asistente: R_REAL.asistente } : RUTAS_NAV}
+        rutas={{ ...RUTAS_NAV, asistente: R_REAL.asistente }}
         seccion={ruta.seccion}
         activo={ruta.activo}
         novedades={novedades}
@@ -708,7 +708,7 @@ const RUTAS_NAV = {
   ajuste: R_REAL.ajuste,
   preferencias: R_REAL.preferencias,
   misDatos: R_REAL.misDatos,
-  loQueViene: R_REAL.loQueViene,
+  especialistas: R_REAL.especialistas,
   salir: R_REAL.salir,
 };
 
@@ -744,8 +744,8 @@ function PantallaReal({ ruta, espacio }: { ruta: RutaPlataforma; espacio: Espaci
       return <Creditos />;
     case "/mi-espacio/avisos/":
       return <MisAvisos />;
-    case "/mi-espacio/lo-que-viene/":
-      return <LoQueViene />;
+    case "/mi-espacio/especialistas/":
+      return <Especialistas />;
     case "/mi-espacio/preferencias/":
       return <Preferencias />;
     case "/mi-espacio/preferencias/recordatorios/":
