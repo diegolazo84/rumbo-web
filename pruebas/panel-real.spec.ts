@@ -178,7 +178,8 @@ function baseInicial(): Base {
     videollamadas: [],
     modulos: [
       { clave: "comunidad", nombre: "Comunidad con foro moderado", estado: "probado", probado_en: "2026-10-21T12:00:00Z", respaldo: null, que_falta: "Reglas y privacidad", orden: 1, cambiado_en: "2026-10-21T12:00:00Z" },
-      { clave: "ranking", nombre: "Ranking semanal voluntario", estado: "planificado", probado_en: null, respaldo: null, que_falta: "Requiere la comunidad", orden: 2, cambiado_en: "2026-10-21T12:00:00Z" },
+      { clave: "whatsapp", nombre: "Avisos por WhatsApp", estado: "planificado", probado_en: null, respaldo: null, que_falta: "Servicio pagado", orden: 2, cambiado_en: "2026-10-21T12:00:00Z" },
+      { clave: "fotos", nombre: "Fotografías opcionales y privadas", estado: "planificado", probado_en: null, respaldo: null, que_falta: "Subida", orden: 3, cambiado_en: "2026-10-21T12:00:00Z" },
     ],
   };
 }
@@ -1294,12 +1295,16 @@ test("Módulos: el dueño ve el estado real y lo cambia con las reglas de la bas
   await page.getByRole("link", { name: "Módulos: qué está encendido" }).click();
   await expect(page.locator("h1")).toHaveText("Módulos.");
   await expect(page.getByText("0 de 2 módulos están a la vista de las personas.")).toBeVisible();
-  const ranking = page.locator("li", { has: page.getByRole("heading", { name: "Ranking semanal voluntario" }) });
+  // Lo esencial está siempre presente: sin interruptor, con lo que incluye y lo que depende de Diego.
+  const fotos = page.locator("li", { has: page.getByRole("heading", { name: "Fotografías opcionales y privadas" }) });
+  await expect(fotos.getByText("Siempre presente")).toBeVisible();
+  await expect(fotos.getByRole("button")).toHaveCount(0);
+  const ranking = page.locator("li", { has: page.getByRole("heading", { name: "Avisos por WhatsApp" }) });
   const comunidad = page.locator("li", { has: page.getByRole("heading", { name: "Comunidad con foro moderado" }) });
-  await expect(ranking.getByText("Requiere la comunidad")).toBeVisible();
+  await expect(ranking.getByText("Servicio pagado")).toBeVisible();
   // Sin «probado» no se puede habilitar: la opción está apagada y se explica.
   await ranking.getByRole("button", { name: "Cambiar estado" }).click();
-  await expect(ranking.locator("#modulo-ranking-estado option[value=habilitado]")).toBeDisabled();
+  await expect(ranking.locator("#modulo-whatsapp-estado option[value=habilitado]")).toBeDisabled();
   await expect(ranking.getByText("Para habilitarlo, primero márcalo como probado.")).toBeVisible();
   await ranking.getByRole("button", { name: "Cancelar" }).click();
   // Operativo pide respaldo; habilitar avisa que las personas lo verán.
@@ -1327,9 +1332,9 @@ test("Módulos: si la base rechaza, se explica; un coach no los ve", async ({ pa
   await page.goto("equipo/modulos/");
   await hidratar(page);
   // La base vuelve a exigir «probado» aunque la pantalla se salte el aviso.
-  const ranking = page.locator("li", { has: page.getByRole("heading", { name: "Ranking semanal voluntario" }) });
+  const ranking = page.locator("li", { has: page.getByRole("heading", { name: "Avisos por WhatsApp" }) });
   await ranking.getByRole("button", { name: "Cambiar estado" }).click();
-  await ranking.locator("#modulo-ranking-estado").evaluate((s: HTMLSelectElement) => {
+  await ranking.locator("#modulo-whatsapp-estado").evaluate((s: HTMLSelectElement) => {
     s.querySelector("option[value=habilitado]")!.removeAttribute("disabled");
   });
   await ranking.getByLabel("Estado").selectOption("habilitado");

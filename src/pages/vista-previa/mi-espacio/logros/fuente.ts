@@ -54,11 +54,10 @@ const noExiste = (e: unknown) => e instanceof ErrorBase && e.estado === 404 && !
 
 export function fuenteLogrosReal(): FuenteLogros {
   const rpc = async <T>(nombre: string, args?: Record<string, unknown>): Promise<T> => datos(await (await supabase()).rpc(nombre, args)) as T;
-  const visible = (clave: string) => rpc<boolean>("modulo_visible", { p_clave: clave });
   return {
     ejemplo: false,
     async reconocimientos() {
-      if (!(await visible("reconocimientos"))) return null;
+      // Reconocimientos y ranking: siempre presentes (20261206).
       const sb = await supabase();
       const [catalogo, mios] = await Promise.all([
         sb.from("reconocimientos").select("clave,nombre,descripcion,umbral").eq("activo", true).order("orden"),
@@ -84,7 +83,6 @@ export function fuenteLogrosReal(): FuenteLogros {
       return vigente || obtenidos.some((o) => o.estado === "disponible") ? { vigente, obtenidos } : null;
     },
     async ranking() {
-      if (!(await visible("ranking"))) return null;
       const sb = await supabase();
       const fila = datos(await sb.from("alias").select("alias,en_ranking").maybeSingle()) as { alias: string; en_ranking: boolean } | null;
       if (!fila?.en_ranking) return { alias: fila?.alias ?? null, participo: false, puesto: null, total: 0, cumplimiento: null };

@@ -776,15 +776,15 @@ test("Lo que viene real: lo que el dueño ya habilitó deja de aparecer; sin la 
   await page.goto("mi-espacio/lo-que-viene/");
   await hidratar(page);
   const titulos = page.locator(".me-lqv__titulo");
-  await expect(titulos).toHaveCount(6);
+  await expect(titulos).toHaveCount(5);
   await expect(titulos).not.toContainText(["Comunidad con foro moderado"]);
-  await expect(page.getByText("Ranking semanal voluntario")).toBeVisible(); // probado no basta
-  await expect(page.getByText("Aplicación móvil")).toHaveCount(0);
-  // Sin la tabla (migración sin aplicar): las 8 funciones, como hasta ahora.
+  // Fotos, ranking y reconocimientos ya están siempre presentes: no aparecen como «lo que viene».
+  await expect(page.getByText("Ranking semanal voluntario")).toHaveCount(0);
+  // Sin la tabla (migración sin aplicar): las 6 funciones que aún no existen.
   await page.route("**/rest/v1/modulos**", (rt) => rt.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ code: "42P01", message: "no existe" }) }));
   await page.reload();
   await hidratar(page);
-  await expect(titulos).toHaveCount(8);
+  await expect(titulos).toHaveCount(6);
 });
 
 // Rumbo 2.0, etapa 2: Mi acompañamiento muestra solo lo que existe en la base.
@@ -1258,7 +1258,7 @@ test("Mis logros real (C17): todo de la base; recompensas y ranking solo con su 
     { clave: "meta_alcanzada", nombre: "Meta alcanzada", descripcion: "Lograste todos los hitos de una meta.", umbral: null, activo: true },
   ];
   base.alias = [{ participante_id: "p1", alias: "Ana C", en_ranking: false }];
-  const apagado = { modulo_visible: () => false, mis_beneficios: () => [], mi_beneficio_renovacion: () => [] };
+  const apagado = { modulo_visible: () => false, mis_reconocimientos: () => [], mis_beneficios: () => [], mi_beneficio_renovacion: () => [] };
   let llamadas = await simular(page, base, apagado);
   await page.goto("mi-espacio/logros/");
   await hidratar(page);
@@ -1266,13 +1266,12 @@ test("Mis logros real (C17): todo de la base; recompensas y ranking solo con su 
   await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
   await expect(page.locator(".ml-cifra")).toHaveText("3 créditos acumulados");
   await expect(page.locator(".ml-nivel__nombre")).toHaveText("Inicio");
-  // Módulos sin habilitar y beneficio apagado: ni reconocimientos, ni recompensas, ni ranking.
-  await expect(page.locator(".ml-cifra")).toBeVisible();
-  await expect.poll(() => llamadas.filter((l) => l.nombre === "modulo_visible" && !["fotos", "comunidad"].includes(String(l.cuerpo.p_clave))).length).toBe(2);
-  await expect(page.getByRole("heading", { name: "Mis reconocimientos" })).toHaveCount(0);
+  // Reconocimientos y ranking siempre presentes (20261206); el 10 % apagado no se muestra.
+  await expect(page.getByRole("heading", { name: "Mis reconocimientos" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Ranking/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Mis recompensas" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: /Ranking/ })).toHaveCount(0);
-  expect(llamadas.some((l) => l.nombre === "mis_reconocimientos" || l.nombre === "ranking_semanal")).toBe(false);
+  expect(llamadas.some((l) => l.nombre === "modulo_visible" && ["reconocimientos", "ranking"].includes(String(l.cuerpo.p_clave)))).toBe(false);
+  expect(llamadas.some((l) => l.nombre === "ranking_semanal")).toBe(false);
 
   // Habilitados: aparecen solos, con lo que dice la base.
   await page.unrouteAll({ behavior: "ignoreErrors" });
@@ -1393,9 +1392,9 @@ test("Mis logros real (C17) con datos: 10 niveles, créditos, rachas, 4 semanas,
   await expect(estado("ciclo_completado")).toContainText("Día 9 de 28");
   await expect(estado("meta_alcanzada")).toContainText("1 de 2 hitos");
 
-  // Recompensas y ranking siguen ocultos.
+  // El 10 % apagado no se muestra; el ranking está siempre presente (voluntario).
   await expect(page.getByRole("heading", { name: "Mis recompensas" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: /Ranking/ })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /Ranking/ })).toBeVisible();
   expect(llamadas.some((l) => l.nombre === "ranking_semanal")).toBe(false);
 });
 
@@ -1671,22 +1670,15 @@ function rpcFotos(base: Base, orden: string[], { fotos = true, rechazar = false 
   };
 }
 
-test("Fotos (opción A): con el módulo «fotos» apagado no hay subida; se conserva «No puedo subir una foto»", async ({ page }) => {
+test("Fotos siempre presentes: no dependen del módulo y se ofrecen en la acción", async ({ page }) => {
   await conSesion(page);
   const base = baseConFoto();
   const orden: string[] = [];
   const llamadas = await simular(page, base, rpcFotos(base, orden, { fotos: false }));
   await page.goto("mi-espacio/plan/accion/?id=o-foto");
   await hidratar(page);
-  await expect.poll(() => llamadas.some((l) => l.nombre === "modulo_visible" && l.cuerpo.p_clave === "fotos")).toBe(true);
-  await expect(page.getByRole("button", { name: "No puedo subir una foto" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Subir foto" })).toHaveCount(0);
-  await expect(page.locator("input[type=file]")).toHaveCount(0);
-  // Acción sin foto obligatoria, ya hecha: tampoco ofrece foto opcional.
-  await page.goto("mi-espacio/plan/accion/?id=o-2026-10-12");
-  await hidratar(page);
-  await expect(page.locator(".me-hecha")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Agregar una foto" })).toHaveCount(0);
+  await expect(page.locator("input[type=file]").first()).toBeAttached();
+  expect(llamadas.some((l) => l.nombre === "modulo_visible" && l.cuerpo.p_clave === "fotos")).toBe(false);
 });
 
 test("Fotos (opción A): sube en WebP de 1600 px sin metadatos, a su carpeta, y la miniatura usa enlace firmado", async ({ page }) => {
@@ -2015,7 +2007,7 @@ test("Registrar acción medible: sin la columna nota no se muestra la nota; si f
   await expect(page.getByLabel("¿Cuánto tiempo hiciste hoy?")).toBeVisible();
   await expect(page.getByText("¿Cómo te sentiste hoy?")).toHaveCount(0);
   await page.getByRole("button", { name: "Guardar acción" }).click();
-  await expect(page.getByRole("alert")).toContainText("Tu acción quedó marcada");
+  await expect(page.locator("form").getByRole("alert")).toContainText("Tu acción quedó marcada");
   falla = false;
   await page.getByRole("button", { name: "Guardar cambios" }).click();
   await expect(page.locator(".me-registrada").getByText("Anotaste 30 minutos.")).toBeVisible();
@@ -2057,7 +2049,7 @@ test("Informe de cierre real: datos de informe_ciclo y el mensaje escrito por el
   // Reconocimientos apagados: sin tarjeta de logros y, en su lugar, días con todo hecho.
   await expect(page.locator(".ic-dato--logros")).toContainText("9días con todo hecho");
   await expect(page.getByRole("heading", { name: "Logros más destacados" })).toHaveCount(0);
-  expect(llamadas.some((l) => l.nombre === "mis_reconocimientos")).toBe(false);
+  // Reconocimientos siempre presentes: si su lectura falla, el informe usa los días con todo hecho.
   await expect(page.locator(".ic-grafico__semanas li")).toHaveCount(4);
   await expect(page.locator(".ic-evolucion [role=img]")).toHaveAttribute("aria-label", /semana 1, 5 de 5; semana 2, 4 de 5; semana 3, 3 de 5; semana 4, 3 de 5\.$/);
   const coach = page.locator(".ic-coach");

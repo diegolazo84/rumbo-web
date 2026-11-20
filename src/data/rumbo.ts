@@ -282,13 +282,17 @@ export const enMiEspacio = [
   // «Registro semanal» es lo que escribe la persona; «revisión semanal», lo que hace su coach (docs/coherencia.md).
   "Registro semanal escrito: lo que anotas, la respuesta de tu coach y el siguiente foco",
   "Solicitud de ajustes cuando tu semana cambia",
+  "Una foto opcional y privada en cualquier acción, que solo ve tu coach",
+  "Reconocimientos por tu constancia y un ranking semanal voluntario, con alias",
+  "Avisos en tu espacio y recordatorios que tú decides cuándo recibir",
+  "Mi espacio instalable en tu teléfono",
 ];
 
 // «Lo que viene en Rumbo» (portada): nada de esto existe todavía. Sin fechas ni botones de
 // contratación; cada ítem pasa a enMiEspacio solo cuando funcione y esté probado.
 export const loQueViene = {
-  lanzamiento: ["Comunidad con foro moderado", "Ranking semanal voluntario", "Fotografías opcionales y privadas", "Asistente con inteligencia artificial"],
-  despues: ["Marketplace de especialistas", "Premios y recompensas", "Inteligencia artificial avanzada", "Aplicación móvil"],
+  lanzamiento: ["Comunidad con foro moderado", "Asistente con inteligencia artificial"],
+  despues: ["Marketplace de especialistas", "Premios por convenio con tiendas y especialistas", "Inteligencia artificial avanzada", "Aplicación en las tiendas de iOS y Android"],
 };
 export const seAcuerdaContigo = [
   "El día de tu revisión semanal, de lunes a viernes, y, en Acompañamiento cercano, la hora de tu videollamada (en hora de Chile)",

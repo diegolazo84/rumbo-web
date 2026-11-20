@@ -972,8 +972,6 @@ export const T_LO_QUE_VIENE = {
       titulo: "Para el lanzamiento",
       items: [
         { clave: "comunidad", titulo: "Comunidad con foro moderado", texto: "Comparte avances con un alias, solo si quieres." },
-        { clave: "ranking", titulo: "Ranking semanal voluntario", texto: "Por cumplimiento relativo a tu propio plan, con participación opcional." },
-        { clave: "fotos", titulo: "Fotografías opcionales y privadas", texto: "Respalda una acción con una foto que solo ve tu coach." },
         { clave: "asistente_ia", titulo: "Asistente con inteligencia artificial", texto: "Propone ideas para tu plan y tu registro. Tu coach revisa y aprueba." },
       ],
     },
@@ -981,9 +979,9 @@ export const T_LO_QUE_VIENE = {
       titulo: "Más adelante",
       items: [
         { clave: "especialistas", titulo: "Marketplace de especialistas", texto: "Sesiones con profesionales verificados de distintas áreas." },
-        { clave: "reconocimientos", titulo: "Premios y recompensas", texto: "Beneficios por tu constancia, con criterios iguales para todos los planes." },
+        { clave: "convenios", titulo: "Premios por convenio con tiendas y especialistas", texto: "Beneficios con tiendas y especialistas, además de tus reconocimientos." },
         { clave: "ia_avanzada", titulo: "Inteligencia artificial avanzada", texto: "Análisis más profundos de tus patrones y tu evolución." },
-        { clave: "app_movil", titulo: "Aplicación móvil", texto: "Una aplicación para iOS y Android." },
+        { clave: "app_tiendas", titulo: "Aplicación en las tiendas de iOS y Android", texto: "Rumbo en App Store y Google Play. Hoy ya puedes instalar Mi espacio desde tu navegador." },
       ],
     },
   ],

@@ -1171,10 +1171,11 @@ paso("nueva versión del programa: las acciones conservan su cantidad objetivo y
   exigir(!martes.ok && /semana/.test(martes.error), "se pidió el ranking de una semana que no parte el lunes");
   const anon = como(ROLES.anon, "select count(*) from public.ranking_semanal()");
   exigir(!anon.ok && anon.codigo === DENEGADO, "sin sesión se ve el ranking");
-  const apagado = como(ROLES.A, `select count(*) from public.ranking_semanal(${lunes})`);
-  exigir(!apagado.ok && /no_disponible/.test(apagado.error), "una persona ve el ranking sin que el dueño lo haya habilitado");
-  const entrar = como(ROLES.A, "select public.participar_en_ranking(true)");
-  exigir(!entrar.ok && /no_disponible/.test(entrar.error), "una persona entra al ranking sin que el dueño lo haya habilitado");
+  // Funciones siempre presentes (20261206): el ranking no depende del módulo, pero sigue siendo voluntario.
+  const entrar = como(ROLES.A, `select public.guardar_alias('Ola nueva') \\g /dev/null
+    select public.participar_en_ranking(true) \\g /dev/null
+    select en_ranking from public.alias where participante_id = '${ROLES.A.ficha}'`);
+  exigir(entrar.ok && ultima(entrar) === "t", `A no pudo entrar al ranking sin el módulo: ${entrar.error ?? ultima(entrar)}`);
 }
 // El bloqueo de la semilla solo sirve para la prueba de lectura: las de comunidad parten sin bloqueos.
 sql("delete from public.bloqueos_comunidad");
@@ -1632,7 +1633,7 @@ paso("grupos C13: destacado único y elegido por moderación, sugeridos por las 
     `los reconocimientos de A no son los esperados: ${r1.error ?? a1}`);
   exigir(r1.ok && b1 === "", `B recibió reconocimientos sin acciones hechas: ${b1}`);
   exigir(r1.ok && otraVez === "0", `los reconocimientos se repiten: ${otraVez}`);
-  exigir(r1.ok && avisos1 === "0", `hubo avisos de reconocimiento con el módulo sin habilitar: ${avisos1}`);
+  // avisos1: desde 20261206 los reconocimientos son siempre presentes y avisan según la ficha.
   const r2 = psql(`${base} update public.modulos set estado = 'habilitado' where clave = 'reconocimientos';
     insert into public.recordatorios (participante_id, activos, logros) values ('${ROLES.A.ficha}', true, true)
       on conflict (participante_id) do update set activos = true, logros = true;
@@ -1652,8 +1653,8 @@ paso("grupos C13: destacado único y elegido por moderación, sugeridos por las 
   exigir(r2.ok && /meta_alcanzada/.test(a2) && /mitad_del_camino/.test(a2) && !/primer_paso/.test(a2),
     `con hitos logrados y la mitad hecha no se otorgó lo esperado (o se otorgó uno apagado): ${r2.error ?? a2}`);
   exigir(r2.ok && avisos2 === n2, `con el módulo habilitado, avisos ${avisos2} de ${n2} reconocimientos`);
-  const cerrado = como(ROLES.A, "select count(*) from public.mis_reconocimientos()");
-  exigir(!cerrado.ok && /no_disponible/.test(cerrado.error), "se ven los reconocimientos sin habilitar el módulo");
+  const siempre = como(ROLES.A, "select count(*) from public.mis_reconocimientos()");
+  exigir(siempre.ok, `los reconocimientos no se ven sin el módulo (siempre presentes): ${siempre.error}`);
   const ver = como(ROLES.B, `reset role; update public.modulos set estado = 'habilitado' where clave = 'reconocimientos'; set local role authenticated;
     select string_agg(clave, ',') from public.mis_reconocimientos()`);
   exigir(ver.ok && ultima(ver) === "primer_paso", `B no ve solo lo suyo: ${ver.error ?? ultima(ver)}`);
