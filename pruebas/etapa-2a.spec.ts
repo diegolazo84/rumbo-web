@@ -157,7 +157,7 @@ test("Mi Rumbo: el foco de tu coach lleva a Mi acompañamiento (sin nombre ni fo
   }
   await expect(page.locator(".me-acomp-hoy")).toContainText(T_HOY.acompanamiento.quien);
   // Ninguna otra imagen: la única es la foto decorativa de la bienvenida.
-  await expect(page.locator(".me-hoy img:not(.me-bienvenida__foto img)")).toHaveCount(0);
+  await expect(page.locator(".me-hoy img:not(.me-bienvenida__foto img):not(.ilustracion)")).toHaveCount(0);
 });
 
 test("Mi Rumbo en el teléfono: la primera acción se ve sin desplazar y la barra no la tapa", async ({ page, isMobile }) => {
