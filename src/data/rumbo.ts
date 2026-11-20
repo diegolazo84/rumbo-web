@@ -258,7 +258,7 @@ export const noIncluye: { id: string; texto: string; en: ContextoNoIncluye[] }[]
   { id: "inmediata", texto: "Chat en vivo o respuesta inmediata", en: ["transparencia", "planes", "condiciones"] },
   { id: "urgencia", texto: "Atención de urgencia", en: ["planes", "condiciones"] },
   { id: "ia", texto: "Guía con inteligencia artificial (en preparación)", en: ["transparencia", "planes", "condiciones"] },
-  { id: "recordatorios", texto: "Recordatorios automáticos por WhatsApp o correo", en: ["transparencia", "condiciones"] },
+  { id: "recordatorios", texto: "Recordatorios por WhatsApp o SMS", en: ["transparencia", "condiciones"] },
   { id: "reservas", texto: "Reservas o videollamadas dentro de la plataforma", en: ["transparencia", "condiciones"] },
   { id: "pagos", texto: "Pagos en línea", en: ["transparencia", "condiciones"] },
   { id: "premios", texto: "Premios, canjes o recompensas materiales", en: ["condiciones"] },
