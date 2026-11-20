@@ -92,6 +92,24 @@ export const T_GRATIS = {
     proximoBono: (n: number) => `Si completas tu próximo día sumas ${n} de bono.`,
     error: "No pudimos guardar. Revisa tu conexión e inténtalo de nuevo.",
   },
+  funciones: {
+    titulo: "Todo lo que trae Rumbo",
+    bajada: "Esto es lo que se abre cuando eliges un plan con acompañamiento.",
+    ambos: "En los dos planes",
+    cercano: "Acompañamiento cercano",
+    bloqueada: "Con un plan",
+    ver: "Ver planes",
+    lista: [
+      { icono: "user-round", titulo: "Tu coach", texto: "Una persona te acompaña durante tus 4 semanas.", plan: "ambos" },
+      { icono: "list-checks", titulo: "Un plan hecho para ti", texto: "Tus metas y acciones las arma tu coach contigo, no desde plantillas.", plan: "ambos" },
+      { icono: "message-circle", titulo: "Revisión semanal escrita", texto: "Cada semana tu coach lee cómo te fue y te responde.", plan: "ambos" },
+      { icono: "refresh-cw", titulo: "Ajustes cuando algo no funciona", texto: "Pides un cambio y tu coach ajusta tu plan.", plan: "ambos" },
+      { icono: "calendar-days", titulo: "Tu plan completo", texto: "Tus 4 semanas en un calendario y cada acción con su detalle.", plan: "ambos" },
+      { icono: "award", titulo: "Mis logros completos", texto: "Tu avance por meta y por semana, además de niveles y rachas.", plan: "ambos" },
+      { icono: "bell", titulo: "Recordatorios", texto: "Avisos en la app a la hora que elijas.", plan: "ambos" },
+      { icono: "video", titulo: "Videollamada semanal", texto: "20 minutos cada semana con tu coach.", plan: "cercano" },
+    ],
+  },
   coach: {
     titulo: "Lo que cambia con un coach",
     puntos: [

@@ -340,6 +340,14 @@ test("cuenta gratis: marca lo de hoy, ve sus créditos y pide acompañamiento", 
   const m = llamadas.filter((l) => l.nombre === "marcar_libre").map((l) => l.cuerpo);
   expect(m[0]).toEqual({ p_accion: "al1", p_fecha: HOY, p_hecha: true });
 
+  // Todas las funciones de los planes se ven, con candado.
+  const funciones = page.getByRole("region", { name: "Todo lo que trae Rumbo" });
+  await expect(funciones.getByRole("listitem")).toHaveCount(8);
+  await expect(funciones.getByText("Videollamada semanal")).toBeVisible();
+  await expect(funciones.getByText("Con un plan")).toHaveCount(8);
+  await funciones.getByRole("button", { name: "Ver planes" }).click();
+  await expect(page.getByRole("heading", { name: "Lo que cambia con un coach" })).toBeFocused();
+
   await page.getByRole("button", { name: "Quiero acompañamiento" }).click();
   await page.getByRole("radio", { name: /Acompañamiento cercano/ }).check();
   await page.getByRole("button", { name: "Avisar a Rumbo" }).click();
