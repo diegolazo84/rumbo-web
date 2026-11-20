@@ -1,6 +1,7 @@
-// «Tu montaña» (Mis logros, nov-2026): los 10 niveles reales como estaciones de un sendero que sube
-// a la cima. Lo conseguido se ilumina, tu nivel late y el siguiente dice cuánto falta. Los puntos son
-// HTML sobre el dibujo (mismo tamaño en cualquier ancho) y forman una lista ordenada accesible.
+// «Tu montaña» (Mis logros, nov-2026): sobre la foto real de Torres del Paine de la portada, los 10
+// niveles reales suben en zigzag hasta la cumbre. Lo conseguido se ilumina, tu nivel late y el
+// siguiente dice cuánto falta. Los puntos son HTML (mismo tamaño en cualquier ancho) y forman una
+// lista ordenada accesible; el sendero dorado es decorativo.
 import { m, useReducedMotion } from "motion/react";
 import { Escena } from "../../../../components/app/Movimiento";
 import { Icono } from "../../../../components/app";
@@ -9,10 +10,10 @@ import { miles } from "../../../../lib/fechas";
 import { T_LOGROS } from "../textos";
 
 const ANCHO = 1000;
-const ALTO = 340;
-// Estaciones en % del dibujo (de la base a la cima).
+const ALTO = 1000;
+// Estaciones en % de la foto: zigzag desde el sendero hasta la cumbre (de la base a la cima).
 const PUNTOS: [number, number][] = [
-  [6, 86], [15, 79], [25, 73], [34, 64], [44, 58], [53, 48], [62, 41], [71, 31], [79, 23], [87, 12],
+  [40, 90], [58, 84], [72, 74], [57, 64], [42, 56], [55, 46], [67, 37], [58, 27], [50, 18], [47, 8],
 ];
 
 // Curva suave que pasa por todos los puntos (Catmull-Rom a Bézier).
@@ -35,32 +36,13 @@ export default function Montana({ creditos, nivel }: { creditos: number; nivel: 
   const tramo = siguiente ? Math.min(1, (creditos - niveles[i].minimo) / (siguiente.minimo - niveles[i].minimo)) : 0;
   const avance = (i + tramo) / (niveles.length - 1);
   const d = sendero(PUNTOS);
-  // La ladera sigue el sendero (un poco más abajo), hasta la cima y de bajada a la derecha.
-  const ladera = `${sendero(PUNTOS.map(([x, y]) => [x, y - 4] as [number, number])).replace(/^M[^C]+/, `M0 ${ALTO} L0 ${ALTO * 0.88} L${(PUNTOS[0][0] / 100) * ANCHO} ${((PUNTOS[0][1] - 4) / 100) * ALTO}`)} L${ANCHO * 0.885} ${ALTO * 0.06} L${ANCHO * 0.93} ${ALTO * 0.16} C${ANCHO * 0.96} ${ALTO * 0.24} ${ANCHO * 0.98} ${ALTO * 0.3} ${ANCHO} ${ALTO * 0.34} V${ALTO}Z`;
 
   return (
     <Escena>
-      <section className="ml-montana" aria-labelledby="ml-montana">
-        <div className="ml-montana__cabeza">
-          <h2 id="ml-montana" className="ml-montana__h2">
-            {T.titulo}
-          </h2>
-          <p className="ml-montana__bajada">{siguiente ? T.bajada(siguiente.minimo - creditos, siguiente.nombre) : T.cima}</p>
-        </div>
-        <div className="ml-montana__escena">
+      <section className="ml-montana" aria-label={T.titulo}>
+        <p className="sr-only">{siguiente ? T.bajada(siguiente.minimo - creditos, siguiente.nombre) : T.cima}</p>
           <svg className="ml-montana__dibujo" viewBox={`0 0 ${ANCHO} ${ALTO}`} preserveAspectRatio="none" aria-hidden="true" focusable="false">
-            <defs>
-              <linearGradient id="mm-cielo" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" className="mm-cielo-alto" />
-                <stop offset="1" className="mm-cielo-bajo" />
-              </linearGradient>
-            </defs>
-            <rect width={ANCHO} height={ALTO} fill="url(#mm-cielo)" />
-            <circle className="mm-sol" cx="760" cy="70" r="38" />
-            <path className="mm-lejos" d="M0 250 C120 210 200 230 300 190 C380 160 430 170 520 130 C600 95 640 120 700 100 L760 90 C820 110 900 130 1000 110 V340 H0Z" />
-            <path className="mm-monte" d={ladera} />
-            <path className="mm-nieve" d="M858 30 L885 20 L930 54 L910 48 L896 58 L878 44 Z" />
-            <path className="mm-cerca" d="M0 340 V300 C140 330 260 300 400 318 C540 336 700 300 820 318 C900 330 960 320 1000 312 V340Z" />
+            <path className="mm-sendero-sombra" d={d} />
             <path className="mm-sendero" d={d} />
             <m.path
               className="mm-sendero-luz"
@@ -96,7 +78,6 @@ export default function Montana({ creditos, nivel }: { creditos: number; nivel: 
               );
             })}
           </ol>
-        </div>
       </section>
     </Escena>
   );
