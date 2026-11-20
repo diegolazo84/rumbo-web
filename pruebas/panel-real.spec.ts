@@ -1117,7 +1117,7 @@ test("Comunidad: ocultar un reporte con motivo, volver a mostrar, crear grupo y 
   await hidratar(page);
   await page.getByRole("link", { name: "Comunidad: reportes, grupos y desafíos" }).click();
   await expect(page.locator("h1")).toHaveText("Comunidad.");
-  await expect(page.getByText("Cerrada para participantes: solo el equipo la ve.")).toBeVisible();
+  await expect(page.getByText("Abierta para participantes, con moderación del equipo.")).toBeVisible();
   // Reporte: el contenido y los motivos, sin quién reporta ni quién publicó.
   const reporte = page.locator("li", { has: page.getByText("Compren mis suplementos, link en mi perfil.") });
   await expect(reporte.getByText("2 reportes")).toBeVisible();

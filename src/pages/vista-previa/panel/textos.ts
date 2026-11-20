@@ -895,9 +895,8 @@ export const COMUNIDAD_PANEL = {
       habilitado: "Habilitado",
       operativo: "Operativo",
     } as Record<string, string>,
-    cerrada: "Cerrada para participantes: solo el equipo la ve.",
-    abierta: "Abierta para participantes.",
-    sinFila: "Sin registro del módulo «comunidad»: está cerrada para participantes.",
+    siempre: "Siempre presente",
+    abierta: "Abierta para participantes, con moderación del equipo.",
   },
   motivos: {
     respeto: "Falta de respeto o acoso",
