@@ -1206,3 +1206,6 @@
 .de-detalle__img > svg { display: block; inline-size: 100%; block-size: 100%; }
 .de-detalle__fechas { font-size: var(--t-xs); color: var(--tinta-suave); }
 .de-detalle__parte { display: grid; gap: var(--e-2); }
+
+/* Miniaturas con fotografías reales (nov-2026): mismo tamaño que la ilustración que reemplazan. */
+.paisaje-foto { display: block; object-fit: cover; max-inline-size: 100%; }

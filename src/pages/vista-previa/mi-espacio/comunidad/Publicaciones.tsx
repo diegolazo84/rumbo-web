@@ -5,7 +5,6 @@
 import { Fragment, useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Hoja, Icono } from "../../../../components/app";
-import Ilustracion from "../../../../components/app/Ilustracion";
 import { ErrorBase } from "../../../../lib/supabase";
 import { fechaRelativa, iniciales, tonoAvatar, useComunidad } from "./contexto";
 import { LIMITE_TEXTO, type Filtro, type MotivoReporte, type Publicacion } from "./fuente";
@@ -58,7 +57,7 @@ function Foto({ p, soloFotos = false }: { p: Publicacion; soloFotos?: boolean })
   if (p.ilustracionEjemplo && !soloFotos)
     return (
       <figure className="co-pub__foto co-pub__foto--ilustracion">
-        {p.ilustracionEjemplo === "atardecer" ? <Ilustracion nombre="atardecer" /> : <PaisajeMini nombre={p.ilustracionEjemplo} />}
+        <PaisajeMini nombre={p.ilustracionEjemplo} />
         <figcaption className="sr-only">{T.publicacion.ilustracionEjemplo}</figcaption>
       </figure>
     );
