@@ -867,6 +867,16 @@ export const T_PLAN = {
   metasVacio: "Tus metas aparecerán aquí cuando tu programa esté publicado.",
   verAvance: "Ver mi avance",
   // Encabezado y tarjetas de la mejora visual (textos exactos de Diego, 29-oct-2026).
+  // Tu ciclo como camino de piedras (nov-2026).
+  ruta: {
+    titulo: "Tu ciclo, día a día",
+    dia: (n: number, total: number) => `Día ${n} de ${total}`,
+    completos: (n: number) => `${n} ${n === 1 ? "día completo" : "días completos"}`,
+    semana: (n: number) => `Semana ${n}`,
+    semanaCorta: (n: number) => `S${n}`,
+    aria: (fecha: string, h: number, p: number, rev: boolean) =>
+      `${fecha}: ${p ? `${h} de ${p} ${p === 1 ? "acción hecha" : "acciones hechas"}` : "sin acciones"}${rev ? ", día de revisión" : ""}. Ver el día`,
+  },
   camino: {
     titulo: "Tu camino, paso a paso",
     bajada: "Cada pequeña acción te acerca a lo que quieres construir.",

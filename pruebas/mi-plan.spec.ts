@@ -115,3 +115,18 @@ test("sin desborde horizontal a 320, 375, 390 y 430 px (Semana y Día)", async (
     }
   }
 });
+
+test("tu ciclo, día a día: 28 piedras, hoy marcado y cada una abre su día", async ({ page }) => {
+  await abrir(page);
+  const ruta = page.getByRole("region", { name: T_PLAN.ruta.titulo });
+  await expect(ruta.getByRole("button")).toHaveCount(28);
+  const hoy = ruta.locator('[aria-current="date"]');
+  await expect(hoy).toHaveCount(1);
+  await expect(ruta.locator(".me-piedra.es-completo").first()).toBeVisible();
+  const primera = ruta.getByRole("button").first();
+  const nombre = (await primera.getAttribute("aria-label"))!.split(":")[0];
+  await primera.click();
+  await expect(page.getByRole("radio", { name: "Día" })).toBeChecked();
+  await expect(page.locator(".me-calendario__titulo")).toHaveText(nombre);
+  await expect(page.locator(".me-calendario__titulo")).toBeFocused();
+});

@@ -576,6 +576,48 @@
 .me-camino__semana { margin: 0 0 var(--e-1); padding: 4px 12px; border-radius: var(--r-full); background: var(--niebla); font: 600 var(--t-xs)/1.3 var(--sans); color: var(--bosque); }
 .me-camino__titulo { margin: 0; font: 600 var(--t-h2)/1.15 var(--serif); letter-spacing: -0.01em; color: var(--bosque); text-wrap: balance; }
 .me-camino__bajada { margin: 0; font-size: var(--t-s); line-height: 1.45; color: var(--tinta-suave); }
+/* Tu ciclo (nov-2026): 28 días como camino de piedras, una fila por semana sobre un sendero. */
+.me-ruta { display: grid; gap: var(--e-3); padding: var(--e-5); border-radius: var(--r-l); background: linear-gradient(160deg, var(--crema), color-mix(in srgb, var(--salvia-suave) 55%, var(--crema))); box-shadow: var(--sombra-1); }
+.me-ruta__cabeza { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--e-2) var(--e-4); }
+.me-ruta__titulo { margin: 0; font: 600 var(--t-h3)/1.15 var(--serif); color: var(--bosque); }
+.me-ruta__cifras { display: flex; flex-wrap: wrap; gap: var(--e-2); margin: 0; }
+.me-ruta__cifras span { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: var(--r-full); background: var(--papel); font: 600 var(--t-micro)/1.3 var(--sans); color: var(--bosque); }
+.me-ruta__cifras svg { color: var(--terracota); }
+.me-ruta__semanas { display: grid; gap: var(--e-2); margin: 0; padding: 0; list-style: none; }
+.me-ruta__semana { display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: var(--e-2); }
+.me-ruta__s { font: 700 var(--t-micro)/1 var(--sans); color: var(--terracota-texto); }
+.me-ruta__dias { position: relative; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; }
+/* El sendero: una línea de arena que une las piedras de la semana. */
+.me-ruta__dias::before { content: ""; position: absolute; inset-inline: 7%; inset-block-start: calc(50% + 7px); block-size: 4px; border-radius: var(--r-full); background: color-mix(in srgb, var(--arena) 85%, var(--bosque)); opacity: 0.6; }
+.me-ruta__dia { position: relative; display: grid; place-items: center; }
+.me-piedra { position: relative; display: grid; justify-items: center; gap: 2px; inline-size: 100%; min-inline-size: 0; min-block-size: 56px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--bosque); }
+.me-piedra__ini { font: 600 var(--t-micro)/1 var(--sans); color: var(--tinta-suave); }
+.me-piedra__forma { display: grid; place-items: center; inline-size: 36px; block-size: 36px; border-radius: 50%; background: var(--papel); border: 2px solid color-mix(in srgb, var(--bosque) 25%, transparent); font: 600 var(--t-s)/1 var(--sans); transition: transform var(--dur-2) var(--curva), background var(--dur-2) var(--curva); }
+.me-piedra:hover .me-piedra__forma { transform: translateY(-2px); }
+.me-piedra:focus-visible { outline: none; }
+.me-piedra:focus-visible .me-piedra__forma { outline: 3px solid var(--terracota); outline-offset: 2px; }
+.me-piedra.es-completo .me-piedra__forma { background: var(--sol); border-color: var(--bosque); color: var(--bosque); }
+.me-piedra.es-parcial .me-piedra__forma { background: linear-gradient(to top, color-mix(in srgb, var(--sol) 60%, var(--papel)) 50%, var(--papel) 50%); }
+.me-piedra.es-libre .me-piedra__forma { background: transparent; border-style: dashed; color: var(--tinta-suave); }
+.me-piedra.es-futuro .me-piedra__forma { background: color-mix(in srgb, var(--papel) 70%, transparent); color: var(--tinta-suave); }
+.me-piedra.es-hoy .me-piedra__forma { inline-size: 42px; block-size: 42px; background: var(--bosque); border-color: var(--papel); color: var(--papel); box-shadow: var(--sombra-2); }
+.me-piedra.es-hoy.es-completo .me-piedra__forma { background: var(--sol); color: var(--bosque); border-color: var(--bosque); }
+.me-piedra.es-hoy .me-piedra__ini { color: var(--bosque); }
+.me-piedra.es-hoy .me-piedra__forma::after { content: ""; position: absolute; inline-size: 42px; block-size: 42px; border-radius: 50%; border: 2px solid var(--sol); }
+@media (prefers-reduced-motion: no-preference) {
+  .me-piedra.es-hoy .me-piedra__forma::after { animation: mm-late 2.4s var(--curva) infinite; }
+}
+.me-piedra__rev { position: absolute; inset-block-start: 10px; inset-inline-end: 0; display: grid; place-items: center; inline-size: 20px; block-size: 20px; border-radius: 50%; background: var(--terracota-suave); color: var(--terracota-texto); }
+@media (max-width: 379.98px) {
+  .me-ruta { padding: var(--e-4); }
+  .me-piedra__forma { inline-size: 30px; block-size: 30px; }
+  .me-piedra.es-hoy .me-piedra__forma, .me-piedra.es-hoy .me-piedra__forma::after { inline-size: 34px; block-size: 34px; }
+}
+@media (min-width: 1024px) {
+  .me-ruta { padding: var(--e-5) var(--e-6); }
+  .me-ruta__semanas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--e-3) var(--e-6); }
+}
+
 .me-plan-tarjetas { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--e-4); }
 .me-plan-hoy, .me-construyendo, .me-construyendo__meta, .me-construyendo__nombre, .me-construyendo__para { min-inline-size: 0; }
 @media (min-width: 900px) { .me-plan-tarjetas { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); align-items: stretch; } }
