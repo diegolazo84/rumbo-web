@@ -43,7 +43,7 @@ begin
   insert into public.participantes (user_id, correo, nombre, estado)
   values (p_user, c.correo, c.nombre, 'activo') returning id into v_part;
   insert into public.ciclos (participante_id, numero, plan_id, inicio, semanas, fin, dia_revision, prueba_desde, prueba_hasta)
-  values (v_part, 1, 'acompanamiento', v_lunes, ((v_hasta - v_lunes) / 7 + 1)::smallint, v_hasta,
+  values (v_part, 1, 'coach', v_lunes, ((v_hasta - v_lunes) / 7 + 1)::smallint, v_hasta,
           least(5, extract(isodow from v_hoy + 6)::int)::smallint, v_hoy, v_hasta)
   returning id into v_ciclo;
   insert into public.programas (ciclo_id, participante_id, version, estado, vigente_desde, publicado_en, nota_cambios)
