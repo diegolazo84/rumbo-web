@@ -16,6 +16,8 @@ import type { Cliente } from "../../../lib/supabase";
 
 export type DatosLibre = {
   hoy: string;
+  // Solo al crear la cuenta, si partió la prueba completa de 14 días (20261205).
+  prueba?: { hasta: string; quedan: number } | null;
   abierta: boolean;
   cuenta: {
     nombre: string;
@@ -354,9 +356,47 @@ export function EspacioGratis({ sb, datos, alCambiar, salir }: { sb: Cliente; da
         )}
       </section>
 
+      <Funciones />
       <ConCoach sb={sb} pedido={!!cuenta.acceso_pedido_en} />
       <Ajustes sb={sb} datos={datos} alCambiar={alCambiar} salir={salir} />
     </div>
+  );
+}
+
+// Todas las funciones de los planes pagados, visibles y con candado (Diego, 19-nov-2026).
+function Funciones() {
+  const T = T_GRATIS.funciones;
+  const irAPlanes = () => {
+    const destino = document.getElementById("cg-coach-titulo");
+    destino?.scrollIntoView({ behavior: "smooth", block: "start" });
+    destino?.focus({ preventScroll: true });
+  };
+  return (
+    <section className="cg-bloque cg-funciones" aria-labelledby="cg-funciones-titulo">
+      <h2 id="cg-funciones-titulo" className="me-h2">{T.titulo}</h2>
+      <p className="cg-nota">{T.bajada}</p>
+      <ul className="cg-funciones__lista" role="list">
+        {T.lista.map((f) => (
+          <li key={f.titulo} className="cg-funcion">
+            <span className="cg-funcion__icono" aria-hidden="true">
+              <Icono nombre={f.icono} tamaño={20} />
+            </span>
+            <span className="cg-funcion__cuerpo">
+              <span className="cg-funcion__titulo">{f.titulo}</span>
+              <span className="cg-funcion__texto">{f.texto}</span>
+              <span className="cg-funcion__plan">{f.plan === "cercano" ? T.cercano : T.ambos}</span>
+            </span>
+            <span className="cg-funcion__candado">
+              <Icono nombre="lock" tamaño={16} />
+              <span className="sr-only">{T.bloqueada}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <button type="button" className="boton boton--secundario cg-funciones__ver" onClick={irAPlanes}>
+        {T.ver}
+      </button>
+    </section>
   );
 }
 
@@ -370,7 +410,7 @@ function ConCoach({ sb, pedido: yaPedido }: { sb: Cliente; pedido: boolean }) {
   const [alerta, setAlerta] = useState<string | null>(null);
   return (
     <section className="tarjeta cg-coach" aria-labelledby="cg-coach-titulo">
-      <h2 id="cg-coach-titulo" className="me-h2">{T.titulo}</h2>
+      <h2 id="cg-coach-titulo" className="me-h2" tabIndex={-1}>{T.titulo}</h2>
       <ul className="cg-coach__puntos">
         {T.puntos.map((p) => (
           <li key={p}>

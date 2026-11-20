@@ -577,6 +577,7 @@ a.pa-coach__texto:hover { text-decoration: underline; }
 .pa-cuenta__correo { margin: 0; overflow-wrap: anywhere; }
 .pa-cuenta__meta { margin: 0; font-size: var(--t-s); line-height: 1.5; overflow-wrap: anywhere; }
 .pa-cuenta__pidio { margin: 0; font-size: var(--t-s); font-weight: 600; color: var(--terracota-texto); }
+.pa-cuenta__plan--prueba { background: var(--salvia-suave); color: var(--bosque); }
 .pa-cuenta__plan--gratis { background: var(--niebla); color: var(--bosque); }
 .pa-cuenta__plan--programa { background: var(--bosque); color: var(--superficie); }
 .pa-cuenta__plan--sin_completar { background: var(--papel-hondo); color: var(--tinta-suave); }

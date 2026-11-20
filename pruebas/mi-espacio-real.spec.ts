@@ -340,12 +340,39 @@ test("cuenta gratis: marca lo de hoy, ve sus créditos y pide acompañamiento", 
   const m = llamadas.filter((l) => l.nombre === "marcar_libre").map((l) => l.cuerpo);
   expect(m[0]).toEqual({ p_accion: "al1", p_fecha: HOY, p_hecha: true });
 
+  // Todas las funciones de los planes se ven, con candado.
+  const funciones = page.getByRole("region", { name: "Todo lo que trae Rumbo" });
+  await expect(funciones.getByRole("listitem")).toHaveCount(8);
+  await expect(funciones.getByText("Videollamada semanal")).toBeVisible();
+  await expect(funciones.getByText("Con un plan")).toHaveCount(8);
+  await funciones.getByRole("button", { name: "Ver planes" }).click();
+  await expect(page.getByRole("heading", { name: "Lo que cambia con un coach" })).toBeFocused();
+
   await page.getByRole("button", { name: "Quiero acompañamiento" }).click();
   await page.getByRole("radio", { name: /Acompañamiento cercano/ }).check();
   await page.getByRole("button", { name: "Avisar a Rumbo" }).click();
   await expect(page.getByText(/Te escribiremos a tu correo en hasta/)).toBeVisible();
   expect(llamadas.find((l) => l.nombre === "pedir_acompanamiento_libre")!.cuerpo).toEqual({ p_apoyo: "cercano" });
   if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/3-espacio-gratis-${test.info().project.name}.png`, fullPage: true });
+});
+
+test("prueba completa: Mi Rumbo muestra los días que quedan y avisa que quiere seguir con acompañamiento", async ({ page }) => {
+  const llamadas = await simular(page, baseInicial(), {
+    mi_prueba: () => ({ desde: HOY, hasta: HOY, quedan: 10, acceso_pedido: false }),
+    pedir_acompanamiento_libre: () => null,
+  });
+  await conSesion(page);
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  const tarjeta = page.getByRole("region", { name: "Estás probando Rumbo completo" });
+  await expect(tarjeta).toBeVisible();
+  await expect(tarjeta.getByText(/Te quedan 10 días de prueba/)).toBeVisible();
+  await expect(tarjeta.getByText(/revisión escrita de un coach/)).toBeVisible();
+  await sinViolaciones(page);
+  if (process.env.CAPTURAS) { await tarjeta.scrollIntoViewIfNeeded(); await page.screenshot({ path: `${process.env.CAPTURAS}/6-prueba-${test.info().project.name}.png` }); }
+  await tarjeta.getByRole("button", { name: "Quiero seguir con acompañamiento" }).click();
+  await expect(tarjeta.getByText("Listo. Te escribiremos a tu correo para conversar los planes.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "pedir_acompanamiento_libre")!.cuerpo).toEqual({ p_apoyo: "nose" });
 });
 
 test("con Google: abre Google con la vuelta a esta ruta, entra con los tokens y los borra de la URL", async ({ page }) => {

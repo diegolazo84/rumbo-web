@@ -37,6 +37,7 @@ import MisMetas from "../../vista-previa/mi-espacio/MisMetas";
 import { T_SIN_FICHA } from "../../vista-previa/mi-espacio/textos";
 import { EspacioGratis, PuntoDePartida, type DatosLibre } from "./CuentaGratis";
 import Pago, { TarjetaPago } from "./Pago";
+import { TarjetaPrueba } from "./Prueba";
 import { TarjetaApp } from "./InstalarApp";
 import { armarAusencia, armarDatos, armarNovedades, hoyEn, type Contexto, type Filas } from "./datos";
 
@@ -671,7 +672,7 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
         ) : estado.tipo === "sin-ficha" ? (
           <SinFicha />
         ) : estado.tipo === "partida" && cliente.current ? (
-          <PuntoDePartida sb={cliente.current.sb} nombreSugerido={estado.nombre} alCrear={(d) => setEstado({ tipo: "libre", datos: d, version: 0 })} />
+          <PuntoDePartida sb={cliente.current.sb} nombreSugerido={estado.nombre} alCrear={(d) => (d.prueba ? window.location.reload() : setEstado({ tipo: "libre", datos: d, version: 0 }))} />
         ) : estado.tipo === "libre" && cliente.current ? (
           <EspacioGratis
             key={estado.version}
@@ -769,6 +770,7 @@ function Inicio({ espacio }: { espacio: Espacio }) {
   return (
     <>
       <InicioSegunCiclo espacio={espacio} />
+      {espacio.ciclo.estado !== "cerrado" && <TarjetaPrueba />}
       {espacio.ciclo.estado !== "cerrado" && <TarjetaPago />}
       <TarjetaApp />
     </>
