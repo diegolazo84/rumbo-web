@@ -38,13 +38,11 @@ const MI_ESPACIO_FORZADO =
     ? __MI_ESPACIO_PROPIO__ === true
     : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.MI_ESPACIO_PROPIO === "1";
 const ESPACIO_PROPIO = MI_ESPACIO_PROPIO || MI_ESPACIO_FORZADO;
-<<<<<<< HEAD
 const LEGAL_13 = false; // Privacidad y Condiciones 1.3: se enciende solo al publicarlas (docs/publicar-versiones-legales.md)
 const LEGAL_13_FORZADO =
   typeof __LEGAL_13__ !== "undefined"
     ? __LEGAL_13__ === true
     : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.LEGAL_13 === "1";
-=======
 // Cuenta gratis «Rumbo Inicial»: el ingreso muestra «Ya tengo cuenta» y «Crear cuenta gratis».
 // true SOLO cuando el módulo «cuenta_gratis» esté habilitado (docs/cuenta-gratis.md).
 const CUENTA_GRATIS_ACTIVA = true; // módulo habilitado y migraciones 20261204 y 20261205 aplicadas (Diego, 19-nov-2026)
@@ -69,7 +67,6 @@ const INGRESO_CONTRASENA =
   (typeof __INGRESO_CONTRASENA__ !== "undefined"
     ? __INGRESO_CONTRASENA__ === true
     : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.INGRESO_CONTRASENA === "1");
->>>>>>> origin/main
 
 // Rutas de la web y, mientras existan, de la plataforma original. scripts/postbuild.mjs además
 // genera reenvíos con las mismas rutas en este dominio, para enlaces escritos a mano.

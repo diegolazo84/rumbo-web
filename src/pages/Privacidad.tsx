@@ -40,12 +40,25 @@ const VERSION_PRIVACIDAD = { numero: C ? "1.3" : B ? "1.2" : A ? "1.1" : "1.0", 
 
 const RETIRAR = "Si retiras tu solicitud con tu enlace privado, la borramos de inmediato.";
 const FOTOS_PLAZO =
-  "Fotografías de tus acciones: se eliminan 30 días después de su revisión o, si son opcionales, 30 días después de adjuntarlas. Las que esperan revisión se guardan hasta que se revisen";
+  "Fotografías de tus acciones: se guardan mientras tengas tu cuenta, para que puedas ver cómo empezaste y cómo vas, y se eliminan cuando la eliminas";
 const ELIMINAR =
   "Puedes pedirnos que los eliminemos en cualquier momento, y lo haremos, salvo lo que la ley nos obligue a conservar, como los documentos tributarios.";
 
 // Versión 1.3: las funciones opcionales de Rumbo 1.0, cada una en su sección.
 const FUNCIONES_13: Paso[] = [
+  {
+    titulo: "Cuenta gratis y prueba de 14 días",
+    contenido: (
+      <ListaLectura
+        items={[
+          "Qué guardamos: tu correo, el nombre con que quieres que te llamemos, el área en que quieres avanzar, tu meta, los días que elegiste, tus acciones, lo que marcas como hecho y los créditos, niveles y rachas que se calculan con eso.",
+          "Para qué: mostrarte tu semana y tu avance, y, durante los primeros 14 días, que una persona del equipo de Rumbo lea tu primera semana y te deje una revisión escrita. No te pedimos datos de pago.",
+          "Si nos avisas que quieres acompañamiento, usamos tu correo para escribirte sobre los planes. No te enviamos publicidad por otros medios.",
+          "Puedes borrar tu cuenta gratis cuando quieras desde Mi espacio: se borran tu meta, tus acciones y lo que marcaste.",
+        ]}
+      />
+    ),
+  },
   {
     titulo: "Comunidad (opcional)",
     contenido: (
@@ -78,17 +91,17 @@ const FUNCIONES_13: Paso[] = [
       <>
         <p>
           Algunas acciones piden una foto que muestre lo que hiciste; en las demás, adjuntarla es opcional. Las usamos
-          solo para que quien te acompaña revise tu avance. No las mostramos en la comunidad ni en el ranking, y no las
+          para que quien te acompaña revise tu avance y para que tú veas tu recorrido en «Mis logros». No las mostramos en la comunidad ni en el ranking, y no las
           enviamos a servicios de inteligencia artificial. Si no puedes subir una foto, elige «No puedo subir una foto»
           y cuéntanos con tus palabras lo que hiciste.
         </p>
         <ListaLectura
           items={[
-            "Qué no debes subir: fotos de tu cuerpo, fotos íntimas, documentos de identidad o de salud, ni fotos donde aparezcan otras personas. Si llega una foto así, no la aprobamos y se elimina 30 días después de esa revisión, o antes si nos lo pides.",
+            "Qué no debes subir: fotos de tu cuerpo, fotos íntimas, documentos de identidad o de salud, ni fotos donde aparezcan otras personas. Si llega una foto así, no la aprobamos y la eliminamos.",
             "Quién puede verlas: tú, la persona del equipo que te acompaña (entra con un segundo factor de verificación) y el responsable de Rumbo. Ninguna otra persona participante. Si cambias de coach, el anterior deja de tener acceso.",
             "Cómo las guardamos: tu navegador achica la foto a un máximo de 1600 píxeles y le quita los datos que vienen en el archivo, como la ubicación GPS, la fecha y el modelo del teléfono; si no puede hacerlo, la foto no se sube. Eso no la hace anónima: revisa qué se ve antes de subirla. Se guarda en un almacenamiento privado de Supabase, en Brasil, y se muestra con enlaces que dejan de funcionar a los 5 minutos.",
-            "Cuánto tiempo: una foto que pedía tu acción se elimina 30 días después de revisarla; una opcional, 30 días después de adjuntarla; una que espera revisión, se guarda hasta que se revise. Un proceso automático las elimina cada día, así que puede tardar hasta un día más. Puedes eliminarla antes desde la acción mientras esté abierta, o escribiéndonos.",
-            "Qué queda: el registro de la acción (que la hiciste, el resultado de la revisión, las notas y la fecha en que se eliminó la foto), para que tu progreso no cambie. Nuestros proveedores pueden conservar copias técnicas de seguridad por un tiempo limitado.",
+            "Cuánto tiempo: tus fotos se guardan mientras tengas tu cuenta, para que puedas mirar tu avance. Puedes quitar una foto desde su acción, cuando la acción lo permite, o pedirnos que la eliminemos escribiéndonos. Cuando eliminas tu cuenta, se eliminan todas.",
+            "Qué queda: el registro de la acción (que la hiciste, el resultado de la revisión, las notas y, si quitaste la foto, la fecha), para que tu progreso no cambie. Nuestros proveedores pueden conservar copias técnicas de seguridad por un tiempo limitado.",
             "La descarga de «Tus datos» en Mi espacio incluye el registro de tus acciones, pero no los archivos de las fotos. Si quieres una copia de las fotos que sigan guardadas, escríbenos.",
           ]}
         />

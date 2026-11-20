@@ -261,6 +261,20 @@ const secciones: Paso[] = [
   ...(C
     ? [
         {
+          titulo: "Cuenta gratis y prueba de 14 días",
+          contenido: (
+            <ListaLectura
+              items={[
+                "Cualquier persona mayor de 18 años puede crear una cuenta gratis. No te pedimos datos de pago y nunca se cobra sola.",
+                "Los primeros 14 días tienes Rumbo completo, con una revisión escrita de una persona del equipo al terminar tu primera semana. Después sigues gratis con lo básico: tu meta, hasta 3 acciones por día y tus créditos, niveles y rachas.",
+                "Las acciones sugeridas de la cuenta gratis son ideas generales para que armes tu semana. No son un plan hecho para ti ni una indicación de salud: eso es lo que hace tu coach en los planes con acompañamiento.",
+                "Si quieres acompañamiento, eliges un plan y sigues el mismo ingreso que el resto de las personas, con los precios publicados.",
+                "Puedes borrar tu cuenta gratis cuando quieras. Rumbo puede cambiar lo que incluye la versión gratis, y lo avisará en tu espacio antes de hacerlo.",
+              ]}
+            />
+          ),
+        },
+        {
           titulo: "Comunidad y ranking",
           contenido: (
             <>

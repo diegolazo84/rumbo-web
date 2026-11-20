@@ -603,15 +603,9 @@ test("presupuesto de peso (dist/)", async () => {
   const js = cargados.filter((f) => f.endsWith(".js")).reduce((t, f) => t + gz(f), 0);
   const css = cargados.filter((f) => f.endsWith(".css")).reduce((t, f) => t + gz(f), 0);
   // 111 KB desde la Etapa 0 de Rumbo 2.0 (antes 110): los textos de Privacidad y Condiciones 1.2 conviven con los del
-<<<<<<< HEAD
-  // modo con los interruptores apagados, que el compilado no descarta. 114 KB desde Rumbo 1.0: suman los textos 1.3
-  // (apagados). Al publicar la 1.3, borrar las ramas 1.0–1.2 y volver a bajar este límite.
-  expect(js, "JS comprimido").toBeLessThan(114 * 1024);
-=======
-  // modo con los interruptores apagados, que el compilado no descarta.
-  // 112 KB desde las fotos de la portada (nov-2026): rutas, anchos y textos alternativos de 8 fotos.
-  expect(js, "JS comprimido").toBeLessThan(112 * 1024);
->>>>>>> origin/main
+  // modo con los interruptores apagados, que el compilado no descarta. 112 KB desde las fotos de la portada (nov-2026).
+  // 116 KB desde Privacidad y Condiciones 1.3 (apagadas), que conviven con las ramas 1.0–1.2.
+  expect(js, "JS comprimido").toBeLessThan(116 * 1024);
   expect(css, "CSS comprimido").toBeLessThan(12 * 1024);
   expect(html.length, "HTML de la portada").toBeLessThan(70 * 1024);
   const precargas = [...html.toString().matchAll(/rel="preload" href="[^"]*\/assets\/([^"]+)"/g)].map((m) => m[1]);
