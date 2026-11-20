@@ -35,6 +35,7 @@ import DesafiosComunidad from "../../vista-previa/mi-espacio/DesafiosComunidad";
 import LoQueViene from "../../vista-previa/mi-espacio/LoQueViene";
 import MisMetas from "../../vista-previa/mi-espacio/MisMetas";
 import { T_SIN_FICHA } from "../../vista-previa/mi-espacio/textos";
+import { EspacioGratis, PuntoDePartida, type DatosLibre } from "./CuentaGratis";
 import Pago, { TarjetaPago } from "./Pago";
 import { TarjetaApp } from "./InstalarApp";
 import { armarAusencia, armarDatos, armarNovedades, hoyEn, type Contexto, type Filas } from "./datos";
@@ -289,6 +290,8 @@ type Estado =
   | { tipo: "cargando"; lento: boolean }
   | { tipo: "error" }
   | { tipo: "sin-ficha" }
+  | { tipo: "partida"; nombre: string }
+  | { tipo: "libre"; datos: DatosLibre; version: number }
   | ({ tipo: "listo" } & Leido);
 
 export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
@@ -324,6 +327,19 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
           const equipo = await sb.rpc("soy_equipo");
           if (!equipo.error && equipo.data === true) {
             navegar("/equipo/", { replace: true });
+            return;
+          }
+          // Cuenta gratis «Rumbo Inicial»: sin la migración o con el módulo cerrado, todo sigue igual.
+          const libre = await sb.rpc("mi_cuenta_libre");
+          if (!libre.error && libre.data) {
+            setEstado((e) => ({ tipo: "libre", datos: libre.data as DatosLibre, version: e.tipo === "libre" ? e.version + 1 : 0 }));
+            return;
+          }
+          const abierta = libre.error ? null : await sb.rpc("modulo_visible", { p_clave: "cuenta_gratis" });
+          if (abierta && !abierta.error && abierta.data === true) {
+            const meta = data.session?.user.user_metadata ?? {};
+            const completo = String(meta.full_name ?? meta.name ?? "").trim();
+            setEstado({ tipo: "partida", nombre: completo.split(/\s+/)[0] ?? "" });
             return;
           }
           setEstado({ tipo: "sin-ficha" });
@@ -640,6 +656,7 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
     <EspacioContexto.Provider value={espacio ?? ESPACIO_CARGANDO}>
       <EstructuraApp
         tipo="mi-espacio"
+        sinNavegacion={estado.tipo === "partida" || estado.tipo === "libre"}
         rutas={espacio?.asistente?.disponible ? { ...RUTAS_NAV, asistente: R_REAL.asistente } : RUTAS_NAV}
         seccion={ruta.seccion}
         activo={ruta.activo}
@@ -653,6 +670,18 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
           <Carga estado="error" alReintentar={() => void cargar()} />
         ) : estado.tipo === "sin-ficha" ? (
           <SinFicha />
+        ) : estado.tipo === "partida" && cliente.current ? (
+          <PuntoDePartida sb={cliente.current.sb} nombreSugerido={estado.nombre} alCrear={(d) => setEstado({ tipo: "libre", datos: d, version: 0 })} />
+        ) : estado.tipo === "libre" && cliente.current ? (
+          <EspacioGratis
+            key={estado.version}
+            sb={cliente.current.sb}
+            datos={estado.datos}
+            alCambiar={(d) => setEstado((e) => ({ tipo: "libre", datos: d, version: e.tipo === "libre" ? e.version + 1 : 0 }))}
+            salir={R_REAL.salir}
+          />
+        ) : estado.tipo !== "listo" ? (
+          <Carga estado="cargando" />
         ) : (
           <PantallaReal ruta={ruta} espacio={espacio!} />
         )}

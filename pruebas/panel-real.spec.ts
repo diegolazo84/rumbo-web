@@ -2149,6 +2149,62 @@ test("Auditoría: el dueño ve quién cambió qué, con motivo y por páginas; u
   expect(pedidos.length).toBe(antes);
 });
 
+// Cuentas creadas (cuenta gratis, 20261204): el dueño ve las cuentas, filtra y da acceso completo.
+test("Cuentas creadas: el dueño ve quién creó su cuenta y da acceso completo con una solicitud ya llena", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  await simular(page, baseInicial(), { factores: VERIFICADO });
+  const cuenta = (extra: Record<string, unknown>) => ({
+    origen: "correo", creada_en: "2026-10-12T15:00:00Z", ultima_entrada: "2026-10-13T12:00:00Z", participante_id: null, meta: null, area: null,
+    dias_con_acciones_7: 0, acciones_hechas: 0, acceso_pedido_en: null, apoyo_pedido: null, solicitud_id: null, solicitud_estado: null, ...extra,
+  });
+  const lista = [
+    cuenta({ user_id: "u1", correo: "fran@correo.cl", nombre: "Fran", origen: "google", plan: "gratis", meta: "Terminar el primer capítulo de mi tesis.", dias_con_acciones_7: 4, acciones_hechas: 9, acceso_pedido_en: "2026-10-13T13:00:00Z", apoyo_pedido: "cercano" }),
+    cuenta({ user_id: "u2", correo: "ana@correo.cl", nombre: "Ana", plan: "programa", participante_id: "p1" }),
+    cuenta({ user_id: "u3", correo: "nueva@correo.cl", nombre: null, plan: "sin_completar", ultima_entrada: null }),
+  ];
+  let dar: Record<string, unknown> | null = null;
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/cuentas_creadas`, (rt) => rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(lista) }));
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/dar_acceso_completo`, (rt) => {
+    dar = rt.request().postDataJSON();
+    return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify("s1") });
+  });
+  await page.goto("equipo/mas/");
+  await hidratar(page);
+  await page.getByRole("link", { name: "Cuentas creadas" }).click();
+  await expect(page.locator("h1")).toHaveText(/Cuentas creadas/);
+  const filas = page.locator(".pa-cuenta");
+  await expect(filas).toHaveCount(3);
+  await expect(filas.nth(0)).toContainText("Pidió acompañamiento (Acompañamiento cercano)");
+  await expect(filas.nth(0)).toContainText("4 de los últimos 7 días con acciones");
+  await expect(filas.nth(1).getByRole("link", { name: "Ver su ficha" })).toHaveAttribute("href", /participante\/\?id=p1/);
+  await expect(filas.nth(2)).toContainText("sin entrar");
+  await sinViolaciones(page);
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/4-cuentas-creadas-${test.info().project.name}.png`, fullPage: true });
+  await page.getByLabel("Plan").selectOption("pidieron");
+  await expect(filas).toHaveCount(1);
+  await page.getByLabel("Buscar por correo o nombre").fill("nadie");
+  await expect(page.getByText("Todavía no hay cuentas con estos filtros.")).toBeVisible();
+  await page.getByLabel("Buscar por correo o nombre").fill("fran");
+
+  await page.getByRole("button", { name: "Dar acceso completo" }).click();
+  await expect(page.getByLabel("Plan que conversaron")).toHaveValue("cercano");
+  await page.getByRole("button", { name: "Crear su solicitud" }).click();
+  await page.waitForURL(/\/equipo\/solicitud\/\?id=s1$/);
+  expect(dar).toMatchObject({ p_user: "u1", p_apoyo: "cercano" });
+  expect(String((dar as unknown as { p_token: string }).p_token)).toMatch(/^[A-Za-z0-9_-]{43}$/);
+});
+
+test("Cuentas creadas: sin ser dueño, la pantalla lo dice y no muestra cuentas", async ({ page }) => {
+  await preparar(page, "aal2", VERIFICADO);
+  await simular(page, baseInicial(), { factores: VERIFICADO });
+  await page.route(`${SUPABASE_URL}/rest/v1/rpc/cuentas_creadas`, (rt) =>
+    rt.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ code: "PT403", message: "sesion:no_autorizado" }) }));
+  await page.goto("equipo/cuentas/");
+  await hidratar(page);
+  await expect(page.getByText("Solo el dueño ve las cuentas creadas.")).toBeVisible();
+  await expect(page.locator(".pa-cuenta")).toHaveCount(0);
+});
+
 test("Pagos: el aviso «ya transferí» de la persona se ve en Por registrar y no registra el pago", async ({ page }) => {
   await preparar(page, "aal2", VERIFICADO);
   const base = baseInicial();
@@ -2336,7 +2392,7 @@ for (const ruta of [
   "equipo/", "equipo/participantes/", "equipo/solicitudes/", "equipo/solicitud/?id=s1", "equipo/participante/?id=p1",
   "equipo/participante/?id=p1&pestana=revisiones", "equipo/participante/?id=p1&pestana=datos", "equipo/constructor/?id=p2",
   "equipo/revision/?id=p1&n=2", "equipo/revisar/", "equipo/ajustes/", "equipo/contacto/", "equipo/mas/", "equipo/comunidad/",
-  "equipo/modulos/", "equipo/equipo/", "equipo/pagos/", "equipo/negocio/", "equipo/auditoria/", "equipo/asistente/", "equipo/recompensas/",
+  "equipo/modulos/", "equipo/equipo/", "equipo/pagos/", "equipo/negocio/", "equipo/auditoria/", "equipo/asistente/", "equipo/recompensas/", "equipo/cuentas/",
 ]) {
   test(`móvil: ${ruta} sin desborde a 320 px, objetivos de 44 px y axe`, async ({ page, isMobile }) => {
     test.skip(!isMobile, "solo en el proyecto móvil");

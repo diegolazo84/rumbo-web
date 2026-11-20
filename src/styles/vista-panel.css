@@ -567,3 +567,18 @@ a.pa-coach__texto:hover { text-decoration: underline; }
 /* Pagos: beneficio de renovación por aplicar antes de registrar el pago. */
 .pa-beneficio { display: grid; gap: var(--e-2); padding: var(--e-3); border-radius: var(--r-m); background: var(--niebla); }
 .pa-beneficio > * { margin: 0; }
+
+/* Cuentas creadas (cuentas.tsx) */
+.pa-cuentas-filtros { display: grid; gap: var(--e-3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); }
+.pa-cuentas { display: grid; gap: var(--e-3); margin: 0; padding: 0; list-style: none; }
+.pa-cuenta { display: grid; gap: var(--e-2); }
+.pa-cuenta__cabeza { display: flex; justify-content: space-between; align-items: start; gap: var(--e-3); flex-wrap: wrap; }
+.pa-cuenta__nombre { margin: 0; font-weight: 600; color: var(--tinta); overflow-wrap: anywhere; }
+.pa-cuenta__correo { margin: 0; overflow-wrap: anywhere; }
+.pa-cuenta__meta { margin: 0; font-size: var(--t-s); line-height: 1.5; overflow-wrap: anywhere; }
+.pa-cuenta__pidio { margin: 0; font-size: var(--t-s); font-weight: 600; color: var(--terracota-texto); }
+.pa-cuenta__plan--gratis { background: var(--niebla); color: var(--bosque); }
+.pa-cuenta__plan--programa { background: var(--bosque); color: var(--superficie); }
+.pa-cuenta__plan--sin_completar { background: var(--papel-hondo); color: var(--tinta-suave); }
+.pa-cuenta__dar { display: grid; gap: var(--e-3); padding-block-start: var(--e-3); border-block-start: 1px solid var(--linea); }
+.pa-cuenta__error { margin: 0; font-size: var(--t-s); color: var(--terracota-texto); font-weight: 600; }
