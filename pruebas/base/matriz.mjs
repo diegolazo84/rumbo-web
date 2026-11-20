@@ -2132,7 +2132,8 @@ paso("desafíos C15: propuestas solo propias y con alias para el equipo; activid
   exigir(ve.ok && ultima(ve) === ruta(1), `quien participa no ve solo la foto vigente: ${ve.error ?? ultima(ve)}`);
   const cerrada = como(ROLES.A, `${conFoto} reset role; update public.modulos set estado = 'planificado' where clave = 'comunidad'; set local role authenticated;
     select count(*) from storage.objects where bucket_id = 'desafios'`);
-  exigir(cerrada.ok && ultima(cerrada) === "0", `con Comunidad cerrada se ven fotos de desafíos: ${cerrada.error ?? ultima(cerrada)}`);
+  // Comunidad siempre presente (20261207): aunque su fila diga «planificado», la foto vigente se sigue viendo.
+  exigir(cerrada.ok && ultima(cerrada) === "1", `con Comunidad siempre presente no se ve la foto del desafío: ${cerrada.error ?? ultima(cerrada)}`);
   const inactivo = como(ROLES.A, `${conFoto} reset role; update public.desafios set activo = false where id = '${D}'; set local role authenticated;
     select count(*) from storage.objects where bucket_id = 'desafios'`);
   exigir(inactivo.ok && ultima(inactivo) === "0", `se ve la foto de un desafío inactivo: ${inactivo.error ?? ultima(inactivo)}`);
@@ -2297,7 +2298,8 @@ paso(`funciones del equipo: ${FUNCIONES["equipo-error"].length + FUNCIONES["equi
   const responde = (autor) => `insert into public.publicaciones (autor, texto, respuesta_a) values ('${autor}', 'TEXTO PRIVADO de la respuesta', '${PA}');`;
   const verA = "set local role authenticated; select coalesce(string_agg(tipo || '|' || titulo || '|' || enlace, ';'), '-') from public.avisos where tipo like 'comunidad%' or tipo = 'desafio_nuevo'";
   const cerrada = como(ROLES.A, `${base} ${responde(ROLES.B.ficha)} ${verA}`);
-  exigir(cerrada.ok && ultima(cerrada) === "-", `llegó un aviso de la Comunidad con el módulo cerrado: ${cerrada.error ?? ultima(cerrada)}`);
+  // Comunidad siempre presente (20261207): el aviso llega aunque la fila del módulo no esté habilitada.
+  exigir(cerrada.ok && /^comunidad_respuesta\|/.test(ultima(cerrada)), `sin habilitar el módulo no llegó el aviso de la Comunidad: ${cerrada.error ?? ultima(cerrada)}`);
   const respuesta = como(ROLES.A, `${abrir} ${responde(ROLES.B.ficha)} ${verA}`);
   exigir(
     respuesta.ok && ultima(respuesta) === "comunidad_respuesta|Alias B respondió tu publicación|/mi-espacio/comunidad/",
