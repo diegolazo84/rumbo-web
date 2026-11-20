@@ -240,14 +240,23 @@ function Revisar({ p, contexto, alRevisar }: { p: Pendiente; contexto: Record<st
         <span className="ia-rotulo">{T.pregunta}: </span>
         {p.pregunta}
       </p>
-      <p className="microcopia">
-        <span className="ia-rotulo">{T.contexto}: </span>
-        {claves.length ? claves.map((k) => T.claves[k] ?? k).join(", ") : T.sinContexto}
-      </p>
-      <details className="ia-original">
-        <summary>{T.borrador}</summary>
-        <p className="ia-texto">{original}</p>
-      </details>
+      {original && (
+        <p className="microcopia">
+          <span className="ia-rotulo">{T.contexto}: </span>
+          {claves.length ? claves.map((k) => T.claves[k] ?? k).join(", ") : T.sinContexto}
+        </p>
+      )}
+      {original ? (
+        <details className="ia-original">
+          <summary>{T.borrador}</summary>
+          <p className="ia-texto">{original}</p>
+        </details>
+      ) : (
+        <p className="aviso">
+          <Icono nombre="user-round" tamaño={20} className="aviso-icono" />
+          <span>{T.sinIA}</span>
+        </p>
+      )}
       <form
         className="pa-form"
         noValidate
@@ -258,7 +267,7 @@ function Revisar({ p, contexto, alRevisar }: { p: Pendiente; contexto: Record<st
       >
         <CampoArea
           id={`${id}-texto`}
-          etiqueta={T.respuesta}
+          etiqueta={original ? T.respuesta : T.tuRespuesta}
           ayuda={original.length > MAX ? `${T.respuestaAyuda} ${T.recortada}` : T.respuestaAyuda}
           max={MAX}
           rows={8}
@@ -286,7 +295,7 @@ function Revisar({ p, contexto, alRevisar }: { p: Pendiente; contexto: Record<st
         ) : (
           <div className="acciones">
             <button type="submit" className="boton boton--primario" disabled={ocupado}>
-              {cambiada ? T.aprobarCorregida : T.aprobar}
+              {!original ? T.enviarRespuesta : cambiada ? T.aprobarCorregida : T.aprobar}
             </button>
             <button type="button" className="boton boton--terciario" onClick={() => setConfirmar(true)}>
               {T.descartar}

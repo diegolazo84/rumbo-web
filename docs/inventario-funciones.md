@@ -32,14 +32,14 @@ autorización de Diego.
 | Acompañamiento | Ver postulación con motivo (`ver_postulacion`) | operativa | — |
 | Avisos | Mis avisos: campana, filtros, búsqueda y marcar como leído (`marcar_avisos_leidos`) | operativa (#73); avisos de la Comunidad con la migración 20261126 (antes 20261124), sin aplicar | Autorizar 20261126 al abrir la Comunidad |
 | Avisos | Configuración de recordatorios: interruptor general, categorías, horario, días, correo (`guardar_recordatorios`, `correo_disponible`) | operativa (#74, migración 20261125 aplicada); logros siempre en Mis avisos; correo con Brevo (claves en Vault desde el 20-nov) | — |
-| Comunidad | Comunidad, crear publicación, grupos, panel de moderación | apagada (módulo «comunidad») | Revisión legal |
-| Comunidad | Interior de grupo, desafíos, foto por desafío | apagada (módulo «comunidad»; #63 y migraciones 20261129–20261201 aplicadas el 10-nov) | Revisión legal; 20261126 al abrir la Comunidad |
+| Comunidad | Comunidad, crear publicación, grupos, panel de moderación | siempre presente (20261207, 20-nov-2026): sin interruptor | Revisión legal |
+| Comunidad | Interior de grupo, desafíos, foto por desafío | siempre presente (20261207) | Revisión legal; 20261126 si no está aplicada |
 | Gamificación | Niveles, créditos, rachas, Mis logros | operativa | — |
 | Gamificación | Reconocimientos y ranking | siempre presentes (20-nov, migración 20261206): el ranking es voluntario, con alias | — |
 | Gamificación | 10 % en una renovación (`guardar_beneficio`, `aplicar_beneficio`) y ajuste de reconocimientos (`guardar_reconocimiento`) | publicado (#93): pantalla «Reconocimientos y beneficio» del dueño (/equipo/recompensas/) y descuento aplicado en Pagos; descuento apagado | Diego decide si lo activa; la tarjeta en Mis logros necesita 20261120 |
 | Fotos | Subida privada en cualquier acción, con miniatura, y galería «Cómo empezaste y cómo vas» en Mis logros (#110) | siempre presente (20-nov, migración 20261206); se guardan mientras exista la cuenta (decisión de Diego, 20-nov) | iPhone real; Privacidad 1.3 (#94) |
 | Fotos | Borrado a los 30 días y Mantención (descartado: las fotos se guardan como recuerdo) | apagada (#68 y migración 20261202 aplicadas el 10-nov; tarea `fotos-depurar` inactiva, función sin desplegar, sin `depurar_fotos_url`) | Política de privacidad publicada, iPhone real y `docs/borrado-fotos.md` |
-| IA | Asistente con consentimiento y aprobación del coach (`ia_*`, `mis_consultas_ia`, `guardar_ia_config`) | pantalla del participante con la maqueta definitiva (#75): 8 estados, acceso desde Apoyo, «Crear plan» como pregunta revisada, ilustraciones definitivas, móvil compacto; bandeja de revisión del coach (#76) y administración del dueño: interruptor, topes y gasto (#77); «Me sirvió»/«No me sirvió» (`ia_valoraciones`, `ia_valorar`, 20261127) y aviso «no compartida» en Mis avisos (20261128) aplicados en producción el 31-oct; apagado | Cargar la clave y prueba real con tope de USD 10 |
+| IA | Asistente con consentimiento y aprobación del coach (`ia_*`, `mis_consultas_ia`, `guardar_ia_config`) | pantalla del participante con la maqueta definitiva (#75): 8 estados, acceso desde Apoyo, «Crear plan» como pregunta revisada, ilustraciones definitivas, móvil compacto; bandeja de revisión del coach (#76) y administración del dueño: interruptor, topes y gasto (#77); «Me sirvió»/«No me sirvió» (`ia_valoraciones`, `ia_valorar`, 20261127) y aviso «no compartida» en Mis avisos (20261128) aplicados en producción el 31-oct; siempre presente (20261207): sin IA conectada, cada pregunta la responde el coach desde la misma bandeja, sin autorización de datos | Cargar la clave y prueba real con tope de USD 10 |
 | Administración | Módulos | operativa | — |
 | Administración | Indicadores de negocio (`indicadores`) | operativa (#84) | — |
 | Administración | Pagos y devoluciones (`registrar_pago`, `registrar_devolucion`, `devolucion_sugerida`) y avisos «ya transferí» | operativa (#83, #90) | — |
@@ -56,7 +56,7 @@ autorización de Diego.
 
 | Función | Estado |
 |---|---|
-| Especialistas Rumbo: perfiles, credenciales, reservas, mensajes y comisión (22 funciones `*especialista*`, `*reserva*`, `*credencial*`) | Base aplicada, sin pantallas, módulo apagado |
+| Especialistas Rumbo: perfiles, credenciales, reservas, mensajes y comisión (22 funciones `*especialista*`, `*reserva*`, `*credencial*`) | Siempre presente (20261207): pantalla del participante con directorio, perfil, «Pedir hora» y sus solicitudes; panel del dueño pendiente |
 | Beneficios por convenio y premios físicos (`otorgar_beneficio`) | Base aplicada, sin pantalla |
 | Pago en línea con tarjeta | No existe; requiere SII y pasarela |
 | WhatsApp, avisos push, app en tiendas, IA avanzada | No existen |

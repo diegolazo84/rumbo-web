@@ -978,31 +978,6 @@ export const T_COMUNIDAD = {
   verMas: "Ver todo lo que viene en Rumbo",
 } as const;
 
-// Tarjetas de «Lo que viene en Rumbo» en Mi espacio. Coinciden con loQueViene de data/rumbo.ts
-// (la portada); aquí van con su descripción. Ninguna es un enlace ni tiene fecha.
-export const T_LO_QUE_VIENE = {
-  bajada: "Funciones en las que estamos trabajando. Todavía no están disponibles: las verás en tu espacio cuando funcionen y estén probadas.",
-  grupos: [
-    {
-      titulo: "Para el lanzamiento",
-      items: [
-        { clave: "comunidad", titulo: "Comunidad con foro moderado", texto: "Comparte avances con un alias, solo si quieres." },
-        { clave: "asistente_ia", titulo: "Asistente con inteligencia artificial", texto: "Propone ideas para tu plan y tu registro. Tu coach revisa y aprueba." },
-      ],
-    },
-    {
-      titulo: "Más adelante",
-      items: [
-        { clave: "especialistas", titulo: "Marketplace de especialistas", texto: "Sesiones con profesionales verificados de distintas áreas." },
-        { clave: "convenios", titulo: "Premios por convenio con tiendas y especialistas", texto: "Beneficios con tiendas y especialistas, además de tus reconocimientos." },
-        { clave: "ia_avanzada", titulo: "Inteligencia artificial avanzada", texto: "Análisis más profundos de tus patrones y tu evolución." },
-        { clave: "app_tiendas", titulo: "Aplicación en las tiendas de iOS y Android", texto: "Rumbo en App Store y Google Play. Hoy ya puedes instalar Mi espacio desde tu navegador." },
-      ],
-    },
-  ],
-  nota: "No tienen fecha todavía. No necesitas hacer nada para recibirlas.",
-} as const;
-
 // Mis avisos (maqueta de ChatGPT, 30-oct-2026). El título de cada aviso lo escribe la base con un
 // texto fijo; la línea de abajo es la descripción fija de su tipo (nunca lo que escribió alguien).
 export const T_AVISOS = {
@@ -1210,6 +1185,17 @@ export const T_ASISTENTE = {
     { icono: "sprout", texto: "Te apoya a reflexionar y avanzar en tu proceso." },
   ],
   revisaCoach: "Tu coach revisa y aprueba cada respuesta antes de que la veas.",
+  // Sin IA conectada (20261207): la pregunta la responde el coach en persona, desde la misma bandeja.
+  coach: {
+    claves: [
+      { icono: "user-round", texto: "Tu coach responde cada pregunta en persona." },
+      { icono: "shield-check", texto: "Lo que escribes queda entre tú y tu equipo de Rumbo." },
+      { icono: "sprout", texto: "Te ayuda a reflexionar y a dar el siguiente paso." },
+    ],
+    revisa: "Escribe con calma: tu coach lee tu pregunta y te responde aquí mismo.",
+    bajada: "Un espacio para hacer tus preguntas y pensar en voz alta. Tu coach te responde aquí, con lo que sabe de tu plan.",
+    enRevision: { etiqueta: "Tu pregunta llegó a tu coach", texto: "Te avisaremos en Mis avisos cuando te responda." },
+  },
   saberMas: "Saber más",
   // Conversación
   conversacion: "Tu conversación con el asistente",

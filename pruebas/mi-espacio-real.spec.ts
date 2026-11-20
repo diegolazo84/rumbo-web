@@ -140,6 +140,7 @@ async function simular(page: Page, base: Base, rpc: Record<string, (c: Record<st
     mi_contexto: () => ({ hoy: HOY, dias_registro_tardio: 7, semanas_en_revision: [] }),
     estado_postulaciones: () => ({ abiertas: true, motivo: "cerradas", responder_antes: null, ausencia: null }),
     soy_equipo: () => false,
+    especialistas_publicados: () => [],
     marcar_accion: (c) => {
       base.registros = base.registros.filter((r) => r.ocurrencia_id !== c.p_ocurrencia);
       base.registros.push({ ocurrencia_id: c.p_ocurrencia, participante_id: "p1", estado: "hecha", version: c.p_version, explicacion: null, nota_revision: null, revisado_en: null });
@@ -755,7 +756,7 @@ test("descargar mis datos llama a exportar_mis_datos y baja el archivo", async (
 test("Mi espacio real nunca muestra «Ejemplo» ni el aviso de la vista previa", async ({ page }) => {
   await conSesion(page);
   await simular(page, baseInicial());
-  for (const r of ["mi-espacio/", "mi-espacio/acompanamiento/", "mi-espacio/comunidad/", "mi-espacio/logros/", "mi-espacio/plan/metas/", "mi-espacio/lo-que-viene/"]) {
+  for (const r of ["mi-espacio/", "mi-espacio/acompanamiento/", "mi-espacio/comunidad/", "mi-espacio/logros/", "mi-espacio/plan/metas/", "mi-espacio/especialistas/"]) {
     await page.goto(r);
     await hidratar(page);
     await expect(page.locator("main h1"), r).toBeVisible();
@@ -764,27 +765,15 @@ test("Mi espacio real nunca muestra «Ejemplo» ni el aviso de la vista previa",
   }
 });
 
-test("Lo que viene real: lo que el dueño ya habilitó deja de aparecer; sin la tabla, la lista completa", async ({ page }) => {
+test("Especialistas real: solo perfiles publicados; sin perfiles, un estado honesto con el coach", async ({ page }) => {
   await conSesion(page);
-  const base = baseInicial();
-  base.modulos = [
-    { clave: "comunidad", estado: "habilitado" },
-    { clave: "ranking", estado: "probado" },
-    { clave: "app_movil", estado: "operativo" },
-  ];
-  await simular(page, base);
-  await page.goto("mi-espacio/lo-que-viene/");
+  await simular(page, baseInicial());
+  await page.goto("mi-espacio/especialistas/");
   await hidratar(page);
-  const titulos = page.locator(".me-lqv__titulo");
-  await expect(titulos).toHaveCount(5);
-  await expect(titulos).not.toContainText(["Comunidad con foro moderado"]);
-  // Fotos, ranking y reconocimientos ya están siempre presentes: no aparecen como «lo que viene».
-  await expect(page.getByText("Ranking semanal voluntario")).toHaveCount(0);
-  // Sin la tabla (migración sin aplicar): las 6 funciones que aún no existen.
-  await page.route("**/rest/v1/modulos**", (rt) => rt.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ code: "42P01", message: "no existe" }) }));
-  await page.reload();
-  await hidratar(page);
-  await expect(titulos).toHaveCount(6);
+  await expect(page.locator("main h1")).toHaveText("Especialistas Rumbo");
+  await expect(page.locator(".es-vacio")).toContainText("Estamos sumando especialistas");
+  await expect(page.locator(".es-vacio").getByRole("link", { name: "Escribir a mi coach" })).toBeVisible();
+  await expect(page.locator("main")).not.toContainText(/próximamente/i);
 });
 
 // Rumbo 2.0, etapa 2: Mi acompañamiento muestra solo lo que existe en la base.
@@ -1835,7 +1824,8 @@ const avisosBase = (): Fila[] => [
 test("Mis avisos real: lee los avisos, la campana cuenta los sin leer y abrir uno lo marca en la base", async ({ page, isMobile }) => {
   await conSesion(page);
   const base = baseInicial();
-  base.avisos = avisosBase();
+  // Comunidad siempre presente (20261207): su aviso cuenta como cualquier otro; aquí se deja fuera.
+  base.avisos = avisosBase().filter((a) => a.id !== "av2");
   const llamadas = await simular(page, base, {
     modulo_visible: () => false,
     marcar_avisos_leidos: (c) => {
@@ -1852,10 +1842,7 @@ test("Mis avisos real: lee los avisos, la campana cuenta los sin leer y abrir un
   const lectura = llamadas.find((l) => l.tipo === "tabla" && l.nombre === "avisos")!;
   expect(decodeURIComponent(lectura.url)).toContain("enlace=like./mi-espacio/%");
   expect(decodeURIComponent(lectura.url)).toContain("order=creado_en.desc");
-  // Comunidad apagada: su aviso y su filtro no aparecen, y no cuenta en la campana.
   await expect(page.locator(".av-item")).toHaveCount(2);
-  await expect(page.getByText("Sol respondió tu publicación")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /^Comunidad,/ })).toHaveCount(0);
   const campana = page.locator(".cabecera-app__avisos");
   await expect(campana).toHaveAccessibleName("Mis avisos, 1 sin leer");
   await expect(page.getByRole("button", { name: "Todos, 1 sin leer" })).toBeVisible();
@@ -2191,17 +2178,23 @@ const consultasBase = (): Fila[] => [
   { id: "q1", pregunta: "¿Cómo mantengo la motivación?", estado: "aprobada", respuesta: "Texto aprobado por el coach.", creada_en: "2026-10-12T12:00:00Z", revisada_en: "2026-10-12T13:00:00Z" },
 ];
 
-test("Asistente real apagado: sin entrada en la navegación, lo explica y la ayuda en crisis sigue visible", async ({ page, isMobile }) => {
+test("Asistente real sin IA: siempre en la navegación y cada pregunta va a tu coach, sin autorizar datos", async ({ page, isMobile }) => {
   await conSesion(page);
-  const llamadas = await simular(page, baseInicial(), { ia_disponible: () => false, mis_consultas_ia: () => [] });
+  const llamadas = await simular(page, baseInicial(), {
+    ia_disponible: () => false,
+    mis_consultas_ia: () => [],
+    ia_preguntar: () => ({ id: "q1", estado: "por_revisar" }),
+  });
   await page.goto(RUTA_ASISTENTE);
   await hidratar(page);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(T_ASISTENTE.titulo);
-  await expect(page.getByText(T_ASISTENTE.apagado.titulo)).toBeVisible();
-  await expect(page.getByLabel(T_ASISTENTE.escribir)).toHaveCount(0);
+  await expect(page.getByText(T_ASISTENTE.coach.bajada)).toBeVisible();
   await expect(page.locator(".as-crisis")).toContainText("*4141");
-  if (!isMobile) await expect(page.locator("nav.lateral").getByRole("link", { name: T_ASISTENTE.titulo })).toHaveCount(0);
-  expect(llamadas.filter((l) => l.nombre === "ia_preguntar")).toHaveLength(0);
+  if (!isMobile) await expect(page.locator("nav.lateral").getByRole("link", { name: T_ASISTENTE.titulo })).toHaveCount(1);
+  await page.getByLabel(T_ASISTENTE.escribir).fill("¿Cómo ordeno mi semana?");
+  await page.getByRole("button", { name: T_ASISTENTE.enviar }).click();
+  await expect.poll(() => llamadas.filter((l) => l.nombre === "ia_preguntar").length).toBe(1);
+  expect(llamadas.filter((l) => l.nombre === "ia_guardar_consentimiento")).toHaveLength(0);
   // Nunca se lee la tabla de consultas (tiene borradores): solo mis_consultas_ia.
   expect(llamadas.filter((l) => l.tipo === "tabla" && l.nombre === "ia_consultas")).toHaveLength(0);
 });
@@ -2537,7 +2530,7 @@ const desbordesME = (page: Page) =>
 
 for (const ruta of [
   "mi-espacio/", "mi-espacio/plan/", `mi-espacio/plan/accion/?id=o-${HOY}`, "mi-espacio/plan/ajuste/", "mi-espacio/acompanamiento/",
-  "mi-espacio/logros/", "mi-espacio/avisos/", "mi-espacio/preferencias/", RUTA_RECORDATORIOS, "mi-espacio/lo-que-viene/",
+  "mi-espacio/logros/", "mi-espacio/avisos/", "mi-espacio/preferencias/", RUTA_RECORDATORIOS, "mi-espacio/especialistas/",
   "mi-espacio/comunidad/", RUTA_ASISTENTE, "mi-espacio/pago/",
 ]) {
   test(`móvil: ${ruta} sin desborde a 320 px, objetivos de 44 px y axe`, async ({ page, isMobile }) => {

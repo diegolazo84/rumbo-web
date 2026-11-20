@@ -587,19 +587,19 @@ paso("perfil del coach: cada coach edita el suyo; cada participante ve solo a su
 
 // A4 · Módulos: solo el dueño cambia estados; no se habilita sin probar ni es operativo sin respaldo.
 const estadoDe = (c) => sql(`select estado from public.modulos where clave = '${c}'`);
-const habilitarSinProbar = como(ROLES.aal2, "select public.cambiar_modulo('comunidad', 'habilitado')");
+const habilitarSinProbar = como(ROLES.aal2, "select public.cambiar_modulo('whatsapp', 'habilitado')");
 exigir(!habilitarSinProbar.ok && /sin_probar/.test(habilitarSinProbar.error), `se habilita un módulo sin probar: ${habilitarSinProbar.error ?? "funcionó"}`);
-const pasos4 = como(ROLES.aal2, `select public.cambiar_modulo('comunidad', 'probado');
-  select public.cambiar_modulo('comunidad', 'habilitado');
-  select public.modulo_visible('comunidad')`);
+const pasos4 = como(ROLES.aal2, `select public.cambiar_modulo('whatsapp', 'probado');
+  select public.cambiar_modulo('whatsapp', 'habilitado');
+  select public.modulo_visible('whatsapp')`);
 exigir(pasos4.ok && ultima(pasos4) === "t", `el dueño no pudo probar y habilitar un módulo: ${pasos4.error ?? ultima(pasos4)}`);
-const sinRespaldo = como(ROLES.aal2, `select public.cambiar_modulo('comunidad', 'probado'); select public.cambiar_modulo('comunidad', 'operativo')`);
+const sinRespaldo = como(ROLES.aal2, `select public.cambiar_modulo('whatsapp', 'probado'); select public.cambiar_modulo('whatsapp', 'operativo')`);
 exigir(!sinRespaldo.ok && /respaldo:requerido/.test(sinRespaldo.error), "se marca operativo un módulo sin respaldo");
-const coachCambia = como(ROLES.X, "select public.cambiar_modulo('comunidad', 'planificado')");
+const coachCambia = como(ROLES.X, "select public.cambiar_modulo('whatsapp', 'planificado')");
 exigir(!coachCambia.ok && /no_autorizado/.test(coachCambia.error), "un coach cambia el estado de un módulo");
-const personaVe = como(ROLES.A, "select public.modulo_visible('comunidad')");
+const personaVe = como(ROLES.A, "select public.modulo_visible('whatsapp')");
 exigir(personaVe.ok && personaVe.salida === "f", "un módulo planificado aparece como visible");
-exigir(estadoDe("comunidad") === "planificado", "las pruebas de módulos dejaron cambios");
+exigir(estadoDe("whatsapp") === "planificado", "las pruebas de módulos dejaron cambios");
 paso("módulos: solo el dueño cambia estados; no se habilita sin probar ni se marca operativo sin respaldo");
 
 // A5 · Avisos sincronizados: los crea la base, cada cuenta ve y marca solo los suyos.
@@ -1184,8 +1184,9 @@ sql("delete from public.bloqueos_comunidad");
   const abrir = `reset role; update public.modulos set estado = 'habilitado' where clave = 'comunidad';
     update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
     update public.alias set reglas_comunidad_en = now(); set local role authenticated;`;
-  const cerrada = como(ROLES.A, "select public.publicar_en_comunidad('Hola')");
-  exigir(!cerrada.ok && /no_disponible/.test(cerrada.error), "se publicó con la comunidad sin habilitar");
+  // Siempre presente (20261207): la comunidad no depende de un interruptor del dueño.
+  const siempre = como(ROLES.A, "select public.modulo_visible('comunidad')");
+  exigir(siempre.ok && siempre.salida === "t", "la comunidad depende de un interruptor");
   const sinReglas = como(ROLES.A, `${abrir} reset role; update public.alias set reglas_comunidad_en = null; set local role authenticated;
     select public.publicar_en_comunidad('Hola')`);
   exigir(!sinReglas.ok && /sin_reglas/.test(sinReglas.error), "se publicó sin aceptar las reglas");
@@ -1261,8 +1262,10 @@ paso("comunidad: solo habilitada, con alias y reglas; se ve el alias, no quién 
   exigir(otraVe.ok && ultima(otraVe) === "1 false", `B no ve la cuenta de reacciones (o la ve como suya): ${otraVe.error ?? ultima(otraVe)}`);
   const directa = como(ROLES.B, `${abrir} select count(*) from public.reacciones_comunidad`);
   exigir(directa.ok && ultima(directa) === "0", "una persona lee quién reaccionó");
-  const cerrada = como(ROLES.A, `select public.reaccionar_publicacion(${b1})`);
-  exigir(!cerrada.ok && /no_disponible/.test(cerrada.error), "se reaccionó con la comunidad sin habilitar");
+  const sinInterruptor = como(ROLES.A, `reset role; update public.modulos set estado = 'planificado' where clave = 'comunidad';
+    update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    update public.alias set reglas_comunidad_en = now(); set local role authenticated; select public.reaccionar_publicacion(${b1})`);
+  exigir(sinInterruptor.ok || !/no_disponible/.test(sinInterruptor.error), `la comunidad sigue dependiendo del módulo: ${sinInterruptor.error}`);
 
   const creaPersona = como(ROLES.A, `${abrir} select public.guardar_grupo_comunidad('{"nombre":"Mío"}')`);
   exigir(!creaPersona.ok && /no_autorizado/.test(creaPersona.error), "una persona creó un grupo");
@@ -1420,8 +1423,9 @@ paso("comunidad C8: tipos, guardadas solo mías, bloqueo en ambos sentidos, tema
   const terminado = como(ROLES.B, `${abrir} reset role; update public.desafios set inicio = privado.hoy_chile() - 30 where id = ${d1};
     set local role authenticated; select public.unirme_a_desafio(${d1})`);
   exigir(!terminado.ok && /no_disponible/.test(terminado.error), "alguien se unió a un desafío terminado");
-  const cerrado = como(ROLES.B, `select public.unirme_a_desafio(${d1})`);
-  exigir(!cerrado.ok && /no_disponible/.test(cerrado.error), "alguien se unió a un desafío con la comunidad sin habilitar");
+  const sinModulo = como(ROLES.B, `${abrir} reset role; update public.modulos set estado = 'planificado' where clave = 'comunidad';
+    set local role authenticated; select public.unirme_a_desafio(${d1})`);
+  exigir(sinModulo.ok || !/no_disponible/.test(sinModulo.error), `los desafíos siguen dependiendo del módulo: ${sinModulo.error}`);
   const exp = como(ROLES.A, `${abrir} select jsonb_array_length(public.exportar_mis_datos()->'desafios')`);
   exigir(exp.ok && ultima(exp) === "1", `la copia de mis datos no incluye mis desafíos: ${exp.error ?? ultima(exp)}`);
 }
@@ -1764,11 +1768,24 @@ paso("mis logros C17: la persona sabe si el 10 % está activo, sin leer el catá
     set local role authenticated;\n`;
   const colaIA = "(select count(*) from net.http_request_queue where url = 'https://api.openai.com/v1/chat/completions')";
   const antes = sql(`select ${colaIA}`);
-  const cerrado = como(ROLES.A, "select public.ia_preguntar('¿Cómo ordeno mi semana?')");
-  exigir(!cerrado.ok && /no_disponible/.test(cerrado.error), `se preguntó con el módulo sin habilitar: ${cerrado.error ?? "funcionó"}`);
-  const apagada = como(ROLES.A, `reset role; update public.modulos set estado = 'habilitado' where clave = 'asistente_ia'; set local role authenticated;
-    select public.ia_preguntar('¿Cómo ordeno mi semana?')`);
-  exigir(!apagada.ok && /ia:apagada/.test(apagada.error), `se preguntó con el asistente apagado: ${apagada.error ?? "funcionó"}`);
+  // Sin IA conectada (20261207): la pregunta va al coach, sin autorización ni envío a OpenAI.
+  const activos = `reset role; update public.participantes set estado = 'activo' where id in ('${ROLES.A.ficha}', '${ROLES.B.ficha}');
+    set local role authenticated;\n`;
+  const alCoach = como(ROLES.A, `${activos} select public.ia_preguntar('¿Cómo ordeno mi semana?')->>'estado';
+    reset role; select ${colaIA}; ${reclamos(ROLES.X)} set local role authenticated;
+    select count(*) from public.ia_bandeja() where participante_id = '${ROLES.A.ficha}' and estado = 'por_revisar' and respuesta is null;
+    select public.ia_revisar(id, true, 'Respuesta escrita por el coach.') from public.ia_consultas where respuesta is null and estado = 'por_revisar' \\g /dev/null
+    ${reclamos(ROLES.A)} set local role authenticated;
+    select respuesta from public.mis_consultas_ia() where estado = 'aprobada' and respuesta = 'Respuesta escrita por el coach.'`);
+  const [estadoC, colaC, bandejaC, finalC] = (alCoach.salida ?? "").split("\n").slice(-4);
+  exigir(alCoach.ok && estadoC === "por_revisar", `sin IA, la pregunta no llegó al coach: ${alCoach.error ?? estadoC}`);
+  exigir(alCoach.ok && colaC === antes, `sin IA, se envió algo a OpenAI: ${colaC}`);
+  exigir(alCoach.ok && bandejaC === "1", `el coach no ve la pregunta en su bandeja: ${bandejaC}`);
+  exigir(alCoach.ok && finalC === "Respuesta escrita por el coach.", `A no ve la respuesta del coach: ${finalC}`);
+  const vacia = como(ROLES.A, `${activos} select public.ia_preguntar('¿Cómo ordeno mi semana?') \\g /dev/null
+    ${reclamos(ROLES.X)} set local role authenticated;
+    select public.ia_revisar(id, true) from public.ia_consultas where respuesta is null and estado = 'por_revisar'`);
+  exigir(!vacia.ok && /texto:invalido/.test(vacia.error), `se aprobó una respuesta vacía: ${vacia.error ?? "funcionó"}`);
   const disp = como(ROLES.A, `${encender} select public.ia_disponible()`);
   exigir(disp.ok && ultima(disp) === "t", `encendido, ia_disponible no lo dice: ${disp.error ?? ultima(disp)}`);
 
@@ -1927,8 +1944,8 @@ paso("asistente: «Me sirvió» / «No me sirvió» (una vigente, solo lo propio
   const publica = como(S, `${base()} ${completa} ${publicar} select estado from public.especialistas where id = '${SID}'`);
   exigir(publica.ok && ultima(publica) === "publicado", `el dueño no pudo verificar y publicar: ${publica.error ?? ultima(publica)}`);
   const modulo = "reset role; update public.modulos set estado = 'habilitado' where clave = 'especialistas'; set local role authenticated;\n";
-  const cerrado = como(S, `${base()} ${completa} ${publicar} ${reclamosDe(ROLES.A)} select count(*) from public.especialistas_publicados()`);
-  exigir(!cerrado.ok && /no_disponible/.test(cerrado.error), "una persona ve especialistas sin habilitar el módulo");
+  const sinModuloEsp = como(S, `${base()} ${completa} ${publicar} ${reclamosDe(ROLES.A)} select count(*) from public.especialistas_publicados()`);
+  exigir(sinModuloEsp.ok && ultima(sinModuloEsp) === "1", `el directorio depende del módulo: ${sinModuloEsp.error ?? ultima(sinModuloEsp)}`);
   const directorio = como(S, `${base()} ${completa} ${publicar} ${modulo} ${reclamosDe(ROLES.A)}
     select count(*) || ' ' || bool_and(not (to_jsonb(x) ? 'correo')) || ' ' || max(jsonb_array_length(servicios)) from public.especialistas_publicados() x`);
   exigir(directorio.ok && ultima(directorio) === "1 true 1", `el directorio no muestra solo al publicado, sin correo: ${directorio.error ?? ultima(directorio)}`);

@@ -118,7 +118,7 @@ const comunidad = () => import("./mi-espacio/Comunidad");
 const crearPublicacion = () => import("./mi-espacio/CrearPublicacion");
 const gruposComunidad = () => import("./mi-espacio/GruposComunidad");
 const desafiosComunidad = () => import("./mi-espacio/DesafiosComunidad");
-const loQueViene = () => import("./mi-espacio/LoQueViene");
+const especialistas = () => import("./mi-espacio/Especialistas");
 const ajuste = () => import("./mi-espacio/Ajuste");
 const preferencias = () => import("./mi-espacio/Preferencias");
 const ayudaInmediata = () => import("./mi-espacio/AyudaInmediata");
@@ -182,11 +182,11 @@ const MI_ESPACIO_FILAS: Fila[] = [
   { ruta: "mi-espacio/plan/ajuste/cercano-sin-reordenamientos/", nombre: "Pedir un ajuste, sin reordenamientos disponibles", estado: "cercano-sin-reordenamientos", titulo: MI_ESPACIO("Pedir un ajuste"), marco: "mi-espacio", seccion: "Pedir un ajuste", activo: "plan", apartado: "Ajuste", cargar: ajuste },
   { ruta: "mi-espacio/plan/ajuste/enviado/", nombre: "Ajuste enviado", estado: "enviado", titulo: MI_ESPACIO("Pedir un ajuste"), marco: "mi-espacio", seccion: "Pedir un ajuste", activo: "plan", apartado: "Ajuste", cargar: ajuste },
   { ruta: "mi-espacio/plan/metas/", nombre: "Mis metas", titulo: MI_ESPACIO("Mis metas"), marco: "mi-espacio", seccion: "Mi plan", activo: "plan", apartado: "Mi plan", cargar: misMetas },
-  { ruta: "mi-espacio/comunidad/", nombre: "Comunidad (informativa)", titulo: MI_ESPACIO("Comunidad"), marco: "mi-espacio", seccion: "Comunidad", activo: "comunidad", apartado: "Comunidad y Lo que viene", sinDatos: true, cargar: comunidad },
-  { ruta: "mi-espacio/comunidad/crear/", nombre: "Crear publicación", titulo: MI_ESPACIO("Crear publicación"), marco: "mi-espacio", seccion: "Crear publicación", activo: "comunidad", apartado: "Comunidad y Lo que viene", sinDatos: true, cargar: crearPublicacion },
-  { ruta: "mi-espacio/comunidad/grupos/", nombre: "Grupos de la comunidad", titulo: MI_ESPACIO("Grupos de la comunidad"), marco: "mi-espacio", seccion: "Grupos", activo: "comunidad", apartado: "Comunidad y Lo que viene", sinDatos: true, cargar: gruposComunidad },
-  { ruta: "mi-espacio/comunidad/desafios/", nombre: "Desafíos de la comunidad", titulo: MI_ESPACIO("Desafíos de la comunidad"), marco: "mi-espacio", seccion: "Desafíos", activo: "comunidad", apartado: "Comunidad y Lo que viene", sinDatos: true, cargar: desafiosComunidad },
-  { ruta: "mi-espacio/lo-que-viene/", nombre: "Lo que viene en Rumbo", titulo: MI_ESPACIO("Lo que viene en Rumbo"), marco: "mi-espacio", seccion: "Lo que viene en Rumbo", apartado: "Comunidad y Lo que viene", sinDatos: true, cargar: loQueViene },
+  { ruta: "mi-espacio/comunidad/", nombre: "Comunidad (informativa)", titulo: MI_ESPACIO("Comunidad"), marco: "mi-espacio", seccion: "Comunidad", activo: "comunidad", apartado: "Comunidad y Especialistas", sinDatos: true, cargar: comunidad },
+  { ruta: "mi-espacio/comunidad/crear/", nombre: "Crear publicación", titulo: MI_ESPACIO("Crear publicación"), marco: "mi-espacio", seccion: "Crear publicación", activo: "comunidad", apartado: "Comunidad y Especialistas", sinDatos: true, cargar: crearPublicacion },
+  { ruta: "mi-espacio/comunidad/grupos/", nombre: "Grupos de la comunidad", titulo: MI_ESPACIO("Grupos de la comunidad"), marco: "mi-espacio", seccion: "Grupos", activo: "comunidad", apartado: "Comunidad y Especialistas", sinDatos: true, cargar: gruposComunidad },
+  { ruta: "mi-espacio/comunidad/desafios/", nombre: "Desafíos de la comunidad", titulo: MI_ESPACIO("Desafíos de la comunidad"), marco: "mi-espacio", seccion: "Desafíos", activo: "comunidad", apartado: "Comunidad y Especialistas", sinDatos: true, cargar: desafiosComunidad },
+  { ruta: "mi-espacio/especialistas/", nombre: "Especialistas Rumbo", titulo: MI_ESPACIO("Especialistas Rumbo"), marco: "mi-espacio", seccion: "Especialistas Rumbo", activo: "especialistas", apartado: "Comunidad y Especialistas", sinDatos: true, cargar: especialistas },
   { ruta: "mi-espacio/preferencias/", nombre: "Preferencias y Mis datos", estado: "preferencias", titulo: MI_ESPACIO("Preferencias"), marco: "mi-espacio", seccion: "Preferencias", apartado: "Preferencias", cargar: preferencias },
   { ruta: "mi-espacio/preferencias/eliminar/", nombre: "Pedir que eliminen mis datos", estado: "eliminar", titulo: MI_ESPACIO("Preferencias"), marco: "mi-espacio", seccion: "Preferencias", apartado: "Preferencias", cargar: preferencias },
   { ruta: "mi-espacio/preferencias/recordatorios/", nombre: "Recordatorios", titulo: MI_ESPACIO("Recordatorios"), marco: "mi-espacio", seccion: "Recordatorios", activo: "preferencias", apartado: "Preferencias", cargar: recordatorios },

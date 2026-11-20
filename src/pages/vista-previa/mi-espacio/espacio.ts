@@ -29,7 +29,7 @@ export type RutasEspacio = {
   comunidadCrear: string;
   comunidadGrupos: string;
   comunidadDesafios: string;
-  loQueViene: string;
+  especialistas: string;
   misDatos: string;
   ajuste: string;
   preferencias: string;
@@ -63,7 +63,7 @@ export const R_PREVIA: RutasEspacio = {
   comunidadCrear: rutaPrevia("mi-espacio/comunidad/crear/"),
   comunidadGrupos: rutaPrevia("mi-espacio/comunidad/grupos/"),
   comunidadDesafios: rutaPrevia("mi-espacio/comunidad/desafios/"),
-  loQueViene: RUTAS_MI_ESPACIO.loQueViene,
+  especialistas: RUTAS_MI_ESPACIO.especialistas,
   misDatos: RUTAS_MI_ESPACIO.misDatos,
   ajuste: RUTAS_MI_ESPACIO.ajuste,
   preferencias: RUTAS_MI_ESPACIO.preferencias,
@@ -98,7 +98,7 @@ export const R_REAL: RutasEspacio = {
   comunidadCrear: "/mi-espacio/comunidad/crear/",
   comunidadGrupos: "/mi-espacio/comunidad/grupos/",
   comunidadDesafios: "/mi-espacio/comunidad/desafios/",
-  loQueViene: "/mi-espacio/lo-que-viene/",
+  especialistas: "/mi-espacio/especialistas/",
   misDatos: "/mi-espacio/preferencias/#mis-datos",
   ajuste: "/mi-espacio/plan/ajuste/",
   preferencias: "/mi-espacio/preferencias/",

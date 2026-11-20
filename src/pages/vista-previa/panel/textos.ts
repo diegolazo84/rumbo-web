@@ -1409,8 +1409,11 @@ export const POSTULACION_PANEL = {
 // el dueño, a todos. La persona solo ve lo que aquí se aprueba (tal cual o corregido).
 export const ASISTENTE_PANEL = {
   ojo: "Panel",
-  titulo: "Asistente: por revisar.",
-  bajada: "Lee cada borrador del asistente antes de que llegue a la persona. Apruébalo tal cual, corrígelo o no lo compartas.",
+  titulo: "Asistente: por responder.",
+  bajada: "Cada pregunta llega aquí. Con la IA conectada, revisa su borrador: apruébalo, corrígelo o no lo compartas. Sin IA, escribe tú la respuesta.",
+  sinIA: "Sin borrador de la IA: escribe tu respuesta. La persona la verá en su Asistente y recibirá un aviso.",
+  tuRespuesta: "Tu respuesta",
+  enviarRespuesta: "Enviar respuesta",
   enlace: "Asistente: respuestas por revisar",
   resumen: (n: number) => (n === 1 ? "1 respuesta espera tu revisión." : `${n} respuestas esperan tu revisión.`),
   vacio: "No hay respuestas por revisar.",

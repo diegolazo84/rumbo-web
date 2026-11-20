@@ -9,4 +9,8 @@ export const SIEMPRE_PRESENTES: ReadonlySet<string> = new Set([
   "ranking",
   "informes",
   "app_movil",
+  // Todo presente (20261207): comunidad, especialistas y asistente (sin IA, responde el coach).
+  "comunidad",
+  "especialistas",
+  "asistente_ia",
 ]);

@@ -3,9 +3,7 @@
 // existe rotulado «Próximamente» (sin botones de compra, sin fechas). Corre sobre la vista previa.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { loQueViene } from "../src/data/rumbo";
 import { ROTULOS_BARRA } from "../src/components/app/Navegacion";
-import { T_LO_QUE_VIENE } from "../src/pages/vista-previa/mi-espacio/textos";
 
 const ETIQUETAS_AXE = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const SECCIONES = [
@@ -33,7 +31,7 @@ test.beforeEach(({}, info) => {
 test("las cinco secciones se abren desde la navegación y cada una tiene su nombre completo como H1", async ({ page, isMobile }) => {
   await abrir(page, "mi-espacio/");
   const nav = page.locator(isMobile ? "nav.barra-inferior" : "nav.lateral");
-  await expect(nav.locator(".nav-app__item")).toHaveCount(isMobile ? 5 : 7); // escritorio: + «Mis avisos» y «Asistente de Rumbo» (vista previa: disponible)
+  await expect(nav.locator(".nav-app__item")).toHaveCount(isMobile ? 5 : 8); // escritorio: + «Mis avisos», «Asistente de Rumbo» y «Especialistas Rumbo» (siempre presentes)
   // Barra inferior: rótulos cortos (opción B). Barra lateral de escritorio: nombres completos.
   for (const s of SECCIONES) {
     const nombre = isMobile ? s.rotulo : s.h1;
@@ -44,19 +42,19 @@ test("las cinco secciones se abren desde la navegación y cada una tiene su nomb
   }
 });
 
-test("el menú de la cabecera reemplaza a «Más»: Preferencias, Mis datos, Lo que viene y Salir", async ({ page }) => {
+test("el menú de la cabecera reemplaza a «Más»: Preferencias, Mis datos, Especialistas y Salir", async ({ page }) => {
   await abrir(page, "mi-espacio/");
   await expect(page.locator(".barra-inferior").getByText("Más", { exact: true })).toHaveCount(0);
   const menu = page.getByRole("button", { name: "Menú" });
   await menu.click();
   const hoja = page.getByRole("dialog", { name: "Menú" });
-  for (const fila of ["Pedir un ajuste", "Preferencias", "Mis datos", "Lo que viene en Rumbo", "Volver a la web", "Salir"])
+  for (const fila of ["Asistente de Rumbo", "Especialistas Rumbo", "Pedir un ajuste", "Preferencias", "Mis datos", "Volver a la web", "Salir"])
     await expect(hoja.getByRole("link", { name: fila })).toBeVisible();
   await expect(hoja.getByRole("button", { name: "Ayuda inmediata" })).toBeVisible();
   await sinViolaciones(page);
-  await hoja.getByRole("link", { name: "Lo que viene en Rumbo" }).click();
-  await page.waitForURL(/\/mi-espacio\/lo-que-viene\/$/);
-  await expect(page.locator("main h1")).toHaveText("Lo que viene en Rumbo");
+  await hoja.getByRole("link", { name: "Especialistas Rumbo" }).click();
+  await page.waitForURL(/\/mi-espacio\/especialistas\/$/);
+  await expect(page.locator("main h1")).toHaveText("Especialistas Rumbo");
 });
 
 test("Ayuda inmediata sigue visible en la cabecera de cada sección", async ({ page }) => {
@@ -102,29 +100,15 @@ test.describe("resumen del día en Mi Rumbo", () => {
   });
 });
 
-test.describe("«Próximamente»: sin botones de compra, sin fechas y sin datos ficticios", () => {
-  // Comunidad dejó de ser «Próximamente» (maqueta de ChatGPT): sus pruebas están en comunidad.spec.ts.
-  for (const r of ["mi-espacio/lo-que-viene/"]) {
-    test(r, async ({ page }) => {
-      await abrir(page, r);
-      const main = page.locator("main");
-      await expect(main.locator(".etiqueta--pronto").first()).toBeVisible();
-      await expect(main.locator("button")).toHaveCount(0);
-      const enlaces = await main.locator("a").allTextContents();
-      for (const e of enlaces) expect(e).not.toMatch(/comprar|contratar|reservar|pagar|suscrib/i);
-      const texto = (await main.textContent()) ?? "";
-      expect(texto).not.toMatch(/\b20\d\d\b|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre/i);
-      // Sin ranking de ejemplo ni alias ficticios.
-      await expect(main.locator(".ranking-tarjeta")).toHaveCount(0);
-      await sinViolaciones(page);
-    });
-  }
-
-  test("Lo que viene en Mi espacio dice lo mismo que la portada", () => {
-    const [lanzamiento, despues] = T_LO_QUE_VIENE.grupos.map((g) => g.items.map((i) => i.titulo));
-    expect(lanzamiento).toEqual(loQueViene.lanzamiento);
-    expect(despues).toEqual(loQueViene.despues);
-  });
+test("Especialistas: siempre presente, sin «Próximamente» y con su paso a paso", async ({ page }) => {
+  await abrir(page, "mi-espacio/especialistas/");
+  const main = page.locator("main");
+  await expect(main.getByRole("heading", { level: 1, name: "Especialistas Rumbo" })).toBeVisible();
+  await expect(main.locator(".etiqueta--pronto")).toHaveCount(0);
+  await expect(main).not.toContainText(/próximamente/i);
+  await expect(main.locator(".es-paso")).toHaveCount(3);
+  await expect(main.locator(".es-tarjeta").first()).toBeVisible();
+  await sinViolaciones(page);
 });
 
 test("Mi Rumbo: con dos novedades van juntas en un aviso compacto, cada una con su enlace", async ({ page }) => {
