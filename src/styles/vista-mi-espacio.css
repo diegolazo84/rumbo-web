@@ -1230,6 +1230,53 @@ a.me-estado__numero { display: inline-flex; align-items: center; min-block-size:
 }
 
 /* Tarjetas */
+/* Tu montaña (nov-2026): los 10 niveles como sendero a la cima. Puntos HTML sobre el dibujo. */
+.ml-montana { display: grid; gap: var(--e-3); padding: var(--e-5) var(--e-5) var(--e-4); border-radius: var(--r-l); background: var(--superficie); box-shadow: var(--sombra-1); overflow: hidden; }
+.ml-montana__h2 { margin: 0; font: 600 var(--t-h3)/1.15 var(--serif); color: var(--bosque); }
+.ml-montana__bajada { margin: 4px 0 0; font-size: var(--t-s); line-height: 1.45; color: var(--tinta-suave); max-inline-size: 60ch; }
+.ml-montana__escena { position: relative; aspect-ratio: 1000 / 720; margin-inline: calc(-1 * var(--e-5)); margin-block-end: calc(-1 * var(--e-4)); }
+.ml-montana__dibujo { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; display: block; }
+.ml-montana .mm-cielo-alto { stop-color: var(--superficie); }
+.ml-montana .mm-cielo-bajo { stop-color: var(--crema); }
+.ml-montana .mm-sol { fill: var(--sol); opacity: 0.85; }
+.ml-montana .mm-lejos { fill: var(--salvia-suave); }
+.ml-montana .mm-monte { fill: var(--salvia); }
+.ml-montana .mm-nieve { fill: var(--papel); }
+.ml-montana .mm-cerca { fill: var(--salvia-honda); }
+.ml-montana .mm-sendero { fill: none; stroke: var(--arena); stroke-width: 6; stroke-linecap: round; stroke-dasharray: 2 10; vector-effect: non-scaling-stroke; }
+.ml-montana .mm-sendero-luz { fill: none; stroke: var(--sol); stroke-width: 5; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.ml-montana__estaciones { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; }
+.ml-estacion { position: absolute; inline-size: 0; block-size: 0; }
+.ml-estacion__punto { position: absolute; inset-inline-start: -10px; inset-block-start: -10px; display: grid; place-items: center; inline-size: 20px; block-size: 20px; border-radius: 50%; background: var(--papel); border: 2px solid var(--bosque); color: var(--bosque); font: 700 var(--t-micro)/1 var(--sans); }
+.ml-estacion.es-logrado .ml-estacion__punto { background: var(--sol); }
+.ml-estacion.es-futuro .ml-estacion__punto { border-color: color-mix(in srgb, var(--bosque) 45%, transparent); }
+.ml-estacion.es-actual .ml-estacion__punto { inset-inline-start: -16px; inset-block-start: -16px; inline-size: 32px; block-size: 32px; background: var(--bosque); color: var(--papel); border-color: var(--papel); box-shadow: var(--sombra-2); }
+.ml-estacion.es-actual .ml-estacion__punto::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid var(--sol); }
+@media (prefers-reduced-motion: no-preference) {
+  .ml-estacion.es-actual .ml-estacion__punto::after { animation: mm-late 2.4s var(--curva) infinite; }
+}
+@keyframes mm-late { 0% { transform: scale(0.85); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+.ml-estacion__rotulo { position: absolute; inset-block-end: 22px; inset-inline-start: 0; transform: translateX(-50%); display: grid; gap: 0; padding: 4px 10px; border-radius: var(--r-m); background: var(--papel); box-shadow: var(--sombra-1); white-space: nowrap; text-align: center; }
+.ml-estacion.es-actual .ml-estacion__rotulo { inset-block-end: 26px; background: var(--bosque); }
+.ml-estacion.es-actual .ml-estacion__n, .ml-estacion.es-actual .ml-estacion__nombre { color: var(--papel); }
+.ml-estacion.es-futuro .ml-estacion__rotulo { inset-block-end: auto; inset-block-start: 18px; }
+.ml-estacion.es-izq .ml-estacion__rotulo { transform: translateX(-14px); text-align: start; }
+.ml-estacion.es-der .ml-estacion__rotulo { transform: translateX(calc(-100% + 14px)); text-align: end; }
+.ml-estacion__n { font: 600 var(--t-micro)/1.2 var(--sans); color: var(--terracota-texto); }
+.ml-estacion__nombre { font: 600 var(--t-s)/1.2 var(--serif); color: var(--bosque); }
+/* Teléfono: solo tu nivel y la cima con rótulo (el siguiente queda en la bajada); sin sol estirado. */
+@media (max-width: 1023.98px) {
+  .ml-montana .mm-sol { display: none; }
+  .ml-estacion.es-futuro:not(.es-der) .ml-estacion__rotulo { position: absolute; inline-size: 1px; block-size: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; box-shadow: none; }
+  .ml-estacion.es-der .ml-estacion__rotulo { inset-block-end: auto; inset-block-start: 16px; }
+}
+@media (min-width: 1024px) {
+  .ml-montana { padding: var(--e-6) var(--e-6) var(--e-5); }
+  .ml-montana__escena { aspect-ratio: 1000 / 340; margin-inline: calc(-1 * var(--e-6)); margin-block-end: calc(-1 * var(--e-5)); }
+  .ml-estacion__punto { inset-inline-start: -12px; inset-block-start: -12px; inline-size: 24px; block-size: 24px; }
+  .ml-estacion.es-actual .ml-estacion__punto { inset-inline-start: -20px; inset-block-start: -20px; inline-size: 40px; block-size: 40px; font-size: var(--t-s); }
+}
+
 .ml-tarjeta { display: grid; align-content: start; gap: var(--e-4); min-inline-size: 0; padding: var(--e-5); border-radius: var(--r-l); background: var(--superficie); box-shadow: var(--sombra-1); }
 .ml-tarjeta__cabeza { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--e-3); }
 .ml-recompensas .ml-tarjeta__cabeza, .ml-ranking .ml-tarjeta__cabeza { grid-template-columns: auto minmax(0, 1fr); }

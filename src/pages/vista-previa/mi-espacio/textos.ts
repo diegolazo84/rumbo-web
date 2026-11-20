@@ -472,6 +472,16 @@ export const T_PROGRESO = {
 
 // Mis logros (maqueta de ChatGPT, 29-oct-2026). Cifras, fechas y beneficios salen de la base.
 export const T_LOGROS = {
+  // «Tu montaña» (nov-2026): los 10 niveles reales como un sendero a la cima.
+  montana: {
+    titulo: "Tu montaña",
+    bajada: (faltan: number, nombre: string) => `Te ${faltan === 1 ? "falta 1 crédito" : `faltan ${faltan} créditos`} para llegar a ${nombre}. Cada acción hecha te sube un poco más.`,
+    cima: "Llegaste a la cima: Legado. Lo que construiste ya es parte de ti.",
+    nivel: (n: number) => `Nivel ${n}`,
+    logrado: "conseguido",
+    actual: "tu nivel actual",
+    desde: (c: string) => `desde ${c} créditos`,
+  },
   // Galería de fotos (20-nov-2026, decisión de Diego: las fotos se guardan como recuerdo).
   fotos: {
     titulo: "Cómo empezaste y cómo vas",

@@ -30,6 +30,7 @@ import {
   type Recompensas,
 } from "./logros/fuente";
 import { T_LOGROS, T_PROGRESO } from "./textos";
+import Montana from "./logros/Montana";
 
 const T = T_LOGROS;
 const hechaHasta = (o: Ocurrencia, hoy: Iso) => o.vigente && o.fecha <= hoy;
@@ -73,6 +74,7 @@ export default function Progreso() {
   return (
     <div className="me-pantalla ml">
       <Portada />
+      <Montana creditos={progreso.creditos} nivel={progreso.nivel.nivel} />
 
       <div className="ml-fila ml-fila--tres">
         <MiNivel progreso={progreso} />
