@@ -63,7 +63,8 @@ export function EnlaceFlecha({ href, children, plataforma, antesOculto, classNam
         {inicio}
         <span className="nowrap">
           {ultima}
-          <Icono nombre={plataforma ? "arrow-up-right" : "arrow-right"} tamaño={16} />
+          {/* Solo los enlaces que salen a otra dirección llevan icono: los internos son texto subrayado. */}
+          {plataforma && <Icono nombre="arrow-up-right" tamaño={16} />}
         </span>
         {plataforma && <SeAbrePlataforma antes={antesOculto ?? " "} />}
       </span>

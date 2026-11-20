@@ -51,7 +51,7 @@ test("sin mensaje inventado: el último foco del coach; qué sigue con acciones 
   const foco = tarjeta(page, T.coach.foco);
   await expect(foco).toContainText(/Revisión de la semana \d/);
   const sigue = tarjeta(page, T.sigue.titulo);
-  await expect(sigue.getByRole("link", { name: T.sigue.nuevo })).toHaveAttribute("href", /\/contacto\/\?motivo=solicitud$/);
+  await expect(sigue.getByRole("link", { name: T.sigue.nuevo })).toHaveAttribute("href", /\/contacto\/\?motivo=solicitud&tema=nuevo-ciclo$/);
   const descarga = page.waitForEvent("download");
   await sigue.getByRole("button", { name: T.sigue.descargar }).click();
   expect((await descarga).suggestedFilename()).toBe("mis-datos-rumbo-ejemplo.json");

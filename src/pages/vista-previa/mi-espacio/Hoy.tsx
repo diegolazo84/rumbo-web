@@ -20,6 +20,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Etiqueta from "../../../components/Etiqueta";
+import Foto from "../../../components/Foto";
+import { fotos } from "../../../data/fotos";
 import { AnilloDia, BarraProgreso, ErrorBloque, Hoja, HojaAyuda, Icono, Ilustracion, Tostada } from "../../../components/app";
 import { ESCENARIO_CERCANO, HOY, cuentaComoHecha, ocurrenciasDel, type Escenario, type EstadoRegistro, type Meta, type Ocurrencia } from "../../../data/ejemplo-app";
 import { niveles } from "../../../data/rumbo";
@@ -371,7 +373,7 @@ function Bienvenida({ hoy, semana, total, progreso, esc, deHoy, principal, conCo
 
   return (
     <header className="me-bienvenida me-hoy__cabeza">
-      <Ilustracion nombre="paisaje" className="me-bienvenida__ilus" />
+      <Foto foto={fotos.miEspacio} decorativa prioridad className="me-bienvenida__foto" sizes="(min-width: 1024px) 520px, 60vw" />
       <div className="me-bienvenida__texto">
         <div className="me-bienvenida__ojo">
           <h1 className="me-bienvenida__h1">{T_SECCIONES.rumbo}</h1>
@@ -438,7 +440,6 @@ function SinAccionesHoy() {
         <p className="me-bloque__bajada">{T_HOY.vacio.texto}</p>
         <Link to={R.calendario} className="enlace-flecha">
           {T_HOY.vacio.verPlan}
-          <Icono nombre="arrow-right" tamaño={16} />
         </Link>
       </div>
     </div>
@@ -550,7 +551,6 @@ function Novedades() {
                 <span>{n.texto}</span>{" "}
                 <span className="me-novedades__enlace">
                   {n.enlace}
-                  <Icono nombre="arrow-right" tamaño={16} />
                 </span>
               </Link>
             </li>
@@ -567,7 +567,6 @@ function Novedades() {
             <p>{n.texto}</p>
             <Link to={n.ruta ?? DESTINO_NOVEDAD[n.destino]} className="enlace-flecha" onClick={() => servidor?.verNovedad(n.id)}>
               {n.enlace}
-              <Icono nombre="arrow-right" tamaño={16} />
             </Link>
           </div>
         </div>
@@ -832,8 +831,9 @@ export function ResumenAvance({ progreso }: { progreso: Progreso }) {
   return (
     <section className="tarjeta me-resumen" aria-labelledby="resumen-nivel">
       <div className="me-resumen__fila">
-        <span className="me-resumen__icono" aria-hidden="true">
-          <Icono nombre="leaf" tamaño={20} />
+        {/* Medalla con el número del nivel: lo ganado se ve como un premio, no como un dato. */}
+        <span className="me-resumen__icono me-resumen__medalla" aria-hidden="true">
+          {nivel.nivel}
         </span>
         <Etiqueta key={destello} variante="activo" grande nowrap className={destello ? "destello" : undefined}>
           <span id="resumen-nivel">{T_HOY.resumen.nivel(nivel.nivel, nivel.nombre)}</span>
@@ -853,12 +853,14 @@ export function ResumenAvance({ progreso }: { progreso: Progreso }) {
         <p className="barra-texto">{T_HOY.resumen.maximo}</p>
       )}
       <div className="me-resumen__bono">
-        <p>{T_HOY.resumen.bono(bonoSiguiente)}</p>
+        <p>
+          <Icono nombre="sparkles" tamaño={16} className="me-resumen__chispa" />
+          {T_HOY.resumen.bono(bonoSiguiente)}
+        </p>
         {racha > 0 && <p className="microcopia">{T_HOY.resumen.racha(racha)}</p>}
       </div>
       <Link to={R.progreso} className="enlace-flecha">
         {T_HOY.resumen.enlace}
-        <Icono nombre="arrow-right" tamaño={16} />
       </Link>
     </section>
   );

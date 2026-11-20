@@ -346,7 +346,7 @@ export default function Condiciones() {
           <li>Hoy no hay pagos en línea.</li>
         </ul>
       </Aviso>
-      <Pasos lectura nivelTitulo="h2" pasos={secciones} />
+      <Pasos lectura nivelTitulo="h2" pasos={secciones} indice="condiciones" />
       <div className="lectura-cierre">
         <div className="acciones">
           <Boton href="/" variante="secundario">

@@ -1,34 +1,40 @@
-// Capítulo 1: Promesa (5.2). Papel con cuadrícula de agenda; texto y calendario de
-// ejemplo, en dos columnas desde 1024 px. Sin revelado al desplazar: es el primer pantallazo.
-import { rayas } from "../../data/rumbo";
+// Capítulo 1: Promesa. Rediseño de nov-2026: la audacia de la portada está aquí, en una sola
+// fotografía real, grande y cálida, a sangre hacia el borde derecho desde 1024 px. El texto es
+// general (Diego, 18-nov-2026): Rumbo sirve para metas de muchos tipos, también las cotidianas y
+// los hábitos que hacen bien, sin recalcar un nicho ni insistir en lo que no es. Sin revelado al desplazar: es el primer pantallazo.
+import { fotos } from "../../data/fotos";
 import { ListaCheck } from "../Bloques";
-import CalendarioEjemplo from "../CalendarioEjemplo";
 import { Boton, BotonPostular } from "../Enlaces";
 import { EtiquetaEstado } from "../Etiqueta";
-import Icono from "../Icono";
-import RutaPuntos from "../RutaPuntos";
+import Foto from "../Foto";
 import { NOTA_SALIDA } from "./textos";
+
+const METAS = [
+  "Lanzar mi proyecto",
+  "Comer mejor",
+  "Terminar mi tesis",
+  "Moverme más",
+  "Dejar de postergar",
+  "Ordenar mi semana",
+];
 
 export default function Promesa() {
   return (
-    <section className="capitulo portada">
-      <div className="contenedor portada-grilla">
+    <section className="portada" aria-labelledby="portada-titulo">
+      <div className="portada-grilla">
         <div className="portada-texto">
-          <EtiquetaEstado estado="pilotoEnPreparacion" grande />
-          <h1 className="h1--display">
-            Tu meta, convertida en una <em>semana posible.</em>
+          <EtiquetaEstado estado="pilotoEnPreparacion" />
+          <h1 id="portada-titulo" className="h1--display">
+            Tu meta, convertida en una semana posible.
           </h1>
-          <p className="bajada">
-            {rayas(
-              "Rumbo es planificación personal con acompañamiento humano. Nos cuentas qué quieres lograr y cuánto tiempo tienes de verdad; te entregamos un calendario listo —qué hacer, cuándo y cómo— y una persona lo revisa contigo cada semana.",
-            )}
+          <p className="portada-nicho">
+            Un proyecto, tus estudios, comer mejor, moverte más, dejar un mal hábito o, simplemente, ordenar tu semana.
+            Ordenamos tus ideas contigo, te armamos un plan a tu medida y una persona real te acompaña en todo el
+            proceso.
           </p>
           <p className="portada-foco">
-            <Icono nombre="compass" tamaño={16} />
-            <span>
-              Primer piloto: personas adultas que quieren avanzar en un proyecto, en sus estudios o en el orden de su
-              semana.
-            </span>
+            No necesitas saber por dónde partir ni hacerlo solo: lo que cambia tu vida es lo que logras sostener, semana
+            a semana. En línea y en español.
           </p>
           <div className="acciones">
             <BotonPostular ubicacion="portada" />
@@ -43,9 +49,23 @@ export default function Promesa() {
             items={["Postular es gratis", "No necesitas cuenta", "Una persona lee cada solicitud"]}
           />
         </div>
-        <CalendarioEjemplo />
-        {/* Desde 1024 px: la ruta une el texto con el calendario, bajo el texto. */}
-        <RutaPuntos variante="fondo" className="portada-ruta" />
+        <div className="portada-visual">
+          <Foto foto={fotos.portada} className="portada-foto" sizes="(min-width: 1024px) 50vw, 100vw" prioridad />
+          {/* Movimiento con propósito (Diego, 18-nov-2026: que la portada se vea viva): las metas que
+              acompañamos van rotando sobre la foto. Decorativo para lectores de pantalla (el texto
+              de arriba ya lo dice); con movimiento reducido queda fija la primera. */}
+          <div className="portada-metas" aria-hidden="true">
+            <span className="portada-metas__rotulo">Metas que acompañamos</span>
+            <span className="portada-metas__lista">
+              <span className="portada-metas__cinta">
+                {/* La primera se repite al final para que la vuelta no salte. */}
+                {[...METAS, METAS[0]].map((m, i) => (
+                  <span key={i}>{m}</span>
+                ))}
+              </span>
+            </span>
+          </div>
+        </div>
       </div>
     </section>
   );

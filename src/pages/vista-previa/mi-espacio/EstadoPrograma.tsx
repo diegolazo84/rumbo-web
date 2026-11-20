@@ -9,6 +9,8 @@
 // - ciclo-2: Camila cerró su ciclo 1 y acordó un ciclo 2 que empieza el lunes 9 de noviembre:
 //   vuelve a «preparación» con la línea «Tu ciclo 2 empieza el …».
 // Fechas de ejemplo coherentes con src/data/ejemplo-app.ts (ciclo desde el lunes 5 de octubre).
+import Foto from "../../../components/Foto";
+import { fotos } from "../../../data/fotos";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import CalendarioEjemplo from "../../../components/CalendarioEjemplo";
@@ -87,8 +89,11 @@ function Preparacion({ cicloNuevo }: { cicloNuevo?: { numero: number; inicio: Is
 
   return (
     <div className="me-pantalla me-estado me-estado--preparacion">
+      {/* Primera impresión después de acordar: la mesa lista para empezar (foto decorativa). */}
+      <Foto foto={fotos.portada} decorativa prioridad className="me-estado__foto" sizes="(min-width: 1024px) 720px, 100vw" />
       <EstadoVacio
         nivel={1}
+        ilustracion={false}
         titulo={t.titulo}
         antes={
           <>

@@ -208,7 +208,6 @@ export default function Asistente({ estado }: PropsPantalla) {
           {T.revisaCoach}{" "}
           <a href="#as-info" className="enlace-flecha">
             {T.saberMas}
-            <Icono nombre="arrow-right" tamaño={16} />
           </a>
         </span>
       </p>

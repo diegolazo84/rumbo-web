@@ -38,11 +38,38 @@ const MI_ESPACIO_FORZADO =
     ? __MI_ESPACIO_PROPIO__ === true
     : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.MI_ESPACIO_PROPIO === "1";
 const ESPACIO_PROPIO = MI_ESPACIO_PROPIO || MI_ESPACIO_FORZADO;
+<<<<<<< HEAD
 const LEGAL_13 = false; // Privacidad y Condiciones 1.3: se enciende solo al publicarlas (docs/publicar-versiones-legales.md)
 const LEGAL_13_FORZADO =
   typeof __LEGAL_13__ !== "undefined"
     ? __LEGAL_13__ === true
     : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.LEGAL_13 === "1";
+=======
+// Cuenta gratis «Rumbo Inicial»: el ingreso muestra «Ya tengo cuenta» y «Crear cuenta gratis».
+// true SOLO cuando el módulo «cuenta_gratis» esté habilitado (docs/cuenta-gratis.md).
+const CUENTA_GRATIS_ACTIVA = true; // módulo habilitado y migraciones 20261204 y 20261205 aplicadas (Diego, 19-nov-2026)
+const CUENTA_GRATIS =
+  CUENTA_GRATIS_ACTIVA ||
+  (typeof __CUENTA_GRATIS__ !== "undefined"
+    ? __CUENTA_GRATIS__ === true
+    : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.CUENTA_GRATIS === "1");
+// «Continuar con Google»: apagado hasta que Diego active Google en Supabase (docs/ingreso-google.md).
+const INGRESO_GOOGLE_ACTIVO = false;
+const INGRESO_GOOGLE =
+  INGRESO_GOOGLE_ACTIVO ||
+  (typeof __INGRESO_GOOGLE__ !== "undefined"
+    ? __INGRESO_GOOGLE__ === true
+    : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.INGRESO_GOOGLE === "1");
+
+// Entrar y crear cuenta con correo y contraseña. Diego ajustó en Supabase (19-nov-2026) las
+// plantillas «Confirm signup» y «Reset password» y el largo mínimo (docs/ingreso-contrasena.md).
+const INGRESO_CONTRASENA_ACTIVO = true; // Supabase listo (Diego, 19-nov-2026)
+const INGRESO_CONTRASENA =
+  INGRESO_CONTRASENA_ACTIVO ||
+  (typeof __INGRESO_CONTRASENA__ !== "undefined"
+    ? __INGRESO_CONTRASENA__ === true
+    : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.INGRESO_CONTRASENA === "1");
+>>>>>>> origin/main
 
 // Rutas de la web y, mientras existan, de la plataforma original. scripts/postbuild.mjs además
 // genera reenvíos con las mismas rutas en este dominio, para enlaces escritos a mano.
@@ -124,6 +151,15 @@ export const operacion = {
   // se enciende siguiendo docs/publicar-versiones-legales.md (mismo commit: fecha de VERSION_PUBLICADA).
   legal13: LEGAL_13 || LEGAL_13_FORZADO,
   responsable: { nombre: "Diego Alfonso Muñoz Abeleida", comuna: "Providencia" } as null | { nombre: string; rut?: string; comuna: string }, // bloquea el lanzamiento público
+  // «Continuar con Google» en el ingreso a Mi espacio. true SOLO cuando Diego haya activado el
+  // proveedor Google en Supabase (docs/ingreso-google.md); si no, el botón daría error.
+  // Variable de build INGRESO_GOOGLE=1 para verlo en pruebas.
+  ingresoGoogle: INGRESO_GOOGLE,
+  // Correo + contraseña como camino principal (el código queda como alternativa y para recuperar).
+  // Build INGRESO_CONTRASENA=1 para pruebas.
+  ingresoContrasena: INGRESO_CONTRASENA,
+  // Ingreso con dos caminos (entrar / crear cuenta gratis). Build CUENTA_GRATIS=1 para pruebas.
+  cuentaGratis: CUENTA_GRATIS,
   correo: "rumbo.acompana@gmail.com" as string | null, // creado y aprobado por Diego el 8 de octubre de 2026
   acompanante: null as null | { nombre: string; rol: string; bio: string; foto?: string }, // foto: archivo en public/, p. ej. «acompanante.jpg» (la portada le antepone la base)
   // Decisión del 2 de octubre de 2026: se responde a todas las solicitudes, también a quien no avanza.
@@ -154,6 +190,12 @@ export const operacion = {
   } as null | { encaje: string; respuesta: string; condiciones: string },
   alojamientoVerificado: false, // true cuando Diego confirme qué infraestructura usa ChatGPT Sites (Privacidad §6)
   tamanoPrimerGrupo: 5 as number | null,
+  // Oferta del grupo fundador (aprobada por Diego el 18-nov-2026). Cada parte se publica SOLO con su dato:
+  // · conversacionEncaje: enlace de agenda (p. ej. Google Calendar) para conversar antes de pagar.
+  // · garantiaPrimeraSemana: se enciende cuando la revisión legal la apruebe y Condiciones la incluya
+  //   (hoy las condiciones devuelven el 100 % solo antes del inicio).
+  conversacionEncaje: null as null | { minutos: number; agenda: string },
+  garantiaPrimeraSemana: false,
   preseleccionVerificada: false, // ?area= y ?apoyo= preseleccionan el formulario (probado)
   // Valores de ?area= que solo entiende el formulario propio (plataforma 2.4 y 3.10).
   paramEstudio: (PROPIO ? "estudio" : null) as string | null, // valor de ?area= para «Estudio y aprendizaje»
@@ -252,13 +294,17 @@ export const enMiEspacio = [
   // «Registro semanal» es lo que escribe la persona; «revisión semanal», lo que hace su coach (docs/coherencia.md).
   "Registro semanal escrito: lo que anotas, la respuesta de tu coach y el siguiente foco",
   "Solicitud de ajustes cuando tu semana cambia",
+  "Una foto opcional y privada en cualquier acción, que solo ve tu coach",
+  "Reconocimientos por tu constancia y un ranking semanal voluntario, con alias",
+  "Avisos en tu espacio y recordatorios que tú decides cuándo recibir",
+  "Mi espacio instalable en tu teléfono",
 ];
 
 // «Lo que viene en Rumbo» (portada): nada de esto existe todavía. Sin fechas ni botones de
 // contratación; cada ítem pasa a enMiEspacio solo cuando funcione y esté probado.
 export const loQueViene = {
-  lanzamiento: ["Comunidad con foro moderado", "Ranking semanal voluntario", "Fotografías opcionales y privadas", "Asistente con inteligencia artificial"],
-  despues: ["Marketplace de especialistas", "Premios y recompensas", "Inteligencia artificial avanzada", "Aplicación móvil"],
+  lanzamiento: ["Comunidad con foro moderado", "Asistente con inteligencia artificial"],
+  despues: ["Marketplace de especialistas", "Premios por convenio con tiendas y especialistas", "Inteligencia artificial avanzada", "Aplicación en las tiendas de iOS y Android"],
 };
 export const seAcuerdaContigo = [
   "El día de tu revisión semanal, de lunes a viernes, y, en Acompañamiento cercano, la hora de tu videollamada (en hora de Chile)",
@@ -320,7 +366,7 @@ export const areas: Area[] = [
     nombre: "Organización y hábitos",
     frase: "No tienes que hacerlo perfecto para seguir.",
     texto:
-      "Para cuando tu semana se desordena y lo importante queda para después. Bloques de trabajo, rutinas cortas, menos postergación y un sistema que se ajusta cuando la semana cambia.",
+      "Para cuando tu semana se desordena y lo importante queda para después. Bloques de trabajo, rutinas cortas, dejar hábitos que te restan, como postergar o el celular a deshoras, y un sistema que se ajusta cuando la semana cambia.",
     categoria: "orden",
     icono: "list-checks",
     param: "organizacion",

@@ -36,6 +36,17 @@ type Pago = {
   devolucion_motivo: Motivo | null;
 };
 type AvisoPago = { ciclo_id: string; referencia: string | null; creado_en: string };
+// Beneficio de renovación (20261108000000_recompensas): se aplica antes de registrar el pago.
+type BeneficioPago = {
+  id: string;
+  participante_id: string;
+  ciclo_origen: string | null;
+  porcentaje: number | null;
+  estado: "disponible" | "aplicado" | "anulado";
+  aplicado_en_ciclo: string | null;
+  descuento_clp: number | null;
+  beneficios: { tipo: string } | null;
+};
 type CicloPago = { id: string; participante_id: string; numero: number; plan_id: string; inicio: Iso; semanas: number; estado: string; precio_acordado_clp: number | null };
 
 // Motivos que da la base (privado.error «campo:codigo») con su texto para esta pantalla.
@@ -53,6 +64,7 @@ export function PagosReal() {
   const [ciclos, setCiclos] = useState<CicloPago[] | null>(null);
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [avisos, setAvisos] = useState<AvisoPago[]>([]);
+  const [beneficios, setBeneficios] = useState<BeneficioPago[]>([]);
   const [error, setError] = useState(false);
   const [aviso, setAviso] = useState("");
 
@@ -70,6 +82,8 @@ export function PagosReal() {
     // Avisos de «ya transferí» (migración 20261203000000); sin la tabla, ninguno.
     const a = await sb.from("avisos_pago").select("ciclo_id,referencia,creado_en");
     setAvisos(a.error ? [] : ((a.data ?? []) as AvisoPago[]));
+    const b = await sb.from("beneficios_otorgados").select("id,participante_id,ciclo_origen,porcentaje,estado,aplicado_en_ciclo,descuento_clp,beneficios(tipo)");
+    setBeneficios(b.error ? [] : ((b.data ?? []) as unknown as BeneficioPago[]));
     setPagos(datos(p) as Pago[]);
     setCiclos(datos(c) as CicloPago[]);
   }, [sb]);
@@ -95,6 +109,17 @@ export function PagosReal() {
   if (!ciclos) return <Carga estado="cargando" />;
 
   const pagoDe = (cicloId: string) => pagos.find((p) => p.ciclo_id === cicloId);
+  // El descuento ya aplicado a este ciclo o, si no hay, uno por usar ganado en un ciclo anterior.
+  const numeroDe = new Map(ciclos.map((c) => [c.id, c.numero]));
+  const beneficioDe = (c: CicloPago) =>
+    beneficios.find((b) => b.aplicado_en_ciclo === c.id) ??
+    beneficios.find(
+      (b) =>
+        b.participante_id === c.participante_id &&
+        b.estado === "disponible" &&
+        b.beneficios?.tipo === "descuento_renovacion" &&
+        (!b.ciclo_origen || (numeroDe.get(b.ciclo_origen) ?? Infinity) < c.numero),
+    );
   // Por registrar: ciclos que no están cerrados y aún no tienen pago anotado.
   const pendientes = ciclos.filter((c) => c.estado !== "cerrado" && !pagoDe(c.id));
   const registrados = ciclos.filter((c) => pagoDe(c.id)).reverse();
@@ -122,7 +147,7 @@ export function PagosReal() {
         {pendientes.length ? (
           <ul className="pa-filas">
             {pendientes.map((c) => (
-              <FilaPendiente key={c.id} c={c} nombre={nombre(c.participante_id)} hoy={d.hoy} aviso={avisos.find((a) => a.ciclo_id === c.id)} alGuardar={alGuardar} />
+              <FilaPendiente key={c.id} c={c} nombre={nombre(c.participante_id)} hoy={d.hoy} aviso={avisos.find((a) => a.ciclo_id === c.id)} beneficio={beneficioDe(c)} alGuardar={alGuardar} />
             ))}
           </ul>
         ) : (
@@ -158,8 +183,23 @@ function Encabezado({ id, c, nombre, etiqueta }: { id: string; c: CicloPago; nom
   );
 }
 
-function FilaPendiente({ c, nombre, hoy, aviso, alGuardar }: { c: CicloPago; nombre: string; hoy: Iso; aviso?: AvisoPago; alGuardar: (t: string) => void }) {
+function FilaPendiente({
+  c,
+  nombre,
+  hoy,
+  aviso,
+  beneficio,
+  alGuardar,
+}: {
+  c: CicloPago;
+  nombre: string;
+  hoy: Iso;
+  aviso?: AvisoPago;
+  beneficio?: BeneficioPago;
+  alGuardar: (t: string) => void;
+}) {
   const [abierto, setAbierto] = useState(false);
+  const descuento = beneficio?.estado === "aplicado" ? (beneficio.descuento_clp ?? 0) : 0;
   const id = `pago-${c.id}`;
   const diaAviso = aviso && (new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date(aviso.creado_en)) as Iso);
   return (
@@ -171,12 +211,17 @@ function FilaPendiente({ c, nombre, hoy, aviso, alGuardar }: { c: CicloPago; nom
           [T.inicio, fecha(c.inicio)],
           [T.acordado, c.precio_acordado_clp ? montoTexto(c.precio_acordado_clp, "CLP") : T.sinPrecio],
           ...(aviso && diaAviso ? [[T.avisoFila, T.avisoTexto(fecha(diaAviso), aviso.referencia)] as [string, string]] : []),
+          ...(beneficio?.estado === "aplicado" && c.precio_acordado_clp
+            ? [[T.beneficio.fila, T.beneficio.aplicado(beneficio.porcentaje ?? 0, montoTexto(descuento, "CLP"), montoTexto(c.precio_acordado_clp - descuento, "CLP"))] as [string, string]]
+            : []),
         ]}
       />
+      {beneficio?.estado === "disponible" && <AplicarBeneficio id={id} c={c} b={beneficio} alGuardar={() => alGuardar(T.beneficio.listo(nombre))} />}
       {abierto ? (
         <FormPago
           id={id}
           c={c}
+          descuento={descuento}
           hoy={hoy}
           alCancelar={() => setAbierto(false)}
           alGuardar={() => {
@@ -195,11 +240,12 @@ function FilaPendiente({ c, nombre, hoy, aviso, alGuardar }: { c: CicloPago; nom
   );
 }
 
-function FormPago({ id, c, hoy, alGuardar, alCancelar }: { id: string; c: CicloPago; hoy: Iso; alGuardar: () => void; alCancelar: () => void }) {
+function FormPago({ id, c, descuento, hoy, alGuardar, alCancelar }: { id: string; c: CicloPago; descuento: number; hoy: Iso; alGuardar: () => void; alCancelar: () => void }) {
+  const sugerido = c.precio_acordado_clp ? String(c.precio_acordado_clp - descuento) : "";
   const { sb } = useDatosPanel();
   const [medio, setMedio] = useState<Medio>("transferencia");
   const [moneda, setMoneda] = useState<Moneda>("CLP");
-  const [monto, setMonto] = useState(c.precio_acordado_clp ? String(c.precio_acordado_clp) : "");
+  const [monto, setMonto] = useState(sugerido);
   const [pagadoEn, setPagadoEn] = useState<string>(hoy);
   const [referencia, setReferencia] = useState("");
   const [errores, setErrores] = useState<{ monto?: string; fecha?: string }>({});
@@ -248,7 +294,7 @@ function FormPago({ id, c, hoy, alGuardar, alCancelar }: { id: string; c: CicloP
           // PayPal es para fuera de Chile (USD); la transferencia, en pesos.
           const mon: Moneda = m === "paypal" ? "USD" : "CLP";
           setMoneda(mon);
-          setMonto(mon === "CLP" && c.precio_acordado_clp ? String(c.precio_acordado_clp) : "");
+          setMonto(mon === "CLP" ? sugerido : "");
         }}
       >
         <option value="transferencia">{T.medios.transferencia}</option>
@@ -261,7 +307,7 @@ function FormPago({ id, c, hoy, alGuardar, alCancelar }: { id: string; c: CicloP
       <CampoTexto
         id={`${id}-monto`}
         etiqueta={T.form.monto(moneda)}
-        ayuda={moneda === "CLP" && c.precio_acordado_clp ? T.form.montoAyuda : undefined}
+        ayuda={moneda === "CLP" && c.precio_acordado_clp ? (descuento ? T.beneficio.montoAyuda : T.form.montoAyuda) : undefined}
         inputMode="numeric"
         autoComplete="off"
         value={monto}
@@ -289,6 +335,35 @@ function FormPago({ id, c, hoy, alGuardar, alCancelar }: { id: string; c: CicloP
         </button>
       </div>
     </form>
+  );
+}
+
+// Aplicar el descuento de renovación antes de registrar el pago (aplicar_beneficio, solo el dueño).
+function AplicarBeneficio({ id, c, b, alGuardar }: { id: string; c: CicloPago; b: BeneficioPago; alGuardar: () => void }) {
+  const { sb } = useDatosPanel();
+  const [correr, error, ocupado] = useEscritura(errorPago);
+  const p = b.porcentaje ?? 0;
+  const estimado = c.precio_acordado_clp ? Math.round((c.precio_acordado_clp * p) / 100) : null;
+  return (
+    <div className="pa-beneficio">
+      <p>{estimado ? T.beneficio.disponible(p, montoTexto(estimado, "CLP")) : T.beneficio.sinPrecio(p)}</p>
+      <Alerta texto={error} />
+      {estimado && (
+        <div className="acciones">
+          <button
+            type="button"
+            className="boton boton--secundario"
+            aria-describedby={`${id}-titulo`}
+            aria-disabled={ocupado || undefined}
+            onClick={async () => {
+              if (await correr(async () => datos(await sb.rpc("aplicar_beneficio", { p_otorgado: b.id, p_ciclo: c.id })))) alGuardar();
+            }}
+          >
+            {T.beneficio.aplicar(p)}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

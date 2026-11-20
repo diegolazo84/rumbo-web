@@ -448,7 +448,7 @@ export default function Privacidad() {
           <li>Puedes pedir ver, corregir, llevarte o eliminar tus datos, y retirar tu autorización.</li>
         </ul>
       </Aviso>
-      <Pasos lectura nivelTitulo="h2" pasos={secciones} />
+      <Pasos lectura nivelTitulo="h2" pasos={secciones} indice="privacidad" />
       <div className="lectura-cierre">
         <p className="microcopia">
           Normativa aplicable: Ley N.º 19.628 sobre protección de la vida privada y, desde su entrada en vigencia, las

@@ -29,7 +29,10 @@ console.log("Borrado automático de fotos (Supabase local)");
 
 // ---------------------------------------------------------------------------
 // Datos: acciones de A sin registro, una por caso.
-const [A] = sql("select participante_id from public.progreso limit 1").split("\n");
+// Sin orden, «limit 1» puede tomar a otra persona con pocas acciones libres: se elige a quien tiene más.
+const [A] = sql(`select p.participante_id from public.progreso p
+  order by (select count(*) from public.ocurrencias o where o.participante_id = p.participante_id
+    and not exists (select 1 from public.registros r where r.ocurrencia_id = o.id)) desc, p.participante_id limit 1`).split("\n");
 const libres = sql(`select o.id from public.ocurrencias o where o.participante_id = '${A}'
   and not exists (select 1 from public.registros r where r.ocurrencia_id = o.id) order by o.fecha limit 16`).split("\n");
 assert.ok(libres.length >= 15, "faltan acciones libres de A");

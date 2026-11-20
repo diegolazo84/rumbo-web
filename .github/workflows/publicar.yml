@@ -26,7 +26,9 @@ env:
 jobs:
   verificar:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # 50 min: el 18-nov-2026 la instalación de navegadores (--with-deps) tardó 19 a 21 min dos
+    # veces seguidas y las pruebas no alcanzaban a terminar dentro de 30.
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -71,6 +73,9 @@ jobs:
     timeout-minutes: 30
     env:
       MI_ESPACIO_PROPIO: "1"
+      INGRESO_GOOGLE: "1"
+      CUENTA_GRATIS: "1"
+      INGRESO_CONTRASENA: "1"
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6

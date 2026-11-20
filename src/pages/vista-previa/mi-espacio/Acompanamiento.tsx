@@ -16,7 +16,9 @@
 // Sin «Nuevo»: lo visto se guarda solo en cada dispositivo (ver mi-acompanamiento/analisis-tecnico.md).
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { HojaAyuda, Icono, Ilustracion, type NombreIconoApp } from "../../../components/app";
+import { HojaAyuda, Icono, type NombreIconoApp } from "../../../components/app";
+import Foto from "../../../components/Foto";
+import { fotos } from "../../../data/fotos";
 import { cuentaComoHecha, type Escenario, type Revision } from "../../../data/ejemplo-app";
 import { diaCorto, fechaLarga, mayuscula, nombreDia, numeroDia, rangoSemana, semanaDesde, type Iso } from "../../../lib/fechas";
 import type { PropsPantalla } from "../registro";
@@ -77,7 +79,7 @@ export default function Acompanamiento({ estado = "sin-enviar" }: PropsPantalla)
 function Portada() {
   return (
     <header className="me-acomp-portada">
-      <Ilustracion nombre="atardecer" className="me-acomp-portada__fondo" />
+      <Foto foto={fotos.acompanamiento} decorativa prioridad className="me-acomp-portada__fondo" sizes="(min-width: 1024px) 900px, 100vw" />
       <div className="me-acomp-portada__texto">
         <h1 className="me-acomp-portada__h1">{T_SECCIONES.acompanamiento}</h1>
         <p className="me-acomp-portada__bajada">{T.portada.bajada}</p>
@@ -302,7 +304,6 @@ function EstaSemana({ hoy, esc }: { hoy: Iso; esc: Escenario }) {
       </ol>
       <Link to={R.calendario} className="enlace-flecha me-acomp-semana__plan">
         {S.verPlan}
-        <Icono nombre="arrow-right" tamaño={16} />
       </Link>
     </section>
   );
@@ -411,7 +412,6 @@ function Historial({ hoy, esc }: { hoy: Iso; esc: Escenario }) {
                 {it.ruta && it.enlace && (
                   <Link to={it.ruta} className="enlace-flecha">
                     {it.enlace}
-                    <Icono nombre="arrow-right" tamaño={16} />
                   </Link>
                 )}
               </div>

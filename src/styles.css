@@ -228,8 +228,8 @@ h4 { font: 600 var(--t-s)/1.4 var(--sans); }
 p { text-wrap: pretty; }
 
 /* Cursiva de titular: terracota en el H1 (portada, 404) y ámbar en el H2 del cierre. */
-h1 em, h2 em { font-style: italic; font-weight: 500; color: var(--terracota); }
-.capitulo--oscuro h2 em { color: var(--ambar); }
+/* Sin palabras destacadas en los títulos: el énfasis va en la frase completa. */
+h1 em, h2 em { font-style: inherit; font-weight: inherit; color: inherit; }
 
 /* Voz: frase de cada área, lema del pie, cita del coach. */
 .voz { font-family: var(--serif); font-size: var(--t-voz); font-style: italic; font-weight: 500; line-height: 1.45; }
@@ -249,28 +249,17 @@ h1 em, h2 em { font-style: italic; font-weight: 500; color: var(--terracota); }
 
 .tabular { font-variant-numeric: tabular-nums; }
 
-/* Etiqueta superior (3.4): eco del punto del logo. */
+/* Rótulo de contexto (rediseño nov-2026): en frase normal, sin mayúsculas sostenidas ni punto
+   decorativo. Solo donde ayuda a ubicarse (Mi espacio, panel, tarjetas); la portada no lo usa. */
 .ojo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-block-end: 12px;
-  font: 600 var(--t-micro)/1 var(--sans);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--terracota-texto);
-}
-.ojo::before {
-  content: "";
-  flex: none;
-  inline-size: 6px;
-  block-size: 6px;
-  border-radius: var(--r-full);
-  background: var(--terracota);
+  display: block;
+  margin-block-end: var(--e-2);
+  font: 600 var(--t-xs)/1.3 var(--sans);
+  letter-spacing: 0;
+  color: var(--tinta-suave);
 }
 .ojo--suave { color: var(--tinta-suave); }
-:where(.capitulo--oscuro, .pie) .ojo { color: var(--ambar); }
-:where(.capitulo--oscuro, .pie) .ojo::before { background: var(--ambar); }
+:where(.capitulo--oscuro, .pie) .ojo { color: var(--sobre-oscuro-suave); }
 
 /* ========================================================================
    5. Componentes
@@ -335,13 +324,14 @@ h1 em, h2 em { font-style: italic; font-weight: 500; color: var(--terracota); }
   min-block-size: 44px;
   font: 600 var(--t-s)/1.4 var(--sans);
   color: var(--bosque);
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
 }
-.enlace-flecha .icono { display: inline-block; vertical-align: -2px; margin-inline-start: 6px; transition: transform var(--dur-1) var(--curva); }
+.enlace-flecha .icono { display: inline-block; vertical-align: -2px; margin-inline-start: 6px; }
 .capitulo--oscuro .enlace-flecha { color: var(--sobre-oscuro); }
 @media (hover: hover) {
-  .enlace-flecha:hover { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
-  .enlace-flecha:hover .icono { transform: translateX(3px); }
+  .enlace-flecha:hover { text-decoration-thickness: 2px; }
 }
 
 .enlace-util {
@@ -693,8 +683,6 @@ html:not(.hidratado) .menu-boton { visibility: hidden; }
 .pie-nav h2 {
   margin-block-end: 8px;
   font: 600 var(--t-micro)/1 var(--sans);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
   color: var(--sobre-oscuro-suave);
 }
 .pie-nav ul { list-style: none; }
@@ -792,8 +780,6 @@ html:not(.hidratado) .menu-boton { visibility: hidden; }
   margin-block-end: 8px;
   padding: 0;
   font: 600 var(--t-micro)/1 var(--sans);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
   color: var(--tinta-suave);
 }
 .dia legend .etiqueta { letter-spacing: 0.01em; text-transform: none; }
@@ -951,7 +937,7 @@ html:not(.hidratado) .menu-boton { visibility: hidden; }
 .niveles li:last-child { border-block-end: 0; }
 
 /* 3.15 Planes ------------------------------------------------------------- */
-.planes { display: grid; gap: 16px; max-inline-size: var(--ancho-medio); }
+.planes { display: grid; gap: 16px; }
 @media (min-width: 600px) { .planes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; } }
 .planes > .panel-planes { grid-column: 1 / -1; }
 .plan { border-radius: var(--r-l); padding: 24px; }
@@ -980,6 +966,15 @@ html:not(.hidratado) .menu-boton { visibility: hidden; }
 @media (min-width: 600px) { .caminos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; } }
 .camino-cabeza { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .camino-texto { color: var(--tinta-suave); }
+/* Foto del camino: de borde a borde arriba de la tarjeta; se acerca un poco al pasar el cursor. */
+.camino-foto { display: block; margin: -24px -24px 4px; overflow: hidden; border-radius: var(--r-m) var(--r-m) 0 0; }
+.camino-foto img { display: block; inline-size: 100%; block-size: auto; aspect-ratio: 5 / 2; object-fit: cover; }
+@media (min-width: 600px) { .camino-foto img { aspect-ratio: 2 / 1; } }
+@media (min-width: 1024px) { .camino-foto { margin: -28px -28px 4px; } }
+@media (prefers-reduced-motion: no-preference) {
+  .camino-foto img { transition: transform var(--dur-4) var(--curva); }
+  .camino:hover .camino-foto img { transform: scale(1.04); }
+}
 
 /* 3.16 Fila «Más adelante» ------------------------------------------------ */
 .filas-futuras { display: grid; gap: 16px; }
@@ -1009,18 +1004,7 @@ html:not(.hidratado) .menu-boton { visibility: hidden; }
 /* «Lo que viene en Rumbo»: dos tarjetas (lanzamiento y etapas posteriores). */
 @media (min-width: 1024px) { .transparencia--dos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
-/* ========================================================================
-   6. Revelado al desplazar (2.5): solo con movimiento y tras hidratar
-   ======================================================================== */
-@media (prefers-reduced-motion: no-preference) {
-  html.hidratado [data-revelar="pendiente"] { opacity: 0; translate: 0 12px; }
-  html.hidratado [data-revelar="visto"] {
-    opacity: 1;
-    translate: 0 0;
-    transition: opacity var(--dur-3) var(--curva), translate var(--dur-3) var(--curva);
-    transition-delay: calc(var(--i, 0) * 60ms);
-  }
-}
+/* 6. (Sin revelado al desplazar desde el rediseño de nov-2026: el contenido está quieto y visible.) */
 
 /* ========================================================================
    7. Utilidades (3.19)

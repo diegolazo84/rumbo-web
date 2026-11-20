@@ -8,11 +8,10 @@ export default function Cierre() {
     <section className="capitulo capitulo--oscuro cierre">
       <div className="contenedor contenedor--medio">
         <Encabezado
-          revelar
           variante="centrado"
           titulo={
             <>
-              No necesitas tener todo resuelto para <em>empezar.</em>
+              No necesitas tener todo resuelto para empezar.
             </>
           }
           bajada={bajadaCierre()}

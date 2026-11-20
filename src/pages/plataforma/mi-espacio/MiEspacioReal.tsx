@@ -35,7 +35,10 @@ import DesafiosComunidad from "../../vista-previa/mi-espacio/DesafiosComunidad";
 import LoQueViene from "../../vista-previa/mi-espacio/LoQueViene";
 import MisMetas from "../../vista-previa/mi-espacio/MisMetas";
 import { T_SIN_FICHA } from "../../vista-previa/mi-espacio/textos";
+import { EspacioGratis, PuntoDePartida, type DatosLibre } from "./CuentaGratis";
 import Pago, { TarjetaPago } from "./Pago";
+import { TarjetaPrueba } from "./Prueba";
+import { TarjetaApp } from "./InstalarApp";
 import { armarAusencia, armarDatos, armarNovedades, hoyEn, type Contexto, type Filas } from "./datos";
 
 const LENTO = 8000; // ms: «Sigue cargando…» con «Reintentar» (4.1.4)
@@ -82,7 +85,7 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
     await sb.from("ciclos").select(COLUMNAS.ciclo).eq("participante_id", participante.id).order("numero", { ascending: false }).limit(1).maybeSingle(),
   ) as Filas["ciclo"] | null;
   if (!ciclo) return "sin-ficha";
-  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas, moduloFotos, avisos, moduloComunidad, medibles, notas, recordatorios, correo, asistente] =
+  const [programas, ocurrencias, registros, progreso, dias, registrosSemanales, revisiones, ajustes, planes, contexto, postulaciones, coach, llamadas, avisos, moduloComunidad, medibles, notas, recordatorios, correo, asistente] =
     await Promise.all([
       sb.from("programas").select(COLUMNAS.programa).eq("ciclo_id", ciclo.id).neq("estado", "borrador").order("version"),
       sb.from("ocurrencias").select(COLUMNAS.ocurrencia).eq("ciclo_id", ciclo.id).order("fecha").limit(5000),
@@ -98,8 +101,6 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
       // A3 y C2: si la migración todavía no está en la base, «Tu coach» queda genérico y sin videollamadas.
       sb.rpc("mi_coach"),
       sb.from("videollamadas").select("semana,programada_para,enlace,estado").eq("ciclo_id", ciclo.id).order("semana"),
-      // Módulo «fotos» (A4): mientras el dueño no lo habilite, la subida no se muestra.
-      sb.rpc("modulo_visible", { p_clave: "fotos" }),
       // Mis avisos (A5): los propios, por RLS. Si no se pueden leer, la pantalla lo dice.
       leerAvisos(sb),
       sb.rpc("modulo_visible", { p_clave: "comunidad" }),
@@ -141,7 +142,8 @@ async function leerTodo(sb: Cliente, uid: string): Promise<Leido | "sin-ficha"> 
     ausencia: armarAusencia(aus),
     coach: armarCoach(coach.error ? null : coach.data),
     videollamadas: llamadas.error ? [] : armarVideollamadas(llamadas.data),
-    fotos: !moduloFotos.error && moduloFotos.data === true,
+    // Fotos: siempre presentes (20261206). La foto es opcional en cualquier acción.
+    fotos: true,
     avisos,
     comunidad: !moduloComunidad.error && moduloComunidad.data === true,
     recordatorios: armarRecordatorios(recordatorios),
@@ -288,6 +290,8 @@ type Estado =
   | { tipo: "cargando"; lento: boolean }
   | { tipo: "error" }
   | { tipo: "sin-ficha" }
+  | { tipo: "partida"; nombre: string }
+  | { tipo: "libre"; datos: DatosLibre; version: number }
   | ({ tipo: "listo" } & Leido);
 
 export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
@@ -323,6 +327,19 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
           const equipo = await sb.rpc("soy_equipo");
           if (!equipo.error && equipo.data === true) {
             navegar("/equipo/", { replace: true });
+            return;
+          }
+          // Cuenta gratis «Rumbo Inicial»: sin la migración o con el módulo cerrado, todo sigue igual.
+          const libre = await sb.rpc("mi_cuenta_libre");
+          if (!libre.error && libre.data) {
+            setEstado((e) => ({ tipo: "libre", datos: libre.data as DatosLibre, version: e.tipo === "libre" ? e.version + 1 : 0 }));
+            return;
+          }
+          const abierta = libre.error ? null : await sb.rpc("modulo_visible", { p_clave: "cuenta_gratis" });
+          if (abierta && !abierta.error && abierta.data === true) {
+            const meta = data.session?.user.user_metadata ?? {};
+            const completo = String(meta.full_name ?? meta.name ?? "").trim();
+            setEstado({ tipo: "partida", nombre: completo.split(/\s+/)[0] ?? "" });
             return;
           }
           setEstado({ tipo: "sin-ficha" });
@@ -639,6 +656,7 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
     <EspacioContexto.Provider value={espacio ?? ESPACIO_CARGANDO}>
       <EstructuraApp
         tipo="mi-espacio"
+        sinNavegacion={estado.tipo === "partida" || estado.tipo === "libre"}
         rutas={espacio?.asistente?.disponible ? { ...RUTAS_NAV, asistente: R_REAL.asistente } : RUTAS_NAV}
         seccion={ruta.seccion}
         activo={ruta.activo}
@@ -652,6 +670,18 @@ export default function MiEspacioReal({ ruta }: { ruta: RutaPlataforma }) {
           <Carga estado="error" alReintentar={() => void cargar()} />
         ) : estado.tipo === "sin-ficha" ? (
           <SinFicha />
+        ) : estado.tipo === "partida" && cliente.current ? (
+          <PuntoDePartida sb={cliente.current.sb} nombreSugerido={estado.nombre} alCrear={(d) => (d.prueba ? window.location.reload() : setEstado({ tipo: "libre", datos: d, version: 0 }))} />
+        ) : estado.tipo === "libre" && cliente.current ? (
+          <EspacioGratis
+            key={estado.version}
+            sb={cliente.current.sb}
+            datos={estado.datos}
+            alCambiar={(d) => setEstado((e) => ({ tipo: "libre", datos: d, version: e.tipo === "libre" ? e.version + 1 : 0 }))}
+            salir={R_REAL.salir}
+          />
+        ) : estado.tipo !== "listo" ? (
+          <Carga estado="cargando" />
         ) : (
           <PantallaReal ruta={ruta} espacio={espacio!} />
         )}
@@ -734,11 +764,14 @@ function PantallaReal({ ruta, espacio }: { ruta: RutaPlataforma; espacio: Espaci
 }
 
 // Mientras falta pagar el ciclo, Mi Rumbo muestra la tarjeta «Tu pago» después del título.
+// En el teléfono, mientras se pueda instalar, también la invitación a tener Rumbo a un toque.
 function Inicio({ espacio }: { espacio: Espacio }) {
   return (
     <>
       <InicioSegunCiclo espacio={espacio} />
+      {espacio.ciclo.estado !== "cerrado" && <TarjetaPrueba />}
       {espacio.ciclo.estado !== "cerrado" && <TarjetaPago />}
+      <TarjetaApp />
     </>
   );
 }

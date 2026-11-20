@@ -21,9 +21,12 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
+      # El CLI se instala desde npm: supabase/setup-cli con «latest» consulta la API de GitHub sin
+      # credenciales y falla cuando el runner agota su límite (20-nov-2026, «rate limit exceeded»).
+      - name: Instalar Supabase CLI
+        run: |
+          npm install --no-save --no-package-lock --prefix "$RUNNER_TEMP/supabase-cli" supabase@latest
+          echo "$RUNNER_TEMP/supabase-cli/node_modules/.bin" >> "$GITHUB_PATH"
       - name: Levantar Supabase local
         run: |
           mkdir -p "$RUNNER_TEMP/sb" && cd "$RUNNER_TEMP/sb"

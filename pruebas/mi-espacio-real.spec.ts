@@ -193,8 +193,16 @@ async function simular(page: Page, base: Base, rpc: Record<string, (c: Record<st
     const cuerpo = (req.postDataJSON() ?? {}) as Record<string, unknown>;
     llamadas.push({ tipo: "auth", nombre, url: req.url(), cuerpo });
     if (nombre === "otp") return rt.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+    if (nombre === "token" && new URL(req.url()).searchParams.get("grant_type") === "password") {
+      if (cuerpo.password === "clave-correcta-1") return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(sesion()) });
+      return rt.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ code: "invalid_credentials", message: "Invalid login credentials" }) });
+    }
+    // Con la confirmación de correo encendida, signUp devuelve el usuario sin sesión.
+    if (nombre === "signup")
+      return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...sesion().user, identities: [{ id: "i1", provider: "email" }] }) });
+    if (nombre === "recover" || nombre === "resend") return rt.fulfill({ status: 200, contentType: "application/json", body: "{}" });
     if (nombre === "verify") {
-      if (cuerpo.token === "123456") return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(sesion()) });
+      if (cuerpo.token === "123456" || cuerpo.token_hash === "pin-recuperar") return rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(sesion()) });
       return rt.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ code: "otp_expired", message: "Token has expired or is invalid" }) });
     }
     if (nombre === "logout") return rt.fulfill({ status: 204, body: "" });
@@ -233,6 +241,8 @@ test("sin sesión, Mi espacio lleva al ingreso; con el código entra a Hoy", asy
   await page.goto("mi-espacio/plan/");
   await expect(page.locator("h1")).toHaveText("Entra a tu espacio.");
   await hidratar(page);
+  // Con contraseña encendida, el código queda como alternativa.
+  if (operacion.ingresoContrasena) await page.getByRole("button", { name: "Entrar con un código en mi correo" }).click();
   await page.locator("#entrar-correo").fill("ana@correo.cl");
   await page.getByRole("button", { name: "Enviarme el código" }).click();
   await expect(page.locator("h1")).toHaveText("Revisa tu correo.");
@@ -251,6 +261,265 @@ test("sin sesión, Mi espacio lleva al ingreso; con el código entra a Hoy", asy
   // Vuelve a la ruta que se estaba abriendo.
   await page.waitForURL(/\/mi-espacio\/plan\/$/);
   await expect(page.getByText("Escribir 30 minutos").first()).toBeVisible();
+});
+
+// Cuenta gratis «Rumbo Inicial» (20261204): sin ficha, con el módulo abierto.
+function cuentaLibre(acciones: string[], registros: { accion_id: string; fecha: string }[] = [], pedido: string | null = null) {
+  return {
+    hoy: HOY,
+    abierta: true,
+    cuenta: { nombre: "Fran", correo: "ana@correo.cl", origen: "google", area_id: "proyectos", meta: "Terminar el primer capítulo de mi tesis.", dias: [1, 2, 3, 4, 5], creada_en: "2026-10-12T12:00:00Z", acceso_pedido_en: pedido, apoyo_pedido: null },
+    acciones: acciones.map((t, i) => ({ id: `al${i + 1}`, titulo: t, desde: HOY, hasta: null })),
+    registros,
+    progreso: { creditos: registros.length, nivel: 1, racha: 0, bono_siguiente: 2 },
+  };
+}
+
+test("cuenta gratis: sin programa y con el módulo abierto, arma su punto de partida y entra a su semana", async ({ page }) => {
+  let cuenta: ReturnType<typeof cuentaLibre> | null = null;
+  const llamadas = await simular(page, { ...baseInicial(), participantes: [] }, {
+    mi_cuenta_libre: () => cuenta,
+    modulo_visible: (c) => c.p_clave === "cuenta_gratis",
+    crear_cuenta_libre: (c) => {
+      const p = c.p as { acciones: string[] };
+      cuenta = cuentaLibre(p.acciones);
+      return cuenta;
+    },
+  });
+  await conSesion(page);
+  await page.goto("mi-espacio/");
+  await expect(page.locator("h1")).toHaveText("Tu punto de partida.");
+  await hidratar(page);
+  await sinViolaciones(page);
+  if (process.env.CAPTURAS) {
+    await page.getByRole("radio", { name: /Proyectos y emprendimiento/ }).check();
+    await page.screenshot({ path: `${process.env.CAPTURAS}/2-punto-de-partida-${test.info().project.name}.png`, fullPage: true });
+    await page.reload();
+    await hidratar(page);
+  }
+  await page.getByRole("button", { name: "Empezar mi semana" }).click();
+  await expect(page.getByText("Elige un área.")).toBeVisible();
+  await page.locator("#cg-nombre").fill("Fran");
+  await page.getByRole("radio", { name: /Proyectos y emprendimiento/ }).check();
+  await page.locator("#cg-meta").fill("Terminar el primer capítulo de mi tesis.");
+  await page.getByRole("checkbox", { name: "Trabajar 30 minutos en mi proyecto" }).check();
+  await page.locator("#cg-propia").fill("Leer un artículo");
+  await page.getByRole("button", { name: "Agregar" }).click();
+  await page.getByRole("checkbox", { name: "Escribir la siguiente tarea concreta" }).check();
+  // Tope de 3: la cuarta queda deshabilitada.
+  await expect(page.getByRole("checkbox", { name: "Conversar con una persona sobre mi idea" })).toBeDisabled();
+  await page.getByRole("checkbox", { name: "Tengo 18 años o más" }).check();
+  await page.locator("#cg-acepto").check();
+  await page.getByRole("button", { name: "Empezar mi semana" }).click();
+  await expect(page.locator("h1")).toHaveText("Hola, Fran.");
+  const crear = llamadas.find((l) => l.nombre === "crear_cuenta_libre")!;
+  expect((crear.cuerpo.p as { acciones: string[] }).acciones).toEqual(["Trabajar 30 minutos en mi proyecto", "Leer un artículo", "Escribir la siguiente tarea concreta"]);
+  expect((crear.cuerpo.p as { dias: number[] }).dias).toEqual([1, 2, 3, 4, 5]);
+  await expect(page.getByRole("button", { name: "Marcar «Leer un artículo» como hecha" })).toBeVisible();
+  // Sin la navegación de participantes (Mi plan, Comunidad…): lo gratis no la usa.
+  await expect(page.getByRole("link", { name: "Mi plan" })).toHaveCount(0);
+});
+
+test("cuenta gratis: marca lo de hoy, ve sus créditos y pide acompañamiento", async ({ page }) => {
+  const llamadas = await simular(page, { ...baseInicial(), participantes: [] }, {
+    mi_cuenta_libre: () => cuentaLibre(["Escribir 20 minutos", "Ordenar el escritorio"]),
+    marcar_libre: (c) => ({ creditos: c.p_accion === "al2" ? 4 : 1, nivel: 1, racha: c.p_accion === "al2" ? 1 : 0, bono_siguiente: 2 }),
+    pedir_acompanamiento_libre: () => null,
+  });
+  await conSesion(page);
+  await page.goto("mi-espacio/");
+  await expect(page.locator("h1")).toHaveText("Hola, Fran.");
+  await hidratar(page);
+  await sinViolaciones(page);
+  const primera = page.getByRole("button", { name: "Marcar «Escribir 20 minutos» como hecha" });
+  await primera.click();
+  await expect(page.getByRole("button", { name: "Desmarcar «Escribir 20 minutos»" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Marcar «Ordenar el escritorio» como hecha" }).click();
+  await expect(page.getByText("¡Día completo! Sumaste el bono del día.")).toBeVisible();
+  await expect(page.locator(".cg-cifras dd").first()).toHaveText("4");
+  const m = llamadas.filter((l) => l.nombre === "marcar_libre").map((l) => l.cuerpo);
+  expect(m[0]).toEqual({ p_accion: "al1", p_fecha: HOY, p_hecha: true });
+
+  // Todas las funciones de los planes se ven, con candado.
+  const funciones = page.getByRole("region", { name: "Todo lo que trae Rumbo" });
+  await expect(funciones.getByRole("listitem")).toHaveCount(8);
+  await expect(funciones.getByText("Videollamada semanal")).toBeVisible();
+  await expect(funciones.getByText("Con un plan")).toHaveCount(8);
+  await funciones.getByRole("button", { name: "Ver planes" }).click();
+  await expect(page.getByRole("heading", { name: "Lo que cambia con un coach" })).toBeFocused();
+
+  await page.getByRole("button", { name: "Quiero acompañamiento" }).click();
+  await page.getByRole("radio", { name: /Acompañamiento cercano/ }).check();
+  await page.getByRole("button", { name: "Avisar a Rumbo" }).click();
+  await expect(page.getByText(/Te escribiremos a tu correo en hasta/)).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "pedir_acompanamiento_libre")!.cuerpo).toEqual({ p_apoyo: "cercano" });
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/3-espacio-gratis-${test.info().project.name}.png`, fullPage: true });
+});
+
+test("prueba completa: Mi Rumbo muestra los días que quedan y avisa que quiere seguir con acompañamiento", async ({ page }) => {
+  const llamadas = await simular(page, baseInicial(), {
+    mi_prueba: () => ({ desde: HOY, hasta: HOY, quedan: 10, acceso_pedido: false }),
+    pedir_acompanamiento_libre: () => null,
+  });
+  await conSesion(page);
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  const tarjeta = page.getByRole("region", { name: "Estás probando Rumbo completo" });
+  await expect(tarjeta).toBeVisible();
+  await expect(tarjeta.getByText(/Te quedan 10 días de prueba/)).toBeVisible();
+  await expect(tarjeta.getByText(/revisión escrita de un coach/)).toBeVisible();
+  await sinViolaciones(page);
+  if (process.env.CAPTURAS) { await tarjeta.scrollIntoViewIfNeeded(); await page.screenshot({ path: `${process.env.CAPTURAS}/6-prueba-${test.info().project.name}.png` }); }
+  await tarjeta.getByRole("button", { name: "Quiero seguir con acompañamiento" }).click();
+  await expect(tarjeta.getByText("Listo. Te escribiremos a tu correo para conversar los planes.")).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "pedir_acompanamiento_libre")!.cuerpo).toEqual({ p_apoyo: "nose" });
+});
+
+test("con Google: abre Google con la vuelta a esta ruta, entra con los tokens y los borra de la URL", async ({ page }) => {
+  test.skip(!operacion.ingresoGoogle, "solo con el ingreso con Google encendido (INGRESO_GOOGLE=1)");
+  await simular(page, baseInicial());
+  // La ventana de Google no se abre en la prueba: se intercepta la navegación a /authorize.
+  let autorizar: URL | null = null;
+  await page.route(`${SUPABASE_URL}/auth/v1/authorize**`, (rt) => {
+    autorizar = new URL(rt.request().url());
+    return rt.fulfill({ status: 200, contentType: "text/html", body: "<p>Google</p>" });
+  });
+  await page.goto("mi-espacio/entrar/");
+  await hidratar(page);
+  await expect(page.getByText("o con tu correo", { exact: true })).toBeVisible();
+  if (operacion.ingresoContrasena) await expect(page.getByText("Entra con Google o con tu correo y tu contraseña.")).toBeVisible();
+  else await expect(page.getByText("Te enviamos un código de 6 dígitos para entrar. No necesitas contraseña.")).toBeVisible();
+  await sinViolaciones(page);
+  await page.getByRole("button", { name: "Continuar con Google" }).click();
+  await expect.poll(() => autorizar?.searchParams.get("provider")).toBe("google");
+  expect(autorizar!.searchParams.get("redirect_to")).toMatch(/\/mi-espacio\/entrar\/$/);
+
+  // Vuelta desde Google con la sesión en el fragmento.
+  const s = sesion();
+  // Firma en base64url válida: setSession decodifica el token completo.
+  const token = s.access_token.replace(/\.firma$/, ".ZmlybWFy");
+  await page.goto(`mi-espacio/entrar/#access_token=${token}&refresh_token=${s.refresh_token}&expires_in=3600&token_type=bearer`);
+  await page.waitForURL(/\/mi-espacio\/$/);
+  expect(page.url()).not.toContain("access_token");
+  await expect(page.getByText("Escribir 30 minutos").first()).toBeVisible();
+});
+
+test("cuenta gratis abierta: el ingreso ofrece «Ya tengo cuenta» y «Crear cuenta gratis», con el mismo código", async ({ page }) => {
+  test.skip(!operacion.cuentaGratis, "solo con la cuenta gratis encendida (CUENTA_GRATIS=1)");
+  test.skip(operacion.ingresoContrasena, "con contraseña, la creación se prueba en «crear cuenta con contraseña»");
+  const llamadas = await simular(page, baseInicial());
+  await page.goto("mi-espacio/entrar/");
+  await hidratar(page);
+  await expect(page.getByRole("button", { name: "Ya tengo cuenta" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("h1")).toHaveText("Entra a tu espacio.");
+  await sinViolaciones(page);
+  await page.getByRole("button", { name: "Crear cuenta gratis" }).first().click();
+  await expect(page.locator("h1")).toHaveText("Crea tu cuenta gratis.");
+  await expect(page.getByText("Sin tarjeta y sin contraseña.", { exact: false })).toBeVisible();
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/1-crear-cuenta-${test.info().project.name}.png`, fullPage: true });
+  await page.locator("#entrar-correo").fill("nueva@correo.cl");
+  await page.getByRole("button", { name: "Crear mi cuenta" }).click();
+  await expect(page.locator("h1")).toHaveText("Revisa tu correo.");
+  await expect(page.getByText(/Te enviamos un código de 6 dígitos a nueva@correo.cl/)).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "otp")!.cuerpo.create_user).toBe(true);
+  // ?crear=1 abre directo la creación (enlaces desde la portada).
+  await page.goto("mi-espacio/entrar/?crear=1");
+  await hidratar(page);
+  await expect(page.locator("h1")).toHaveText("Crea tu cuenta gratis.");
+});
+
+test("con contraseña: entra con correo y contraseña; si no coinciden lo dice sin revelar si el correo existe", async ({ page }) => {
+  test.skip(!operacion.ingresoContrasena, "solo con contraseña encendida (INGRESO_CONTRASENA=1)");
+  const llamadas = await simular(page, baseInicial());
+  await page.goto("mi-espacio/plan/");
+  await hidratar(page);
+  await expect(page.locator("#entrar-clave")).toHaveAttribute("type", "password");
+  await expect(page.locator("#entrar-clave")).toHaveAttribute("autocomplete", "current-password");
+  await sinViolaciones(page);
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/5-entrar-contrasena-${test.info().project.name}.png`, fullPage: true });
+  await page.locator("#entrar-correo").fill("ana@correo.cl");
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await expect(page.getByText("Escribe tu contraseña.")).toBeVisible();
+  await page.locator("#entrar-clave").fill("otra-clave");
+  await page.getByLabel("Mostrar contraseña").check();
+  await expect(page.locator("#entrar-clave")).toHaveAttribute("type", "text");
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await expect(page.getByText(/El correo o la contraseña no coinciden/)).toBeVisible();
+  await page.locator("#entrar-clave").fill("clave-correcta-1");
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await page.waitForURL(/\/mi-espacio\/plan\/$/);
+  const t = llamadas.filter((l) => l.nombre === "token");
+  expect(t.at(-1)!.cuerpo).toMatchObject({ email: "ana@correo.cl", password: "clave-correcta-1" });
+  // La contraseña nunca va en la URL.
+  expect(page.url()).not.toContain("clave");
+});
+
+test("con contraseña: «Olvidé mi contraseña» envía un código y lleva a crear una contraseña nueva", async ({ page }) => {
+  test.skip(!operacion.ingresoContrasena, "solo con contraseña encendida (INGRESO_CONTRASENA=1)");
+  const llamadas = await simular(page, baseInicial());
+  await page.goto("mi-espacio/entrar/");
+  await hidratar(page);
+  // La página viene prerenderizada: un clic antes de que React tome el botón se pierde. Se reintenta.
+  await expect(async () => {
+    await page.getByRole("button", { name: "Olvidé mi contraseña" }).click();
+    await expect(page.getByText("Escribe tu correo arriba y vuelve a tocar «Olvidé mi contraseña».")).toBeVisible({ timeout: 1000 });
+  }).toPass();
+  await page.locator("#entrar-correo").fill("ana@correo.cl");
+  await page.getByRole("button", { name: "Olvidé mi contraseña" }).click();
+  await expect(page.locator("h1")).toHaveText("Revisa tu correo.");
+  await expect(page.getByText(/te enviamos un código de 6 dígitos para crear una contraseña nueva/)).toBeVisible();
+  expect(llamadas.find((l) => l.nombre === "recover")!.cuerpo.email).toBe("ana@correo.cl");
+  await page.locator("#entrar-codigo").fill("123456");
+  await page.getByRole("button", { name: "Seguir" }).click();
+  await expect(page.locator("h1")).toHaveText("Crea tu contraseña nueva.");
+  expect(llamadas.filter((l) => l.nombre === "verify").at(-1)!.cuerpo.type).toBe("recovery");
+  await sinViolaciones(page);
+  await page.locator("#nueva-clave").fill("corta");
+  await page.getByRole("button", { name: "Guardar y entrar" }).click();
+  await expect(page.getByText("Usa al menos 8 caracteres.")).toBeVisible();
+  await page.locator("#nueva-clave").fill("mi-clave-nueva-1");
+  await page.getByRole("button", { name: "Guardar y entrar" }).click();
+  await page.waitForURL(/\/mi-espacio\/$/);
+  expect(llamadas.filter((l) => l.nombre === "user").some((l) => l.cuerpo.password === "mi-clave-nueva-1")).toBe(true);
+
+  // El botón del correo (?th=…&type=recovery) también lleva a la contraseña nueva.
+  await page.evaluate(() => window.localStorage.clear());
+  await page.goto("mi-espacio/entrar/?th=pin-recuperar&type=recovery");
+  await expect(page.locator("h1")).toHaveText("Crea tu contraseña nueva.");
+  expect(page.url()).not.toContain("pin-recuperar");
+});
+
+test("con contraseña: crear cuenta gratis pide confirmar el correo con un código", async ({ page }) => {
+  test.skip(!operacion.ingresoContrasena || !operacion.cuentaGratis, "solo con contraseña y cuenta gratis encendidas");
+  const llamadas = await simular(page, baseInicial());
+  await page.goto("mi-espacio/entrar/?crear=1");
+  await hidratar(page);
+  await expect(page.locator("h1")).toHaveText("Crea tu cuenta gratis.");
+  await expect(page.locator("#entrar-clave")).toHaveAttribute("autocomplete", "new-password");
+  await expect(page.getByRole("button", { name: "Olvidé mi contraseña" })).toHaveCount(0);
+  await sinViolaciones(page);
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/1-crear-cuenta-${test.info().project.name}.png`, fullPage: true });
+  await page.locator("#entrar-correo").fill("nueva@correo.cl");
+  await page.locator("#entrar-clave").fill("corta");
+  await page.getByRole("button", { name: "Crear mi cuenta" }).click();
+  await expect(page.getByText("Usa al menos 8 caracteres.")).toBeVisible();
+  await page.locator("#entrar-clave").fill("mi-clave-larga-1");
+  await page.getByRole("button", { name: "Crear mi cuenta" }).click();
+  await expect(page.locator("h1")).toHaveText("Confirma tu correo.");
+  expect(llamadas.find((l) => l.nombre === "signup")!.cuerpo).toMatchObject({ email: "nueva@correo.cl", password: "mi-clave-larga-1" });
+  await page.locator("#entrar-codigo").fill("123456");
+  await page.getByRole("button", { name: "Confirmar" }).click();
+  await page.waitForURL(/\/mi-espacio\/$/);
+  expect(llamadas.filter((l) => l.nombre === "verify").at(-1)!.cuerpo.type).toBe("signup");
+});
+
+test("con Google: si Google devuelve un error, se queda en el ingreso con un aviso claro", async ({ page }) => {
+  test.skip(!operacion.ingresoGoogle, "solo con el ingreso con Google encendido (INGRESO_GOOGLE=1)");
+  await simular(page, baseInicial());
+  await page.goto("mi-espacio/entrar/#error=access_denied&error_description=cancelado");
+  await expect(page.getByText("No pudimos abrir Google. Inténtalo de nuevo o recibe un código en tu correo.")).toBeVisible();
+  expect(page.url()).not.toContain("error=");
+  await expect(page.locator("#entrar-correo")).toBeVisible();
 });
 
 test("enlace del correo vencido: «Este enlace ya no sirve.» y el token sale de la URL", async ({ page }) => {
@@ -507,15 +776,15 @@ test("Lo que viene real: lo que el dueño ya habilitó deja de aparecer; sin la 
   await page.goto("mi-espacio/lo-que-viene/");
   await hidratar(page);
   const titulos = page.locator(".me-lqv__titulo");
-  await expect(titulos).toHaveCount(6);
+  await expect(titulos).toHaveCount(5);
   await expect(titulos).not.toContainText(["Comunidad con foro moderado"]);
-  await expect(page.getByText("Ranking semanal voluntario")).toBeVisible(); // probado no basta
-  await expect(page.getByText("Aplicación móvil")).toHaveCount(0);
-  // Sin la tabla (migración sin aplicar): las 8 funciones, como hasta ahora.
+  // Fotos, ranking y reconocimientos ya están siempre presentes: no aparecen como «lo que viene».
+  await expect(page.getByText("Ranking semanal voluntario")).toHaveCount(0);
+  // Sin la tabla (migración sin aplicar): las 6 funciones que aún no existen.
   await page.route("**/rest/v1/modulos**", (rt) => rt.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ code: "42P01", message: "no existe" }) }));
   await page.reload();
   await hidratar(page);
-  await expect(titulos).toHaveCount(8);
+  await expect(titulos).toHaveCount(6);
 });
 
 // Rumbo 2.0, etapa 2: Mi acompañamiento muestra solo lo que existe en la base.
@@ -989,7 +1258,7 @@ test("Mis logros real (C17): todo de la base; recompensas y ranking solo con su 
     { clave: "meta_alcanzada", nombre: "Meta alcanzada", descripcion: "Lograste todos los hitos de una meta.", umbral: null, activo: true },
   ];
   base.alias = [{ participante_id: "p1", alias: "Ana C", en_ranking: false }];
-  const apagado = { modulo_visible: () => false, mis_beneficios: () => [], mi_beneficio_renovacion: () => [] };
+  const apagado = { modulo_visible: () => false, mis_reconocimientos: () => [], mis_beneficios: () => [], mi_beneficio_renovacion: () => [] };
   let llamadas = await simular(page, base, apagado);
   await page.goto("mi-espacio/logros/");
   await hidratar(page);
@@ -997,13 +1266,12 @@ test("Mis logros real (C17): todo de la base; recompensas y ranking solo con su 
   await expect(page.getByText("Ejemplo", { exact: true })).toHaveCount(0);
   await expect(page.locator(".ml-cifra")).toHaveText("3 créditos acumulados");
   await expect(page.locator(".ml-nivel__nombre")).toHaveText("Inicio");
-  // Módulos sin habilitar y beneficio apagado: ni reconocimientos, ni recompensas, ni ranking.
-  await expect(page.locator(".ml-cifra")).toBeVisible();
-  await expect.poll(() => llamadas.filter((l) => l.nombre === "modulo_visible" && !["fotos", "comunidad"].includes(String(l.cuerpo.p_clave))).length).toBe(2);
-  await expect(page.getByRole("heading", { name: "Mis reconocimientos" })).toHaveCount(0);
+  // Reconocimientos y ranking siempre presentes (20261206); el 10 % apagado no se muestra.
+  await expect(page.getByRole("heading", { name: "Mis reconocimientos" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Ranking/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Mis recompensas" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: /Ranking/ })).toHaveCount(0);
-  expect(llamadas.some((l) => l.nombre === "mis_reconocimientos" || l.nombre === "ranking_semanal")).toBe(false);
+  expect(llamadas.some((l) => l.nombre === "modulo_visible" && ["reconocimientos", "ranking"].includes(String(l.cuerpo.p_clave)))).toBe(false);
+  expect(llamadas.some((l) => l.nombre === "ranking_semanal")).toBe(false);
 
   // Habilitados: aparecen solos, con lo que dice la base.
   await page.unrouteAll({ behavior: "ignoreErrors" });
@@ -1124,9 +1392,9 @@ test("Mis logros real (C17) con datos: 10 niveles, créditos, rachas, 4 semanas,
   await expect(estado("ciclo_completado")).toContainText("Día 9 de 28");
   await expect(estado("meta_alcanzada")).toContainText("1 de 2 hitos");
 
-  // Recompensas y ranking siguen ocultos.
+  // El 10 % apagado no se muestra; el ranking está siempre presente (voluntario).
   await expect(page.getByRole("heading", { name: "Mis recompensas" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: /Ranking/ })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /Ranking/ })).toBeVisible();
   expect(llamadas.some((l) => l.nombre === "ranking_semanal")).toBe(false);
 });
 
@@ -1402,22 +1670,15 @@ function rpcFotos(base: Base, orden: string[], { fotos = true, rechazar = false 
   };
 }
 
-test("Fotos (opción A): con el módulo «fotos» apagado no hay subida; se conserva «No puedo subir una foto»", async ({ page }) => {
+test("Fotos siempre presentes: no dependen del módulo y se ofrecen en la acción", async ({ page }) => {
   await conSesion(page);
   const base = baseConFoto();
   const orden: string[] = [];
   const llamadas = await simular(page, base, rpcFotos(base, orden, { fotos: false }));
   await page.goto("mi-espacio/plan/accion/?id=o-foto");
   await hidratar(page);
-  await expect.poll(() => llamadas.some((l) => l.nombre === "modulo_visible" && l.cuerpo.p_clave === "fotos")).toBe(true);
-  await expect(page.getByRole("button", { name: "No puedo subir una foto" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Subir foto" })).toHaveCount(0);
-  await expect(page.locator("input[type=file]")).toHaveCount(0);
-  // Acción sin foto obligatoria, ya hecha: tampoco ofrece foto opcional.
-  await page.goto("mi-espacio/plan/accion/?id=o-2026-10-12");
-  await hidratar(page);
-  await expect(page.locator(".me-hecha")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Agregar una foto" })).toHaveCount(0);
+  await expect(page.locator("input[type=file]").first()).toBeAttached();
+  expect(llamadas.some((l) => l.nombre === "modulo_visible" && l.cuerpo.p_clave === "fotos")).toBe(false);
 });
 
 test("Fotos (opción A): sube en WebP de 1600 px sin metadatos, a su carpeta, y la miniatura usa enlace firmado", async ({ page }) => {
@@ -1746,7 +2007,7 @@ test("Registrar acción medible: sin la columna nota no se muestra la nota; si f
   await expect(page.getByLabel("¿Cuánto tiempo hiciste hoy?")).toBeVisible();
   await expect(page.getByText("¿Cómo te sentiste hoy?")).toHaveCount(0);
   await page.getByRole("button", { name: "Guardar acción" }).click();
-  await expect(page.getByRole("alert")).toContainText("Tu acción quedó marcada");
+  await expect(page.locator("form").getByRole("alert")).toContainText("Tu acción quedó marcada");
   falla = false;
   await page.getByRole("button", { name: "Guardar cambios" }).click();
   await expect(page.locator(".me-registrada").getByText("Anotaste 30 minutos.")).toBeVisible();
@@ -1788,7 +2049,7 @@ test("Informe de cierre real: datos de informe_ciclo y el mensaje escrito por el
   // Reconocimientos apagados: sin tarjeta de logros y, en su lugar, días con todo hecho.
   await expect(page.locator(".ic-dato--logros")).toContainText("9días con todo hecho");
   await expect(page.getByRole("heading", { name: "Logros más destacados" })).toHaveCount(0);
-  expect(llamadas.some((l) => l.nombre === "mis_reconocimientos")).toBe(false);
+  // Reconocimientos siempre presentes: si su lectura falla, el informe usa los días con todo hecho.
   await expect(page.locator(".ic-grafico__semanas li")).toHaveCount(4);
   await expect(page.locator(".ic-evolucion [role=img]")).toHaveAttribute("aria-label", /semana 1, 5 de 5; semana 2, 4 de 5; semana 3, 3 de 5; semana 4, 3 de 5\.$/);
   const coach = page.locator(".ic-coach");
@@ -1796,8 +2057,14 @@ test("Informe de cierre real: datos de informe_ciclo y el mensaje escrito por el
   await expect(coach.locator(".ic-coach__texto")).toHaveText("Cerraste este ciclo con mucha constancia.\nSigamos conversando.");
   await expect(coach.locator(".ic-coach__autor")).toHaveText("Carla Soto");
   await expect(coach.locator(".me-coach__avatar")).toHaveText("CS");
-  await expect(page.getByRole("link", { name: "Quiero seguir con un nuevo ciclo" })).toHaveAttribute("href", /\/contacto\/\?motivo=solicitud$/);
+  await expect(page.getByRole("link", { name: "Quiero seguir con un nuevo ciclo" })).toHaveAttribute("href", /\/contacto\/\?motivo=solicitud&tema=nuevo-ciclo$/);
   await sinViolaciones(page);
+  // Renovar: el contacto llega con el mensaje preparado y el correo de la persona (sin ir en la dirección).
+  await page.getByRole("link", { name: "Quiero seguir con un nuevo ciclo" }).click();
+  await expect(page.getByLabel("Tu mensaje")).toHaveValue(/quiero seguir con uno nuevo/);
+  await expect(page.getByLabel(/^Tu correo/)).toHaveValue(/@/);
+  await expect(page.getByRole("radio", { name: "Sobre mi solicitud" })).toBeChecked();
+  expect(page.url()).not.toContain("@");
 });
 
 test("Informe de cierre real: sin mensaje, el último foco; sin focos, ninguna tarjeta; error con reintento", async ({ page }) => {
@@ -2137,6 +2404,47 @@ test("Asistente real: Mis conversaciones muestra solo lo que entrega mis_consult
 // deja un aviso y no registra el pago ni toca el ciclo.
 const PAGO = { ciclo_id: "c2", numero: 1, monto_clp: 64000, inicio: "2026-10-19", vence: "2026-10-18", pagado: false, aviso_en: null, datos: ["Banco de Prueba", "Cuenta corriente 000123"] };
 
+test("App instalable: tarjeta en Mi Rumbo (teléfono) con el aviso del navegador, «Ahora no» la guarda y Preferencias lo explica", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await conSesion(page);
+  await simular(page, baseInicial());
+  await page.goto("mi-espacio/");
+  await hidratar(page);
+  await expect(page.locator("main h1")).toHaveText("Mi Rumbo", { timeout: 15_000 });
+  // Sin aviso del navegador (y fuera de iPhone) no hay tarjeta.
+  await expect(page.locator(".me-app__inicio")).toHaveCount(0);
+  const ofrecer = () =>
+    page.evaluate(() => {
+      const e = new Event("beforeinstallprompt") as Event & Record<string, unknown>;
+      e.prompt = async () => void ((window as unknown as Record<string, boolean>).__pidio = true);
+      e.userChoice = Promise.resolve({ outcome: "dismissed" });
+      window.dispatchEvent(e);
+    });
+  await ofrecer();
+  const tarjeta = page.locator(".me-app__inicio");
+  await expect(tarjeta.getByRole("heading", { name: "Ten Rumbo a un toque" })).toBeVisible();
+  await tarjeta.getByRole("button", { name: "Instalar Rumbo" }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as Record<string, boolean>).__pidio)).toBe(true);
+  await ofrecer();
+  const axe = await new AxeBuilder({ page }).include(".me-app__inicio").withTags(ETIQUETAS_AXE).analyze();
+  expect(axe.violations.map((v) => v.id)).toEqual([]);
+  await tarjeta.getByRole("button", { name: "Ahora no" }).click();
+  await expect(tarjeta).toHaveCount(0);
+  await page.reload();
+  await hidratar(page);
+  await expect(page.locator("main h1")).toHaveText("Mi Rumbo", { timeout: 15_000 });
+  await ofrecer();
+  await expect(page.locator(".me-app__inicio")).toHaveCount(0);
+  // Preferencias sigue ofreciendo instalar, sin guardar datos en el teléfono.
+  await page.goto("mi-espacio/preferencias/");
+  await hidratar(page);
+  const seccion = page.locator("#app");
+  await expect(seccion.getByRole("heading", { name: "Rumbo en tu teléfono" })).toBeVisible({ timeout: 15_000 });
+  await ofrecer();
+  await expect(seccion.getByRole("button", { name: "Instalar Rumbo" })).toBeVisible();
+  await expect(seccion).toContainText("No guardamos tus datos en el teléfono.");
+});
+
 test("Tu pago: monto, vencimiento, copiar datos y avisar sin confirmar el pago", async ({ page, context, browserName }) => {
   if (browserName === "chromium") await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await conSesion(page);
@@ -2260,4 +2568,64 @@ test("Mi plan antes de que empiece el ciclo: dice cuándo empieza y abre en la p
   await expect(page.getByText("19 al 25 de octubre")).toBeVisible();
   await expect(page.getByText("Escribir 30 minutos").first()).toBeVisible();
   await sinViolaciones(page);
+});
+
+test.describe("service worker", () => {
+test.use({ serviceWorkers: "allow" });
+test("Mi espacio se instala como app: manifiesto propio, service worker solo en /mi-espacio/ y aviso sin conexión", async ({ page, context }) => {
+  await simular(page, baseInicial());
+  await page.goto("mi-espacio/entrar/");
+  await hidratar(page);
+  const manifiesto = await page.locator('link[rel="manifest"]').getAttribute("href");
+  expect(manifiesto).toMatch(/mi-espacio\.webmanifest$/);
+  const m = await (await page.request.get(new URL(manifiesto!, page.url()).href)).json();
+  expect(m.display).toBe("standalone");
+  expect(m.scope).toBe("mi-espacio/");
+  const alcance = await page.evaluate(async () => (await navigator.serviceWorker.ready).scope);
+  expect(new URL(alcance).pathname).toMatch(/\/mi-espacio\/$/);
+  // Sin conexión, la página de Mi espacio explica que necesita internet y deja los números de ayuda.
+  await page.reload();
+  await context.setOffline(true);
+  await page.goto("mi-espacio/plan/").catch(() => {});
+  await expect(page.locator("h1")).toHaveText("Sin conexión");
+  await expect(page.getByRole("link", { name: "131" })).toHaveAttribute("href", "tel:131");
+  await context.setOffline(false);
+  // La portada no queda bajo el service worker.
+  await page.goto("./");
+  expect(await page.evaluate(() => navigator.serviceWorker.controller)).toBeNull();
+});
+});
+
+test("Mis logros: galería «Cómo empezaste y cómo vas»: cada foto con su acción, su día y su meta", async ({ page }) => {
+  await conSesion(page);
+  const base = baseInicial();
+  const reg = (fecha: string) => ({ ocurrencia_id: `o-${fecha}`, participante_id: "p1", estado: "hecha", version: "completa", explicacion: null, nota_revision: null, revisado_en: null, foto_ruta: `p1/o-${fecha}/foto.webp` });
+  base.registros = [reg("2026-10-12"), reg("2026-10-06"), reg("2026-10-14")];
+  const orden: string[] = [];
+  await simular(page, base, { mis_reconocimientos: () => [], mis_beneficios: () => [], mi_beneficio_renovacion: () => [] });
+  await simularEvidencias(page, orden);
+  await page.goto("mi-espacio/logros/");
+  await hidratar(page);
+  const galeria = page.locator("section", { has: page.getByRole("heading", { name: "Cómo empezaste y cómo vas" }) });
+  const par = galeria.locator(".ml-fotos__par .ml-foto");
+  await expect(par).toHaveCount(2);
+  await expect(par.first()).toContainText("Así empezaste");
+  await expect(par.first()).toContainText("Día 2");
+  await expect(par.first()).toContainText("Escribir 30 minutos");
+  await expect(par.first()).toContainText("Martes 6 de octubre");
+  await expect(par.first()).toContainText("Terminar mi tesis");
+  await expect(par.first()).toHaveAttribute("href", /o-2026-10-06/);
+  await expect(par.last()).toContainText("Así vas, 8 días después");
+  await expect(par.last()).toContainText("Día 10");
+  // Recorrido agrupado por semana del ciclo.
+  await expect(galeria.getByRole("heading", { name: "Tu recorrido en fotos (3)" })).toBeVisible();
+  await expect(galeria.locator(".ml-fotos__semana")).toHaveCount(2);
+  await expect(galeria.locator(".ml-fotos__semana").first().locator(".ml-foto")).toHaveCount(1);
+  await expect(galeria.locator(".ml-fotos__semana").last().locator(".ml-foto")).toHaveCount(2);
+  await sinViolaciones(page);
+  // Sin fotos, la galería no aparece (nunca se muestran fotos de ejemplo).
+  base.registros = [];
+  await page.reload();
+  await hidratar(page);
+  await expect(page.getByRole("heading", { name: "Cómo empezaste y cómo vas" })).toHaveCount(0);
 });

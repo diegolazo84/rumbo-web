@@ -430,6 +430,11 @@ export const CONTACTO = {
     errores: { vacio: "Escribe tu mensaje.", corto: "Cuéntanos un poco más (mínimo 10 caracteres)." },
   },
   informacion: { antes: "Usamos tu correo y tu mensaje solo para responderte. Más en ", enlace: "Política de privacidad", despues: "." },
+  // ?tema=: mensajes preparados desde Mi espacio (la persona puede editarlos antes de enviar).
+  temas: {
+    "nuevo-ciclo":
+      "Terminé mi ciclo en Rumbo y quiero seguir con uno nuevo. Me gustaría conversar qué mantener, qué ajustar y cuándo empezar.",
+  } as Record<string, string>,
   boton: "Enviar mensaje",
   confirmacion: {
     titulo: "Recibimos tu mensaje.",
@@ -510,6 +515,56 @@ export const ENTRAR = {
   ojo: "Mi espacio",
   titulo: "Entra a tu espacio.",
   bajada: "Escribe el correo con el que acordamos tu programa. Te enviaremos un código para entrar, sin contraseña.",
+  bajadaGoogle: "Entra con la cuenta de Google o el correo con que acordamos tu programa. Sin contraseñas.",
+  google: { boton: "Continuar con Google", abriendo: "Abriendo Google…", separador: "o con tu correo" },
+  // El código reemplaza a la contraseña: se explica bajo el campo del correo.
+  ayudaCodigo: "Te enviamos un código de 6 dígitos para entrar. No necesitas contraseña.",
+  // Cuenta gratis abierta (operacion.cuentaGratis): dos caminos claros al llegar.
+  modos: {
+    leyenda: "¿Ya tienes cuenta en Rumbo?",
+    entrar: "Ya tengo cuenta",
+    crear: "Crear cuenta gratis",
+  },
+  crear: {
+    titulo: "Crea tu cuenta gratis.",
+    bajada: "Ordena tu semana con una meta y hasta 3 acciones diarias. Sin tarjeta y sin contraseña.",
+    google: "Registrarme con Google",
+    boton: "Crear mi cuenta",
+    nota: "¿Prefieres empezar con un coach desde el primer día? ",
+    notaEnlace: "Cuéntanos tu meta",
+  },
+  entrarAbierto: {
+    bajada: "Entra con Google o con tu correo.",
+    nota: "¿Todavía no tienes cuenta? ",
+    notaBoton: "Crea tu cuenta gratis",
+  },
+  // Con contraseña (operacion.ingresoContrasena): camino principal. El código queda como
+  // alternativa («Entrar con un código») y para crear una contraseña nueva.
+  clave: {
+    bajada: "Entra con tu correo y tu contraseña.",
+    bajadaGoogle: "Entra con Google o con tu correo y tu contraseña.",
+    bajadaCrear: "Ordena tu semana con una meta y hasta 3 acciones diarias. Sin tarjeta.",
+    etiqueta: "Contraseña",
+    etiquetaNueva: "Crea una contraseña",
+    ayudaNueva: "Al menos 8 caracteres. Úsala solo en Rumbo.",
+    mostrar: "Mostrar contraseña",
+    boton: "Entrar",
+    enviando: "Entrando…",
+    creando: "Creando tu cuenta…",
+    olvide: "Olvidé mi contraseña",
+    conCodigo: "Entrar con un código en mi correo",
+    conClave: "Entrar con mi contraseña",
+    primeraVez: "¿Tu programa ya está acordado y nunca creaste una contraseña? Usa «Olvidé mi contraseña» o entra con un código.",
+    errores: {
+      vacia: "Escribe tu contraseña.",
+      corta: "Usa al menos 8 caracteres.",
+      noCoincide: "El correo o la contraseña no coinciden. Si nunca creaste una contraseña, usa «Olvidé mi contraseña».",
+      debil: "Esa contraseña es muy fácil de adivinar. Prueba con una más larga o distinta.",
+      existe: "Ya hay una cuenta con ese correo. Entra con tu contraseña o usa «Olvidé mi contraseña».",
+      limite: "Hiciste varios intentos seguidos. Espera unos minutos y vuelve a intentarlo.",
+      olvideSinCorreo: "Escribe tu correo arriba y vuelve a tocar «Olvidé mi contraseña».",
+    },
+  },
   correo: { etiqueta: "Tu correo", atributos: { type: "email", autoComplete: "email", inputMode: "email" } },
   compartido: { etiqueta: "Estoy en un computador compartido", ayuda: "Tu sesión se cierra al cerrar el navegador." },
   boton: "Enviarme el código",
@@ -521,6 +576,7 @@ export const ENTRAR = {
     formato: "Revisa tu correo: parece incompleto (falta la @ o lo que va después).",
     limite: "Pediste varios códigos seguidos. Espera unos minutos antes de pedir otro.",
     red: "No pudimos conectarnos. Revisa tu conexión e inténtalo de nuevo.",
+    google: "No pudimos abrir Google. Inténtalo de nuevo o recibe un código en tu correo.",
   },
 } as const;
 
@@ -528,6 +584,17 @@ export const REVISA_CORREO = {
   titulo: "Revisa tu correo.",
   texto: (correo: string) =>
     `Si ${correo} tiene un espacio en Rumbo, te enviamos un código de 6 dígitos. Llega en unos minutos y sirve una sola vez durante 1 hora.`,
+  // Con la cuenta gratis abierta, todo correo recibe su código (si no tiene cuenta, se crea al entrar).
+  textoAbierto: (correo: string) =>
+    `Te enviamos un código de 6 dígitos a ${correo}. Llega en unos minutos y sirve una sola vez durante 1 hora.`,
+  // Confirmar una cuenta nueva con contraseña y crear una contraseña nueva: mismo código de 6 dígitos.
+  tituloConfirmar: "Confirma tu correo.",
+  textoConfirmar: (correo: string) =>
+    `Te enviamos un código de 6 dígitos a ${correo} para confirmar tu cuenta. Llega en unos minutos y sirve durante 1 hora.`,
+  textoRecuperar: (correo: string) =>
+    `Si ${correo} tiene una cuenta en Rumbo, te enviamos un código de 6 dígitos para crear una contraseña nueva. Sirve durante 1 hora.`,
+  botonConfirmar: "Confirmar",
+  botonRecuperar: "Seguir",
   cambiar: "¿No es tu correo? Cambiarlo",
   codigo: {
     etiqueta: "Código de 6 dígitos",
@@ -548,6 +615,14 @@ export const REVISA_CORREO = {
     noCoincide: "Ese código no coincide. Revísalo o pide uno nuevo.",
     vencido: "Ese código venció. Pide uno nuevo; tu programa sigue aquí.",
   },
+} as const;
+
+export const NUEVA_CLAVE = {
+  titulo: "Crea tu contraseña nueva.",
+  bajada: "La usarás desde ahora para entrar con tu correo.",
+  boton: "Guardar y entrar",
+  enviando: "Guardando…",
+  error: "No pudimos guardar tu contraseña. Revisa tu conexión e inténtalo de nuevo.",
 } as const;
 
 export const ENLACE_VENCIDO = {

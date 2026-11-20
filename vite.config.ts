@@ -17,6 +17,12 @@ export default defineConfig({
     __MI_ESPACIO_PROPIO__: JSON.stringify(process.env.MI_ESPACIO_PROPIO === "1"),
     // LEGAL_13=1 muestra Privacidad y Condiciones 1.3 en esta compilación (pruebas; no publicar así).
     __LEGAL_13__: JSON.stringify(process.env.LEGAL_13 === "1"),
+    // INGRESO_GOOGLE=1 muestra «Continuar con Google» sin tocar rumbo.ts (pruebas).
+    __INGRESO_GOOGLE__: JSON.stringify(process.env.INGRESO_GOOGLE === "1"),
+    // CUENTA_GRATIS=1: ingreso con «Ya tengo cuenta» y «Crear cuenta gratis» (pruebas).
+    __CUENTA_GRATIS__: JSON.stringify(process.env.CUENTA_GRATIS === "1"),
+    // INGRESO_CONTRASENA=1: entrar y crear cuenta con contraseña (pruebas).
+    __INGRESO_CONTRASENA__: JSON.stringify(process.env.INGRESO_CONTRASENA === "1"),
   },
   // postbuild.mjs lee el manifiesto para enlazar en <head> el CSS de las páginas perezosas
   // (postular, estado y contacto) y lo borra después: no se publica.

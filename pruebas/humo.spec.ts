@@ -22,7 +22,6 @@ import {
   planes,
   planesIncluyen,
   reglasCreditos,
-  reglasCreditosTextos,
 } from "../src/data/rumbo";
 import { buscarMarcadores } from "../scripts/marcadores.mjs";
 import { MI_ESPACIO } from "../src/data/formularios";
@@ -191,7 +190,7 @@ for (const p of paginas) {
       const page = await ctx.newPage();
       await page.goto(relativa(p.ruta));
       await expect(page.locator("h1")).toBeVisible();
-      await expect(page.locator("footer")).toContainText("Rumbo no es un servicio de salud ni de urgencias.");
+      await expect(page.locator("footer")).toContainText("Rumbo no es un servicio de urgencias.");
       if (p.id === "inicio") {
         // Contado desde los datos: 4 caminos, 2 precios y las preguntas que se publican hoy.
         await expect(page.locator("#areas .camino")).toHaveCount(areasPiloto.length);
@@ -318,17 +317,17 @@ test("accesibilidad con estados abiertos: menú, detalles y acciones marcadas", 
 test("el calendario de ejemplo es interactivo tras hidratar", async ({ page }) => {
   await page.goto("./");
   await esperarHidratacion(page);
-  const creditos = page.locator(".calendario-creditos");
+  // Desde nov-2026 la portada no muestra créditos, niveles ni rachas (quedan en Mi espacio).
+  const cuenta = page.locator(".calendario-creditos");
   const anuncio = page.locator('.calendario [aria-live="polite"]');
-  await expect(creditos).toHaveText("9 créditos");
-  await expect(page.locator(".calendario")).not.toContainText("Día completo");
+  await expect(cuenta).toHaveText("0 de 5 hechas");
+  await expect(page.locator(".calendario")).not.toContainText(/crédito|Nivel|Día completo/);
   const antes = await anuncio.textContent();
   await page.getByLabel(/Reservar 2 bloques de trabajo/).check();
-  // 1 por la acción + 2 por día completo (martes tiene una sola acción).
-  await expect(creditos).toHaveText("12 créditos");
-  await expect(page.locator(".calendario")).toContainText("Día completo · +2");
-  await expect(anuncio).toHaveText("12 créditos. Nivel 2, Impulso.");
+  await expect(cuenta).toHaveText("1 de 5 hechas");
+  await expect(anuncio).toHaveText("1 de 5 acciones marcadas.");
   expect(await anuncio.textContent()).not.toBe(antes);
+  await expect(page.locator(".calendario .accion-ficha")).toHaveCount(0);
 });
 
 test("menú móvil: abre, Escape, toque fuera y Tab fuera lo cierran", async ({ page, isMobile }) => {
@@ -604,9 +603,15 @@ test("presupuesto de peso (dist/)", async () => {
   const js = cargados.filter((f) => f.endsWith(".js")).reduce((t, f) => t + gz(f), 0);
   const css = cargados.filter((f) => f.endsWith(".css")).reduce((t, f) => t + gz(f), 0);
   // 111 KB desde la Etapa 0 de Rumbo 2.0 (antes 110): los textos de Privacidad y Condiciones 1.2 conviven con los del
+<<<<<<< HEAD
   // modo con los interruptores apagados, que el compilado no descarta. 114 KB desde Rumbo 1.0: suman los textos 1.3
   // (apagados). Al publicar la 1.3, borrar las ramas 1.0–1.2 y volver a bajar este límite.
   expect(js, "JS comprimido").toBeLessThan(114 * 1024);
+=======
+  // modo con los interruptores apagados, que el compilado no descarta.
+  // 112 KB desde las fotos de la portada (nov-2026): rutas, anchos y textos alternativos de 8 fotos.
+  expect(js, "JS comprimido").toBeLessThan(112 * 1024);
+>>>>>>> origin/main
   expect(css, "CSS comprimido").toBeLessThan(12 * 1024);
   expect(html.length, "HTML de la portada").toBeLessThan(70 * 1024);
   const precargas = [...html.toString().matchAll(/rel="preload" href="[^"]*\/assets\/([^"]+)"/g)].map((m) => m[1]);
@@ -675,19 +680,13 @@ test.describe("coherencia de datos", () => {
     expect(await listaTras(encabezado(page.locator("main"), "Quién puede participar"))).toEqual(noEsParaTi.map(normal));
   });
 
-  test("reglas de créditos: portada, calendario y Condiciones usan reglasCreditos", async ({ page }) => {
+  test("reglas de créditos: fuera de la portada y completas en Condiciones", async ({ page }) => {
     const r = reglasCreditos;
+    // Decisión de Diego (18-nov-2026): niveles, créditos y rachas no se venden en la portada.
     await page.goto("./");
-    const reglas = await page
-      .locator("#comunidad li")
-      .evaluateAll((lis) => lis.map((li) => li.textContent ?? ""));
-    const esperadas = reglasCreditosTextos().map(normal);
-    const inicio = reglas.map(normal).indexOf(esperadas[0]);
-    expect(inicio, "las reglas de créditos no están en #comunidad").toBeGreaterThanOrEqual(0);
-    expect(reglas.map(normal).slice(inicio, inicio + esperadas.length)).toEqual(esperadas);
-    await expect(page.locator(".calendario")).toContainText(
-      `+${r.porAccion} crédito por acción y +${r.bonoDiaCompleto} si completas el día; con ${r.diasRachaMedia} días completos seguidos, ese bono sube a ${r.bonoRacha3}.`,
-    );
+    // Solo queda la mención factual en las listas de lo incluido (igual que en Condiciones).
+    await expect(page.locator("main")).not.toContainText(/Nivel \d|crédito por acción|días completos seguidos|no se canjean/);
+    await expect(page.locator("#comunidad, .ranking-tarjeta, .calendario-nivel, .calendario-progreso")).toHaveCount(0);
 
     await page.goto("condiciones/");
     const main = page.locator("main");
@@ -745,9 +744,12 @@ test.describe("medidas de la portada", () => {
   // del 2 de octubre agregaron unos 640 px (19.584 px, #planes al 66,1 %): la meta de alto pasó a
   // 19.800 px. La Etapa 0 de Rumbo 2.0 (12 de octubre) agregó «Lo que viene en Rumbo», pedido por
   // Diego, y el rótulo del ranking (19.923 px en CI): la meta pasó a 20.200 px. Ver docs/pendientes.md.
-  const META_19 = { alto: 20200, planes: 0.685 };
+  // 21.200 px desde las fotos de la portada (nov-2026): inicio, caminos, cómo funciona y planes.
+  // 22.200 px desde el capítulo «No vas a estar solo en esto» (Diego, 18-nov-2026: el alma de
+  // Rumbo debe verse en la portada): medido 21.464 px, #planes al 69,0 %; la meta pasa al 70,5 %.
+  const META_19 = { alto: 22200, planes: 0.705 };
 
-  test("a 390 px la portada no pasa de 20.200 px y #planes empieza antes del 68,5 % (aceptación 19)", async ({ page }) => {
+  test("a 390 px la portada no pasa de 22.200 px y #planes empieza antes del 70,5 % (aceptación 19)", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("./");
     await esperarHidratacion(page);
@@ -822,7 +824,7 @@ for (const ruta of [...paginas.map((p) => p.ruta), "/no-existe/"]) {
   test(`el aviso de crisis está completo en ${ruta}`, async ({ page }) => {
     await page.goto(relativa(ruta));
     const pie = page.locator("footer");
-    await expect(pie).toContainText("Rumbo no es un servicio de salud ni de urgencias.");
+    await expect(pie).toContainText("Rumbo no es un servicio de urgencias.");
     // El *4141 va destacado y sin enlace: iOS no marca enlaces tel: con «*».
     await expect(pie.locator("strong", { hasText: "*4141" }).first()).toBeVisible();
     await expect(pie.locator('a:has-text("*4141")')).toHaveCount(0);
@@ -843,24 +845,21 @@ test("404: axe y objetivos táctiles", async ({ page, isMobile }) => {
   if (isMobile) expect(await objetivosChicos(page)).toEqual([]);
 });
 
-test("cursivas de titular solo donde van y encabezados de la portada a la izquierda", async ({ page }) => {
+test("sin palabras destacadas en los titulares y encabezados de la portada a la izquierda", async ({ page }) => {
+  // Rediseño de nov-2026: ningún titular destaca una palabra en cursiva o en otro color.
   const cursivas = () => page.locator("main").locator("h1 em, h2 em, h3 em").allTextContents();
   await page.goto("./");
-  expect(await cursivas()).toEqual(["semana posible.", "empezar."]);
-  await expect(page.locator("main h1 em")).toHaveText("semana posible.");
-  await expect(page.locator("main .cierre h2 em")).toHaveText("empezar.");
+  expect(await cursivas()).toEqual([]);
   const alineados = await page
     .locator("main section h2")
     .evaluateAll((hs) => hs.map((h) => [h.textContent, !!h.closest(".cierre"), getComputedStyle(h).textAlign]));
   for (const [texto, enCierre, alineacion] of alineados) {
     expect(alineacion, `alineación de «${texto}»`).toBe(enCierre ? "center" : "start");
   }
-  for (const ruta of ["privacidad/", "condiciones/", "ayuda/"]) {
+  for (const ruta of ["privacidad/", "condiciones/", "ayuda/", "no-existe/"]) {
     await page.goto(ruta);
     expect(await cursivas(), ruta).toEqual([]);
   }
-  await page.goto("no-existe/");
-  expect(await page.locator("main h1 em").allTextContents()).toEqual(["página."]);
 });
 
 test("Condiciones: «Imprimir o guardar» aparece al hidratar e imprime", async ({ browser, page, baseURL }) => {
@@ -931,9 +930,10 @@ test.describe("Etapa 0: proveedores reales y funciones futuras rotuladas", () =>
     await expect(viene.locator(".etiqueta")).toHaveText(["Todavía no disponible", "Más adelante"]);
     await expect(viene.locator("a, button")).toHaveCount(0); // sin botones de contratación
     await expect(viene).not.toContainText(/\b20\d\d\b/); // sin fechas de lanzamiento
-    await expect(page.locator(".ranking-tarjeta")).toContainText("Todavía no disponible");
+    await expect(page.locator(".ranking-tarjeta")).toHaveCount(0); // el ranking ya no se muestra en la portada
     const recibes = page.locator(".transparencia").first();
-    await expect(recibes).not.toContainText(/foro|ranking|foto/i);
+    // Fotos, reconocimientos y ranking ya existen (siempre presentes desde el 20-nov); el foro no.
+    await expect(recibes).not.toContainText(/foro|comunidad/i);
     await expect(page.locator("main")).not.toContainText(/comunidad es opcional|comunidad solo muestra/);
   });
 });

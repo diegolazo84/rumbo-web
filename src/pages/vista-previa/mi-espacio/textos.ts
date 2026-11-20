@@ -471,6 +471,21 @@ export const T_PROGRESO = {
 
 // Mis logros (maqueta de ChatGPT, 29-oct-2026). Cifras, fechas y beneficios salen de la base.
 export const T_LOGROS = {
+  // Galería de fotos (20-nov-2026, decisión de Diego: las fotos se guardan como recuerdo).
+  fotos: {
+    titulo: "Cómo empezaste y cómo vas",
+    bajada: "Cada foto queda junto a la acción y el día en que la hiciste. Solo las ven tú y quien te acompaña.",
+    comparacion: "Tu primera foto y la más reciente",
+    primera: "Así empezaste",
+    reciente: (dias: number) => (dias === 1 ? "Así vas, 1 día después" : `Así vas, ${dias} días después`),
+    una: "Es tu primera foto del ciclo. Cada nueva foto se suma aquí, junto a su acción.",
+    recorrido: (n: number) => `Tu recorrido en fotos (${n})`,
+    semana: (n: number) => `Semana ${n}`,
+    dia: (n: number) => `Día ${n}`,
+    alt: (titulo: string, dia: string) => `Foto de «${titulo}», ${dia}`,
+    borrar: "Toca una foto para ver su acción. Desde ahí también puedes quitarla.",
+  },
+
   portada: {
     ojo: "Mis logros",
     titulo: "Cada paso cuenta",
@@ -972,8 +987,6 @@ export const T_LO_QUE_VIENE = {
       titulo: "Para el lanzamiento",
       items: [
         { clave: "comunidad", titulo: "Comunidad con foro moderado", texto: "Comparte avances con un alias, solo si quieres." },
-        { clave: "ranking", titulo: "Ranking semanal voluntario", texto: "Por cumplimiento relativo a tu propio plan, con participación opcional." },
-        { clave: "fotos", titulo: "Fotografías opcionales y privadas", texto: "Respalda una acción con una foto que solo ve tu coach." },
         { clave: "asistente_ia", titulo: "Asistente con inteligencia artificial", texto: "Propone ideas para tu plan y tu registro. Tu coach revisa y aprueba." },
       ],
     },
@@ -981,9 +994,9 @@ export const T_LO_QUE_VIENE = {
       titulo: "Más adelante",
       items: [
         { clave: "especialistas", titulo: "Marketplace de especialistas", texto: "Sesiones con profesionales verificados de distintas áreas." },
-        { clave: "reconocimientos", titulo: "Premios y recompensas", texto: "Beneficios por tu constancia, con criterios iguales para todos los planes." },
+        { clave: "convenios", titulo: "Premios por convenio con tiendas y especialistas", texto: "Beneficios con tiendas y especialistas, además de tus reconocimientos." },
         { clave: "ia_avanzada", titulo: "Inteligencia artificial avanzada", texto: "Análisis más profundos de tus patrones y tu evolución." },
-        { clave: "app_movil", titulo: "Aplicación móvil", texto: "Una aplicación para iOS y Android." },
+        { clave: "app_tiendas", titulo: "Aplicación en las tiendas de iOS y Android", texto: "Rumbo en App Store y Google Play. Hoy ya puedes instalar Mi espacio desde tu navegador." },
       ],
     },
   ],

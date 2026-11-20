@@ -194,6 +194,15 @@ function cabeza({
     .join("\n    ");
 }
 
+// Rediseño nov-2026: la foto de la portada es el elemento más grande del primer pantallazo.
+// Desde 1024 px se precarga (AVIF, mismo srcset que <Foto>) para que el LCP no espere al CSS; en
+// móvil va bajo el texto y no compite con las tipografías del H1, que es ahí el LCP.
+function precargaFotoPortada() {
+  const anchos = [640, 960, 1280];
+  const srcset = anchos.map((w) => `${BASE}fotos/portada-${w}.avif ${w}w`).join(", ");
+  return `<link rel="preload" as="image" type="image/avif" imagesrcset="${srcset}" imagesizes="50vw" media="(min-width: 1024px)" fetchpriority="high" />`;
+}
+
 // 6.5 Datos estructurados: solo hechos verificables. Sin precios (Offer), sin reseñas
 // ni valoraciones, sin dirección física, sin tipos médicos: Rumbo no es un prestador de salud.
 function jsonLd() {
@@ -222,6 +231,29 @@ function jsonLd() {
   };
   // "<" escapado para que ningún texto pueda cerrar la etiqueta script.
   return `<script type="application/ld+json">${JSON.stringify(datos).replaceAll("<", "\\u003c")}</script>`;
+}
+
+// FAQPage con las mismas preguntas que se ven en la portada (details[data-faq]): ayuda a
+// buscadores y asistentes de IA a citar respuestas exactas. Solo texto visible, sin agregar nada.
+const textoDe = (fragmento) =>
+  fragmento
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ").replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")
+    .replace(/\u2060/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+function conPreguntas(html) {
+  const preguntas = [...html.matchAll(/<details data-faq="[^"]+"><summary><span>([\s\S]*?)<\/span>[\s\S]*?<div class="acordeon-respuesta">([\s\S]*?)<\/div><\/details>/g)]
+    .map(([, q, r]) => ({ "@type": "Question", name: textoDe(q), acceptedAnswer: { "@type": "Answer", text: textoDe(r) } }))
+    .filter((x) => x.name && x.acceptedAnswer.text);
+  if (preguntas.length < 3) throw new Error(`postbuild: la portada solo tiene ${preguntas.length} preguntas para FAQPage.`);
+  // Un solo bloque JSON-LD por página: la FAQPage se suma al @graph existente.
+  return html.replace(/<script type="application\/ld\+json">(.*?)<\/script>/s, (_, json) => {
+    const datos = JSON.parse(json.replaceAll("\\u003c", "<"));
+    datos["@graph"].push({ "@type": "FAQPage", "@id": `${SITE_URL}/#preguntas`, inLanguage: "es-CL", mainEntity: preguntas });
+    return `<script type="application/ld+json">${JSON.stringify(datos).replaceAll("<", "\\u003c")}</script>`;
+  });
 }
 
 // Todo HTML escrito pasa por el guardián antes de llegar a disco.
@@ -284,7 +316,7 @@ for (const p of paginas) {
     indexable,
     sinAnalitica: p.analitica === false,
     supabase: Boolean(p.formulario),
-    extra: p.id === "inicio" ? jsonLd() : "",
+    extra: p.id === "inicio" ? precargaFotoPortada() + "\n    " + jsonLd() : "",
   });
   let html;
   if (p.formulario || p.perezosa) {
@@ -295,6 +327,7 @@ for (const p of paginas) {
   } else {
     html = pagina(url, p.id, head);
   }
+  if (p.id === "inicio") html = conPreguntas(html);
   // Política de referrer propia (/estado/: no-referrer, plataforma 2.1): reemplaza la de la
   // plantilla, porque con dos <meta name="referrer"> manda la última.
   if (p.referrer) {
@@ -368,7 +401,17 @@ if (MI_ESPACIO_PROPIO) {
     });
     const cuerpo = await renderPrevia(url);
     if (/<script\b/i.test(cuerpo)) throw new Error(`El prerender de ${url} trae un <script> en línea.`);
-    escribir(r.ruta.replace(/^\//, ""), conEnlaces(armar(url, ID_PLATAFORMA, head, cuerpo), hojas));
+    // Mi espacio (no el panel) enlaza su propio manifiesto: se instala como app con alcance /mi-espacio/.
+    let html = conEnlaces(armar(url, ID_PLATAFORMA, head, cuerpo), hojas);
+    if (r.marco !== "panel") {
+      const antes = `<link rel="manifest" href="${BASE}site.webmanifest" />`;
+      if (!html.includes(antes)) throw new Error(`postbuild: ${url} no enlaza ${BASE}site.webmanifest.`);
+      html = html.replace(
+        antes,
+        `<link rel="manifest" href="${BASE}mi-espacio.webmanifest" />\n    <meta name="mobile-web-app-capable" content="yes" />\n    <meta name="apple-mobile-web-app-capable" content="yes" />\n    <meta name="apple-mobile-web-app-title" content="Rumbo" />`,
+      );
+    }
+    escribir(r.ruta.replace(/^\//, ""), html);
     totalPlataforma++;
   }
 }
