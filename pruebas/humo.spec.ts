@@ -945,7 +945,8 @@ test.describe("Versión legal 1.3", () => {
     await expect(main).not.toContainText("Funciones que todavía no existen");
     await expect(main).toContainText("todavía no está activo");
     await expect(main).toContainText("menos de 3 personas");
-    await expect(main).toContainText("30 días después de su revisión");
+    await expect(main).toContainText("se guardan mientras tengas tu cuenta");
+    await expect(main).toContainText("Cuenta gratis y prueba de 14 días");
     await expect(main).not.toContainText(/ChatGPT|OpenAI/);
     expect((await new AxeBuilder({ page }).withTags(ETIQUETAS_AXE).analyze()).violations).toEqual([]);
   });

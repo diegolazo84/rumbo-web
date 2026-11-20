@@ -38,7 +38,7 @@ const MI_ESPACIO_FORZADO =
     ? __MI_ESPACIO_PROPIO__ === true
     : (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.MI_ESPACIO_PROPIO === "1";
 const ESPACIO_PROPIO = MI_ESPACIO_PROPIO || MI_ESPACIO_FORZADO;
-const LEGAL_13 = false; // Privacidad y Condiciones 1.3: se enciende solo al publicarlas (docs/publicar-versiones-legales.md)
+const LEGAL_13 = true; // Privacidad y Condiciones 1.3 publicadas con autorización de Diego (20-nov-2026)
 const LEGAL_13_FORZADO =
   typeof __LEGAL_13__ !== "undefined"
     ? __LEGAL_13__ === true
