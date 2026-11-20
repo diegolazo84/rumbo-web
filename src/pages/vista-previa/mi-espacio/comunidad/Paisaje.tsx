@@ -60,12 +60,12 @@ export function PaisajePortada({ className }: { className?: string }) {
 // Miniaturas con fotografías reales (nov-2026, pedido de Diego: fotos reales en vez de dibujos).
 // Cada tema usa un encuadre distinto de las fotos de la web (créditos en docs/creditos-fotos.md).
 const FOTO_MINI: Record<Ilustracion, { src: string; pos: string }> = {
-  sendero: { src: "sendero-1440", pos: "34% 85%" },
-  montana: { src: "sendero-1440", pos: "48% 8%" },
-  colinas: { src: "camino-organizacion-480", pos: "50% 50%" },
-  lago: { src: "camino-sin-claridad-480", pos: "50% 45%" },
-  brote: { src: "mi-espacio-800", pos: "8% 55%" },
-  atardecer: { src: "sendero-1440", pos: "12% 40%" },
+  sendero: { src: "bosque-sendero-800", pos: "50% 60%" },
+  montana: { src: "torres-800", pos: "50% 45%" },
+  colinas: { src: "colinas-800", pos: "50% 55%" },
+  lago: { src: "lago-calmo-800", pos: "50% 50%" },
+  brote: { src: "brote-800", pos: "50% 50%" },
+  atardecer: { src: "lago-atardecer-800", pos: "50% 55%" },
 };
 
 export function PaisajeMini({ nombre, className }: { nombre: Ilustracion | null; className?: string }) {
