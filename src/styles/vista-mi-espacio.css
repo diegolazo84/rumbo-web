@@ -567,7 +567,7 @@
 .me-ruta__cifras span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--r-full); background: var(--papel); font: 600 var(--t-xs)/1.3 var(--sans); color: var(--bosque); }
 .me-ruta__cifras svg { color: var(--terracota); }
 .me-ruta__semanas { display: grid; gap: var(--e-2); margin: 0; padding: 0; list-style: none; }
-.me-ruta__semana { display: grid; gap: var(--e-2); padding: var(--e-3); border: 1.5px solid transparent; border-radius: var(--r-m, 14px); background: color-mix(in srgb, var(--papel) 55%, transparent); }
+.me-ruta__semana { display: grid; gap: var(--e-2); padding: var(--e-3); border: 1.5px solid transparent; border-radius: var(--r-m); background: color-mix(in srgb, var(--papel) 55%, transparent); }
 .me-ruta__semana.es-actual { border-color: var(--bosque); background: var(--papel); box-shadow: var(--sombra-1); }
 .me-ruta__s { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--e-2); }
 .me-ruta__s-nombre { display: inline-flex; align-items: center; gap: var(--e-2); font: 600 var(--t-s)/1.3 var(--serif); color: var(--bosque); }
@@ -601,7 +601,7 @@
 .me-ruta__muestra { inline-size: 16px; block-size: 16px; border-width: 1.5px; transition: none; }
 .me-ruta__muestra-rev { display: grid; place-items: center; inline-size: 18px; block-size: 18px; border-radius: 50%; background: var(--terracota-suave); color: var(--terracota-texto); }
 /* Detalle del día elegido. */
-.me-ruta__detalle { display: grid; gap: var(--e-3); padding: var(--e-4); border-radius: var(--r-m, 14px); background: var(--superficie); border: 1px solid var(--linea); }
+.me-ruta__detalle { display: grid; gap: var(--e-3); padding: var(--e-4); border-radius: var(--r-m); background: var(--superficie); border: 1px solid var(--linea); }
 .me-ruta__detalle-cabeza { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px var(--e-3); }
 .me-ruta__detalle-fecha { display: inline-flex; align-items: center; gap: var(--e-2); margin: 0; font: 600 var(--t-lead)/1.25 var(--serif); color: var(--bosque); }
 .me-ruta__detalle-hoy { padding: 2px 8px; border-radius: var(--r-full); background: var(--bosque); font: 600 var(--t-micro)/1.3 var(--sans); color: var(--papel); }
