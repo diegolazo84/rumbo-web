@@ -116,16 +116,31 @@ test("sin desborde horizontal a 320, 375, 390 y 430 px (Semana y Día)", async (
   }
 });
 
-test("tu ciclo, día a día: 28 piedras, hoy marcado y cada una abre su día", async ({ page }) => {
+test("tu ciclo, día a día: explicación, semana actual, leyenda y el día elegido muestra sus acciones", async ({ page }) => {
   await abrir(page);
   const ruta = page.getByRole("region", { name: T_PLAN.ruta.titulo });
-  await expect(ruta.getByRole("button")).toHaveCount(28);
-  const hoy = ruta.locator('[aria-current="date"]');
-  await expect(hoy).toHaveCount(1);
+  await expect(ruta.locator(".me-ruta__bajada")).toHaveText(/Toca un día para ver sus acciones/);
+  await expect(ruta.locator(".me-piedra")).toHaveCount(28);
+  await expect(ruta.locator('[aria-current="date"]')).toHaveCount(1);
+  await expect(ruta.locator(".me-ruta__semana.es-actual")).toHaveCount(1);
+  await expect(ruta.locator(".me-ruta__semana.es-actual")).toContainText(T_PLAN.ruta.estaSemana);
   await expect(ruta.locator(".me-piedra.es-completo").first()).toBeVisible();
-  const primera = ruta.getByRole("button").first();
-  const nombre = (await primera.getAttribute("aria-label"))!.split(":")[0];
-  await primera.click();
+  await expect(ruta.getByRole("list", { name: T_PLAN.ruta.leyenda })).toContainText(T_PLAN.ruta.estados.completo);
+  // Por defecto el detalle muestra hoy.
+  const detalle = ruta.locator("#me-ruta-detalle");
+  await expect(detalle).toContainText(T_PLAN.ruta.estados.hoy);
+  // Tocar un día completo muestra sus acciones hechas, sin salir del bloque.
+  const completo = ruta.locator(".me-piedra.es-completo").first();
+  const nombre = (await completo.getAttribute("aria-label"))!.split(":")[0];
+  await completo.click();
+  await expect(completo).toHaveAttribute("aria-pressed", "true");
+  await expect(detalle.locator(".me-ruta__detalle-fecha")).toHaveText(nombre);
+  const n = await detalle.locator(".me-ruta__acciones li").count();
+  expect(n).toBeGreaterThan(0);
+  await expect(detalle.locator(".me-ruta__acciones li.es-hecha")).toHaveCount(n);
+  await expect(page.getByRole("radio", { name: "Día" })).not.toBeChecked();
+  // «Abrir este día» lleva a la vista Día.
+  await detalle.getByRole("button", { name: T_PLAN.ruta.detalle.abrir }).click();
   await expect(page.getByRole("radio", { name: "Día" })).toBeChecked();
   await expect(page.locator(".me-calendario__titulo")).toHaveText(nombre);
   await expect(page.locator(".me-calendario__titulo")).toBeFocused();

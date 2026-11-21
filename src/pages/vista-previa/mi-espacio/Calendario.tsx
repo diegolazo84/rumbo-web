@@ -534,9 +534,13 @@ function VistaMes({ fecha, hoy, lista, progreso, onAbrirDia }: { fecha: Iso; hoy
 }
 
 // ---------------------------------------------------------------------------
-// Tu ciclo (nov-2026): los 28 días como un camino de piedras, una fila por semana. Cada piedra es un
-// botón que abre ese día: hecho (sol), hoy (late), con acciones pendientes o por venir. El día de
-// revisión lleva su marca. Nada de rojo ni de «fallaste»: un día sin hacer queda solo en blanco.
+// Tu ciclo, día a día (rediseño 21-nov-2026): los días del ciclo, una fila por semana con su rango
+// de fechas y cuántos días completó. La semana actual va destacada. Cada día muestra su estado
+// (completo, a medias, sin registrar, por venir, sin acciones, hoy) con una leyenda breve. Tocar
+// un día muestra sus acciones reales debajo; «Abrir este día» lleva a la vista Día para marcarlas.
+// Sin rojo ni «fallaste»: un día sin registrar queda solo en blanco.
+
+type EstadoDia = "completo" | "parcial" | "pendiente" | "futuro" | "libre" | "hoy";
 
 function RutaCiclo({ hoy, lista, inicio, semanas, esRevision, onAbrir }: { hoy: Iso; lista: Ocurrencia[]; inicio: Iso; semanas: number; esRevision: (f: Iso) => boolean; onAbrir: (f: Iso) => void }) {
   const T = T_PLAN.ruta;
@@ -544,19 +548,43 @@ function RutaCiclo({ hoy, lista, inicio, semanas, esRevision, onAbrir }: { hoy: 
     const f = sumarDias(inicio, i);
     const del = ocurrenciasDel(f, lista);
     const hechas = del.filter((o) => cuentaComoHecha(o.registro)).length;
-    const estado = !del.length ? "libre" : hechas === del.length ? "completo" : f === hoy ? "hoy" : f < hoy ? (hechas ? "parcial" : "pendiente") : "futuro";
-    return { f, n: i + 1, programadas: del.length, hechas, estado };
+    const estado: EstadoDia = !del.length
+      ? "libre"
+      : hechas === del.length
+        ? "completo"
+        : f === hoy
+          ? "hoy"
+          : f < hoy
+            ? hechas
+              ? "parcial"
+              : "pendiente"
+            : "futuro";
+    return { f, n: i + 1, del, programadas: del.length, hechas, estado };
   });
+  const fin = dias[dias.length - 1].f;
   const completos = dias.filter((d) => d.estado === "completo").length;
   const nHoy = dias.find((d) => d.f === hoy)?.n;
+  const semanaHoy = nHoy ? Math.ceil(nHoy / 7) : 0;
+  const [elegido, setElegido] = useState<Iso>(nHoy ? hoy : hoy < inicio ? inicio : fin);
+  const sel = dias.find((d) => d.f === elegido) ?? dias[0];
+  const hayRevision = dias.some((d) => esRevision(d.f));
+  const estadoTexto = nHoy ? T.dia(nHoy, dias.length) : hoy < inicio ? T.empieza(fechaLarga(inicio)) : T.terminado;
+  const leyenda: EstadoDia[] = ["completo", "parcial", "pendiente", "hoy", "futuro", "libre"];
+
   return (
     <section className="me-ruta" aria-labelledby="me-ruta-t">
       <div className="me-ruta__cabeza">
-        <h2 id="me-ruta-t" className="me-ruta__titulo">
-          {T.titulo}
-        </h2>
+        <div className="me-ruta__textos">
+          <h2 id="me-ruta-t" className="me-ruta__titulo">
+            {T.titulo}
+          </h2>
+          <p className="me-ruta__bajada">{T.bajada(semanas)}</p>
+        </div>
         <p className="me-ruta__cifras">
-          {nHoy && <span>{T.dia(nHoy, dias.length)}</span>}
+          <span>
+            <Icono nombre="calendar-days" tamaño={16} />
+            {estadoTexto}
+          </span>
           <span>
             <Icono nombre="sun" tamaño={16} />
             {T.completos(completos)}
@@ -564,37 +592,114 @@ function RutaCiclo({ hoy, lista, inicio, semanas, esRevision, onAbrir }: { hoy: 
         </p>
       </div>
       <ol className="me-ruta__semanas">
-        {Array.from({ length: semanas }, (_, s) => (
-          <li key={s} className="me-ruta__semana">
-            <span className="me-ruta__s" aria-hidden="true">
-              {T.semanaCorta(s + 1)}
-            </span>
-            <ol className="me-ruta__dias" aria-label={T.semana(s + 1)}>
-              {dias.slice(s * 7, s * 7 + 7).map((d) => (
-                <li key={d.f} className="me-ruta__dia">
-                  <button
-                    type="button"
-                    className={`me-piedra es-${d.estado}${d.f === hoy ? " es-hoy" : ""}`}
-                    aria-current={d.f === hoy ? "date" : undefined}
-                    aria-label={T.aria(mayuscula(fechaLarga(d.f)), d.hechas, d.programadas, esRevision(d.f))}
-                    onClick={() => onAbrir(d.f)}
-                  >
-                    <span className="me-piedra__ini" aria-hidden="true">{inicialDia(d.f)}</span>
-                    <span className="me-piedra__forma" aria-hidden="true">
-                      {d.estado === "completo" ? <Icono nombre="check" tamaño={16} /> : numeroDia(d.f)}
-                    </span>
-                    {esRevision(d.f) && (
-                      <span className="me-piedra__rev" aria-hidden="true">
-                        <Icono nombre="message-circle" tamaño={12} />
+        {Array.from({ length: semanas }, (_, s) => {
+          const de = dias.slice(s * 7, s * 7 + 7);
+          const conAcciones = de.filter((d) => d.programadas).length;
+          const listos = de.filter((d) => d.estado === "completo").length;
+          const actual = s + 1 === semanaHoy;
+          return (
+            <li key={s} className={`me-ruta__semana${actual ? " es-actual" : ""}`}>
+              <div className="me-ruta__s">
+                <span className="me-ruta__s-nombre">
+                  {T.semana(s + 1)}
+                  {actual && <span className="me-ruta__s-actual">{T.estaSemana}</span>}
+                </span>
+                <span className="me-ruta__s-rango">{rangoSemana(de[0].f)}</span>
+                <span className="me-ruta__s-cuenta">{de[0].f > hoy && conAcciones ? T.porVenirSemana(conAcciones) : T.completosSemana(listos, conAcciones)}</span>
+              </div>
+              <ol className="me-ruta__dias" aria-label={`${T.semana(s + 1)}, ${rangoSemana(de[0].f)}`}>
+                {de.map((d) => (
+                  <li key={d.f} className="me-ruta__dia">
+                    <button
+                      type="button"
+                      className={`me-piedra es-${d.estado}${d.f === hoy ? " es-hoy" : ""}${d.f === sel.f ? " es-elegido" : ""}`}
+                      aria-current={d.f === hoy ? "date" : undefined}
+                      aria-pressed={d.f === sel.f}
+                      aria-controls="me-ruta-detalle"
+                      aria-label={T.aria(mayuscula(fechaLarga(d.f)), d.hechas, d.programadas, esRevision(d.f))}
+                      onClick={() => setElegido(d.f)}
+                    >
+                      <span className="me-piedra__ini" aria-hidden="true">
+                        {inicialDia(d.f)}
                       </span>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ol>
+                      <span className="me-piedra__forma" aria-hidden="true">
+                        {d.estado === "completo" ? <Icono nombre="check" tamaño={16} /> : numeroDia(d.f)}
+                      </span>
+                      {esRevision(d.f) && (
+                        <span className="me-piedra__rev" aria-hidden="true">
+                          <Icono nombre="message-circle" tamaño={12} />
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </li>
+          );
+        })}
+      </ol>
+
+      <ul className="me-ruta__leyenda" aria-label={T.leyenda}>
+        {leyenda.map((e) => (
+          <li key={e}>
+            <span className={`me-ruta__muestra es-${e}`} aria-hidden="true" />
+            {T.estados[e]}
           </li>
         ))}
-      </ol>
+        {hayRevision && (
+          <li>
+            <span className="me-ruta__muestra-rev" aria-hidden="true">
+              <Icono nombre="message-circle" tamaño={12} />
+            </span>
+            {T.estados.revision}
+          </li>
+        )}
+      </ul>
+
+      <div className="me-ruta__detalle" id="me-ruta-detalle" aria-live="polite">
+        <div className="me-ruta__detalle-cabeza">
+          <p className="me-ruta__detalle-fecha">
+            {sel.f === hoy && <span className="me-ruta__detalle-hoy">{T.estados.hoy}</span>}
+            {mayuscula(fechaLarga(sel.f))}
+          </p>
+          {sel.programadas > 0 && (
+            <p className="me-ruta__detalle-resumen">{sel.f > hoy ? T.detalle.porVenir(sel.programadas) : T.detalle.resumen(sel.hechas, sel.programadas)}</p>
+          )}
+        </div>
+        {esRevision(sel.f) && (
+          <p className="me-ruta__detalle-nota">
+            <Icono nombre="message-circle" tamaño={16} />
+            {T.detalle.revision}
+          </p>
+        )}
+        {sel.programadas ? (
+          <ul className="me-ruta__acciones">
+            {sel.del.map((o) => {
+              const hecha = cuentaComoHecha(o.registro);
+              return (
+                <li key={o.id} className={hecha ? "es-hecha" : undefined}>
+                  <span className="punto-meta" data-cat={o.categoria} aria-hidden="true" />
+                  <span className="me-ruta__accion-titulo">{o.titulo}</span>
+                  {sel.f <= hoy && (
+                    <span className="me-ruta__accion-estado">
+                      {hecha && <Icono nombre="check" tamaño={12} />}
+                      {hecha ? T.detalle.hecha : T.detalle.pendiente}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="me-ruta__detalle-vacio">{T.detalle.libre}</p>
+        )}
+        {sel.programadas > 0 && (
+          <button type="button" className="boton boton--secundario me-boton-chico me-ruta__abrir" onClick={() => onAbrir(sel.f)}>
+            {T.detalle.abrir}
+            <Icono nombre="chevron-right" tamaño={16} />
+          </button>
+        )}
+      </div>
     </section>
   );
 }
