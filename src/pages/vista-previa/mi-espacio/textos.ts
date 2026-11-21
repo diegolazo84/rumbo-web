@@ -870,12 +870,36 @@ export const T_PLAN = {
   // Tu ciclo como camino de piedras (nov-2026).
   ruta: {
     titulo: "Tu ciclo, día a día",
+    bajada: (semanas: number) => `Así va cada día de tus ${semanas} semanas. Toca un día para ver sus acciones.`,
     dia: (n: number, total: number) => `Día ${n} de ${total}`,
+    empieza: (fecha: string) => `Empieza el ${fecha}`,
+    terminado: "Ciclo terminado",
     completos: (n: number) => `${n} ${n === 1 ? "día completo" : "días completos"}`,
     semana: (n: number) => `Semana ${n}`,
-    semanaCorta: (n: number) => `S${n}`,
+    estaSemana: "Esta semana",
+    porVenirSemana: (n: number) => `${n} ${n === 1 ? "día con acciones" : "días con acciones"}`,
+    completosSemana: (c: number, n: number) => (n ? `${c} de ${n} ${n === 1 ? "día completo" : "días completos"}` : "Sin acciones"),
+    leyenda: "Qué significa cada día",
+    estados: {
+      completo: "Completo",
+      parcial: "A medias",
+      pendiente: "Sin registrar",
+      futuro: "Por venir",
+      libre: "Sin acciones",
+      hoy: "Hoy",
+      revision: "Revisión con tu coach",
+    },
+    detalle: {
+      resumen: (h: number, n: number) => (n ? `${h} de ${n} ${n === 1 ? "acción hecha" : "acciones hechas"}` : ""),
+      porVenir: (n: number) => `${n} ${n === 1 ? "acción programada" : "acciones programadas"}`,
+      libre: "Este día no tiene acciones. Es un buen momento para descansar.",
+      revision: "Este día tu coach revisa cómo te fue en la semana.",
+      hecha: "Hecha",
+      pendiente: "Pendiente",
+      abrir: "Abrir este día",
+    },
     aria: (fecha: string, h: number, p: number, rev: boolean) =>
-      `${fecha}: ${p ? `${h} de ${p} ${p === 1 ? "acción hecha" : "acciones hechas"}` : "sin acciones"}${rev ? ", día de revisión" : ""}. Ver el día`,
+      `${fecha}: ${p ? `${h} de ${p} ${p === 1 ? "acción hecha" : "acciones hechas"}` : "sin acciones"}${rev ? ", día de revisión" : ""}`,
   },
   camino: {
     titulo: "Tu camino, paso a paso",

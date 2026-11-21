@@ -2558,7 +2558,8 @@ test("Mi plan antes de que empiece el ciclo: dice cuándo empieza y abre en la p
   await page.goto("mi-espacio/plan/");
   await hidratar(page);
   await expect(page.locator(".me-plan-hoy__vacio")).toHaveText("Tu programa empieza el lunes 19.");
-  await expect(page.getByText("19 al 25 de octubre")).toBeVisible();
+  await expect(page.locator(".me-calendario__titulo")).toContainText("19 al 25 de octubre");
+  await expect(page.locator(".me-ruta__cifras")).toContainText("Empieza el lunes 19 de octubre");
   await expect(page.getByText("Escribir 30 minutos").first()).toBeVisible();
   await sinViolaciones(page);
 });
